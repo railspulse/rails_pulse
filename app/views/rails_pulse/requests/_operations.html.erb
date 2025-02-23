@@ -1,0 +1,71 @@
+<div class="row">
+  <div class="grid-item">
+    <%= render 'rails_pulse/components/panel', { title: 'Event Sequence ' } do %>
+      <table class="table operations-table">
+        <thead>
+          <tr>
+            <th class="operations-label-cell">Operation</th>
+            <th class="operations-duration-cell">Duration</th>
+            <th class="w-20">Impact</th>
+            <th class="w-16"></th>
+            <th class="operations-event-cell">Timeline</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% total_request_duration = @request.duration.to_f %>
+          <% @operation_timeline.bars.each do |bar| %>
+            <tr
+              class="<%= cycle('bg-shade', 'bg-white') %>"
+              data-controller="rails-pulse--popover"
+              data-rails-pulse--popover-placement-value="top-middle"
+              data-rails-pulse--popover-target="button"
+              data-action="click->rails-pulse--popover#toggle"
+            >
+              <td class="operations-label-cell">
+                <%= link_to lucide_icon('external-link', width: '16', class: 'inline-block mie-2'), operation_path(bar.operation), class: "", data: { turbo_frame: "_top" } %>
+                <%= link_to "#",
+                    class: "text-link",
+                    style: "color: #{event_color(bar.operation.operation_type)};",
+                    data: {
+                      rails_pulse__popover_target: "button",
+                      action: "rails-pulse--popover#toggle"
+                    } do %>
+                  <%= bar.operation.label %>
+                <% end %>
+
+              </td>
+              <td class="whitespace-nowrap">
+                <!-- Turbo Frame Popover Content -->
+                <div popover class="popover card operation-details-popover"
+                     data-rails-pulse--popover-target="menu"
+                     data-operation-url="<%= operation_path(bar.operation) %>"
+                     style="--popover-size: min(70rem); max-inline-size: 70rem;">
+                  <%= turbo_frame_tag "operation_#{bar.operation.id}_details" do %>
+                    <div class="flex items-center justify-center p-4">
+                      <%= lucide_icon("loader-circle", width: "24", height: "24", class: "animate-spin") %>
+                      <span class="mls-2">Loading operation details...</span>
+                    </div>
+                  <% end %>
+                </div>
+                <%= bar.duration %> ms
+              </td>
+              <td class="whitespace-nowrap">
+                <% impact_percentage = total_request_duration > 0 ? (bar.operation.duration / total_request_duration * 100).round(1) : 0 %>
+                <%= impact_percentage %>%
+              </td>
+              <td class="whitespace-nowrap text-center">
+                <%= operation_status_indicator(bar.operation) %>
+              </td>
+              <td class="operations-event-cell">
+                <div
+                  class="operations-event"
+                  style="left: <%= bar.left_pct %>%; width: <%= bar.width_pct %>%; background-color: <%= event_color(bar.operation.operation_type) %>;">
+                </div>
+              </td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    <% end %>
+  </div>
+</div>

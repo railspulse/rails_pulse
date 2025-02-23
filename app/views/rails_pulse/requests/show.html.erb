@@ -1,0 +1,41 @@
+<%= render 'rails_pulse/components/breadcrumbs' %>
+
+<%= render 'rails_pulse/components/panel' do %>
+  <div class="row">
+    <%= render 'rails_pulse/components/metric_row', { title: 'Route', value: @request.route.path_and_method } %>
+    <%= render 'rails_pulse/components/metric_row', { title: 'Timestamp', value: human_readable_occurred_at(@request.occurred_at) } %>
+    <%= render 'rails_pulse/components/metric_row', { title: 'Duration', value: "#{@request.duration.to_i} ms" } %>
+    <%= render 'rails_pulse/components/metric_row', { title: 'Status', value: @request.status } %>
+    <%= render 'rails_pulse/components/metric_row', { title: 'Performance Breakdown' } do %>
+
+    <% breakdown = operations_performance_breakdown(@request.operations) %>
+    <div class="bar-container mbs-2">
+      <% current_left = 0 %>
+      <% if breakdown[:database] > 0 %>
+        <div class="bar db" style="left: <%= current_left %>%; width: <%= breakdown[:database] %>%;" title="Database: <%= breakdown[:database] %>%"></div>
+        <% current_left += breakdown[:database] %>
+      <% end %>
+      <% if breakdown[:view] > 0 %>
+        <div class="bar view" style="left: <%= current_left %>%; width: <%= breakdown[:view] %>%;" title="View Rendering: <%= breakdown[:view] %>%"></div>
+        <% current_left += breakdown[:view] %>
+      <% end %>
+      <% if breakdown[:application] > 0 %>
+        <div class="bar app" style="left: <%= current_left %>%; width: <%= breakdown[:application] %>%;" title="Application Logic: <%= breakdown[:application] %>%"></div>
+        <% current_left += breakdown[:application] %>
+      <% end %>
+      <% if breakdown[:other] > 0 %>
+        <div class="bar other" style="left: <%= current_left %>%; width: <%= breakdown[:other] %>%;" title="Other Operations: <%= breakdown[:other] %>%"></div>
+      <% end %>
+    </div>
+
+    <div class="text-xs text-subtle mbs-1">
+      DB: <%= breakdown[:database] %>% •
+      Views: <%= breakdown[:view] %>% •
+      App: <%= breakdown[:application] %>% •
+      Other: <%= breakdown[:other] %>%
+    </div>
+    <% end %>
+  </div>
+<% end %>
+
+<%= render 'operations', operations: @request.operations %>

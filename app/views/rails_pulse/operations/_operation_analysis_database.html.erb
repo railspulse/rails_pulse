@@ -1,0 +1,32 @@
+<!-- Database Operation Analysis -->
+<div class="descriptive-list-item">
+  <dt class="descriptive-list-term">SQL Analysis</dt>
+  <dd class="descriptive-list-definition">
+    <div class="text-sm flex flex-col gap-quarter">
+      <% if operation.duration > RailsPulse.configuration.query_thresholds[:critical] %>
+        <div class="text-negative">
+          <%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %>
+          Critially slow query (><%= RailsPulse.configuration.query_thresholds[:critical] %> ms)
+        </div>
+
+      <% elsif operation.duration > RailsPulse.configuration.query_thresholds[:very_slow] %>
+        <div style="color: #d97706;">
+          <%= lucide_icon 'turtle', width: '16', class: 'inline-block' %>
+          Very slow query (><%= RailsPulse.configuration.query_thresholds[:very_slow] %> ms)
+        </div>
+
+      <% elsif operation.duration > RailsPulse.configuration.query_thresholds[:slow] %>
+        <div style="color: #d97706;">
+          <%= lucide_icon 'snail', width: '16', class: 'inline-block' %>
+          Slow query (><%= RailsPulse.configuration.query_thresholds[:slow] %> ms)
+        </div>
+
+      <% else %>
+        <div class="text-positive">
+          <%= lucide_icon 'sparkle', width: '16', class: 'inline-block' %>
+          Normal query (<<%= RailsPulse.configuration.query_thresholds[:slow] %> ms)
+        </div>
+      <% end %>
+    </div>
+  </dd>
+</div>

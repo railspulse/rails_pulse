@@ -1,0 +1,74 @@
+import { Controller } from "@hotwired/stimulus"
+import { computePosition, flip, shift, offset, autoUpdate } from "https://esm.sh/@floating-ui/dom@1.7.0?standalone"
+
+export default class extends Controller {
+  static targets = [ "button", "menu" ]
+  static values  = { placement: { type: String, default: "bottom" } }
+
+  #showTimer = null
+  #hideTimer = null
+
+  initialize() {
+    this.orient = this.orient.bind(this)
+  }
+
+  connect() {
+    this.cleanup = autoUpdate(this.buttonTarget, this.menuTarget, this.orient)
+  }
+
+  disconnect() {
+    this.cleanup()
+  }
+
+  show() {
+    this.menuTarget.showPopover({ source: this.buttonTarget })
+    this.loadOperationDetailsIfNeeded()
+  }
+
+  hide() {
+    this.menuTarget.hidePopover()
+  }
+
+  toggle() {
+    this.menuTarget.togglePopover({ source: this.buttonTarget })
+    this.loadOperationDetailsIfNeeded()
+  }
+
+  debouncedShow() {
+    clearTimeout(this.#hideTimer)
+    this.#showTimer = setTimeout(() => this.show(), 700)
+  }
+
+  debouncedHide() {
+    clearTimeout(this.#showTimer)
+    this.#hideTimer = setTimeout(() => this.hide(), 300)
+  }
+
+  orient() {
+    computePosition(this.buttonTarget, this.menuTarget, this.#options).then(({x, y}) => {
+      this.menuTarget.style.insetInlineStart = `${x}px`
+      this.menuTarget.style.insetBlockStart  = `${y}px`
+    })
+  }
+
+  loadOperationDetailsIfNeeded() {
+    // Check if this popover has operation details to load
+    const operationUrl = this.menuTarget.dataset.operationUrl
+    if (!operationUrl) return
+    
+    // Find the turbo frame inside the popover
+    const turboFrame = this.menuTarget.querySelector('turbo-frame')
+    if (!turboFrame) return
+    
+    // Only load if not already loaded (check if still shows loading content)
+    const hasLoadingContent = turboFrame.innerHTML.includes('Loading operation details')
+    if (!hasLoadingContent) return
+    
+    // Set the src attribute to trigger the turbo frame loading
+    turboFrame.src = operationUrl
+  }
+
+  get #options() {
+    return { placement: this.placementValue, middleware: [offset(4), flip(), shift({padding: 4})] }
+  }
+}

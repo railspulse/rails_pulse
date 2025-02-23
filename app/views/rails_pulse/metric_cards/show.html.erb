@@ -1,0 +1,34 @@
+<%= turbo_frame_tag "#{@metric_type}_card", class: "grid-item block" do %>
+  <div class="metric-card-wrapper">
+    <%= render "rails_pulse/components/metric_card", **@metric_data if @metric_data %>
+    <% if params[:refresh] %>
+      <div class="metric-card-refresh-indicator">
+        <small class="text-subtle">Refreshed at <%= Time.current.strftime("%H:%M") %></small>
+      </div>
+    <% end %>
+  </div>
+
+  <script>
+    // Trigger chart initialization after turbo frame loads
+    function initializeChartsInFrame() {
+      requestAnimationFrame(() => {
+        // Find all chart initialization functions in this frame and call them
+        const scripts = document.querySelectorAll('#<%= @metric_type %>_card script');
+        scripts.forEach(script => {
+          const content = script.textContent;
+          const match = content.match(/function\s+(init_rails_charts_[a-f0-9]+)/);
+          if (match && window[match[1]]) {
+            const chartId = match[1].replace('init_', '');
+            const chartElement = document.getElementById(chartId);
+            if (chartElement) {
+              window[match[1]]();
+            }
+          }
+        });
+      });
+    }
+
+    // Initialize immediately since DOM is ready when this script runs
+    initializeChartsInFrame();
+  </script>
+<% end %>

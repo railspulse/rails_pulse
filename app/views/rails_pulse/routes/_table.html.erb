@@ -1,0 +1,29 @@
+<% columns = [
+  { field: :path, label: 'Route', class: 'w-auto' },
+  { field: :average_response_time_ms, label: 'Average Response Time', class: 'w-36' },
+  { field: :max_response_time_ms, label: 'Max Response Time', class: 'w-32' },
+  { field: :request_count, label: 'Requests', class: 'w-24' },
+  { field: :requests_per_minute, label: 'Requests Per Minute', class: 'w-28' },
+  { field: :error_rate_percentage, label: 'Error Rate (%)', class: 'w-20' },
+  { field: :status_indicator, label: 'Status', class: 'w-16' }
+] %>
+
+<table class="table mbs-4">
+  <%= render "rails_pulse/components/table_head", columns: columns %>
+
+  <tbody>
+    <% @table_data.each do |route| %>
+      <tr>
+        <td class="whitespace-nowrap"><%= link_to route.path_and_method, route, data: { turbo_frame: '_top' } %></td>
+        <td class="whitespace-nowrap"><%= route.average_response_time_ms.to_i %> ms</td>
+        <td class="whitespace-nowrap"><%= route.max_response_time_ms.to_i %> ms</td>
+        <td class="whitespace-nowrap"><%= number_with_delimiter route.request_count %></td>
+        <td class="whitespace-nowrap"><%= route.requests_per_minute < 1 ? '< 1' : route.requests_per_minute.round(2) %></td>
+        <td class="whitespace-nowrap"><%= route.error_rate_percentage %>%</td>
+        <td class="whitespace-nowrap text-center"><%= route_status_indicator(route.status_indicator) %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= render "rails_pulse/components/table_pagination" %>

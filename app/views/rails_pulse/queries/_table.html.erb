@@ -1,0 +1,43 @@
+<% columns = [
+  { field: :normalized_sql, label: 'Query', class: 'w-auto' },
+  { field: :execution_count, label: 'Executions', class: 'w-24' },
+  { field: :average_query_time_ms, label: 'Avg Time', class: 'w-24' },
+  { field: :total_time_consumed, label: 'Total Time', class: 'w-28' },
+  { field: :performance_status, label: 'Status', class: 'w-16' },
+  { field: :occurred_at, label: 'Last Seen', class: 'w-32' }
+] %>
+
+<table class="table mbs-4">
+  <%= render "rails_pulse/components/table_head", columns: columns %>
+
+  <tbody>
+    <% @table_data.each do |query| %>
+      <tr>
+        <td class="whitespace-nowrap">
+          <div
+            data-controller="rails-pulse--popover"
+            data-rails-pulse--popover-placement-value="top-right"
+            data-action="mouseenter->rails-pulse--popover#debouncedShow mouseleave->rails-pulse--popover#debouncedHide"
+          >
+            <%= link_to truncate_sql(query.normalized_sql), query_path(query),
+                data: {
+                  turbo_frame: '_top',
+                  rails_pulse__popover_target: "button",
+                  action: "rails-pulse--popover#toggle"
+                } %>
+            <div popover class="popover card" data-rails-pulse--popover-target="menu" style="max-width: 40rem;">
+              <pre class="text-sm"><%= query.normalized_sql %></pre>
+            </div>
+          </div>
+        </td>
+        <td class="whitespace-nowrap"><%= number_with_delimiter query.execution_count %></td>
+        <td class="whitespace-nowrap"><%= query.average_query_time_ms.to_i %> ms</td>
+        <td class="whitespace-nowrap"><%= number_with_delimiter query.total_time_consumed.to_i %> ms</td>
+        <td class="whitespace-nowrap text-center"><%= query_status_indicator(query.average_query_time_ms) %></td>
+        <td class="whitespace-nowrap"><%= human_readable_occurred_at(query.occurred_at) if query.occurred_at %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= render "rails_pulse/components/table_pagination" %>

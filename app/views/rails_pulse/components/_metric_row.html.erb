@@ -1,0 +1,9 @@
+<% value ||= nil %>
+<div>
+  <h5 class="text-subtle text-md"><%= title %></h5>
+  <% if value %>
+    <p class="text-md mb-0"><%= value %></p>
+  <% else %>
+    <%= yield %>
+  <% end %>
+</div>

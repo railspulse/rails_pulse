@@ -1,0 +1,241 @@
+<div
+  popover
+  class="popover card operation-details-popover"
+  data-rails-pulse--popover-target="menu"
+  style="--popover-size: min(70rem); max-inline-size: 70rem;"
+>
+  <div class="flex flex-col gap">
+    <div class="flex items-center justify-between">
+      <h3 class="text-sm font-semibold leading-none uppercase text-subtle">
+        <%= operation.operation_type.upcase %> Operation
+      </h3>
+      <span class="badge" style="background-color: <%= event_color(operation.operation_type) %>15; color: <%= event_color(operation.operation_type) %>;">
+        <%= operation.duration.round(2) %>ms
+      </span>
+    </div>
+
+    <div class="flex flex-col gap-half">
+      <div>
+        <h4 class="text-xs font-medium text-subtle uppercase">Label</h4>
+        <div class="text-sm p-2 bg-shade rounded-sm border break-words" style="font-family: monospace;">
+          <%= operation.label %>
+        </div>
+      </div>
+
+      <% if operation.occurred_at.present? %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">Occurred At</h4>
+          <div class="text-sm">
+            <%= operation.occurred_at.strftime("%H:%M:%S.%L") %>
+          </div>
+        </div>
+      <% end %>
+
+      <% case operation.operation_type %>
+      <% when "sql" %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">Performance Notes</h4>
+          <div class="text-sm flex flex-col gap-half">
+            <% if operation.duration > 100 %>
+              <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Slow query (>100ms)</div>
+            <% elsif operation.duration > 50 %>
+              <div style="color: #d97706;">⚡ Moderate query (>50ms)</div>
+            <% else %>
+              <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast query</div>
+            <% end %>
+
+            <% if operation.query.present? %>
+              <div class="text-xs text-subtle">
+                Query normalized for tracking
+              </div>
+            <% end %>
+          </div>
+        </div>
+
+        <% if operation.label&.match?(/SELECT.*FROM\s+(\w+)/i) %>
+          <div>
+            <h4 class="text-xs font-medium text-subtle uppercase">Table</h4>
+            <div class="text-sm p-2 bg-shade rounded-sm border break-words">
+              <%= operation.label.match(/FROM\s+(\w+)/i)&.captures&.first || "Unknown" %>
+            </div>
+          </div>
+        <% end %>
+
+      <% when "controller" %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">Action Info</h4>
+          <div class="text-sm flex flex-col gap-half">
+            <% if operation.duration > 500 %>
+              <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Slow action (>500ms)</div>
+            <% elsif operation.duration > 200 %>
+              <div style="color: #d97706;">⚡ Moderate action (>200ms)</div>
+            <% else %>
+              <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast action</div>
+            <% end %>
+            <div class="text-xs text-subtle">
+              Controller action processing time
+            </div>
+          </div>
+        </div>
+
+      <% when "template", "partial", "layout", "collection" %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">View Performance</h4>
+          <div class="text-sm flex flex-col gap-half">
+            <% if operation.duration > 100 %>
+              <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Slow render (>100ms)</div>
+            <% elsif operation.duration > 50 %>
+              <div style="color: #d97706;">⚡ Moderate render (>50ms)</div>
+            <% else %>
+              <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast render</div>
+            <% end %>
+            <div class="text-xs text-subtle">
+              <%= operation.operation_type.capitalize %> rendering time
+            </div>
+          </div>
+        </div>
+
+        <% if operation.codebase_location.present? %>
+          <div>
+            <h4 class="text-xs font-medium text-subtle uppercase">File Location</h4>
+            <div class="text-xs p-2 bg-shade rounded-sm border break-words" style="font-family: monospace;">
+              <%= operation.codebase_location.split('/').last(3).join('/') %>
+            </div>
+          </div>
+        <% end %>
+
+      <% when "cache_read", "cache_write" %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">Cache Performance</h4>
+          <div class="text-sm flex flex-col gap-half">
+            <% if operation.operation_type == "cache_read" %>
+              <% if operation.duration > 10 %>
+                <div style="color: #d97706;">⚡ Slow cache read (>10ms)</div>
+              <% else %>
+                <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast cache read</div>
+              <% end %>
+            <% else %>
+              <% if operation.duration > 50 %>
+                <div style="color: #d97706;">⚡ Slow cache write (>50ms)</div>
+              <% else %>
+                <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast cache write</div>
+              <% end %>
+            <% end %>
+            <div class="text-xs text-subtle">
+              <%= operation.operation_type.humanize %> operation
+            </div>
+          </div>
+        </div>
+
+      <% when "http" %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">HTTP Request</h4>
+          <div class="text-sm flex flex-col gap-half">
+            <% if operation.duration > 1000 %>
+              <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Very slow request (>1s)</div>
+            <% elsif operation.duration > 500 %>
+              <div style="color: #d97706;">⚡ Slow request (>500ms)</div>
+            <% else %>
+              <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast request</div>
+            <% end %>
+            <div class="text-xs text-subtle">
+              External HTTP request duration
+            </div>
+          </div>
+        </div>
+
+      <% when "job" %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">Background Job</h4>
+          <div class="text-sm flex flex-col gap-half">
+            <% if operation.duration > 5000 %>
+              <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Long-running job (>5s)</div>
+            <% elsif operation.duration > 1000 %>
+              <div style="color: #d97706;">⚡ Moderate job (>1s)</div>
+            <% else %>
+              <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Quick job</div>
+            <% end %>
+            <div class="text-xs text-subtle">
+              Active Job execution time
+            </div>
+          </div>
+        </div>
+
+      <% when "mailer" %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">Email Delivery</h4>
+          <div class="text-sm flex flex-col gap-half">
+            <% if operation.duration > 2000 %>
+              <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Slow email delivery (>2s)</div>
+            <% elsif operation.duration > 500 %>
+              <div style="color: #d97706;">⚡ Moderate delivery (>500ms)</div>
+            <% else %>
+              <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast delivery</div>
+            <% end %>
+            <div class="text-xs text-subtle">
+              ActionMailer delivery time
+            </div>
+          </div>
+        </div>
+
+      <% when "storage" %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">File Storage</h4>
+          <div class="text-sm flex flex-col gap-half">
+            <% if operation.duration > 1000 %>
+              <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Slow storage operation (>1s)</div>
+            <% elsif operation.duration > 500 %>
+              <div style="color: #d97706;">⚡ Moderate storage (>500ms)</div>
+            <% else %>
+              <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast storage</div>
+            <% end %>
+            <div class="text-xs text-subtle">
+              Active Storage operation time
+            </div>
+          </div>
+        </div>
+
+      <% else %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">Performance</h4>
+          <div class="text-sm">
+            <% if operation.duration > 100 %>
+              <div style="color: #d97706;">⚡ Duration: <%= operation.duration.round(2) %>ms</div>
+            <% else %>
+              <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Duration: <%= operation.duration.round(2) %>ms</div>
+            <% end %>
+          </div>
+        </div>
+      <% end %>
+
+      <% if operation.codebase_location.present? && !%w[template partial layout].include?(operation.operation_type) %>
+        <div>
+          <h4 class="text-xs font-medium text-subtle uppercase">Source Location</h4>
+          <div class="text-xs p-2 bg-shade rounded-sm border break-words" style="font-family: monospace;">
+            <%= operation.codebase_location.split('/').last(3).join('/') %>
+          </div>
+        </div>
+      <% end %>
+    </div>
+
+    <div class="border-bs pbs-3">
+      <div class="text-xs text-subtle">
+        💡 <strong>Tips:</strong>
+        <% case operation.operation_type %>
+        <% when "sql" %>
+          Check for missing indexes, N+1 queries, or overly complex joins.
+        <% when "controller" %>
+          Look for heavy computation, multiple database calls, or inefficient logic.
+        <% when "template", "partial", "layout" %>
+          Consider caching, reducing database calls in views, or simplifying logic.
+        <% when "http" %>
+          Consider caching responses, using background jobs, or optimizing external service calls.
+        <% when "cache_read", "cache_write" %>
+          Review cache key complexity and storage backend performance.
+        <% else %>
+          Monitor this operation for performance patterns and consider optimization.
+        <% end %>
+      </div>
+    </div>
+  </div>
+</div>

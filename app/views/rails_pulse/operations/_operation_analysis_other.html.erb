@@ -1,0 +1,97 @@
+<!-- Other Operations Analysis -->
+<div class="descriptive-list-item">
+  <dt class="descriptive-list-term">Operation Performance</dt>
+  <dd class="descriptive-list-definition">
+    <div class="text-sm flex flex-col gap-quarter">
+    <% case operation.operation_type %>
+    <% when "cache_read", "cache_write" %>
+      <% if operation.operation_type == "cache_read" %>
+        <% if operation.duration > 10 %>
+          <div style="color: #d97706;">⚡ Slow cache read (>10ms)</div>
+        <% else %>
+          <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast cache read</div>
+        <% end %>
+        <div class="text-xs text-subtle">Cache hit/miss performance</div>
+      <% else %>
+        <% if operation.duration > 50 %>
+          <div style="color: #d97706;">⚡ Slow cache write (>50ms)</div>
+        <% else %>
+          <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast cache write</div>
+        <% end %>
+        <div class="text-xs text-subtle">Cache storage performance</div>
+      <% end %>
+
+    <% when "http" %>
+      <% if operation.duration > 1000 %>
+        <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Very slow request (>1s)</div>
+      <% elsif operation.duration > 500 %>
+        <div style="color: #d97706;">⚡ Slow request (>500ms)</div>
+      <% else %>
+        <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast request</div>
+      <% end %>
+      <div class="text-xs text-subtle">External HTTP request duration</div>
+
+      <!-- HTTP URL Analysis -->
+      <% if operation.label&.match?(/https?:\/\/([^\/\s]+)/) %>
+        <% domain = operation.label.match(/https?:\/\/([^\/\s]+)/)&.captures&.first %>
+        <div class="text-xs">
+          <strong>External Service:</strong> <%= domain %>
+        </div>
+      <% end %>
+
+    <% when "job" %>
+      <% if operation.duration > 5000 %>
+        <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Long-running job (>5s)</div>
+      <% elsif operation.duration > 1000 %>
+        <div style="color: #d97706;">⚡ Moderate job (>1s)</div>
+      <% else %>
+        <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Quick job</div>
+      <% end %>
+      <div class="text-xs text-subtle">Active Job execution time</div>
+
+    <% when "mailer" %>
+      <% if operation.duration > 2000 %>
+        <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Slow email delivery (>2s)</div>
+      <% elsif operation.duration > 500 %>
+        <div style="color: #d97706;">⚡ Moderate delivery (>500ms)</div>
+      <% else %>
+        <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast delivery</div>
+      <% end %>
+      <div class="text-xs text-subtle">ActionMailer delivery time</div>
+
+    <% when "storage" %>
+      <% if operation.duration > 1000 %>
+        <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Slow storage operation (>1s)</div>
+      <% elsif operation.duration > 500 %>
+        <div style="color: #d97706;">⚡ Moderate storage (>500ms)</div>
+      <% else %>
+        <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast storage</div>
+      <% end %>
+      <div class="text-xs text-subtle">Active Storage operation time</div>
+
+    <% else %>
+      <% if operation.duration > 100 %>
+        <div style="color: #d97706;">⚡ Duration: <%= operation.duration.round(2) %>ms</div>
+      <% else %>
+        <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Duration: <%= operation.duration.round(2) %>ms</div>
+      <% end %>
+      <div class="text-xs text-subtle"><%= operation.operation_type.humanize %> operation</div>
+    <% end %>
+
+    <!-- Operation Context -->
+    <% if operation.label.present? && operation.label != operation.operation_type %>
+      <div class="text-xs">
+        <strong>Details:</strong> <%= truncate(operation.label, length: 100) %>
+      </div>
+    <% end %>
+
+    <!-- Source Location -->
+    <% if operation.codebase_location.present? %>
+      <div class="text-xs">
+        <strong>Source:</strong>
+        <code style="font-size: 0.7rem;"><%= operation.codebase_location.split('/').last(3).join('/') %></code>
+      </div>
+    <% end %>
+    </div>
+  </dd>
+</div>

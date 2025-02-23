@@ -1,0 +1,63 @@
+<div style="font-family: Arial, sans-serif;">
+  <h1 style="color: #ffc107;">Slow Queries Page</h1>
+  <p>This page executes complex database operations with joins and aggregations.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 30px;">
+    
+    <section style="border: 1px solid #ffc107; padding: 20px; border-radius: 8px; background-color: #fff3cd;">
+      <h3>User Statistics (Complex Aggregation)</h3>
+      <% if @user_stats.any? %>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+          <% @user_stats.each do |user| %>
+            <div style="border: 1px solid #eee; padding: 15px; border-radius: 4px; background: white;">
+              <h4><%= user.name %></h4>
+              <p style="color: #666; font-size: 14px;"><%= user.email %></p>
+              <p><strong><%= user.post_count %></strong> posts • <strong><%= user.comment_count %></strong> comments</p>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p>No user statistics available.</p>
+      <% end %>
+    </section>
+
+    <section style="border: 1px solid #ffc107; padding: 20px; border-radius: 8px; background-color: #fff3cd;">
+      <h3>Search Results (Expensive Text Search)</h3>
+      <% if @search_posts.any? %>
+        <ul>
+          <% @search_posts.each do |post| %>
+            <li>
+              <strong><%= post.title %></strong> by <%= post.author_name %>
+              (<%= post.comment_count %> comments)
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p>No search results found.</p>
+      <% end %>
+    </section>
+
+    <section style="border: 1px solid #ffc107; padding: 20px; border-radius: 8px; background-color: #fff3cd;">
+      <h3>Active Users (Multiple Subqueries)</h3>
+      <% if @active_users.any? %>
+        <ul>
+          <% @active_users.each do |user| %>
+            <li><%= user.name %> (<%= user.email %>)</li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p>No active users found.</p>
+      <% end %>
+    </section>
+
+  </div>
+
+  <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+    <h3>About This Page</h3>
+    <p>
+      This page demonstrates <strong>slow queries</strong> including complex JOINs, GROUP BY operations, 
+      HAVING clauses, and multiple subqueries. It should generate significant database load and 
+      slower response times in Rails Pulse monitoring.
+    </p>
+  </div>
+</div>

@@ -1,0 +1,24 @@
+.row {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+  gap: var(--column-gap, 0.5rem);
+}
+
+.row > * {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Stack items on smaller screens */
+@media (max-width: 768px) {
+  .row {
+      flex-direction: column;
+      gap: 0.5rem;
+  }
+
+  .row > * {
+      flex: none;
+      width: 100%;
+  }
+}

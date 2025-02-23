@@ -1,0 +1,19 @@
+<%= link_to root_path, class: 'btn sidebar-menu__button' do %>
+  <%= lucide_icon 'layout-dashboard', width: '16' %>
+  <span class="overflow-ellipsis">Dashboard</span>
+<% end %>
+
+<%= link_to routes_path, class: 'btn sidebar-menu__button' do %>
+  <%= lucide_icon 'route', width: '16' %>
+  <span class="overflow-ellipsis">Routes</span>
+<% end %>
+
+<%= link_to requests_path, class: 'btn sidebar-menu__button' do %>
+  <%= lucide_icon 'audio-lines', width: '16' %>
+  <span class="overflow-ellipsis">Requests</span>
+<% end %>
+
+<%= link_to queries_path, class: 'btn sidebar-menu__button' do %>
+  <%= lucide_icon 'database', width: '16' %>
+  <span class="overflow-ellipsis">Queries</span>
+<% end %>

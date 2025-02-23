@@ -1,0 +1,139 @@
+<%= render 'rails_pulse/components/breadcrumbs' %>
+
+<h1 class="text-2xl mbe-2">Operation <%= @operation.id %></h1>
+
+<div class="card">
+  <%= turbo_frame_tag "operation_#{@operation.id}_details" do %>
+    <!-- Main Details -->
+    <div class="descriptive-list">
+      <!-- Operation Label -->
+      <div class="descriptive-list-item">
+        <dt class="descriptive-list-term">
+          <% if @operation.operation_type == "sql.active_record" %>
+            Query
+          <% elsif @operation.operation_type == "render_template.action_view" %>
+            View Render
+          <% else %>
+            <%= @operation.label %>
+          <% end %>
+
+        </dt>
+        <dd class="descriptive-list-definition">
+          <% if @operation.operation_type == "sql.active_record" %>
+            <%= render 'rails_pulse/components/code_panel', { value: @operation.label } %>
+          <% else %>
+            <%= @operation.label %>
+          <% end %>
+        </dd>
+      </div>
+
+      <div class="descriptive-list-item">
+        <dt class="descriptive-list-term">Operation Type</dt>
+        <dd class="descriptive-list-definition">
+          <pre><%= @operation.operation_type %></pre>
+        </dd>
+      </div>
+
+      <!-- Duration & Performance -->
+      <div class="descriptive-list-item">
+        <dt class="descriptive-list-term">Duration</dt>
+        <dd class="descriptive-list-definition">
+          <%= @operation.duration.round(2) %> ms
+          <% if @performance_context.any? %>
+            <% if @performance_context[:current_percentile] > 90 %>
+              <span class="text-negative">(slower than <%= @performance_context[:current_percentile] %>% of similar operations)</span>
+            <% elsif @performance_context[:current_percentile] > 75 %>
+              <span style="color: #d97706;">(slower than <%= @performance_context[:current_percentile] %>% of similar operations)</span>
+            <% else %>
+              <span class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Within normal performance range</span>
+            <% end %>
+          <% end %>
+        </dd>
+      </div>
+
+      <!-- Request Impact -->
+      <div class="descriptive-list-item">
+        <dt class="descriptive-list-term">Request Impact</dt>
+        <dd class="descriptive-list-definition">
+          <% impact = (@operation.duration / @request.duration * 100).round(1) %>
+          <%= impact %>% of total request time
+        </dd>
+      </div>
+
+      <!-- Timestamp -->
+      <div class="descriptive-list-item">
+        <dt class="descriptive-list-term">Occurred At</dt>
+        <dd class="descriptive-list-definition">
+          <%= human_readable_occurred_at @operation.occurred_at %>
+        </dd>
+      </div>
+
+      <!-- Operation-Specific Analysis -->
+      <% begin %>
+        <%= render partial: "operation_analysis_#{categorize_operation(@operation.operation_type)}", locals: { operation: @operation } %>
+      <% rescue ActionView::MissingTemplate %>
+        <%= render partial: "operation_analysis_generic", locals: { operation: @operation } %>
+      <% end %>
+
+      <!-- Performance Context -->
+      <% if @performance_context.any? %>
+        <div class="descriptive-list-item">
+          <dt class="descriptive-list-term">Performance Comparison</dt>
+          <dd class="descriptive-list-definition">
+            <div>Average: <%= @performance_context[:average].round(1) %>ms</div>
+            <div>95th Percentile: <%= @performance_context[:percentile_95].round(1) %>ms</div>
+            <div>Based on <%= @performance_context[:count] %> recent operations</div>
+          </dd>
+        </div>
+      <% end %>
+
+      <!-- Related Operations -->
+      <% if @related_operations.any? %>
+        <div class="descriptive-list-item">
+          <dt class="descriptive-list-term">Related Operations</dt>
+          <dd class="descriptive-list-definition">
+            <%= pluralize(@related_operations.count, 'similar operation') %> in this request
+            <% if @related_operations.count > 2 %>
+              <div class="text-negative mbs-quarter">Potential N+1 query pattern detected</div>
+            <% end %>
+          </dd>
+        </div>
+      <% end %>
+
+      <!-- Optimization Suggestions -->
+      <% if @optimization_suggestions.any? %>
+        <div class="descriptive-list-item">
+          <dt class="descriptive-list-term">Optimization Tips</dt>
+          <dd class="descriptive-list-definition">
+            <div class="flex flex-col gap-quarter">
+              <% @optimization_suggestions.each do |suggestion| %>
+                <div class="flex items-start gap-quarter p-2 bg-shade rounded border">
+                  <div class="flex-shrink-0 mbs-quarter">
+                    <%= lucide_icon(suggestion[:icon], width: "14", height: "14", class: suggestion[:priority] == "high" ? "text-negative" : "text-warning") %>
+                  </div>
+                  <div class="flex-1">
+                    <div class="text-sm font-medium"><%= suggestion[:title] %></div>
+                    <div class="text-xs text-subtle"><%= suggestion[:description] %></div>
+                  </div>
+                </div>
+              <% end %>
+            </div>
+          </dd>
+        </div>
+      <% end %>
+
+      <!-- Navigation -->
+      <div class="descriptive-list-item">
+        <dt class="descriptive-list-term">Actions</dt>
+        <dd class="descriptive-list-definition">
+          <div class="flex gap">
+            <%= link_to "View Request", request_path(@request), class: "btn btn--small", data: { turbo_frame: "_top" } %>
+            <% if @operation.query %>
+              <%= link_to "View Query", query_path(@operation.query), class: "btn btn--small", data: { turbo_frame: "_top" } %>
+            <% end %>
+          </div>
+        </dd>
+      </div>
+    </div>
+  <% end %>
+</div>

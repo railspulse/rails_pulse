@@ -1,0 +1,48 @@
+<div class="descriptive-list-item">
+  <dt class="descriptive-list-term">Code Location</dt>
+  <dd class="descriptive-list-definition">
+    <code>
+      <%= operation.codebase_location.present? ? operation.codebase_location.split('/').last(3).join('/') : 'N/A' %>
+    </code>
+  </dd>
+
+  <dt class="descriptive-list-term">View Performance</dt>
+  <dd class="descriptive-list-definition">
+    <div class="text-sm flex flex-col gap-quarter">
+    <% if operation.duration > 100 %>
+      <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Slow render (>100ms)</div>
+    <% elsif operation.duration > 50 %>
+      <div style="color: #d97706;">⚡ Moderate render (>50ms)</div>
+    <% else %>
+      <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast render</div>
+    <% end %>
+
+    <!-- Template Analysis -->
+    <% if operation.label&.include?('_') %>
+      <div class="text-xs text-subtle">Partial template - ensure data is pre-loaded in controller</div>
+    <% end %>
+
+    <!-- Database Operations During View -->
+    <% view_start = operation.occurred_at %>
+    <% view_end = operation.occurred_at + operation.duration %>
+    <% concurrent_db_ops = operation.request.operations
+         .where(operation_type: ["sql", "db"])
+         .where("occurred_at >= ? AND occurred_at <= ?", view_start, view_end)
+         .count %>
+
+    <% if concurrent_db_ops > 0 %>
+      <div class="text-warning text-xs">
+        ⚡ <%= concurrent_db_ops %> database <%= 'query'.pluralize(concurrent_db_ops) %> during rendering
+      </div>
+    <% end %>
+
+    <!-- Caching Opportunities -->
+    <% if operation.duration > 50 %>
+      <div class="text-xs text-subtle">
+        💡 Consider fragment caching:
+        <code style="font-size: 0.7rem;">&lt;% cache do %&gt;</code>
+      </div>
+    <% end %>
+    </div>
+  </dd>
+</div>

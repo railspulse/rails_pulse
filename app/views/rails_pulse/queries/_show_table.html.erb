@@ -1,0 +1,19 @@
+<% columns = [
+  { field: :occurred_at, label: 'Occurred At', class: 'w-auto' },
+  { field: :duration, label: 'Duration', class: 'w-32'}
+] %>
+
+<table class="table mbs-4">
+  <%= render "rails_pulse/components/table_head", columns: columns %>
+
+  <tbody>
+    <% @table_data.each do |query| %>
+      <tr>
+        <td class="whitespace-nowrap"><%= human_readable_occurred_at(query.occurred_at)  %></td>
+        <td class="whitespace-nowrap"><%= query.duration.to_i %>ms</td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= render "rails_pulse/components/table_pagination" %>

@@ -1,0 +1,15 @@
+<thead>
+  <tr>
+    <% columns.each do |column| %>
+      <th class="<%= column[:class] %>">
+        <% if column[:sortable] == false %>
+          <%= column[:label] %>
+        <% else %>
+          <%= sort_link @ransack_query, column[:field], column[:label],
+            class: "flex items-center",
+            data: { turbo_prefetch: "false", turbo_action: "replace" } %>
+        <% end %>
+      </th>
+    <% end %>
+  </tr>
+</thead>

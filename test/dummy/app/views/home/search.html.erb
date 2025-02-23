@@ -1,0 +1,96 @@
+<div style="font-family: Arial, sans-serif;">
+  <h1 style="color: #6f42c1;">Search Page</h1>
+  <p>This page demonstrates various search patterns and text queries.</p>
+
+  <div style="margin: 20px 0;">
+    <%= form_with url: search_path, method: :get, local: true, style: "display: flex; gap: 10px; align-items: center;" do |f| %>
+      <%= f.text_field :q, value: params[:q], placeholder: "Search for posts, users, or comments...", 
+                       style: "flex: 1; padding: 10px; border: 1px solid #ccc; border-radius: 4px;" %>
+      <%= f.submit "Search", style: "padding: 10px 20px; background: #6f42c1; color: white; border: none; border-radius: 4px; cursor: pointer;" %>
+    <% end %>
+  </div>
+
+  <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 30px;">
+    
+    <section style="border: 1px solid #6f42c1; padding: 20px; border-radius: 8px; background-color: #f3e8ff;">
+      <h3>Search Statistics</h3>
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
+        <div style="text-align: center; padding: 15px; background: white; border-radius: 4px;">
+          <div style="font-size: 24px; font-weight: bold; color: #6f42c1;"><%= @search_stats[:total_posts] %></div>
+          <div>Posts Found</div>
+        </div>
+        <div style="text-align: center; padding: 15px; background: white; border-radius: 4px;">
+          <div style="font-size: 24px; font-weight: bold; color: #6f42c1;"><%= @search_stats[:total_users] %></div>
+          <div>Users Found</div>
+        </div>
+        <div style="text-align: center; padding: 15px; background: white; border-radius: 4px;">
+          <div style="font-size: 24px; font-weight: bold; color: #6f42c1;"><%= @search_stats[:total_comments] %></div>
+          <div>Comments Found</div>
+        </div>
+      </div>
+    </section>
+
+    <section style="border: 1px solid #6f42c1; padding: 20px; border-radius: 8px; background-color: #f3e8ff;">
+      <h3>Text Search Results</h3>
+      <% if @text_results.any? %>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+          <% @text_results.each do |post| %>
+            <div style="border: 1px solid #eee; padding: 15px; border-radius: 4px; background: white;">
+              <h4><%= post.title %></h4>
+              <p style="color: #666; font-size: 14px;">
+                By <%= post.user&.name || 'Unknown' %> • <%= post.comments.count %> comments
+              </p>
+              <p><%= truncate(post.content, length: 100) %></p>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p>No posts found matching your search.</p>
+      <% end %>
+    </section>
+
+    <section style="border: 1px solid #6f42c1; padding: 20px; border-radius: 8px; background-color: #f3e8ff;">
+      <h3>User Search Results</h3>
+      <% if @user_results.any? %>
+        <ul>
+          <% @user_results.each do |user| %>
+            <li>
+              <strong><%= user.name %></strong> (<%= user.email %>) 
+              - <%= pluralize(user.posts.count, 'post') %>
+            </li>
+          <% end %>
+        </ul>
+      <% else %>
+        <p>No users found matching your search.</p>
+      <% end %>
+    </section>
+
+    <section style="border: 1px solid #6f42c1; padding: 20px; border-radius: 8px; background-color: #f3e8ff;">
+      <h3>Comment Search Results</h3>
+      <% if @comment_results.any? %>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+          <% @comment_results.each do |comment| %>
+            <div style="border: 1px solid #eee; padding: 10px; border-radius: 4px; background: white;">
+              <p style="font-size: 14px;"><%= comment.content %></p>
+              <p style="color: #666; font-size: 12px;">
+                By <%= comment.user&.name %> on "<%= comment.post&.title %>"
+              </p>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p>No comments found matching your search.</p>
+      <% end %>
+    </section>
+
+  </div>
+
+  <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+    <h3>About This Page</h3>
+    <p>
+      This page demonstrates <strong>search functionality</strong> including case-insensitive LIKE text searches, 
+      exact matches, JOIN-based user searches, and comment searches. 
+      Try searching for "sample", "lorem", or user names to see different query patterns.
+    </p>
+  </div>
+</div>

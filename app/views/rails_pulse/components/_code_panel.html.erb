@@ -1,0 +1,12 @@
+<%
+  title ||= nil
+%>
+
+<div>
+  <% if title %>
+    <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs"><%= title %></h2>
+  <% end %>
+  <div class="prose max-i-none">
+    <pre class="mbs-0" style="white-space: normal; margin-block-start: 0"><code><%= value %></code></pre>
+  </div>
+</div>

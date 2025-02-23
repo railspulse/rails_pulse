@@ -1,0 +1,41 @@
+<%
+  title ||= nil
+  help_heading ||= nil
+  help_text ||= nil
+  link_to ||= nil
+  card_classes ||= ""
+%>
+<div class="card <%= card_classes %>">
+  <div class="flex flex-col">
+    <div class="flex">
+      <% if title %>
+        <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs"><%= title %></h2>
+      <% end %>
+      <div class="flex gap items-center">
+        <% if help_heading %>
+          <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-start">
+            <a href="#"
+              data-rails-pulse--popover-target="button"
+              data-action="rails-pulse--popover#toggle"
+              data-popovertarget="popover">
+              <%= lucide_icon 'message-circle-question', height: "20px" %>
+            </a>
+
+            <div popover class="popover card" data-rails-pulse--popover-target="menu" style="max-width: 20rem">
+              <div class="flex flex-col">
+                <h3 class="font-semibold leading-none mbe-2 uppercase text-sm"><%= help_heading %></h3>
+                <p class="text-sm text-subtle"><%= help_text %></p>
+              </div>
+            </div>
+          </div>
+        <% end %>
+        <% if link_to %>
+          <%= link_to link_to, title: "View details", class: "" do %>
+            <%= lucide_icon 'external-link', height: "20px" %>
+          <% end %>
+        <% end %>
+      </div>
+    </div>
+    <%= yield %>
+  </div>
+</div>

@@ -1,0 +1,76 @@
+<div style="font-family: Arial, sans-serif;">
+  <h1 style="color: #6c757d;">Complex API Page</h1>
+  <p>This page simulates a complex API endpoint with aggregated data and multiple queries.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 30px;">
+
+    <section style="border: 1px solid #6c757d; padding: 20px; border-radius: 8px; background-color: #f8f9fa;">
+      <h3>API Response Data (Truncated for Display)</h3>
+      <div style="background: white; padding: 15px; border-radius: 4px; font-family: monospace; max-height: 400px; overflow-y: auto;">
+        <pre style="margin: 0; white-space: pre-wrap;"><%= JSON.pretty_generate(@data) %></pre>
+      </div>
+    </section>
+
+    <section style="border: 1px solid #6c757d; padding: 20px; border-radius: 8px; background-color: #f8f9fa;">
+      <h3>API Information</h3>
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div>
+          <h4>Response Details</h4>
+          <ul>
+            <li><strong>Response Format:</strong> JSON</li>
+            <li><strong>Query Complexity:</strong> High</li>
+            <li><strong>Database Operations:</strong> Multiple JOINs, GROUP BY, aggregations</li>
+            <li><strong>Expected Performance:</strong> Slower</li>
+          </ul>
+        </div>
+
+        <div>
+          <h4>Data Included</h4>
+          <ul>
+            <li>User statistics with post/comment counts</li>
+            <li>Popular posts ranked by comments</li>
+            <li>Recent activity timeline</li>
+            <li>Generation timestamp</li>
+          </ul>
+        </div>
+      </div>
+
+      <div style="margin-top: 20px;">
+        <h4>API Endpoints:</h4>
+        <ul>
+          <li><%= link_to "JSON Response", api_complex_path(format: :json), style: "color: #6c757d;" %></li>
+          <li><%= link_to "HTML View", api_complex_path, style: "color: #6c757d;" %></li>
+        </ul>
+      </div>
+    </section>
+
+    <section style="border: 1px solid #6c757d; padding: 20px; border-radius: 8px; background-color: #f8f9fa;">
+      <h3>Performance Impact</h3>
+      <p>This endpoint performs the following expensive operations:</p>
+      <ul>
+        <li><strong>User Statistics:</strong> JOIN users, posts, and comments with GROUP BY</li>
+        <li><strong>Popular Posts:</strong> Aggregate comment counts with ranking</li>
+        <li><strong>Recent Activity:</strong> Multi-table JOIN with ordering</li>
+        <li><strong>Data Transformation:</strong> Ruby processing to format results</li>
+      </ul>
+      <p style="color: #dc3545;">
+        <strong><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Note:</strong> This endpoint will generate significant database load and should
+        show up as a slower endpoint in Rails Pulse monitoring.
+      </p>
+    </section>
+
+  </div>
+
+  <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+    <h3>About This Page</h3>
+    <p>
+      This page demonstrates a <strong>complex API endpoint</strong> that performs multiple
+      expensive database operations including JOINs, aggregations, and data transformations.
+      It supports both HTML and JSON responses and should generate significant database load
+      in Rails Pulse monitoring.
+    </p>
+    <p>
+      <strong>Tip:</strong> Add <code>.json</code> to the URL to see the full JSON response format.
+    </p>
+  </div>
+</div>

@@ -1,0 +1,18 @@
+.chart-container {
+  width: 100%;
+  aspect-ratio: 4 / 2;
+}
+
+.chart-container--slim {
+  aspect-ratio: 4 / 3;
+}
+
+@media (min-width: 64rem) {
+  .chart-container {
+    aspect-ratio: 16 / 7;
+  }
+
+  .chart-container--slim {
+    aspect-ratio: 16 / 3;
+  }
+}

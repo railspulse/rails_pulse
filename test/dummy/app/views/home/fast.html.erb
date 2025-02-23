@@ -1,0 +1,43 @@
+<div style="font-family: Arial, sans-serif;">
+  <h1 style="color: #28a745;">Fast Queries Page</h1>
+  <p>This page executes minimal database operations for fast response times.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; margin-top: 30px;">
+    
+    <section style="border: 1px solid #28a745; padding: 20px; border-radius: 8px; background-color: #d4edda;">
+      <h3>Quick Counts</h3>
+      <ul>
+        <li><strong>Total Users:</strong> <%= @total_users %></li>
+        <li><strong>Total Posts:</strong> <%= @total_posts %></li>
+      </ul>
+    </section>
+
+    <section style="border: 1px solid #28a745; padding: 20px; border-radius: 8px; background-color: #d4edda;">
+      <h3>Latest Post</h3>
+      <% if @latest_post %>
+        <p><strong><%= @latest_post.title %></strong></p>
+        <p style="color: #666; font-size: 14px;">
+          By <%= @latest_post.user&.name || 'Unknown' %> • <%= time_ago_in_words(@latest_post.created_at) %> ago
+        </p>
+      <% else %>
+        <p>No posts found.</p>
+      <% end %>
+    </section>
+
+    <section style="border: 1px solid #28a745; padding: 20px; border-radius: 8px; background-color: #d4edda;">
+      <h3>Performance Info</h3>
+      <p>✅ Fast database queries</p>
+      <p>✅ Minimal processing time</p>
+      <p>✅ Quick response expected</p>
+    </section>
+
+  </div>
+
+  <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+    <h3>About This Page</h3>
+    <p>
+      This page demonstrates <strong>fast queries</strong> including simple COUNT operations and basic record retrieval.
+      It should generate minimal database load and fast response times in Rails Pulse monitoring.
+    </p>
+  </div>
+</div>

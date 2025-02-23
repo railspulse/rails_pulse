@@ -1,0 +1,44 @@
+<div class="sidebar-menu">
+  <a class="btn sidebar-menu__button" href="#">
+    <div class="flex shrink-0">
+      <%#= image_tag 'rails_pulse/rails-pulse-logo.png', width: '28px' %>
+    </div>
+    <div class="flex flex-col text-start leading-tight overflow-hidden">
+      <span class="overflow-ellipsis font-semibold">Rails Pulse</span>
+      <span class="overflow-ellipsis text-xs">Open Source</span>
+    </div>
+  </a>
+
+  <div class="sidebar-menu__content">
+    <div class="sidebar-menu__group">
+      <nav class="sidebar-menu__items">
+        <%= link_to root_path, class: 'btn sidebar-menu__button' do %>
+          <%= lucide_icon 'layout-dashboard', width: '16' %>
+          <span class="overflow-ellipsis">Dashboard</span>
+        <% end %>
+
+        <%= link_to routes_path, class: 'btn sidebar-menu__button' do %>
+          <%= lucide_icon 'route', width: '16' %>
+          <span class="overflow-ellipsis">Routes</span>
+        <% end %>
+
+        <%= link_to requests_path, class: 'btn sidebar-menu__button' do %>
+          <%= lucide_icon 'audio-lines', width: '16' %>
+          <span class="overflow-ellipsis">Requests</span>
+        <% end %>
+
+        <%= link_to queries_path, class: 'btn sidebar-menu__button' do %>
+          <%= lucide_icon 'database', width: '16' %>
+          <span class="overflow-ellipsis">Queries</span>
+        <% end %>
+      </nav>
+    </div>
+  </div>
+
+  <a class="btn sidebar-menu__button mbs-auto" href="https://www.railspulse.com" target="_blank" rel="noopener noreferrer">
+    <div class="flex flex-col text-start leading-tight overflow-hidden">
+      <span class="overflow-ellipsis max-i-full font-semibold">Rails Pulse</span>
+      <span class="overflow-ellipsis max-i-full text-xs">www.railspulse.com</span>
+    </div>
+  </a>
+</div>

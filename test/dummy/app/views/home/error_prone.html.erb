@@ -1,0 +1,66 @@
+<div style="font-family: Arial, sans-serif;">
+  <h1 style="color: #dc3545;">Error Prone Page</h1>
+  <p>This page may simulate errors and performs heavy queries that could timeout.</p>
+
+  <div style="display: grid; grid-template-columns: 1fr; gap: 20px; margin-top: 30px;">
+
+    <section style="border: 1px solid #dc3545; padding: 20px; border-radius: 8px; background-color: #f8d7da;">
+      <h3>Complex Data Query Results</h3>
+      <% if @complex_data.any? %>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+          <% @complex_data.each do |post| %>
+            <div style="border: 1px solid #eee; padding: 15px; border-radius: 4px; background: white;">
+              <h4><%= post.title %></h4>
+              <p style="color: #666; font-size: 14px;">
+                By <%= post.user&.name || 'Unknown' %>
+              </p>
+              <p><%= truncate(post.content, length: 100) %></p>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p>No complex data found (query may have been too restrictive).</p>
+      <% end %>
+    </section>
+
+    <section style="border: 1px solid #dc3545; padding: 20px; border-radius: 8px; background-color: #f8d7da;">
+      <h3>Post Details (N+1 Pattern)</h3>
+      <% if @post_details.any? %>
+        <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+          <% @post_details.each do |detail| %>
+            <div style="border: 1px solid #eee; padding: 15px; border-radius: 4px; background: white;">
+              <h4><%= detail[:post].title %></h4>
+              <p><strong>Author:</strong> <%= detail[:author]&.name || 'Unknown' %></p>
+              <p><strong>Comments:</strong> <%= detail[:comment_count] %></p>
+              <% if detail[:recent_comments].any? %>
+                <div>
+                  <strong>Recent comments:</strong>
+                  <ul style="margin: 5px 0; padding-left: 20px;">
+                    <% detail[:recent_comments].each do |comment| %>
+                      <li style="font-size: 14px;"><%= truncate(comment.content, length: 50) %></li>
+                    <% end %>
+                  </ul>
+                </div>
+              <% end %>
+            </div>
+          <% end %>
+        </div>
+      <% else %>
+        <p>No post details available.</p>
+      <% end %>
+    </section>
+
+  </div>
+
+  <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+    <h3>About This Page</h3>
+    <p>
+      This page demonstrates <strong>error-prone queries</strong> including potential timeouts,
+      N+1 query patterns, and simulated failures (30% chance of error).
+      It should generate errors and performance issues in Rails Pulse monitoring.
+    </p>
+    <p style="color: #dc3545;">
+      <strong><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Warning:</strong> This page may randomly throw errors to simulate real-world issues.
+    </p>
+  </div>
+</div>

@@ -1,0 +1,31 @@
+.breadcrumb {
+  align-items: center;
+  color: var(--color-text-subtle);
+  column-gap: var(--size-1);
+  display: flex;
+  flex-wrap: wrap;
+  font-size: var(--text-sm);
+  overflow-wrap: break-word;
+
+  a {
+    padding-block-end: 2px;
+  }
+
+  img.breadcrumb-separator {
+    filter: var(--color-filter-text);
+    opacity: 0.5;
+  }
+
+  a:hover {
+    color: var(--color-text);
+  }
+
+  span[aria-current="page"] {
+    color: var(--color-text);
+    font-weight: 500;
+  }
+
+  @media (width >= 40rem) {
+    column-gap: var(--size-2);
+  }
+}

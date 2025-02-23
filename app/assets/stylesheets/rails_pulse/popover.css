@@ -1,0 +1,27 @@
+.popover {
+  background-color: var(--color-bg);
+  border-radius: var(--rounded-md);
+  border-width: var(--border);
+  box-shadow: var(--shadow-md);
+  color: var(--color-text);
+  inline-size: var(--popover-size, max-content);
+
+  /* Final state of exit animation and setup */
+  opacity: 0;
+  transform: var(--scale-95);
+  transition-behavior: allow-discrete;
+  transition-duration: var(--time-150);
+  transition-property: display, overlay, opacity, transform;
+
+  /* Final state of entry animation */
+  &:popover-open {
+    opacity: 1; transform: var(--scale-100);
+  }
+
+  /* Initial state of entry animation */
+  @starting-style {
+    &:popover-open {
+      opacity: 0; transform: var(--scale-95);
+    }
+  }
+}

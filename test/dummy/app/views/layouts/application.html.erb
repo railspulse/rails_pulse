@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title><%= content_for(:title) || "Dummy" %></title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <%= csrf_meta_tags %>
+    <%= csp_meta_tag %>
+
+    <%= yield :head %>
+
+    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
+    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
+
+    <link rel="icon" href="/icon.png" type="image/png">
+    <link rel="icon" href="/icon.svg" type="image/svg+xml">
+    <link rel="apple-touch-icon" href="/icon.png">
+
+    <%# Includes all stylesheet files in app/assets/stylesheets %>
+    <%= stylesheet_link_tag :app %>
+    <%= javascript_importmap_tags %>
+  </head>
+
+  <body>
+    <nav style="background-color: #f8f9fa; padding: 15px; border-bottom: 1px solid #dee2e6; margin-bottom: 20px;">
+      <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 20px;">
+        <h2 style="margin: 0; color: #333;">Rails Pulse Test App</h2>
+        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
+          <%= link_to "Dashboard", root_path, style: "text-decoration: none; color: #007bff; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #007bff;" %>
+          <%= link_to "Fast Queries", fast_path, style: "text-decoration: none; color: #28a745; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #28a745;" %>
+          <%= link_to "Slow Queries", slow_path, style: "text-decoration: none; color: #ffc107; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #ffc107;" %>
+          <%= link_to "Error Prone", error_prone_path, style: "text-decoration: none; color: #dc3545; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #dc3545;" %>
+          <%= link_to "Search", search_path, style: "text-decoration: none; color: #6f42c1; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #6f42c1;" %>
+          <%= link_to "API Simple", api_simple_path, style: "text-decoration: none; color: #17a2b8; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #17a2b8;" %>
+          <%= link_to "API Complex", api_complex_path, style: "text-decoration: none; color: #6c757d; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #6c757d;" %>
+          <%= link_to "Rails Pulse", "/rails_pulse", style: "text-decoration: none; color: white; padding: 8px 12px; border-radius: 4px; background: #fd7e14; border: 1px solid #fd7e14; font-weight: bold;" %>
+        </div>
+      </div>
+    </nav>
+    
+    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+      <%= yield %>
+    </div>
+  </body>
+</html>

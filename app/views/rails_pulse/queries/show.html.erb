@@ -1,0 +1,92 @@
+<%
+  @stats = {
+    avg_time: 130,
+    p95_time: 99,
+    queries_per_min: 22,
+    error_rate: 1
+  }
+%>
+<%= render 'rails_pulse/components/breadcrumbs' %>
+
+<div class="row">
+  <%= render "rails_pulse/components/metric_card", **@average_query_times_card if @average_query_times_card %>
+  <%= render "rails_pulse/components/metric_card", **@percentile_response_times_card if @percentile_response_times_card %>
+  <%= render "rails_pulse/components/metric_card", **@execution_rate_card if @execution_rate_card %>
+</div>
+
+<%= render 'rails_pulse/components/code_panel', { title: 'Normalized SQL', value: @query.normalized_sql } %>
+
+<div
+  class="row"
+  data-controller="rails-pulse--index"
+  data-rails-pulse--index-chart-id-value="query_responses_chart"
+  data-rails-pulse--index-occurred-at-param-value="occurred_at"
+>
+  <div class="grid-item">
+    <%= render 'rails_pulse/components/panel', { title: 'Query Responses' } do %>
+      <%= search_form_for @ransack_query, url: query_path(@query), class: "flex items-center justify-between gap mb-4" do |form| %>
+        <div class="flex items-center grow gap">
+          <%= form.select :occurred_at_range,
+            RailsPulse::RoutesController::TIME_RANGE_OPTIONS,
+            { selected: @selected_time_range },
+            { class: "input" }
+          %>
+          <%= form.select :duration,
+            duration_options(:query),
+            { selected: @selected_response_range },
+            { class: "input" }
+          %>
+          <%= link_to "Reset", query_path(@query), class: "btn btn--borderless show@md" if params.has_key?(:q) %>
+          <%= form.submit "Search", class: "btn show@sm" %>
+        </div>
+      <% end %>
+
+      <% if @chart_data.present? %>
+        <div
+          class="chart-container chart-container--slim"
+          data-rails-pulse--index-target="chart"
+        >
+          <%= line_chart(
+            @chart_data,
+            code: false,
+            id: "query_responses_chart",
+            height: "100%",
+            options: line_chart_options(
+              units: "ms",
+              zoom: true,
+              chart_start: 0,
+              chart_end: @chart_data.length - 1,
+              xaxis_formatter: @xaxis_formatter,
+              tooltip_formatter: @tooltip_formatter
+            )
+          ) %>
+        </div>
+      <% end %>
+
+      <%= turbo_frame_tag :index_table do %>
+        <%= render 'rails_pulse/queries/show_table' %>
+      <% end %>
+    <% end %>
+  </div>
+</div>
+
+<%= render 'rails_pulse/components/panel', { title: 'Query Locations' } do %>
+  <table class="table">
+    <thead>
+      <tr>
+        <th>Location</th>
+        <th>Average Query Time</th>
+        <th>Count</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @query.operations.group_by(&:codebase_location).each do |codebase_location, operations| %>
+        <tr>
+          <td><%= link_to codebase_location, '#' %></td>
+          <td><%= (operations.sum(&:duration) / operations.count).round(2) %></td>
+          <td><%= operations.count %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>

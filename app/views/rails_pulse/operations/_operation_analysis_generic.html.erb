@@ -1,0 +1,37 @@
+<!-- Generic Operation Analysis -->
+<div class="descriptive-list-item">
+  <dt class="descriptive-list-term">Performance Analysis</dt>
+  <dd class="descriptive-list-definition">
+    <div class="text-sm flex flex-col gap-quarter">
+    <% if operation.duration > 100 %>
+      <div style="color: #d97706;">⚡ Duration: <%= operation.duration.round(2) %>ms</div>
+    <% else %>
+      <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Duration: <%= operation.duration.round(2) %>ms</div>
+    <% end %>
+
+    <div class="text-xs text-subtle">
+      <%= operation.operation_type.humanize %> operation
+    </div>
+
+    <!-- Operation Details -->
+    <% if operation.label.present? && operation.label != operation.operation_type %>
+      <div class="text-xs">
+        <strong>Operation:</strong> <%= truncate(operation.label, length: 150) %>
+      </div>
+    <% end %>
+
+    <!-- Source Location -->
+    <% if operation.codebase_location.present? %>
+      <div class="text-xs">
+        <strong>Source:</strong>
+        <code style="font-size: 0.7rem;"><%= operation.codebase_location.split('/').last(3).join('/') %></code>
+      </div>
+    <% end %>
+
+    <!-- General Performance Advice -->
+    <div class="text-xs text-subtle">
+      💡 Monitor this operation type for performance patterns
+    </div>
+    </div>
+  </dd>
+</div>

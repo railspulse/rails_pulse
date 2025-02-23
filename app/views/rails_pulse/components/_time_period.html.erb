@@ -1,0 +1,16 @@
+<div class="flex gap items-center justify-end mbe-4">
+  <p>Time period</p>
+  <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-start">
+    <button type="button" id="menu_button" class="btn" data-rails-pulse--popover-target="button" data-action="rails-pulse--popover#toggle" aria-haspopup="true" aria-controls="menu">
+      1 month
+      <%= lucide_icon 'chevron-down' %>
+    </button>
+    <div popover class="popover" style="--popover-size: 8rem;" data-rails-pulse--popover-target="menu">
+      <div id="menu" class="menu" data-controller="rails-pulse--menu" data-action="keydown.up->rails-pulse--menu#prev keydown.down->rails-pulse--menu#next" role="menu" aria-labelledby="menu_button">
+        <a class="btn menu__item" data-rails-pulse--menu-target="item" role="menuitem" href="">1 week</a>
+        <a class="btn menu__item" data-rails-pulse--menu-target="item" role="menuitem" href="">1 month</a>
+        <a class="btn menu__item" data-rails-pulse--menu-target="item" role="menuitem" href="">3 months</a>
+      </div>
+    </div>
+  </div>
+</div>
