@@ -10,6 +10,9 @@ Gem::Specification.new do |spec|
   spec.description = "Ruby on Rails performance monitoring tool that provides insights into your application's performance, helping you identify bottlenecks and optimize your code for better efficiency."
   spec.license     = "MIT"
 
+  # Specify minimum Ruby version
+  spec.required_ruby_version = ">= 3.0.0"
+
   # Allow pushing to RubyGems.org
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
 
@@ -20,9 +23,9 @@ Gem::Specification.new do |spec|
     Dir["{app,config,db,lib,public}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
   end
 
-  spec.add_dependency "rails", ">= 7.1.0"
-  spec.add_dependency "css-zero", ">= 1.1.4"
-  spec.add_dependency "rails_charts", ">= 0.0.6"
+  spec.add_dependency "rails", "~> 7.1", ">= 7.1.0"
+  spec.add_dependency "css-zero", "~> 1.1", ">= 1.1.4"
+  spec.add_dependency "rails_charts", "~> 0.0", ">= 0.0.6"
   spec.add_dependency "turbo-rails", "~> 2.0.11"
   spec.add_dependency "request_store", "~> 1.5"
   spec.add_dependency "ransack", "~> 4.0"
