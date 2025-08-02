@@ -174,7 +174,7 @@ GEM
     mocha (2.7.1)
       ruby2_keywords (>= 0.0.5)
     mysql2 (0.5.6)
-    net-imap (0.5.6)
+    net-imap (0.5.9)
       date
       net-protocol
     net-pop (0.1.2)
@@ -223,7 +223,7 @@ GEM
     puma (6.6.0)
       nio4r (~> 2.0)
     racc (1.8.1)
-    rack (3.1.16)
+    rack (3.2.0)
     rack-session (2.1.1)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -252,7 +252,7 @@ GEM
     rails-html-sanitizer (1.6.2)
       loofah (~> 2.21)
       nokogiri (>= 1.15.7, != 1.16.7, != 1.16.6, != 1.16.5, != 1.16.4, != 1.16.3, != 1.16.2, != 1.16.1, != 1.16.0.rc1, != 1.16.0)
-    rails_charts (0.0.6)
+    rails_charts (0.0.7)
       rails
     railties (8.0.2)
       actionpack (= 8.0.2)
@@ -343,7 +343,7 @@ GEM
     uri (1.0.3)
     useragent (0.16.11)
     websocket (1.2.11)
-    websocket-driver (0.7.7)
+    websocket-driver (0.8.0)
       base64
       websocket-extensions (>= 0.1.0)
     websocket-extensions (0.1.5)
