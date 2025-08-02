@@ -78,15 +78,15 @@ jobs:
       run: |
         # Map Rails version to gemfile
         case "${{ matrix.rails }}" in
-          "7.1.0") export BUNDLE_GEMFILE=gemfiles/rails_7_1.gemfile ;;
-          "7.2.0") export BUNDLE_GEMFILE=gemfiles/rails_7_2.gemfile ;;
-          "8.0.0") export BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile ;;
+          "7.1.0") GEMFILE=gemfiles/rails_7_1.gemfile ;;
+          "7.2.0") GEMFILE=gemfiles/rails_7_2.gemfile ;;
+          "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
         esac
         
         if [[ "${{ matrix.database }}" == "mysql2" ]]; then
-          bundle install --with mysql
+          BUNDLE_GEMFILE=$GEMFILE bundle install --with mysql
         else
-          bundle install --without mysql
+          BUNDLE_GEMFILE=$GEMFILE bundle install --without mysql
         fi
 
     - name: Setup database
@@ -112,12 +112,12 @@ jobs:
       run: |
         # Set the appropriate gemfile for the Rails version
         case "${{ matrix.rails }}" in
-          "7.1.0") export BUNDLE_GEMFILE=gemfiles/rails_7_1.gemfile ;;
-          "7.2.0") export BUNDLE_GEMFILE=gemfiles/rails_7_2.gemfile ;;
-          "8.0.0") export BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile ;;
+          "7.1.0") GEMFILE=gemfiles/rails_7_1.gemfile ;;
+          "7.2.0") GEMFILE=gemfiles/rails_7_2.gemfile ;;
+          "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
         esac
         
-        bundle exec rails test:all
+        BUNDLE_GEMFILE=$GEMFILE bundle exec rails test:all
 
   lint:
     runs-on: ubuntu-latest
