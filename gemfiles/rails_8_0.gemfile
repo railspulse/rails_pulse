@@ -5,6 +5,7 @@ source "https://rubygems.org"
 gem "puma"
 gem "sqlite3"
 gem "pg"
+gem "dotenv-rails", groups: [:development, :test]
 gem "rubocop-rails-omakase", require: false
 gem "css-zero"
 gem "groupdate", ">= 6.5.1"
@@ -14,9 +15,30 @@ gem "ransack"
 gem "turbo-rails"
 gem "pagy"
 gem "request_store"
-gem "appraisal"
-gem "mocha"
-gem "timecop"
 gem "rails", "~> 8.0.0"
+gem "mysql2"
+
+group :mysql do
+  gem "mysql2"
+end
+
+group :test do
+  gem "appraisal"
+  gem "capybara"
+  gem "database_cleaner-active_record"
+  gem "factory_bot_rails"
+  gem "faker"
+  gem "minitest-reporters"
+  gem "mocha"
+  gem "pry-byebug"
+  gem "selenium-webdriver"
+  gem "shoulda-matchers"
+  gem "test-prof"
+  gem "timecop"
+end
+
+group :development, :test do
+  gem "debug"
+end
 
 gemspec path: "../"
