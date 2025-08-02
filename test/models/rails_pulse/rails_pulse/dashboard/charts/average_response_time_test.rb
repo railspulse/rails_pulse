@@ -371,9 +371,9 @@ class RailsPulse::Dashboard::Charts::AverageResponseTimeTest < BaseChartTest
     else
       10000  # SQLite and others
     end
-    
+
     # Adjust for CI environment which typically has higher memory allocation
-    max_allowed = ENV['CI'] ? base_threshold * 15 : base_threshold
+    max_allowed = ENV["CI"] ? base_threshold * 15 : base_threshold
 
     assert memory_increase < max_allowed,
       "Memory increase too high: #{memory_increase} objects (max allowed: #{max_allowed})"
