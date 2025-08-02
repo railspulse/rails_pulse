@@ -107,8 +107,21 @@ class ActiveSupport::TestCase
 
   # Configure database_cleaner
   if defined?(DatabaseCleaner)
-    DatabaseCleaner.strategy = :transaction
+    # Use different strategies based on database adapter
+    strategy = case ActiveRecord::Base.connection.adapter_name.downcase
+    when "mysql", "mysql2"
+      :truncation  # MySQL has issues with nested transactions in tests
+    else
+      :transaction  # PostgreSQL and SQLite work fine with transactions
+    end
+    
+    DatabaseCleaner.strategy = strategy
     DatabaseCleaner.start
+  end
+
+  # Disable parallel testing for MySQL to avoid transaction issues
+  if ActiveRecord::Base.connection.adapter_name.downcase.include?("mysql")
+    parallelize(workers: 1)
   end
 
   # Configure database for speed
