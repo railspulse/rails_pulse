@@ -1,0 +1,19 @@
+#!/bin/bash
+
+# Pre-commit hook that runs RuboCop
+# Exit with non-zero status to prevent commit if RuboCop fails
+
+echo "Running RuboCop..."
+./bin/rubocop 2>/dev/null
+
+exit_code=$?
+
+if [ $exit_code -ne 0 ]; then
+    echo "❌ RuboCop failed. Please fix the issues and try again."
+    echo "You can run './bin/rubocop -a' to auto-fix some issues."
+    exit 1
+else
+    echo "✅ RuboCop passed!"
+fi
+
+exit 0

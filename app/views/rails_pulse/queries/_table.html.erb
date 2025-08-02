@@ -19,14 +19,14 @@
             data-rails-pulse--popover-placement-value="top-right"
             data-action="mouseenter->rails-pulse--popover#debouncedShow mouseleave->rails-pulse--popover#debouncedHide"
           >
-            <%= link_to truncate_sql(query.normalized_sql), query_path(query),
+            <%= link_to html_escape(truncate_sql(query.normalized_sql)), query_path(query),
                 data: {
                   turbo_frame: '_top',
                   rails_pulse__popover_target: "button",
                   action: "rails-pulse--popover#toggle"
                 } %>
             <div popover class="popover card" data-rails-pulse--popover-target="menu" style="max-width: 40rem;">
-              <pre class="text-sm"><%= query.normalized_sql %></pre>
+              <pre class="text-sm"><%= html_escape(query.normalized_sql) %></pre>
             </div>
           </div>
         </td>

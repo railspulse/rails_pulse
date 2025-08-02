@@ -1,5 +1,5 @@
 module RailsPulse
-  class Request < ApplicationRecord
+  class Request < RailsPulse::ApplicationRecord
     self.table_name = "rails_pulse_requests"
 
     # Associations
@@ -11,7 +11,7 @@ module RailsPulse
     validates :occurred_at, presence: true
     validates :duration, presence: true, numericality: { greater_than_or_equal_to: 0 }
     validates :status, presence: true
-    validates :is_error, inclusion: { in: [true, false] }
+    validates :is_error, inclusion: { in: [ true, false ] }
     validates :request_uuid, presence: true, uniqueness: true
 
     before_create :set_request_uuid
@@ -24,7 +24,7 @@ module RailsPulse
       %w[route]
     end
 
-    ransacker :occurred_at, formatter: ->(val) { Time.at(val.to_i) } do |parent|
+    ransacker :occurred_at do |parent|
       parent.table[:occurred_at]
     end
 
@@ -33,13 +33,16 @@ module RailsPulse
     end
 
     ransacker :status_indicator do |parent|
-      # Calculate status indicator based on request_thresholds
-      slow = RailsPulse.configuration.request_thresholds[:slow]
-      very_slow = RailsPulse.configuration.request_thresholds[:very_slow]
-      critical = RailsPulse.configuration.request_thresholds[:critical]
-      
+      # Calculate status indicator based on request_thresholds with safe defaults
+      config = RailsPulse.configuration rescue nil
+      thresholds = config&.request_thresholds || { slow: 500, very_slow: 1000, critical: 2000 }
+
+      slow = thresholds[:slow] || 500
+      very_slow = thresholds[:very_slow] || 1000
+      critical = thresholds[:critical] || 2000
+
       Arel.sql("
-        CASE 
+        CASE
           WHEN rails_pulse_requests.duration < #{slow} THEN 0
           WHEN rails_pulse_requests.duration < #{very_slow} THEN 1
           WHEN rails_pulse_requests.duration < #{critical} THEN 2
@@ -49,7 +52,7 @@ module RailsPulse
     end
 
     def to_s
-      occurred_at.strftime("%Y-%m-%d %H:%M:%S")
+      occurred_at.strftime("%b %d, %Y %l:%M %p")
     end
 
     private

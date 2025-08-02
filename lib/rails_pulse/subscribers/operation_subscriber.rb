@@ -6,11 +6,56 @@ module RailsPulse
         def self.clean_sql_label(sql)
           return sql unless sql
           # Remove Rails SQL comments like /*action='search',application='Dummy',controller='home'*/
-          sql.gsub(/\/\*[^*]*\*\//, '').strip
+          sql.gsub(/\/\*[^*]*\*\//, "").strip
+        end
+
+        # Helper method to convert absolute paths to relative paths
+        def self.relative_path(absolute_path)
+          return absolute_path unless absolute_path&.start_with?("/")
+
+          rails_root = Rails.root.to_s
+          if absolute_path.start_with?(rails_root)
+            absolute_path.sub(rails_root + "/", "")
+          else
+            absolute_path
+          end
+        end
+
+        # Helper method to find the first app frame in the call stack
+        def self.find_app_frame
+          app_path = Rails.root.join("app").to_s
+          caller_locations.each do |loc|
+            path = loc.absolute_path || loc.path
+            return path if path && path.start_with?(app_path)
+          end
+          nil
+        end
+
+        # Helper method to resolve controller action source location
+        def self.controller_action_source_location(payload)
+          return nil unless payload[:controller] && payload[:action]
+          begin
+            controller_klass = payload[:controller].constantize
+            if controller_klass.instance_methods(false).include?(payload[:action].to_sym)
+              file, line = controller_klass.instance_method(payload[:action]).source_location
+              return "#{relative_path(file)}:#{line}" if file && line
+            end
+            # fallback: try superclass (for ApplicationController actions)
+            if controller_klass.superclass.respond_to?(:instance_method)
+              if controller_klass.superclass.instance_methods(false).include?(payload[:action].to_sym)
+                file, line = controller_klass.superclass.instance_method(payload[:action]).source_location
+                return "#{relative_path(file)}:#{line}" if file && line
+              end
+            end
+          rescue => e
+            Rails.logger.debug "[RailsPulse] Could not resolve controller source location: #{e.class} - #{e.message}"
+          end
+          nil
         end
 
         # Helper method to capture operation data
         def self.capture_operation(event_name, start, finish, payload, operation_type, label_key = nil)
+          return unless RailsPulse.configuration.enabled
           return if RequestStore.store[:skip_recording_rails_pulse_activity]
 
           request_id = RequestStore.store[:rails_pulse_request_id]
@@ -23,22 +68,35 @@ module RailsPulse
           end
 
           label = case label_key
-                  when :sql then clean_sql_label(payload[:sql])
-                  when :template then payload[:identifier] || payload[:template]
-                  when :partial then payload[:identifier] || payload[:partial]
-                  when :controller then "#{payload[:controller]}##{payload[:action]}"
-                  when :cache then payload[:key]
-                  else payload[label_key] || event_name
-                  end
+          when :sql then clean_sql_label(payload[:sql])
+          when :template then relative_path(payload[:identifier] || payload[:template])
+          when :partial then relative_path(payload[:identifier] || payload[:partial])
+          when :controller then "#{payload[:controller]}##{payload[:action]}"
+          when :cache then payload[:key]
+          else payload[label_key] || event_name
+          end
+
+          codebase_location =
+            if payload[:identifier]
+              relative_path(payload[:identifier])
+            elsif payload[:template]
+              relative_path(payload[:template])
+            elsif operation_type == "controller"
+              controller_action_source_location(payload) || find_app_frame || caller_locations(3, 1).first&.path
+            elsif operation_type == "sql"
+              relative_path(find_app_frame || caller_locations(3, 1).first&.path)
+            else
+              find_app_frame || caller_locations(3, 1).first&.path
+            end
 
           operation_data = {
             request_id: request_id,
             operation_type: operation_type,
             label: label,
             duration: (finish - start) * 1000,
-            codebase_location: payload[:file] || caller_locations(3,1).first&.path,
+            codebase_location: codebase_location,
             start_time: start.to_f,
-            occurred_at: Time.zone.at(start),
+            occurred_at: Time.zone.at(start)
           }
 
           RequestStore.store[:rails_pulse_operations] ||= []
@@ -111,15 +169,17 @@ module RailsPulse
         # HTTP client requests (if using Net::HTTP)
         ActiveSupport::Notifications.subscribe "request.net_http" do |name, start, finish, id, payload|
           begin
+            next unless RailsPulse.configuration.enabled
             label = "#{payload[:method]} #{payload[:uri]}"
+            codebase_location = find_app_frame || caller_locations(2, 1).first&.path
             operation_data = {
               request_id: RequestStore.store[:rails_pulse_request_id],
               operation_type: "http",
               label: label,
               duration: (finish - start) * 1000,
-              codebase_location: caller_locations(2,1).first&.path,
+              codebase_location: codebase_location,
               start_time: start.to_f,
-              occurred_at: Time.zone.at(start),
+              occurred_at: Time.zone.at(start)
             }
 
             if operation_data[:request_id]
@@ -134,15 +194,17 @@ module RailsPulse
         # Active Job processing
         ActiveSupport::Notifications.subscribe "perform.active_job" do |name, start, finish, id, payload|
           begin
+            next unless RailsPulse.configuration.enabled
             label = "#{payload[:job].class.name}"
+            codebase_location = find_app_frame || caller_locations(2, 1).first&.path
             operation_data = {
               request_id: RequestStore.store[:rails_pulse_request_id],
               operation_type: "job",
               label: label,
               duration: (finish - start) * 1000,
-              codebase_location: caller_locations(2,1).first&.path,
+              codebase_location: codebase_location,
               start_time: start.to_f,
-              occurred_at: Time.zone.at(start),
+              occurred_at: Time.zone.at(start)
             }
 
             if operation_data[:request_id]
@@ -166,15 +228,17 @@ module RailsPulse
         # Action Mailer
         ActiveSupport::Notifications.subscribe "deliver.action_mailer" do |name, start, finish, id, payload|
           begin
+            next unless RailsPulse.configuration.enabled
             label = "#{payload[:mailer]}##{payload[:action]}"
+            codebase_location = find_app_frame || caller_locations(2, 1).first&.path
             operation_data = {
               request_id: RequestStore.store[:rails_pulse_request_id],
               operation_type: "mailer",
               label: label,
               duration: (finish - start) * 1000,
-              codebase_location: caller_locations(2,1).first&.path,
+              codebase_location: codebase_location,
               start_time: start.to_f,
-              occurred_at: Time.zone.at(start),
+              occurred_at: Time.zone.at(start)
             }
 
             if operation_data[:request_id]
@@ -189,15 +253,17 @@ module RailsPulse
         # Active Storage
         ActiveSupport::Notifications.subscribe "service_upload.active_storage" do |name, start, finish, id, payload|
           begin
+            next unless RailsPulse.configuration.enabled
             label = "Upload: #{payload[:key]}"
+            codebase_location = find_app_frame || caller_locations(2, 1).first&.path
             operation_data = {
               request_id: RequestStore.store[:rails_pulse_request_id],
               operation_type: "storage",
               label: label,
               duration: (finish - start) * 1000,
-              codebase_location: caller_locations(2,1).first&.path,
+              codebase_location: codebase_location,
               start_time: start.to_f,
-              occurred_at: Time.zone.at(start),
+              occurred_at: Time.zone.at(start)
             }
 
             if operation_data[:request_id]

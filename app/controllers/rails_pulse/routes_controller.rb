@@ -1,83 +1,99 @@
 module RailsPulse
   class RoutesController < ApplicationController
-    include Pagy::Backend
-    include TimeRangeConcern
-    include ResponseRangeConcern
+    include ChartTableConcern
 
-    before_action :setup_time_and_response_ranges
     before_action :set_route, only: :show
 
     def index
-      ransack_params = params[:q] || {}
-      ransack_params.merge!(
-        requests_occurred_at_gteq: @start_time,
-        requests_occurred_at_lt: @end_time,
-        requests_duration_gteq: @start_duration
-      )
-
-      @ransack_query = Route.ransack(ransack_params)
-
-      unless turbo_frame_request?
-        setup_chart_formatters
-        @chart_data = Routes::Charts::AverageResponseTimes.new(
-          ransack_query: @ransack_query,
-          group_by: group_by
-        ).to_rails_chart
-      end
-
-      @ransack_query.sorts = "average_response_time_ms desc" if @ransack_query.sorts.empty?
-      table_results = Routes::Tables::Index.new(
-        ransack_query: @ransack_query,
-        start_time: @start_time,
-        params: params
-      ).to_table
-      store_pagination_limit(params[:limit]) if params[:limit].present?
-      @pagy, @table_data = pagy(table_results, limit: session_pagination_limit)
+      setup_chart_and_table_data
     end
 
     def show
-      ransack_params = params[:q] || {}
-      ransack_params.merge!(
-        route_id_eq: @route.id,
-        occurred_at_gteq: @start_time,
-        occurred_at_lt: @end_time,
-        duration_gteq: @start_duration
-      )
-      @ransack_query = Request.ransack(ransack_params)
-
-      unless turbo_frame_request?
-        setup_chart_formatters
-        @chart_data = Routes::Charts::AverageResponseTimes.new(
-          ransack_query: @ransack_query,
-          group_by: group_by,
-          route: @route
-        ).to_rails_chart
-      end
-
-      @ransack_query.sorts = "occurred_at desc" if @ransack_query.sorts.empty?
-      table_results = @ransack_query.result.select("id", "route_id", "occurred_at", "duration", "status")
-      set_pagination_limit(params[:limit]) if params[:limit].present?
-      @pagy, @table_data = pagy(table_results, limit: session_pagination_limit)
+      setup_chart_and_table_data
     end
 
     private
 
-    def setup_time_and_response_ranges
-      @start_time, @end_time, @selected_time_range, @time_diff_hours = setup_time_range
-      @start_duration, @selected_response_range = setup_duration_range
+    def chart_model
+      show_action? ? Request : Route
+    end
+
+    def table_model
+      show_action? ? Request : Route
+    end
+
+    def chart_class
+      Routes::Charts::AverageResponseTimes
+    end
+
+    def chart_options
+      show_action? ? { route: @route } : {}
+    end
+
+    def build_chart_ransack_params(ransack_params)
+      base_params = ransack_params.except(:s).merge(duration_field => @start_duration)
+
+      if show_action?
+        base_params.merge(
+          route_id_eq: @route.id,
+          occurred_at_gteq: @start_time,
+          occurred_at_lt: @end_time
+        )
+      else
+        base_params.merge(
+          requests_occurred_at_gteq: @start_time,
+          requests_occurred_at_lt: @end_time
+        )
+      end
+    end
+
+    def build_table_ransack_params(ransack_params)
+      base_params = ransack_params.merge(duration_field => @start_duration)
+
+      if show_action?
+        base_params.merge(
+          route_id_eq: @route.id,
+          occurred_at_gteq: @table_start_time,
+          occurred_at_lt: @table_end_time
+        )
+      else
+        base_params.merge(
+          requests_occurred_at_gteq: @table_start_time,
+          requests_occurred_at_lt: @table_end_time
+        )
+      end
+    end
+
+    def default_table_sort
+      show_action? ? "occurred_at desc" : "average_response_time_ms desc"
+    end
+
+    def build_table_results
+      if show_action?
+        @ransack_query.result.select("id", "route_id", "occurred_at", "duration", "status")
+      else
+        Routes::Tables::Index.new(
+          ransack_query: @ransack_query,
+          start_time: @start_time,
+          params: params
+        ).to_table
+      end
+    end
+
+    def duration_field
+      show_action? ? :duration_gteq : :requests_duration_gteq
+    end
+
+    def show_action?
+      action_name == "show"
+    end
+
+    def pagination_method
+      show_action? ? :set_pagination_limit : :store_pagination_limit
     end
 
     def set_route
       @route = Route.find(params[:id])
-    end
-
-    def setup_chart_formatters
-      @xaxis_formatter = ChartFormatters.occurred_at_as_time_or_date(@time_diff_hours)
-      @tooltip_formatter = ChartFormatters.tooltip_as_time_or_date_with_marker(@time_diff_hours)
-    end
-
-    def group_by
-      @time_diff_hours <= 25 ? :group_by_hour : :group_by_day
     end
   end
 end

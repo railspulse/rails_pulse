@@ -1,0 +1,9 @@
+<%
+  id = "#{@component_id}_#{@component_options[:component]}"
+%>
+<%= turbo_frame_tag id do %>
+  <%= render partial: "rails_pulse/components/#{@component_options[:component]}", locals: @component_options %>
+  <script nonce="<%= rails_pulse_csp_nonce %>">
+    initializeChartsInContainer('<%= id %>');
+  </script>
+<% end %>

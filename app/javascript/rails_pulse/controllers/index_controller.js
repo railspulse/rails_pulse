@@ -4,8 +4,7 @@ export default class extends Controller {
   static targets = ["chart", "paginationLimit", "indexTable"] // The chart element to be monitored
 
   static values = {
-    chartId: String,        // The ID of the chart to be monitored
-    occurredAtParam: String // The occurred_at parameter to be used in the URL
+    chartId: String        // The ID of the chart to be monitored
   }
 
   // Add a property to track the last request time
@@ -93,8 +92,25 @@ export default class extends Controller {
     const newVisibleData = this.getVisibleData();
     if (newVisibleData.xAxis.join() !== this.visibleData.xAxis.join()) {
       this.visibleData = newVisibleData;
+      this.updateUrlWithZoomParams(newVisibleData);
       this.sendTurboFrameRequest(newVisibleData);
     }
+  }
+
+  // Update the browser URL with zoom parameters so they persist on page refresh
+  updateUrlWithZoomParams(data) {
+    const url = new URL(window.location.href);
+    const currentParams = new URLSearchParams(url.search);
+
+    const startTimestamp = data.xAxis[0];
+    const endTimestamp = data.xAxis[data.xAxis.length - 1];
+
+    // Update zoom parameters in URL
+    currentParams.set('zoom_start_time', startTimestamp);
+    currentParams.set('zoom_end_time', endTimestamp);
+
+    url.search = currentParams.toString();
+    window.history.replaceState({}, '', url);
   }
 
   updatePaginationLimit() {
@@ -126,9 +142,9 @@ export default class extends Controller {
     const startTimestamp = data.xAxis[0];
     const endTimestamp = data.xAxis[data.xAxis.length - 1];
 
-    // Add or update the occurred_at parameters
-    currentParams.set(`q[${this.occurredAtParamValue}_gteq]`, startTimestamp);
-    currentParams.set(`q[${this.occurredAtParamValue}_lt]`, endTimestamp);
+    // Add or update the zoom occurred_at parameters for table filtering
+    currentParams.set('zoom_start_time', startTimestamp);
+    currentParams.set('zoom_end_time', endTimestamp);
 
     // Set the limit param based on the value in the pagination selector
     url.searchParams.set('limit', this.paginationLimitTarget.value);
@@ -155,13 +171,60 @@ export default class extends Controller {
         // Find the turbo-frame in the response using the frame's ID
         const responseFrame = doc.querySelector(`turbo-frame#${frame.id}`);
         if (responseFrame) {
-          // Extract only the innerHTML of the response frame
-          frame.innerHTML = responseFrame.innerHTML;
+          // CSP-safe content replacement using DOM methods
+          this.replaceFrameContent(frame, responseFrame);
         } else {
-          frame.innerHTML = html; // Fallback if parsing fails
+          // Fallback: parse the entire HTML response
+          this.replaceFrameContentFromHTML(frame, html);
         }
       }
     })
     .catch(error => console.error('Error:', error));
+  }
+
+  // CSP-safe method to replace frame content using DOM methods
+  replaceFrameContent(targetFrame, sourceFrame) {
+    try {
+      // Clear existing content using DOM methods
+      while (targetFrame.firstChild) {
+        targetFrame.removeChild(targetFrame.firstChild);
+      }
+
+      // Clone and append all child nodes from source frame
+      const children = Array.from(sourceFrame.childNodes);
+      children.forEach(child => {
+        const clonedChild = child.cloneNode(true);
+        targetFrame.appendChild(clonedChild);
+      });
+    } catch (error) {
+      console.error('Error replacing frame content:', error);
+      // Fallback to innerHTML as last resort (not ideal for CSP)
+      targetFrame.innerHTML = sourceFrame.innerHTML;
+    }
+  }
+
+  // CSP-safe fallback method for parsing raw HTML
+  replaceFrameContentFromHTML(targetFrame, html) {
+    try {
+      // Parse HTML safely
+      const parser = new DOMParser();
+      const doc = parser.parseFromString(html, 'text/html');
+      
+      // Clear existing content
+      while (targetFrame.firstChild) {
+        targetFrame.removeChild(targetFrame.firstChild);
+      }
+
+      // If the HTML contains a single root element, use its children
+      const bodyChildren = Array.from(doc.body.childNodes);
+      bodyChildren.forEach(child => {
+        const clonedChild = child.cloneNode(true);
+        targetFrame.appendChild(clonedChild);
+      });
+    } catch (error) {
+      console.error('Error parsing HTML content:', error);
+      // Last resort fallback
+      targetFrame.innerHTML = html;
+    }
   }
 }

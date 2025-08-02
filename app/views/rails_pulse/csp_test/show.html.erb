@@ -1,0 +1,168 @@
+<% content_for :title, "CSP Compliance Test" %>
+
+<div class="p-6">
+  <h1 class="text-2xl font-bold mb-4">Content Security Policy Compliance Test</h1>
+
+  <p class="text-subtle mb-6">This page tests Rails Pulse components under strict CSP policies to ensure all assets and functionality work safely.</p>
+
+    <div class="flex flex-col gap">
+
+      <!-- Icon Controller Test -->
+      <div class="card">
+        <div class="p-4">
+          <h2 class="text-lg font-semibold mb-3">Icon Controller Test</h2>
+          <p class="text-subtle mb-4">Testing CSP-safe icon rendering with pre-compiled assets:</p>
+
+          <div class="flex gap items-center mb-3">
+            <span
+              data-controller="rails-pulse--icon"
+              data-rails-pulse--icon-name-value="menu"
+              data-rails-pulse--icon-width-value="24"
+              data-rails-pulse--icon-height-value="24"
+              class="loading error loaded"
+            ></span>
+            <span class="mis-2">Menu Icon</span>
+          </div>
+
+          <div class="flex gap items-center mb-3">
+            <span
+              data-controller="rails-pulse--icon"
+              data-rails-pulse--icon-name-value="check"
+              data-rails-pulse--icon-width-value="20"
+              data-rails-pulse--icon-height-value="20"
+            ></span>
+            <span class="mis-2">Check Icon</span>
+          </div>
+
+          <div class="flex gap items-center">
+            <span
+              data-controller="rails-pulse--icon"
+              data-rails-pulse--icon-name-value="nonexistent"
+              data-rails-pulse--icon-width-value="16"
+              data-rails-pulse--icon-height-value="16"
+            ></span>
+            <span class="mis-2">Missing Icon (should show placeholder)</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Popover Controller Test -->
+      <div class="card">
+        <div class="p-4">
+          <h2 class="text-lg font-semibold mb-3">Popover Controller Test</h2>
+          <p class="text-subtle mb-4">Testing CSP-safe popover positioning:</p>
+
+          <div data-controller="rails-pulse--popover">
+            <button
+              data-rails-pulse--popover-target="button"
+              data-action="click->rails-pulse--popover#toggle"
+              class="btn btn--primary"
+            >
+              Show Popover
+            </button>
+
+            <div
+              data-rails-pulse--popover-target="menu"
+              popover="auto"
+              class="bg-white border rounded-md shadow-md p-3"
+            >
+              <p class="mb-2">This popover uses CSS custom properties for positioning (CSP-safe)</p>
+              <p class="text-subtle">No inline styles are used.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Context Menu Controller Test -->
+      <div class="card">
+        <div class="p-4">
+          <h2 class="text-lg font-semibold mb-3">Context Menu Controller Test</h2>
+          <p class="text-subtle mb-4">Testing CSP-safe context menu positioning:</p>
+
+          <div data-controller="rails-pulse--context-menu">
+            <div
+              class="card p-4 border border-dark bg-shade text-center"
+              data-action="contextmenu->rails-pulse--context-menu#show"
+            >
+              Right-click me to show context menu
+            </div>
+
+            <div
+              data-rails-pulse--context-menu-target="menu"
+              popover="auto"
+              class="bg-white border rounded-md shadow-md"
+            >
+              <div class="p-2">
+                <button class="block i-full text-start p-2 hover:bg-shade">Copy</button>
+                <button class="block i-full text-start p-2 hover:bg-shade">Paste</button>
+                <button class="block i-full text-start p-2 hover:bg-shade">Delete</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Index Controller Test -->
+      <div class="card">
+        <div class="p-4">
+          <h2 class="text-lg font-semibold mb-3">Index Controller Test (Turbo Frame)</h2>
+          <p class="text-subtle mb-4">Testing CSP-safe DOM manipulation for Turbo Frame updates:</p>
+
+          <turbo-frame id="csp-test-frame">
+            <div class="bg-shade border border-main rounded-md p-4">
+              <p class="mb-2">This content can be updated via Turbo Frame requests using CSP-safe DOM methods.</p>
+              <p class="text-subtle">No innerHTML usage - only DOM parser and appendChild methods.</p>
+            </div>
+          </turbo-frame>
+        </div>
+      </div>
+
+      <!-- Asset Loading Test -->
+      <div class="card">
+        <div class="p-4">
+          <h2 class="text-lg font-semibold mb-3">Asset Loading Test</h2>
+          <p class="text-subtle mb-4">Verifying all Rails Pulse assets load correctly under strict CSP:</p>
+
+          <div class="flex flex-col gap">
+            <div class="flex justify-between items-center">
+              <span>CSS Bundle (rails-pulse.css):</span>
+              <span id="css-status" class="badge badge--secondary">Loading...</span>
+            </div>
+
+            <div class="flex justify-between items-center">
+              <span>JavaScript Bundle (rails-pulse.js):</span>
+              <span id="js-status" class="badge badge--secondary">Loading...</span>
+            </div>
+
+            <div class="flex justify-between items-center">
+              <span>Icons Bundle (rails-pulse-icons.js):</span>
+              <span id="icons-status" class="badge badge--secondary">Loading...</span>
+            </div>
+
+            <div class="flex justify-between items-center">
+              <span>Stimulus Controllers:</span>
+              <span id="stimulus-status" class="badge badge--secondary">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CSP Violation Test -->
+      <div class="card">
+        <div class="p-4">
+          <h2 class="text-lg font-semibold mb-3">CSP Violation Test</h2>
+          <p class="mb-2">Check the browser console for any CSP violations.</p>
+          <p class="text-subtle mb-4">A properly implemented CSP-safe system should show zero violations.</p>
+
+          <div class="bg-shade border border-main rounded-md p-4">
+            <strong class="font-semibold">Expected Result:</strong> <span class="text-subtle">No CSP violations in browser console</span>
+          </div>
+        </div>
+      </div>
+
+  </div>
+</div>
+
+<%= content_for :head do %>
+  <script src="/rails-pulse-assets/csp-test.js" nonce="<%= request_nonce %>"></script>
+<% end %>

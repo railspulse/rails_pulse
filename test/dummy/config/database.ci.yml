@@ -1,0 +1,20 @@
+# CI-specific database configuration
+default: &default
+  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
+  timeout: 5000
+
+development:
+  <<: *default
+  adapter: sqlite3
+  database: ":memory:"
+
+test:
+  <<: *default
+  adapter: sqlite3
+  database: ":memory:"
+
+production:
+  <<: *default
+  adapter: sqlite3
+  database: ":memory:"
+

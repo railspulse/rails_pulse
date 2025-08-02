@@ -5,6 +5,12 @@ RailsPulse::Engine.routes.draw do
   resources :requests, only: %i[index show]
   resources :queries, only: %i[index show]
   resources :operations, only: %i[show]
-  resources :metric_cards, only: %i[show]
-  patch 'pagination/limit', to: 'application#set_pagination_limit'
+  resources :caches, only: %i[show], as: :cache
+  patch "pagination/limit", to: "application#set_pagination_limit"
+
+  # CSP compliance testing
+  get "csp_test", to: "csp_test#show", as: :csp_test
+
+  # Asset serving fallback
+  get "rails-pulse-assets/:asset_name", to: "assets#show", as: :asset, constraints: { asset_name: /.*/ }
 end

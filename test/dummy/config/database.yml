@@ -1,32 +1,74 @@
-# SQLite. Versions 3.8.0 and up are supported.
-#   gem install sqlite3
+# Multi-database support with environment variable switching
+# Set DATABASE_ADAPTER in your .env file to switch between databases
 #
-#   Ensure the SQLite 3 gem is defined in your Gemfile
-#   gem "sqlite3"
-#
+# DATABASE_ADAPTER=sqlite3 (default)
+# DATABASE_ADAPTER=postgresql
+# DATABASE_ADAPTER=mysql
+
+<% 
+  adapter = ENV.fetch('DATABASE_ADAPTER', 'sqlite3')
+  database_config = case adapter
+  when 'postgresql'
+    {
+      adapter: 'postgresql',
+      encoding: 'unicode',
+      pool: ENV.fetch("RAILS_MAX_THREADS") { 5 },
+      username: ENV.fetch('POSTGRES_USERNAME', 'postgres'),
+      password: ENV.fetch('POSTGRES_PASSWORD', ''),
+      host: ENV.fetch('POSTGRES_HOST', 'localhost'),
+      port: ENV.fetch('POSTGRES_PORT', 5432)
+    }
+  when 'mysql', 'mysql2'
+    mysql_config = {
+      adapter: 'mysql2',
+      encoding: 'utf8mb4',
+      pool: ENV.fetch("RAILS_MAX_THREADS") { 5 },
+      username: ENV.fetch('MYSQL_USERNAME', 'root'),
+      password: ENV.fetch('MYSQL_PASSWORD', ''),
+      host: ENV.fetch('MYSQL_HOST', '127.0.0.1'),
+      port: ENV.fetch('MYSQL_PORT', 3306).to_i,
+      connect_timeout: 30,
+      read_timeout: 30,
+      write_timeout: 30
+    }
+    mysql_config
+  else # sqlite3
+    {
+      adapter: 'sqlite3',
+      pool: ENV.fetch("RAILS_MAX_THREADS") { 5 },
+      timeout: 5000
+    }
+  end
+%>
+
 default: &default
-  adapter: sqlite3
-  pool: <%= ENV.fetch("RAILS_MAX_THREADS") { 5 } %>
-  timeout: 5000
+  <% database_config.each do |key, value| %>
+  <%= key %>: <%= value %>
+  <% end %>
 
 development:
   <<: *default
+  <% if adapter == 'sqlite3' %>
   database: storage/development.sqlite3
+  <% else %>
+  database: rails_pulse_development
+  <% end %>
 
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
 # Do not set this db to the same as development or production.
 test:
   <<: *default
+  <% if adapter == 'sqlite3' %>
   database: storage/test.sqlite3
+  <% else %>
+  database: rails_pulse_test
+  <% end %>
 
-
-# SQLite3 write its data on the local filesystem, as such it requires
-# persistent disks. If you are deploying to a managed service, you should
-# make sure it provides disk persistence, as many don't.
-#
-# Similarly, if you deploy your application as a Docker container, you must
-# ensure the database is located in a persisted volume.
 production:
   <<: *default
-  # database: path/to/persistent/storage/production.sqlite3
+  <% if adapter == 'sqlite3' %>
+  database: storage/production.sqlite3
+  <% else %>
+  database: rails_pulse_production
+  <% end %>

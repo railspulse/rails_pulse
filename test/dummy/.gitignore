@@ -1,0 +1,13 @@
+# Environment variables
+.env
+
+# Logs
+log/*.log
+
+# Storage
+storage/
+tmp/
+
+# Database files
+db/*.sqlite3
+db/*.sqlite3-*

@@ -11,46 +11,51 @@ module RailsPulse
         def to_rails_chart
           if @query
             requests = @ransack_query.result(distinct: false)
-              .public_send(@group_by, "occurred_at", series: true)
-              .select(
-                "occurred_at",
-                "COALESCE(AVG(duration), 0) AS average_response_time_ms"
-              )
-            requests.each_with_object({}) do |result, hash|
-              occurred_at = result.occurred_at
-              occurred_at = Time.parse(occurred_at) if occurred_at.is_a?(String)
+              .public_send(@group_by, "occurred_at", series: true, time_zone: "UTC")
+              .average(:duration)
+            requests.each_with_object({}) do |(period, average_duration), hash|
+              occurred_at = period.is_a?(String) ? Time.parse(period) : period
+              occurred_at = (occurred_at.is_a?(Time) || occurred_at.is_a?(Date)) ? occurred_at : Time.current
+
               normalized_occurred_at =
                 case @group_by
                 when :group_by_hour
-                  occurred_at.beginning_of_hour
+                  occurred_at&.beginning_of_hour || occurred_at
                 when :group_by_day
-                  occurred_at.beginning_of_day
+                  occurred_at&.beginning_of_day || occurred_at
                 else
                   occurred_at
                 end
               hash[normalized_occurred_at.to_i] = {
-                value: result.average_response_time_ms.to_f
+                value: (average_duration || 0).to_f
               }
             end
           else
             requests = @ransack_query.result(distinct: false)
-              .includes(:operations)
               .left_joins(:operations)
               .public_send(
                 @group_by,
                 "rails_pulse_operations.occurred_at",
-                series: true
+                series: true,
+                time_zone: "UTC"
               )
-              .select(
-                "rails_pulse_operations.occurred_at",
-                "COALESCE(AVG(rails_pulse_operations.duration), 0) AS average_query_time_ms"
-              )
+              .average("rails_pulse_operations.duration")
 
-            requests.each_with_object({}) do |result, hash|
-              occurred_at = result.occurred_at
-              occurred_at = Time.parse(occurred_at) if occurred_at.is_a?(String)
-              hash[occurred_at.to_i] = {
-                value: result.average_query_time_ms.to_f
+            requests.each_with_object({}) do |(period, average_duration), hash|
+              occurred_at = period.is_a?(String) ? Time.parse(period) : period
+              occurred_at = (occurred_at.is_a?(Time) || occurred_at.is_a?(Date)) ? occurred_at : Time.current
+
+              normalized_occurred_at =
+                case @group_by
+                when :group_by_hour
+                  occurred_at&.beginning_of_hour || occurred_at
+                when :group_by_day
+                  occurred_at&.beginning_of_day || occurred_at
+                else
+                  occurred_at
+                end
+              hash[normalized_occurred_at.to_i] = {
+                value: (average_duration || 0).to_f
               }
             end
           end

@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2025_06_02_065643) do
+ActiveRecord::Schema[8.0].define(version: 2025_08_02_071232) do
   create_table "comments", force: :cascade do |t|
     t.integer "user_id", null: false
     t.integer "post_id", null: false
@@ -36,19 +36,23 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_02_065643) do
     t.integer "query_id"
     t.string "operation_type", null: false
     t.string "label", null: false
-    t.decimal "duration", precision: 10, scale: 6, null: false
+    t.decimal "duration", precision: 15, scale: 6, null: false
     t.string "codebase_location"
     t.float "start_time", default: 0.0, null: false
     t.datetime "occurred_at", null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
+    t.index ["occurred_at", "duration", "operation_type"], name: "index_rails_pulse_operations_on_time_duration_type"
+    t.index ["occurred_at"], name: "index_rails_pulse_operations_on_occurred_at"
     t.index ["operation_type"], name: "index_rails_pulse_operations_on_operation_type"
+    t.index ["query_id", "duration", "occurred_at"], name: "index_rails_pulse_operations_query_performance"
+    t.index ["query_id", "occurred_at"], name: "index_rails_pulse_operations_on_query_and_time"
     t.index ["query_id"], name: "index_rails_pulse_operations_on_query_id"
     t.index ["request_id"], name: "index_rails_pulse_operations_on_request_id"
   end
 
   create_table "rails_pulse_queries", force: :cascade do |t|
-    t.text "normalized_sql", null: false
+    t.string "normalized_sql", limit: 1000, null: false
     t.datetime "created_at", null: false
     t.datetime "updated_at", null: false
     t.index ["normalized_sql"], name: "index_rails_pulse_queries_on_normalized_sql", unique: true
@@ -56,7 +60,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_02_065643) do
 
   create_table "rails_pulse_requests", force: :cascade do |t|
     t.integer "route_id", null: false
-    t.decimal "duration", precision: 10, scale: 6, null: false
+    t.decimal "duration", precision: 15, scale: 6, null: false
     t.integer "status", null: false
     t.boolean "is_error", default: false, null: false
     t.string "request_uuid", null: false
@@ -66,6 +70,7 @@ ActiveRecord::Schema[8.0].define(version: 2025_06_02_065643) do
     t.datetime "updated_at", null: false
     t.index ["occurred_at"], name: "index_rails_pulse_requests_on_occurred_at"
     t.index ["request_uuid"], name: "index_rails_pulse_requests_on_request_uuid", unique: true
+    t.index ["route_id", "occurred_at"], name: "index_rails_pulse_requests_on_route_id_and_occurred_at"
     t.index ["route_id"], name: "index_rails_pulse_requests_on_route_id"
   end
 

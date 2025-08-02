@@ -10,22 +10,10 @@
 
     <%= yield :head %>
 
-    <link rel="icon" href="/icon.png" type="image/png">
-    <link rel="icon" href="/icon.svg" type="image/svg+xml">
-    <link rel="apple-touch-icon" href="/icon.png">
-
-    <%= stylesheet_link_tag "css-zero/reset", "data-turbo-track": "reload" %>
-    <%= stylesheet_link_tag "css-zero/variables", "data-turbo-track": "reload" %>
-    <% Dir.glob(RailsPulse::Engine.root.join("app/assets/stylesheets/rails_pulse/*.css")).each do |file| %>
-      <%= stylesheet_link_tag "rails_pulse/#{File.basename(file, '.css')}", media: "all" %>
-    <% end %>
-    <%= stylesheet_link_tag "css-zero/utilities", "data-turbo-track": "reload" %>
-
-    <%= javascript_importmap_tags %>
-
-    <script type="module">
-      import "rails_pulse/application";
-    </script>
+    <!-- Rails Pulse Pre-compiled Assets (CSP-safe) -->
+    <%= stylesheet_link_tag rails_pulse.asset_path('rails-pulse.css'), 'data-turbo-track': 'reload' %>
+    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse-icons.js'), 'data-turbo-track': 'reload', defer: true, nonce: rails_pulse_csp_nonce %>
+    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse.js'), 'data-turbo-track': 'reload', defer: true, nonce: rails_pulse_csp_nonce %>
   </head>
 
   <body class="header-layout">
@@ -33,7 +21,7 @@
       <div class="flex justify-between container">
         <div class="hide@md" data-controller="rails-pulse--dialog">
           <button type="button" class="btn btn--icon" data-action="rails-pulse--dialog#showModal">
-            <%= lucide_icon 'menu', width: '20' %>
+            <%= rails_pulse_icon 'menu', width: '20' %>
             <span class="sr-only">Open menu</span>
           </button>
 
@@ -69,7 +57,7 @@
 
       <div class="flex items-center" data-controller="rails-pulse--color-scheme">
         <%= link_to '#', "aria-label": "Toggle color scheme", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
-          <%= lucide_icon 'sun', width: '48' %>
+          <%= rails_pulse_icon 'sun', width: '48' %>
         <% end %>
       </div>
     </header>
@@ -80,12 +68,5 @@
       </div>
     </main>
 
-    <script>
-        window.addEventListener('resize', function() {
-          Object.keys(window.RailsCharts.charts).forEach(function(chartID) {
-            window.RailsCharts.charts[chartID].resize();
-          });
-        });
-    </script>
   </body>
 </html>

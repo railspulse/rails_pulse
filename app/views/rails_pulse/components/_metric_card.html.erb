@@ -1,3 +1,14 @@
+<%
+  @component_data ||= {}
+  id ||= @component_data[:id]
+  context ||= @component_data[:context]
+  title ||= @component_data[:title]
+  summary ||= @component_data[:summary]
+  line_chart_data ||= @component_data[:line_chart_data]
+  trend_icon ||= @component_data[:trend_icon]
+  trend_amount ||= @component_data[:trend_amount]
+  trend_text ||= @component_data[:trend_text]
+%>
 <div class="grid-item" data-controller="rails-pulse--chart">
   <%= render 'rails_pulse/components/panel', { title: title, card_classes: 'card-compact' } do %>
     <div class="row mbs-2" style="height: 50px; margin-bottom: 0;">
@@ -18,11 +29,27 @@
             "badge--primary-inverse"
           end
       %>
-      <span class="badge <%= badge %> p-0">
-        <%= lucide_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
-        <%= trend_amount %>
-        <p class="mis-2 text-subtle text-xs"><%= trend_text %></p>
-      </span>
+      <div class="flex items-center justify-between">
+        <span class="badge <%= badge %> p-0">
+          <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
+          <%= trend_amount %>
+          <p class="mis-2 text-subtle text-xs"><%= trend_text %></p>
+        </span>
+        <%
+          refresh_path = rails_pulse.cache_path(id: id, context: context, refresh: true)
+          cached_iso = @cached_at ? @cached_at.iso8601 : nil
+        %>
+        <%= link_to refresh_path,
+            data: {
+              controller: "rails-pulse--timezone",
+              rails_pulse__timezone_target_frame_value: "#{id}_card",
+              rails_pulse__timezone_cached_at_value: cached_iso,
+              turbo_frame: "#{id}_card",
+              turbo_prefetch: "false"
+            } do %>
+          <%= rails_pulse_icon 'refresh-cw', height: "15px", width: "15px" %>
+        <% end %>
+      </div>
     </div>
   <% end %>
 </div>

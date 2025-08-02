@@ -6,14 +6,25 @@ module RailsPulse
       end
 
       def call(env)
+        # Skip if Rails Pulse is disabled
+        return @app.call(env) unless RailsPulse.configuration.enabled
+
         # Skip logging if we are already recording RailsPulse activity. This is to avoid recursion issues
         return @app.call(env) if RequestStore.store[:skip_recording_rails_pulse_activity]
 
         req = ActionDispatch::Request.new(env)
 
-        # Skip RailsPulse engine and asset requests, but mark them as internal
-        # TODO: Check the configuration to see if we should log these
-        if req.path.start_with?("/rails_pulse") || req.path.start_with?("/assets")
+        # Skip RailsPulse engine requests
+        mount_path = RailsPulse.configuration.mount_path || "/rails_pulse"
+        if req.path.start_with?(mount_path)
+          RequestStore.store[:skip_recording_rails_pulse_activity] = true
+          result = @app.call(env)
+          RequestStore.store[:skip_recording_rails_pulse_activity] = false
+          return result
+        end
+
+        # Check if route should be ignored based on configuration
+        if should_ignore_route?(req)
           RequestStore.store[:skip_recording_rails_pulse_activity] = true
           result = @app.call(env)
           RequestStore.store[:skip_recording_rails_pulse_activity] = false
@@ -24,7 +35,7 @@ module RailsPulse
         RequestStore.store[:rails_pulse_request_id] = nil
 
         start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        
+
         # Temporarily skip recording while we create the route and request
         RequestStore.store[:skip_recording_rails_pulse_activity] = true
         route = find_or_create_route(req)
@@ -44,7 +55,7 @@ module RailsPulse
           )
           RequestStore.store[:rails_pulse_request_id] = request.id
         end
-        
+
         # Re-enable recording for the actual request processing
         RequestStore.store[:skip_recording_rails_pulse_activity] = false
 
@@ -55,7 +66,7 @@ module RailsPulse
         RequestStore.store[:skip_recording_rails_pulse_activity] = true
         if request
           request.update(duration: duration, status: status, is_error: status.to_i >= 500)
-          
+
           # Save collected operations
           operations_data = RequestStore.store[:rails_pulse_operations] || []
           operations_data.each do |operation_data|
@@ -67,7 +78,7 @@ module RailsPulse
           end
         end
 
-        [status, headers, response]
+        [ status, headers, response ]
       ensure
         RequestStore.store[:skip_recording_rails_pulse_activity] = false
         RequestStore.store[:rails_pulse_request_id] = nil
@@ -80,6 +91,29 @@ module RailsPulse
         method = req.request_method
         path = req.path
         RailsPulse::Route.find_or_create_by(method: method, path: path)
+      end
+
+      def should_ignore_route?(req)
+        # Get ignored routes from configuration
+        ignored_routes = RailsPulse.configuration.ignored_routes || []
+
+        # Create route identifier for matching
+        route_method_path = "#{req.request_method} #{req.path}"
+        route_path = req.path
+
+        # Check each ignored route pattern
+        ignored_routes.any? do |pattern|
+          case pattern
+          when String
+            # Exact string match against path or method+path
+            pattern == route_path || pattern == route_method_path
+          when Regexp
+            # Regex match against path or method+path
+            pattern.match?(route_path) || pattern.match?(route_method_path)
+          else
+            false
+          end
+        end
       end
     end
   end

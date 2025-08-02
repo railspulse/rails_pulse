@@ -3,10 +3,12 @@
   help_heading ||= nil
   help_text ||= nil
   link_to ||= nil
+  actions ||= nil
   card_classes ||= ""
+  content_partial ||= nil
 %>
 <div class="card <%= card_classes %>">
-  <div class="flex flex-col">
+  <div class="flex flex-col b-full">
     <div class="flex">
       <% if title %>
         <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs"><%= title %></h2>
@@ -18,7 +20,7 @@
               data-rails-pulse--popover-target="button"
               data-action="rails-pulse--popover#toggle"
               data-popovertarget="popover">
-              <%= lucide_icon 'message-circle-question', height: "20px" %>
+              <%= rails_pulse_icon 'message-circle-question', height: "20px" %>
             </a>
 
             <div popover class="popover card" data-rails-pulse--popover-target="menu" style="max-width: 20rem">
@@ -29,13 +31,26 @@
             </div>
           </div>
         <% end %>
-        <% if link_to %>
+        <% if actions %>
+          <% actions.each do |action| %>
+            <%= link_to action[:url],
+                       title: action[:title] || "",
+                       class: action[:class] || "",
+                       data: action[:data] || {} do %>
+              <%= rails_pulse_icon action[:icon] || 'external-link', height: "20px" %>
+            <% end %>
+          <% end %>
+        <% elsif link_to %>
           <%= link_to link_to, title: "View details", class: "" do %>
-            <%= lucide_icon 'external-link', height: "20px" %>
+            <%= rails_pulse_icon 'external-link', height: "20px" %>
           <% end %>
         <% end %>
       </div>
     </div>
-    <%= yield %>
+    <% if content_partial %>
+      <%= render content_partial %>
+    <% else %>
+      <%= yield %>
+    <% end %>
   </div>
 </div>

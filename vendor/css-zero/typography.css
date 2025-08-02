@@ -1,0 +1,100 @@
+:root {
+  /****************************************************************
+  * Font Size
+  * Variables for controlling the font size of an element.
+  * font-size: var(--text-xs);
+  *****************************************************************/
+  --text-xs:   0.75rem;  /* 12px */
+  --text-sm:   0.875rem; /* 14px */
+  --text-base: 1rem;     /* 16px */
+  --text-lg:   1.125rem; /* 18px */
+  --text-xl:   1.25rem;  /* 20px */
+  --text-2xl:  1.5rem;   /* 24px */
+  --text-3xl:  1.875rem; /* 30px */
+  --text-4xl:  2.25rem;  /* 36px */
+  --text-5xl:  3rem;     /* 48px */
+  --text-6xl:  3.75rem;  /* 60px */
+  --text-7xl:  4.5rem;   /* 72px */
+  --text-8xl:  6rem;     /* 96px */
+  --text-9xl:  8rem;     /* 128px */
+
+  --text-fluid-xs:   clamp(0.75rem, 0.64rem + 0.57vw, 1rem);        /* 12px..16px */
+  --text-fluid-sm:   clamp(0.875rem, 0.761rem + 0.568vw, 1.125rem); /* 14px..18px */
+  --text-fluid-base: clamp(1rem, 0.89rem + 0.57vw, 1.25rem);        /* 16px..20px */
+  --text-fluid-lg:   clamp(1.125rem, 0.955rem + 0.852vw, 1.5rem);   /* 18px..24px */
+  --text-fluid-xl:   clamp(1.25rem, 0.966rem + 1.42vw, 1.875rem);   /* 20px..30px */
+  --text-fluid-2xl:  clamp(1.5rem, 1.16rem + 1.7vw, 2.25rem);       /* 24px..36px */
+  --text-fluid-3xl:  clamp(1.875rem, 1.364rem + 2.557vw, 3rem);     /* 30px..48px */
+  --text-fluid-4xl:  clamp(2.25rem, 1.57rem + 3.41vw, 3.75rem);     /* 36px..60px */
+  --text-fluid-5xl:  clamp(3rem, 2.32rem + 3.41vw, 4.5rem);         /* 48px..72px */
+  --text-fluid-6xl:  clamp(3.75rem, 2.73rem + 5.11vw, 6rem);        /* 60px..96px */
+  --text-fluid-7xl:  clamp(4.5rem, 2.91rem + 7.95vw, 8rem);         /* 72px..128px */
+
+  /****************************************************************
+  * Font Weight
+  * Variables for controlling the font weight of an element.
+  * font-weight: var(--font-hairline);
+  *****************************************************************/
+  --font-thin:       100;
+  --font-extralight: 200;
+  --font-light:      300;
+  --font-normal:     400;
+  --font-medium:     500;
+  --font-semibold:   600;
+  --font-bold:       700;
+  --font-extrabold:  800;
+  --font-black:      900;
+
+  /****************************************************************
+  * Line Height
+  * Variables for controlling the leading (line height) of an element.
+  * line-height: var(--leading-tight);
+  *****************************************************************/
+  --leading-none:    1;
+  --leading-tight:   1.25;
+  --leading-snug:    1.375;
+  --leading-normal:  1.5;
+  --leading-relaxed: 1.625;
+  --leading-loose:   2;
+  --leading-3:       .75rem;  /* 12px */
+  --leading-4:       1rem;    /* 16px */
+  --leading-5:       1.25rem; /* 20px */
+  --leading-6:       1.5rem;  /* 24px */
+  --leading-7:       1.75rem; /* 28px */
+  --leading-8:       2rem;    /* 32px */
+  --leading-9:       2.25rem; /* 36px */
+  --leading-10:      2.5rem;  /* 40px */
+
+  /****************************************************************
+  * Font Family (https://modernfontstacks.com)
+  * Variables for controlling the font family of an element.
+  * font-family: var(--font-sans);
+  *****************************************************************/
+  --font-system-ui: system-ui, sans-serif;
+  --font-transitional: Charter, Bitstream Charter, Sitka Text, Cambria, serif;
+  --font-old-style: Iowan Old Style, Palatino Linotype, URW Palladio L, P052, serif;
+  --font-humanist: Seravek, Gill Sans Nova, Ubuntu, Calibri, DejaVu Sans, source-sans-pro, sans-serif;
+  --font-geometric-humanist: Avenir, Montserrat, Corbel, URW Gothic, source-sans-pro, sans-serif;
+  --font-classical-humanist: Optima, Candara, Noto Sans, source-sans-pro, sans-serif;
+  --font-neo-grotesque: Inter, Roboto, Helvetica Neue, Arial Nova, Nimbus Sans, Arial, sans-serif;
+  --font-monospace-slab-serif: Nimbus Mono PS, Courier New, monospace;
+  --font-monospace-code: Dank Mono, Operator Mono, Inconsolata, Fira Mono, ui-monospace, SF Mono, Monaco, Droid Sans Mono, Source Code Pro, Cascadia Code, Menlo, Consolas, DejaVu Sans Mono, monospace;
+  --font-industrial: Bahnschrift, DIN Alternate, Franklin Gothic Medium, Nimbus Sans Narrow, sans-serif-condensed, sans-serif;
+  --font-rounded-sans: ui-rounded, Hiragino Maru Gothic ProN, Quicksand, Comfortaa, Manjari, Arial Rounded MT, Arial Rounded MT Bold, Calibri, source-sans-pro, sans-serif;
+  --font-slab-serif: Rockwell, Rockwell Nova, Roboto Slab, DejaVu Serif, Sitka Small, serif;
+  --font-antique: Superclarendon, Bookman Old Style, URW Bookman, URW Bookman L, Georgia Pro, Georgia, serif;
+  --font-didone: Didot, Bodoni MT, Noto Serif Display, URW Palladio L, P052, Sylfaen, serif;
+  --font-handwritten: Segoe Print, Bradley Hand, Chilanka, TSCu_Comic, casual, cursive;
+
+  /****************************************************************
+  * Letter Spacing
+  * Variables for controlling the tracking (letter spacing) of an element.
+  * letter-spacing: var(--tracking-tighter);
+  *****************************************************************/
+  --tracking-tighter: -0.05em;
+  --tracking-tight:   -0.025em;
+  --tracking-normal:  0em;
+  --tracking-wide:    0.025em;
+  --tracking-wider:   0.05em;
+  --tracking-widest:  0.1em;
+}

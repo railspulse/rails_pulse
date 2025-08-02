@@ -11,3 +11,31 @@
 /test/dummy/log/*.log.*
 /test/dummy/storage/
 /test/dummy/tmp/
+/test/dummy/.bundle/config
+/test/dummy/rails_pulse_test*
+
+# Environment variables
+.env
+
+# Node.js
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Built assets are included in the gem
+# Source maps are generated for development
+!/public/rails-pulse-assets/
+!/public/rails-pulse-assets/*.css
+!/public/rails-pulse-assets/*.js
+!/public/rails-pulse-assets/*.map
+
+# Test profiling and coverage files
+/test-prof/
+/coverage/
+.testprof/
+
+# Minitest reporters output
+test/reports/
+
+PLAN.md

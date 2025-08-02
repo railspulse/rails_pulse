@@ -6,7 +6,7 @@
       <%= link_to crumb[:title], crumb[:path] %>
     <% end %>
     <% unless index == breadcrumbs.length - 1 %>
-      <%= image_tag "rails_pulse/chevron-right.svg", width: 14, height: 14, alt: "", class: "breadcrumb-separator mbe-1" %>
+      <%= rails_pulse_icon 'chevron-right', width: 14, height: 14, class: "breadcrumb-separator mbe-1" %>
     <% end %>
   <% end %>
 </nav>

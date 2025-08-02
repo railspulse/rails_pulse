@@ -1,5 +1,5 @@
 module RailsPulse
-  class Query < ApplicationRecord
+  class Query < RailsPulse::ApplicationRecord
     self.table_name = "rails_pulse_queries"
 
     # Associations
@@ -29,19 +29,22 @@ module RailsPulse
     end
 
     ransacker :performance_status do
-      # Calculate status indicator based on query_thresholds
-      slow = RailsPulse.configuration.query_thresholds[:slow]
-      very_slow = RailsPulse.configuration.query_thresholds[:very_slow]
-      critical = RailsPulse.configuration.query_thresholds[:critical]
-      
-      Arel.sql("
-        CASE 
-          WHEN COALESCE(AVG(rails_pulse_operations.duration), 0) < #{slow} THEN 0
-          WHEN COALESCE(AVG(rails_pulse_operations.duration), 0) < #{very_slow} THEN 1
-          WHEN COALESCE(AVG(rails_pulse_operations.duration), 0) < #{critical} THEN 2
-          ELSE 3
-        END
-      ")
+      # Calculate status indicator based on query_thresholds with safe defaults
+      config = RailsPulse.configuration rescue nil
+      thresholds = config&.query_thresholds || { slow: 200, very_slow: 500, critical: 1000 }
+
+      slow = (thresholds[:slow] || 200).to_f
+      very_slow = (thresholds[:very_slow] || 500).to_f
+      critical = (thresholds[:critical] || 1000).to_f
+
+      # Use Arel to safely construct the SQL with parameterized values
+      avg_duration = Arel.sql("COALESCE(AVG(rails_pulse_operations.duration), 0)")
+
+      Arel::Nodes::Case.new(avg_duration)
+        .when(avg_duration.lt(slow)).then(0)
+        .when(avg_duration.lt(very_slow)).then(1)
+        .when(avg_duration.lt(critical)).then(2)
+        .else(3)
     end
 
     ransacker :occurred_at do

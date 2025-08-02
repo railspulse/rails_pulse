@@ -5,9 +5,14 @@
         <% if column[:sortable] == false %>
           <%= column[:label] %>
         <% else %>
+          <% sort_params = {} %>
+          <% sort_params[:zoom_start_time] = @zoom_start if @zoom_start.present? %>
+          <% sort_params[:zoom_end_time] = @zoom_end if @zoom_end.present? %>
           <%= sort_link @ransack_query, column[:field], column[:label],
-            class: "flex items-center",
-            data: { turbo_prefetch: "false", turbo_action: "replace" } %>
+            sort_params.merge(
+              class: "flex items-center",
+              data: { turbo_prefetch: "false", turbo_action: "replace" }
+            ) %>
         <% end %>
       </th>
     <% end %>

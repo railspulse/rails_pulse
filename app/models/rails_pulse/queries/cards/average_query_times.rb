@@ -27,7 +27,7 @@ module RailsPulse
           trend_amount = previous_period_avg.zero? ? "0%" : "#{percentage}%"
 
           sparkline_data = operations
-            .group_by_week(:occurred_at)
+            .group_by_week(:occurred_at, time_zone: "UTC")
             .average(:duration)
             .each_with_object({}) do |(date, avg), hash|
               formatted_date = date.strftime("%b %-d")

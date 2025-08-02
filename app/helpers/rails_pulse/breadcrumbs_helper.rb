@@ -2,10 +2,10 @@ module RailsPulse
   module BreadcrumbsHelper
     def breadcrumbs
       # Get the engine's mount point by removing the leading slash and splitting
-      mount_point = RailsPulse::Engine.routes.find_script_name({}).sub(/^\//, '')
+      mount_point = RailsPulse::Engine.routes.find_script_name({}).sub(/^\//, "")
 
       # Split the full path and remove empty segments
-      path_segments = request.path.split('/').reject(&:empty?)
+      path_segments = request.path.split("/").reject(&:empty?)
 
       # Find the index of the mount point in the path segments
       mount_point_index = path_segments.index(mount_point)
@@ -17,15 +17,15 @@ module RailsPulse
       path_segments = path_segments[(mount_point_index + 1)..-1]
 
       # Start with the Home link
-      crumbs = [{
+      crumbs = [ {
         title: "Home",
         path: main_app.rails_pulse_path,
         current: path_segments.empty?
-      }]
+      } ]
 
       return crumbs if path_segments.empty?
 
-      current_path = '/rails_pulse'
+      current_path = "/rails_pulse"
 
       path_segments.each_with_index do |segment, index|
         current_path += "/#{segment}"

@@ -1,11 +1,24 @@
 import { Controller } from "@hotwired/stimulus"
-import debounce from "https://esm.sh/lodash.debounce@4.0.8?standalone"
 
 export default class extends Controller {
   static targets = [ "cancel" ]
 
   initialize() {
-    this.search = debounce(this.search.bind(this), 500)
+    // Simple debounce implementation for asset independence
+    this.search = this.debounce(this.search.bind(this), 500)
+  }
+
+  // Simple debounce implementation (replaces lodash dependency)
+  debounce(func, wait) {
+    let timeout
+    return function executedFunction(...args) {
+      const later = () => {
+        clearTimeout(timeout)
+        func(...args)
+      }
+      clearTimeout(timeout)
+      timeout = setTimeout(later, wait)
+    }
   }
 
   submit() {

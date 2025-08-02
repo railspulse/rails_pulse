@@ -8,7 +8,7 @@
 </div>
 <div>
   <span class="badge badge--<%= trend_direction == "down" ? "positive" : "negative" %>-inverse p-0">
-    <%= lucide_icon "trending-#{trend_direction}", height: "15px" %>
+    <%= rails_pulse_icon "trending-#{trend_direction}", height: "15px" %>
     <%= trend_amount %>
     <p class="mis-2 text-subtle text-xs"><%= trend_text %></p>
   </span>

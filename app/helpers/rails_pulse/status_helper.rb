@@ -123,11 +123,11 @@ module RailsPulse
     def operation_status_indicator(operation)
       # Define operation-specific thresholds
       thresholds = case operation.operation_type
-      when "sql", "db"
+      when "sql"
         { slow: 50, very_slow: 100, critical: 500 }
-      when "render_template.action_view", "template", "partial", "layout", "collection"
+      when "template", "partial", "layout", "collection"
         { slow: 50, very_slow: 150, critical: 300 }
-      when "process_action.action_controller", "controller"
+      when "controller"
         { slow: 200, very_slow: 500, critical: 1000 }
       when "cache_read", "cache_write"
         { slow: 10, very_slow: 50, critical: 100 }
@@ -205,11 +205,11 @@ module RailsPulse
 
     def categorize_operation(operation_type)
       case operation_type
-      when "sql", "db", "sql.active_record"
+      when "sql"
         :database
-      when "render_template.action_view", "template", "partial", "layout", "collection"
+      when "template", "partial", "layout", "collection"
         :view
-      when "process_action.action_controller", "controller"
+      when "controller"
         :application
       else
         :other
@@ -256,9 +256,9 @@ module RailsPulse
 
     def event_color(operation_type)
       case operation_type
-      when "sql.active_record" then "#92c282;"
-      when "render_template.action_view" then "#b77cbf"
-      when "process_action.action_controller" then "#00adc4"
+      when "sql" then "#92c282;"
+      when "template", "partial", "layout", "collection" then "#b77cbf"
+      when "controller" then "#00adc4"
       else "gray"
       end
     end
@@ -274,36 +274,6 @@ module RailsPulse
         [ "Very Slow (≥ #{thresholds[:very_slow]}ms)", :very_slow ],
         [ "Critical (≥ #{thresholds[:critical]}ms)", :critical ]
       ]
-    end
-
-    def metric_card_path(metric_type, options = {})
-      rails_pulse.metric_card_path(metric_type, options)
-    end
-
-    def render_metric_card_frame(metric_type, context: nil)
-      path_options = context ? { context: context } : {}
-      turbo_frame_tag "#{metric_type}_card", src: metric_card_path(metric_type, path_options), loading: :eager, class: "grid-item block" do
-        content_tag :div, class: "grid-item" do
-          content_tag :div, class: "card card-compact" do
-            content_tag :div, class: "flex flex-col" do
-              # Card header skeleton
-              content_tag(:div, class: "flex") do
-                content_tag(:h2, "", class: "grow font-semibold leading-none mbe-1 uppercase text-xs skeleton", style: "height: 12px; width: 60%;")
-              end +
-              # Main content skeleton
-              content_tag(:div, class: "row mbs-2", style: "height: 50px; margin-bottom: 0;") do
-                content_tag(:div, class: "grid-item") do
-                  content_tag(:h4, "", class: "text-xl mbs-1 font-bold skeleton", style: "height: 24px; width: 80%;")
-                end
-              end +
-              # Badge skeleton
-              content_tag(:div, class: "mbs-2", style: "height: 10px;") do
-                content_tag(:span, "", class: "skeleton rounded-full", style: "height: 20px; width: 120px; display: inline-block;")
-              end
-            end
-          end
-        end
-      end
     end
   end
 end

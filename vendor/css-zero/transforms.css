@@ -1,0 +1,49 @@
+:root {
+  /****************************************************************
+  * Scale
+  * Variables for scaling elements with transform.
+  * transform: var(--scale-100);
+  *****************************************************************/
+  --scale-50:  scale(0.50);
+  --scale-75:  scale(0.75);
+  --scale-90:  scale(0.90);
+  --scale-95:  scale(0.95);
+  --scale-100: scale(1);
+  --scale-105: scale(1.05);
+  --scale-110: scale(1.10);
+  --scale-125: scale(1.25);
+  --scale-150: scale(1.50);
+
+  /****************************************************************
+  * Rotate
+  * Variables for rotating elements with transform.
+  * transform: var(--rotate-45);
+  *****************************************************************/
+  --rotate-0:   rotate(0deg);
+  --rotate-1:   rotate(1deg);
+  --rotate-2:   rotate(2deg);
+  --rotate-3:   rotate(3deg);
+  --rotate-6:   rotate(6deg);
+  --rotate-12:  rotate(12deg);
+  --rotate-45:  rotate(45deg);
+  --rotate-90:  rotate(90deg);
+  --rotate-180: rotate(180deg);
+
+  /****************************************************************
+  * Skew
+  * Varibles for skewing elements with transform.
+  * transform: var(--skew-x-3);
+  *****************************************************************/
+  --skew-x-0:  skewX(0deg);
+  --skew-y-0:  skewY(0deg);
+  --skew-x-1:  skewX(1deg);
+  --skew-y-1:  skewY(1deg);
+  --skew-x-2:  skewX(2deg);
+  --skew-y-2:  skewY(2deg);
+  --skew-x-3:  skewX(3deg);
+  --skew-y-3:  skewY(3deg);
+  --skew-x-6:  skewX(6deg);
+  --skew-y-6:  skewY(6deg);
+  --skew-x-12: skewX(12deg);
+  --skew-y-12: skewY(12deg);
+}

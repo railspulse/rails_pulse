@@ -1,0 +1,86 @@
+/* CSP-Safe Positioning Utilities for Rails Pulse */
+/* Supports dynamic positioning using CSS custom properties */
+
+/* Rails Pulse CSS loaded indicator for CSP testing */
+:root {
+  --rails-pulse-loaded: true;
+}
+
+/* Popover positioning using CSS custom properties */
+.positioned {
+  --popover-x: 0px;
+  --popover-y: 0px;
+  --context-menu-x: 0px;
+  --context-menu-y: 0px;
+}
+
+/* Popover positioning (used by popover_controller.js) */
+[popover].positioned {
+  position: fixed;
+  inset-inline-start: var(--popover-x, 0px) !important;
+  inset-block-start: var(--popover-y, 0px) !important;
+}
+
+/* Context menu positioning (used by context_menu_controller.js) */
+[popover].positioned {
+  inset-inline-start: var(--context-menu-x, var(--popover-x, 0px)) !important;
+  inset-block-start: var(--context-menu-y, var(--popover-y, 0px)) !important;
+}
+
+/* Icon loading states for icon_controller.js */
+[data-controller*="rails-pulse--icon"] {
+  display: inline-block;
+  line-height: 0;
+}
+
+[data-controller*="rails-pulse--icon"].loading {
+  opacity: 0.6;
+}
+
+[data-controller*="rails-pulse--icon"].error {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+[data-controller*="rails-pulse--icon"].loaded {
+  opacity: 1;
+}
+
+/* CSP-safe icon rendering */
+[data-controller*="rails-pulse--icon"] svg {
+  display: block;
+  width: inherit;
+  height: inherit;
+}
+
+/* Accessibility improvements */
+[data-controller*="rails-pulse--icon"][aria-label] {
+  position: relative;
+}
+
+/* Focus indicators for interactive icons */
+[data-controller*="rails-pulse--icon"]:focus-visible {
+  outline: 2px solid currentColor;
+  outline-offset: 2px;
+  border-radius: 2px;
+}
+
+/* CSP Test Page Utilities */
+.csp-test-grid-single {
+  --columns: 1;
+}
+
+.csp-test-context-area {
+  padding: 2rem;
+  border: 2px dashed var(--color-border);
+  text-align: center;
+}
+
+.csp-test-nav-gap {
+  --column-gap: 1rem;
+}
+
+/* Sheet sizing for dialog */
+.csp-test-sheet {
+  --sheet-size: 288px;
+}

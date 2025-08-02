@@ -1,0 +1,143 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        database: ["sqlite3", "postgresql", "mysql2"]
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: rails_pulse_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: rails_pulse_test
+        options: >-
+          --health-cmd="mysqladmin ping"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=3
+        ports:
+          - 3306:3306
+
+    env:
+      RAILS_ENV: test
+      DATABASE_ADAPTER: ${{ matrix.database }}
+      FORCE_DB_CONFIG: true
+      CI: true
+      # Force in-memory database for SQLite in CI
+      MEMORY_DATABASE: ${{ matrix.database == 'sqlite3' && 'true' || 'false' }}
+      # PostgreSQL configuration for CI
+      POSTGRES_USERNAME: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_HOST: localhost
+      POSTGRES_PORT: 5432
+      # MySQL configuration for CI
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: root
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+      # Parallel workers for MySQL to avoid deadlocks
+      PARALLEL_WORKERS: ${{ matrix.database == 'mysql2' && '1' || '' }}
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.3'
+        bundler-cache: false
+
+    - name: Install dependencies
+      run: |
+        if [[ "${{ matrix.database }}" == "mysql2" ]]; then
+          bundle install --with mysql
+        else
+          bundle install --without mysql
+        fi
+
+    - name: Setup database
+      run: |
+        if [[ "${{ matrix.database }}" == "mysql2" ]]; then
+          echo "Waiting for MySQL to be ready..."
+          sleep 5
+          mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --protocol=TCP --wait=30 || exit 1
+          # Load timezone info into MySQL
+          mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -h 127.0.0.1 -P 3306 -u root -proot --protocol=TCP mysql
+          echo "MySQL is ready"
+          mysql -h 127.0.0.1 -P 3306 -u root -proot --protocol=TCP -e "SHOW DATABASES LIKE 'rails_pulse_test';" || exit 1
+        elif [[ "${{ matrix.database }}" == "postgresql" ]]; then
+          echo "PostgreSQL test database ready"
+          pg_isready -h localhost -p 5432 || exit 1
+        else
+          echo "Using SQLite (no setup required)"
+        fi
+
+        echo "Rails Pulse tables will be created automatically by test helper"
+
+    - name: Run tests
+      run: bundle exec rails test:all
+
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.3'
+        bundler-cache: true
+
+    - name: Run RuboCop
+      run: bundle exec rubocop
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.3'
+        bundler-cache: true
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install Node dependencies
+      run: npm install
+
+    - name: Build assets
+      run: npm run build
+
+    - name: Build gem
+      run: bundle exec rake build

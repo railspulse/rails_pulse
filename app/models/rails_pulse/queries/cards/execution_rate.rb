@@ -19,15 +19,15 @@ module RailsPulse
           # Calculate trend by comparing last 7 days vs previous 7 days
           last_7_days = 7.days.ago.beginning_of_day
           previous_7_days = 14.days.ago.beginning_of_day
-          current_period_count = operations.where('occurred_at >= ?', last_7_days).count
-          previous_period_count = operations.where('occurred_at >= ? AND occurred_at < ?', previous_7_days, last_7_days).count
+          current_period_count = operations.where("occurred_at >= ?", last_7_days).count
+          previous_period_count = operations.where("occurred_at >= ? AND occurred_at < ?", previous_7_days, last_7_days).count
 
           percentage = previous_period_count.zero? ? 0 : ((previous_period_count - current_period_count) / previous_period_count.to_f * 100).abs.round(1)
           trend_icon = percentage < 0.1 ? "move-right" : current_period_count < previous_period_count ? "trending-down" : "trending-up"
           trend_amount = previous_period_count.zero? ? "0%" : "#{percentage}%"
 
           sparkline_data = operations
-            .group_by_week(:occurred_at)
+            .group_by_week(:occurred_at, time_zone: "UTC")
             .count
             .each_with_object({}) do |(date, count), hash|
               formatted_date = date.strftime("%b %-d")

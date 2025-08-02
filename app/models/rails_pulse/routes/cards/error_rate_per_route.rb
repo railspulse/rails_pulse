@@ -14,9 +14,11 @@ module RailsPulse
             RailsPulse::Route.all
           end
 
+          routes = routes.where("occurred_at >= ?", 2.weeks.ago.beginning_of_day)
+
           error_rates = routes.joins(:requests)
-            .select('rails_pulse_routes.id, rails_pulse_routes.path, COUNT(rails_pulse_requests.id) as total_requests, SUM(CASE WHEN rails_pulse_requests.is_error = 1 THEN 1 ELSE 0 END) as error_count')
-            .group('rails_pulse_routes.id')
+            .select("rails_pulse_routes.id, rails_pulse_routes.path, COUNT(rails_pulse_requests.id) as total_requests, SUM(CASE WHEN rails_pulse_requests.is_error = true THEN 1 ELSE 0 END) as error_count")
+            .group("rails_pulse_routes.id, rails_pulse_routes.path")
             .map do |route|
               error_rate = route.error_count.to_f / route.total_requests * 100
               {
@@ -37,7 +39,7 @@ module RailsPulse
           # Generate sparkline data
           sparkline_data = requests
             .where(is_error: true)
-            .group_by_week(:occurred_at)
+            .group_by_week(:occurred_at, time_zone: "UTC")
             .count
             .each_with_object({}) do |(date, count), hash|
               formatted_date = date.strftime("%b %-d")
@@ -49,8 +51,8 @@ module RailsPulse
           # Determine trend direction and amount
           last_7_days = 7.days.ago.beginning_of_day
           previous_7_days = 14.days.ago.beginning_of_day
-          current_period_errors = requests.where('occurred_at >= ? AND is_error = ?', last_7_days, true).count
-          previous_period_errors = requests.where('occurred_at >= ? AND occurred_at < ? AND is_error = ?', previous_7_days, last_7_days, true).count
+          current_period_errors = requests.where("occurred_at >= ? AND is_error = ?", last_7_days, true).count
+          previous_period_errors = requests.where("occurred_at >= ? AND occurred_at < ? AND is_error = ?", previous_7_days, last_7_days, true).count
 
           trend_amount = previous_period_errors.zero? ? "0%" : "#{((current_period_errors - previous_period_errors) / previous_period_errors.to_f * 100).round(1)}%"
           trend_icon = trend_amount.to_f < 0.1 ? "move-right" : current_period_errors < previous_period_errors ? "trending-down" : "trending-up"

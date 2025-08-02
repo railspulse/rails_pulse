@@ -1,5 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
-import { computePosition, flip, shift, offset, autoUpdate } from "https://esm.sh/@floating-ui/dom@1.7.0?standalone"
+import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/dom"
 
 export default class extends Controller {
   static targets = [ "button", "menu" ]
@@ -61,11 +61,19 @@ export default class extends Controller {
     if (!turboFrame) return
     
     // Only load if not already loaded (check if still shows loading content)
-    const hasLoadingContent = turboFrame.innerHTML.includes('Loading operation details')
+    // Use CSP-safe method to check for loading content
+    const hasLoadingContent = this.hasLoadingContent(turboFrame)
     if (!hasLoadingContent) return
     
     // Set the src attribute to trigger the turbo frame loading
     turboFrame.src = operationUrl
+  }
+
+  // CSP-safe method to check for loading content
+  hasLoadingContent(element) {
+    // Use textContent instead of innerHTML to avoid CSP issues
+    const textContent = element.textContent || ''
+    return textContent.includes('Loading operation details')
   }
 
   get #options() {

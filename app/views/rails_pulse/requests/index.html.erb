@@ -1,17 +1,16 @@
 <%= render 'rails_pulse/components/breadcrumbs' %>
 
 <div class="row">
-  <%= render_metric_card_frame "average_response_times", context: "requests" %>
-  <%= render_metric_card_frame "percentile_response_times", context: "requests" %>
-  <%= render_metric_card_frame "request_count_totals", context: "requests" %>
-  <%= render_metric_card_frame "error_rate_per_route", context: "requests" %>
+  <%= cached_component(component: "metric_card", id: "average_response_times", context: "requests", class: "grid-item block") %>
+  <%= cached_component(component: "metric_card", id: "percentile_response_times", context: "requests", class: "grid-item block") %>
+  <%= cached_component(component: "metric_card", id: "request_count_totals", context: "requests", class: "grid-item block") %>
+  <%= cached_component(component: "metric_card", id: "error_rate_per_route", context: "requests", class: "grid-item block") %>
 </div>
 
 <div
   class="row"
   data-controller="rails-pulse--index"
   data-rails-pulse--index-chart-id-value="average_response_times_chart"
-  data-rails-pulse--index-occurred-at-param-value="requests_occurred_at"
 >
   <div class="grid-item">
     <%= render 'rails_pulse/components/panel', { title: 'Average Response Time', } do %>
@@ -37,18 +36,21 @@
           class="chart-container chart-container--slim"
           data-rails-pulse--index-target="chart"
         >
-          <%= line_chart(
+          <%= bar_chart(
             @chart_data,
             code: false,
             id: "average_response_times_chart",
             height: "100%",
-            options: line_chart_options(
+            options: bar_chart_options(
               units: "ms",
               zoom: true,
               chart_start: 0,
               chart_end: @chart_data.length - 1,
               xaxis_formatter: @xaxis_formatter,
-              tooltip_formatter: @tooltip_formatter
+              tooltip_formatter: @tooltip_formatter,
+              zoom_start: @zoom_start,
+              zoom_end: @zoom_end,
+              chart_data: @chart_data
             )
           ) %>
         </div>

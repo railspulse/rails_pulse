@@ -21,16 +21,16 @@ module RailsPulse
 
     def find_related_operations
       case @operation.operation_type
-      when "sql", "db"
+      when "sql"
         # Find other SQL operations in the same request with similar queries
         @operation.request.operations
-          .where(operation_type: ["sql", "db"])
+          .where(operation_type: [ "sql" ])
           .where.not(id: @operation.id)
           .limit(5)
-      when "render_template.action_view", "template", "partial", "layout", "collection"
+      when "template", "partial", "layout", "collection"
         # Find other view operations in the same request
         @operation.request.operations
-          .where(operation_type: ["render_template.action_view", "template", "partial", "layout", "collection"])
+          .where(operation_type: [ "template", "partial", "layout", "collection" ])
           .where.not(id: @operation.id)
           .limit(5)
       else
@@ -75,11 +75,11 @@ module RailsPulse
       suggestions = []
 
       case @operation.operation_type
-      when "sql", "db"
+      when "sql"
         suggestions.concat(sql_optimization_suggestions)
-      when "render_template.action_view", "template", "partial", "layout", "collection"
+      when "template", "partial", "layout", "collection"
         suggestions.concat(view_optimization_suggestions)
-      when "process_action.action_controller", "controller"
+      when "controller"
         suggestions.concat(controller_optimization_suggestions)
       when "cache_read", "cache_write"
         suggestions.concat(cache_optimization_suggestions)
@@ -118,7 +118,7 @@ module RailsPulse
 
       # Check for potential N+1 queries
       similar_queries = @operation.request.operations
-        .where(operation_type: ["sql", "db"])
+        .where(operation_type: [ "sql" ])
         .where("label LIKE ?", "%#{@operation.label.split.first(3).join(' ')}%")
         .where.not(id: @operation.id)
 
@@ -150,7 +150,7 @@ module RailsPulse
 
       # Check for database queries in views
       view_db_operations = @operation.request.operations
-        .where(operation_type: ["sql", "db"])
+        .where(operation_type: [ "sql" ])
         .where("occurred_at >= ? AND occurred_at <= ?",
                @operation.occurred_at,
                @operation.occurred_at + @operation.duration)

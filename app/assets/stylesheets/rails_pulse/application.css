@@ -3,8 +3,20 @@
 }
 
 a {
-  text-decoration: none;
-  color: #5470c6;
+  text-decoration: underline;
+  color: #0048b5;
+}
+
+#header {
+  background-color: #ffc91f;
+}
+
+#header a {
+  color: black
+}
+
+#header a:hover {
+  background-color: #ffe284;
 }
 
 a:hover {
@@ -21,8 +33,8 @@ a:hover {
 }
 
 .operations-label-cell {
-  width: 280px;
-  max-width: 280px;
+  width: 380px;
+  max-width: 380px;
   min-width: 120px;
   padding-right: 10px;
   overflow: hidden;

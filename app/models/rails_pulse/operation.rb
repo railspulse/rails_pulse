@@ -1,6 +1,21 @@
 module RailsPulse
-  class Operation < ApplicationRecord
+  class Operation < RailsPulse::ApplicationRecord
     self.table_name = "rails_pulse_operations"
+
+    OPERATION_TYPES = %w[
+      sql
+      controller
+      template
+      partial
+      layout
+      collection
+      cache_read
+      cache_write
+      http
+      job
+      mailer
+      storage
+    ].freeze
 
     # Associations
     belongs_to :request, class_name: "RailsPulse::Request"
@@ -8,7 +23,7 @@ module RailsPulse
 
     # Validations
     validates :request_id, presence: true
-    validates :operation_type, presence: true
+    validates :operation_type, presence: true, inclusion: { in: OPERATION_TYPES }
     validates :label, presence: true
     validates :occurred_at, presence: true
     validates :duration, presence: true, numericality: { greater_than_or_equal_to: 0 }
@@ -34,7 +49,20 @@ module RailsPulse
       Arel.sql("COUNT(rails_pulse_operations.id)")
     end
 
-    ransacker :occurred_at, formatter: ->(val) { Time.at(val.to_i) } do |parent|
+    ransacker :occurred_at, formatter: ->(val) {
+      # Handle different time formats for database compatibility
+      case val
+      when Time, DateTime, ActiveSupport::TimeWithZone
+        val.utc.iso8601
+      when String
+        Time.zone.parse(val).utc.iso8601
+      when Integer
+        Time.at(val).utc.iso8601
+      else
+        # Fallback: try to parse as integer timestamp
+        Time.at(val.to_i).utc.iso8601
+      end
+    } do |parent|
       parent.table[:occurred_at]
     end
 
@@ -45,7 +73,7 @@ module RailsPulse
     private
 
     def associate_query
-      return unless %w[db sql].include?(operation_type) && label.present?
+      return unless operation_type == "sql" && label.present?
 
       normalized = normalize_query_label(label)
       self.query = RailsPulse::Query.find_or_create_by(normalized_sql: normalized)

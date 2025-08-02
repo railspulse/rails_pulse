@@ -9,6 +9,7 @@
             <th class="w-20">Impact</th>
             <th class="w-16"></th>
             <th class="operations-event-cell">Timeline</th>
+            <th class="w-16">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -22,7 +23,6 @@
               data-action="click->rails-pulse--popover#toggle"
             >
               <td class="operations-label-cell">
-                <%= link_to lucide_icon('external-link', width: '16', class: 'inline-block mie-2'), operation_path(bar.operation), class: "", data: { turbo_frame: "_top" } %>
                 <%= link_to "#",
                     class: "text-link",
                     style: "color: #{event_color(bar.operation.operation_type)};",
@@ -30,7 +30,7 @@
                       rails_pulse__popover_target: "button",
                       action: "rails-pulse--popover#toggle"
                     } do %>
-                  <%= bar.operation.label %>
+                  <%= html_escape(bar.operation.label) %>
                 <% end %>
 
               </td>
@@ -42,7 +42,7 @@
                      style="--popover-size: min(70rem); max-inline-size: 70rem;">
                   <%= turbo_frame_tag "operation_#{bar.operation.id}_details" do %>
                     <div class="flex items-center justify-center p-4">
-                      <%= lucide_icon("loader-circle", width: "24", height: "24", class: "animate-spin") %>
+                      <%= rails_pulse_icon("loader-circle", width: "24", height: "24", class: "animate-spin") %>
                       <span class="mls-2">Loading operation details...</span>
                     </div>
                   <% end %>
@@ -61,6 +61,12 @@
                   class="operations-event"
                   style="left: <%= bar.left_pct %>%; width: <%= bar.width_pct %>%; background-color: <%= event_color(bar.operation.operation_type) %>;">
                 </div>
+              </td>
+              <td>
+                <%= link_to rails_pulse_icon('eye', width: '16', class: 'inline-block mbi-2'), operation_path(bar.operation), title: 'View details', data: { turbo_frame: "_top" } %>
+                <% if bar.operation.operation_type == "sql" && bar.operation.query.present? %>
+                  <%= link_to rails_pulse_icon('database', width: '16', class: 'inline-block'), query_path(bar.operation.query), title: 'View query', data: { turbo_frame: "_top" } %>
+                <% end %>
               </td>
             </tr>
           <% end %>

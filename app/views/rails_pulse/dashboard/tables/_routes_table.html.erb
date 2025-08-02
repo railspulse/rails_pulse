@@ -1,0 +1,32 @@
+<table class="table mbs-4">
+  <thead>
+    <tr>
+      <th>Route</th>
+      <th>This Week Avg (ms)</th>
+      <th>Last Week Avg (ms)</th>
+      <th>Change</th>
+      <th>Requests</th>
+    </tr>
+  </thead>
+  <tbody>
+    <% if table_data.any? %>
+      <% table_data.each do |route_data| %>
+        <tr>
+          <td><%= route_data[:route_path] %></td>
+          <td class="<%= route_data[:trend] == 'worse' ? 'highlight-red' : (route_data[:trend] == 'better' ? 'highlight-green' : '') %>">
+            <%= route_data[:this_week_avg] %>
+          </td>
+          <td><%= route_data[:last_week_avg] %></td>
+          <td class="<%= route_data[:percentage_change] > 5 ? 'highlight-red' : (route_data[:percentage_change] < -5 ? 'highlight-green' : '') %>">
+            <%= route_data[:percentage_change] > 0 ? '+' : '' %><%= route_data[:percentage_change] %>%
+          </td>
+          <td><%= route_data[:request_count] %></td>
+        </tr>
+      <% end %>
+    <% else %>
+      <tr>
+        <td colspan="5" class="text-center text-subtle">No route data available for the selected time period</td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>

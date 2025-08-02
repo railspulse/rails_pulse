@@ -10,7 +10,7 @@ class HomeController < ApplicationController
 
     # Simulate post statistics with aggregations
     @post_stats = Post.joins(:user)
-                     .group('users.name')
+                     .group("users.name")
                      .count
 
     # Simulate search functionality with LIKE queries
@@ -21,7 +21,7 @@ class HomeController < ApplicationController
     # Simulate expensive query with subqueries
     @popular_posts = Post.where(
       id: Comment.group(:post_id)
-                 .having('COUNT(*) > ?', 2)
+                 .having("COUNT(*) > ?", 2)
                  .select(:post_id)
     ).includes(:user)
 
@@ -55,17 +55,17 @@ class HomeController < ApplicationController
   def slow
     # Complex aggregation that takes time
     @user_stats = User.joins(:posts, :comments)
-                     .group('users.id', 'users.name', 'users.email')
-                     .select('users.*, COUNT(DISTINCT posts.id) as post_count, COUNT(DISTINCT comments.id) as comment_count')
-                     .having('COUNT(DISTINCT posts.id) > 0')
-                     .order('post_count DESC, comment_count DESC')
+                     .group("users.id", "users.name", "users.email")
+                     .select("users.*, COUNT(DISTINCT posts.id) as post_count, COUNT(DISTINCT comments.id) as comment_count")
+                     .having("COUNT(DISTINCT posts.id) > 0")
+                     .order("post_count DESC, comment_count DESC")
 
     # Expensive text search
     @search_posts = Post.joins(:user, :comments)
                        .where("posts.content LIKE ? OR posts.title LIKE ?", "%lorem%", "%sample%")
-                       .group('posts.id', 'users.name')
-                       .select('posts.*, users.name as author_name, COUNT(comments.id) as comment_count')
-                       .order('comment_count DESC')
+                       .group("posts.id", "users.name")
+                       .select("posts.*, users.name as author_name, COUNT(comments.id) as comment_count")
+                       .order("comment_count DESC")
 
     # Multiple subqueries
     @active_users = User.where(
@@ -85,9 +85,9 @@ class HomeController < ApplicationController
     # Heavy query that might timeout
     @complex_data = Post.joins(:user)
                        .joins("LEFT JOIN comments ON posts.id = comments.post_id")
-                       .group('posts.id', 'users.name')
-                       .having('COUNT(comments.id) >= ?', rand(1..10))
-                       .order('COUNT(comments.id) DESC')
+                       .group("posts.id", "users.name")
+                       .having("COUNT(comments.id) >= ?", rand(1..10))
+                       .order("COUNT(comments.id) DESC")
                        .limit(50)
 
     # Simulate potential N+1 issue
@@ -105,7 +105,7 @@ class HomeController < ApplicationController
   # Search action - various search patterns
   def search
     query = params[:q] || "sample"
-    
+
     # Text search with LIKE (case-insensitive via UPPER)
     @text_results = Post.where("UPPER(title) LIKE UPPER(?) OR UPPER(content) LIKE UPPER(?)", "%#{query}%", "%#{query}%")
                        .includes(:user, :comments)
@@ -142,7 +142,7 @@ class HomeController < ApplicationController
       comments: Comment.count,
       timestamp: Time.current
     }
-    
+
     respond_to do |format|
       format.html
       format.json { render json: @data }
@@ -153,23 +153,23 @@ class HomeController < ApplicationController
     # Expensive aggregations for API
     @data = {
       user_statistics: User.joins(:posts, :comments)
-                          .group('users.id')
-                          .select('users.id, users.name, COUNT(DISTINCT posts.id) as posts_count, COUNT(DISTINCT comments.id) as comments_count')
+                          .group("users.id")
+                          .select("users.id, users.name, COUNT(DISTINCT posts.id) as posts_count, COUNT(DISTINCT comments.id) as comments_count")
                           .limit(20)
                           .map { |u| { id: u.id, name: u.name, posts: u.posts_count, comments: u.comments_count } },
-      
+
       popular_posts: Post.joins(:comments)
-                        .group('posts.id')
-                        .select('posts.*, COUNT(comments.id) as comment_count')
-                        .order('comment_count DESC')
+                        .group("posts.id")
+                        .select("posts.*, COUNT(comments.id) as comment_count")
+                        .order("comment_count DESC")
                         .limit(10)
                         .map { |p| { id: p.id, title: p.title, comments: p.comment_count } },
-      
+
       recent_activity: Comment.joins(:user, :post)
                              .order(created_at: :desc)
                              .limit(20)
                              .map { |c| { user: c.user.name, post: c.post.title, content: c.content.truncate(50) } },
-      
+
       generated_at: Time.current
     }
 

@@ -45,7 +45,7 @@ post_titles.each_with_index do |title, index|
     user: user,
     title: title,
     content: "This is the content for #{title}. Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris.",
-    published: [true, false].sample,
+    published: [ true, false ].sample,
     created_at: rand(4.weeks.ago..Time.current)
   )
   created_posts << post
@@ -230,36 +230,32 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
 
     current_time = 0.0
     operation_count.times do |op_index|
-      operation_type = [ "sql.active_record", "instantiation.active_record", "render_template.action_view", "process_action.action_controller" ].sample
+      operation_type = [ "sql", "template", "controller" ].sample
 
       operation_duration = case operation_type
-      when "sql.active_record"
+      when "sql"
         rand(5..200) # 5ms to 200ms for SQL
-      when "instantiation.active_record"
-        rand(1..20)  # 1ms to 20ms for instantiation
-      when "render_template.action_view"
+      when "template"
         rand(10..100) # 10ms to 100ms for rendering
-      when "process_action.action_controller"
+      when "controller"
         duration # Controller time is total time
       end
 
       # Assign query for SQL operations
-      query = operation_type == "sql.active_record" ? created_queries.sample : nil
+      query = operation_type == "sql" ? created_queries.sample : nil
 
       operation_label = case operation_type
-      when "sql.active_record"
+      when "sql"
         query&.normalized_sql&.split(" ")&.first(3)&.join(" ") || "SQL Query"
-      when "instantiation.active_record"
-        [ "User Load", "Post Load", "Comment Load" ].sample
-      when "render_template.action_view"
+      when "template"
         [ "layouts/application", "home/index", "posts/show", "users/index" ].sample
-      when "process_action.action_controller"
+      when "controller"
         request.controller_action
       end
 
       # Generate realistic codebase locations based on operation type and content
       codebase_location = case operation_type
-      when "sql.active_record"
+      when "sql"
         # Map specific queries to specific file locations
         case query&.normalized_sql
         when /SELECT \* FROM users WHERE id = \?/
@@ -295,18 +291,7 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
         else
           "app/models/application_record.rb:12"
         end
-      when "instantiation.active_record"
-        case operation_label
-        when "User Load"
-          "app/models/user.rb:8"
-        when "Post Load"
-          "app/models/post.rb:6"
-        when "Comment Load"
-          "app/models/comment.rb:5"
-        else
-          "app/models/application_record.rb:3"
-        end
-      when "render_template.action_view"
+      when "template"
         case operation_label
         when "layouts/application"
           "app/views/layouts/application.html.erb:1"
@@ -319,7 +304,7 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
         else
           "app/controllers/application_controller.rb:25"
         end
-      when "process_action.action_controller"
+      when "controller"
         case route.path
         when "/"
           "app/controllers/home_controller.rb:5"

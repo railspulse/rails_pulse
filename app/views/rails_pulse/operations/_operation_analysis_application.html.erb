@@ -1,72 +1,43 @@
-<!-- Application Logic Analysis -->
-<div class="descriptive-list-item">
-  <dt class="descriptive-list-term">Controller Performance</dt>
-  <dd class="descriptive-list-definition">
-    <div class="text-sm flex flex-col gap-quarter">
-    <% if operation.duration > 500 %>
-      <div class="text-negative"><%= lucide_icon 'triangle-alert', width: '16', class: 'inline-block' %> Slow action (>500ms)</div>
-    <% elsif operation.duration > 200 %>
-      <div style="color: #d97706;">⚡ Moderate action (>200ms)</div>
-    <% else %>
-      <div class="text-positive"><%= lucide_icon 'check', width: '16', class: 'inline-block' %> Fast action</div>
+<% if operation.label&.match?(/(\w+)#(\w+)/) %>
+  <% controller, action = operation.label.match(/(\w+)#(\w+)/)&.captures %>
+  <dt>Controller</dt>
+  <dd><%= html_escape(controller) %></dd>
+  <dt>Action</dt>
+  <dd><%= html_escape(action) %></dd>
+<% end %>
+
+<% total_db_time = operation.request.operations
+     .where(operation_type: ["sql"])
+     .sum(:duration) %>
+<% total_view_time = operation.request.operations
+     .where(operation_type: ["template", "partial", "layout", "collection"])
+     .sum(:duration) %>
+<% pure_controller_time = operation.duration - total_db_time - total_view_time %>
+
+<% if pure_controller_time > 0 %>
+  <dt>Pure Logic Time</dt>
+  <dd>
+    <%= pure_controller_time.round(1) %>ms
+    <% if pure_controller_time > 100 %>
+      - consider optimization
     <% end %>
-
-    <div class="text-xs text-subtle">Controller action processing time</div>
-
-    <!-- Action Analysis -->
-    <% if operation.label&.match?(/(\w+)#(\w+)/) %>
-      <% controller, action = operation.label.match(/(\w+)#(\w+)/)&.captures %>
-      <div class="text-xs">
-        <strong>Controller:</strong> <%= controller %><br>
-        <strong>Action:</strong> <%= action %>
-      </div>
-    <% end %>
-
-    <!-- Performance Breakdown -->
-    <% total_db_time = operation.request.operations
-         .where(operation_type: ["sql", "db"])
-         .sum(:duration) %>
-    <% total_view_time = operation.request.operations
-         .where(operation_type: ["render_template.action_view", "template", "partial", "layout", "collection"])
-         .sum(:duration) %>
-    <% pure_controller_time = operation.duration - total_db_time - total_view_time %>
-
-    <% if pure_controller_time > 0 %>
-      <div class="text-xs">
-        <strong>Pure Logic Time:</strong> <%= pure_controller_time.round(1) %>ms
-        <% if pure_controller_time > 100 %>
-          <span class="text-warning"> - consider optimization</span>
-        <% end %>
-      </div>
-    <% end %>
-
-    <!-- Database Operations -->
-    <% db_operations_count = operation.request.operations
-         .where(operation_type: ["sql", "db"])
-         .count %>
-    <% if db_operations_count > 0 %>
-      <div class="text-xs">
-        <strong>Database Queries:</strong> <%= db_operations_count %>
-        <% if db_operations_count > 10 %>
-          <span class="text-warning"> - potential N+1 queries</span>
-        <% end %>
-      </div>
-    <% end %>
-
-    <!-- Memory and Performance Hints -->
-    <% if operation.duration > 200 %>
-      <div class="text-xs text-subtle">
-        💡 Consider moving heavy computation to background jobs
-      </div>
-    <% end %>
-
-    <!-- Source Location -->
-    <% if operation.codebase_location.present? %>
-      <div class="text-xs">
-        <strong>Source:</strong>
-        <code style="font-size: 0.7rem;"><%= operation.codebase_location.split('/').last(3).join('/') %></code>
-      </div>
-    <% end %>
-    </div>
   </dd>
-</div>
+<% end %>
+
+<% db_operations_count = operation.request.operations
+     .where(operation_type: ["sql"])
+     .count %>
+<% if db_operations_count > 0 %>
+  <dt>Database Queries</dt>
+  <dd>
+    <%= db_operations_count %>
+    <% if db_operations_count > 10 %>
+      - potential N+1 queries
+    <% end %>
+  </dd>
+<% end %>
+
+<% if operation.codebase_location.present? %>
+  <dt>Source</dt>
+  <dd><code><%= html_escape(operation.codebase_location.split('/').last(3).join('/')) %></code></dd>
+<% end %>

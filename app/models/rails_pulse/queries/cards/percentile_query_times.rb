@@ -16,7 +16,7 @@ module RailsPulse
           # Calculate overall 95th percentile response time
           count = operations.count
           percentile_95th = if count > 0
-            operations.select('duration').order('duration').limit(1).offset((count * 0.95).floor).pluck(:duration).first || 0
+            operations.select("duration").order("duration").limit(1).offset((count * 0.95).floor).pluck(:duration).first || 0
           else
             0
           end
@@ -25,18 +25,18 @@ module RailsPulse
           last_7_days = 7.days.ago.beginning_of_day
           previous_7_days = 14.days.ago.beginning_of_day
 
-          current_period = operations.where('occurred_at >= ?', last_7_days)
+          current_period = operations.where("occurred_at >= ?", last_7_days)
           current_count = current_period.count
           current_period_95th = if current_count > 0
-            current_period.select('duration').order('duration').limit(1).offset((current_count * 0.95).floor).pluck(:duration).first || 0
+            current_period.select("duration").order("duration").limit(1).offset((current_count * 0.95).floor).pluck(:duration).first || 0
           else
             0
           end
 
-          previous_period = operations.where('occurred_at >= ? AND occurred_at < ?', previous_7_days, last_7_days)
+          previous_period = operations.where("occurred_at >= ? AND occurred_at < ?", previous_7_days, last_7_days)
           previous_count = previous_period.count
           previous_period_95th = if previous_count > 0
-            previous_period.select('duration').order('duration').limit(1).offset((previous_count * 0.95).floor).pluck(:duration).first || 0
+            previous_period.select("duration").order("duration").limit(1).offset((previous_count * 0.95).floor).pluck(:duration).first || 0
           else
             0
           end
@@ -46,7 +46,7 @@ module RailsPulse
           trend_amount = previous_period_95th.zero? ? "0%" : "#{percentage}%"
 
           sparkline_data = operations
-            .group_by_week(:occurred_at)
+            .group_by_week(:occurred_at, time_zone: "UTC")
             .average(:duration)
             .each_with_object({}) do |(date, avg), hash|
               formatted_date = date.strftime("%b %-d")

@@ -3,7 +3,7 @@
   <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-start">
     <button type="button" id="menu_button" class="btn" data-rails-pulse--popover-target="button" data-action="rails-pulse--popover#toggle" aria-haspopup="true" aria-controls="menu">
       1 month
-      <%= lucide_icon 'chevron-down' %>
+      <%= rails_pulse_icon 'chevron-down' %>
     </button>
     <div popover class="popover" style="--popover-size: 8rem;" data-rails-pulse--popover-target="menu">
       <div id="menu" class="menu" data-controller="rails-pulse--menu" data-action="keydown.up->rails-pulse--menu#prev keydown.down->rails-pulse--menu#next" role="menu" aria-labelledby="menu_button">

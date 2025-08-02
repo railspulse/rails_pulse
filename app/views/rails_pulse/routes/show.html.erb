@@ -3,27 +3,11 @@
 <h1 class="text-2xl mbe-2"><%= @route.path_and_method %></h1>
 
 <div class="row">
-  <%= render_metric_card_frame "average_response_times", context: "route_#{@route.id}" %>
-  <%= render_metric_card_frame "percentile_response_times", context: "route_#{@route.id}" %>
-  <%= render_metric_card_frame "request_count_totals", context: "route_#{@route.id}" %>
-  <%= render_metric_card_frame "error_rate_per_route", context: "route_#{@route.id}" %>
+  <%= cached_component(component: "metric_card", id: "average_response_times", context: "routes_#{@route.id}", class: "grid-item block") %>
+  <%= cached_component(component: "metric_card", id: "percentile_response_times", context: "routes_#{@route.id}", class: "grid-item block") %>
+  <%= cached_component(component: "metric_card", id: "request_count_totals", context: "routes_#{@route.id}", class: "grid-item block") %>
+  <%= cached_component(component: "metric_card", id: "error_rate_per_route", context: "routes_#{@route.id}", class: "grid-item block") %>
 </div>
-
-<!-- <div class="row">
-  <div class="grid-item"> -->
-    <%#= render 'rails_pulse/components/panel', {
-        title: 'Response Time Distribution',
-        help_heading: 'Response Time Distribution',
-        help_text: 'This panel measures the total number of HTTP requests processed by your application each day. This represents the volume of traffic your app handles daily.'
-      } do %>
-      <!--
-      <div class="chart-container chart-container--slim">
-        <%#= bar_chart fake_time_distribution_series, height: "100%", options: line_chart_options %>
-      </div>
-      -->
-    <%# end %>
-  <!-- </div>
-</div> -->
 
 <div
   class="row"
@@ -55,18 +39,21 @@
           class="chart-container chart-container--slim"
           data-rails-pulse--index-target="chart"
         >
-          <%= line_chart(
+          <%= bar_chart(
             @chart_data,
             code: false,
             id: "route_repsonses_chart",
             height: "100%",
-            options: line_chart_options(
+            options: bar_chart_options(
               units: "ms",
               zoom: true,
               chart_start: 0,
               chart_end: @chart_data.length - 1,
               xaxis_formatter: @xaxis_formatter,
-              tooltip_formatter: @tooltip_formatter
+              tooltip_formatter: @tooltip_formatter,
+              zoom_start: @zoom_start,
+              zoom_end: @zoom_end,
+              chart_data: @chart_data
             )
           ) %>
         </div>

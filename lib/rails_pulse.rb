@@ -1,6 +1,7 @@
 require "rails_pulse/version"
 require "rails_pulse/engine"
 require "rails_pulse/configuration"
+require "rails_pulse/cleanup_service"
 
 module RailsPulse
   class << self
@@ -25,6 +26,10 @@ module RailsPulse
           Rails.logger.error "Failed to warm cache for #{metric}: #{e.message}"
         end
       end
+    end
+
+    def connects_to
+      configuration&.connects_to
     end
   end
 
