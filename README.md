@@ -108,6 +108,16 @@ Run the migrations:
 rails db:migrate
 ```
 
+Add the Rails Pulse route to your application:
+
+```ruby
+# config/routes.rb
+Rails.application.routes.draw do
+  mount RailsPulse::Engine => "/rails_pulse"
+  # ... your other routes
+end
+```
+
 ### Quick Setup
 
 Rails Pulse automatically starts collecting performance data once installed. Access your monitoring dashboard at:
