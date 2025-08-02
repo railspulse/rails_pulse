@@ -46,8 +46,11 @@ export default class extends Controller {
 
   orient() {
     computePosition(this.buttonTarget, this.menuTarget, this.#options).then(({x, y}) => {
-      this.menuTarget.style.insetInlineStart = `${x}px`
-      this.menuTarget.style.insetBlockStart  = `${y}px`
+      // Use CSS custom properties for CSP compliance
+      this.menuTarget.style.setProperty('--popover-x', `${x}px`)
+      this.menuTarget.style.setProperty('--popover-y', `${y}px`)
+      // Add class to apply the positioning
+      this.menuTarget.classList.add('positioned')
     })
   }
 

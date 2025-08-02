@@ -18,9 +18,9 @@ class RailsPulse::CspTestController < RailsPulse::ApplicationController
     # TODO: Full CSP compliance requires addressing rails_charts gem inline scripts
     response.headers["Content-Security-Policy"] = [
       "default-src 'self'",
-      "script-src 'self' 'nonce-#{request_nonce}' 'unsafe-inline'",  # rails_charts generates inline scripts
-      "style-src 'self' 'nonce-#{request_nonce}'",
-      "style-src-attr 'unsafe-inline'",  # TODO: Remove this and fix inline styles
+      "script-src 'self' 'nonce-#{request_nonce}' 'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='",
+      "style-src 'self' 'nonce-#{request_nonce}' 'sha256-WAyOw4V+FqDc35lQPyRADLBWbuNK8ahvYEaQIYF1+Ps='",
+      "style-src-attr 'unsafe-hashes' 'unsafe-inline'",  # Allow CSS custom property setting
       "img-src 'self' data:",
       "font-src 'self'",
       "connect-src 'self'",
