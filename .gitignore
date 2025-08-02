@@ -13,6 +13,7 @@
 /test/dummy/tmp/
 /test/dummy/.bundle/config
 /test/dummy/rails_pulse_test*
+/test/dummy/db/schema.rb
 
 # Environment variables
 .env
