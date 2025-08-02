@@ -83,11 +83,7 @@ jobs:
           "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
         esac
         
-        if [[ "${{ matrix.database }}" == "mysql2" ]]; then
-          BUNDLE_GEMFILE=$GEMFILE bundle install --with mysql
-        else
-          BUNDLE_GEMFILE=$GEMFILE bundle install --without mysql
-        fi
+        BUNDLE_GEMFILE=$GEMFILE bundle install
 
     - name: Setup database
       run: |
