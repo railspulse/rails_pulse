@@ -79,78 +79,9 @@ module RailsPulse
       self.query = RailsPulse::Query.find_or_create_by(normalized_sql: normalized)
     end
 
-    # Smart normalization: preserve table/column names, replace only literal values
+    # Normalize SQL query using the dedicated service
     def normalize_query_label(label)
-      return nil if label.nil?
-      return "" if label.empty?
-
-      normalized = label.dup
-
-      # Step 1: Temporarily protect quoted identifiers (backticks and double quotes that look like identifiers)
-      protected_identifiers = {}
-      identifier_counter = 0
-      
-      # Protect backticked identifiers (MySQL style)
-      normalized = normalized.gsub(/`([^`]+)`/) do |match|
-        placeholder = "__IDENTIFIER_#{identifier_counter}__"
-        protected_identifiers[placeholder] = match
-        identifier_counter += 1
-        placeholder
-      end
-      
-      # Protect double-quoted identifiers (PostgreSQL/SQL standard style)
-      # Only protect if they appear in contexts where identifiers are expected
-      normalized = normalized.gsub(/"([^"]+)"/) do |match|
-        content = $1
-        # Only protect if it looks like an identifier (no spaces, not a sentence)
-        if content.match?(/^[a-zA-Z_][a-zA-Z0-9_]*$/) || content.include?('.')
-          placeholder = "__IDENTIFIER_#{identifier_counter}__"
-          protected_identifiers[placeholder] = match
-          identifier_counter += 1
-          placeholder
-        else
-          match  # Leave it as-is for now, will be replaced as string literal
-        end
-      end
-
-      # Step 2: Replace literal values
-      # Replace floating-point numbers first
-      normalized = normalized.gsub(/(?<![a-zA-Z_])\b\d+\.\d+\b(?![a-zA-Z_])/, "?")
-      
-      # Replace integer literals
-      normalized = normalized.gsub(/(?<![a-zA-Z_])\b\d+\b(?![a-zA-Z_])/, "?")
-      
-      # Replace string literals (single quotes)
-      normalized = normalized.gsub(/'(?:[^']|'')*'/, "?")
-      
-      # Replace double-quoted string literals (not protected identifiers)
-      normalized = normalized.gsub(/"(?:[^"]|"")*"/, "?")
-      
-      # Handle boolean literals
-      normalized = normalized.gsub(/\b(true|false)\b/i, "?")
-
-      # Step 3: Handle special SQL constructs
-      # Handle IN clauses
-      normalized = normalized.gsub(/\bIN\s*\(\s*([^)]+)\)/i) do |match|
-        content = $1
-        # Count commas to determine number of values
-        value_count = content.split(',').length
-        placeholders = Array.new(value_count, "?").join(", ")
-        "IN (#{placeholders})"
-      end
-      
-      # Handle BETWEEN clauses
-      normalized = normalized.gsub(/\bBETWEEN\s+\?\s+AND\s+\?/i, "BETWEEN ? AND ?")
-
-      # Step 4: Restore protected identifiers
-      protected_identifiers.each do |placeholder, original|
-        normalized = normalized.gsub(placeholder, original)
-      end
-
-      # Step 5: Clean up and normalize whitespace
-      normalized = normalized.gsub(/\s+/, " ")
-
-      normalized.strip
+      RailsPulse::SqlQueryNormalizer.normalize(label)
     end
   end
 end
