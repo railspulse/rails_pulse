@@ -319,10 +319,8 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     )
 
     normalized = operation.send(:normalize_query_label, operation.label)
-    # The current implementation replaces integers first (\b\d+\b),
-    # which turns 19.99 into ?.?, then the float regex (\b\d+\.\d+\b) doesn't match
-    # So the actual result is "SELECT * FROM products WHERE price > ?.?"
-    assert_equal "SELECT * FROM products WHERE price > ?.?", normalized
+    # The improved implementation replaces floating-point numbers correctly
+    assert_equal "SELECT * FROM products WHERE price > ?", normalized
   end
 
   test "normalize_query_label should handle IN clauses" do
@@ -345,7 +343,8 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     )
 
     normalized = operation.send(:normalize_query_label, operation.label)
-    assert_equal "SELECT * FROM users WHERE id IN (?)", normalized
+    # The improved implementation preserves the number of parameters in IN clauses
+    assert_equal "SELECT * FROM users WHERE id IN (?, ?, ?, ?)", normalized
   end
 
   test "normalize_query_label should handle comparison operators" do
@@ -391,7 +390,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     )
 
     normalized = operation.send(:normalize_query_label, "")
-    assert_nil normalized
+    assert_equal "", normalized
 
     normalized = operation.send(:normalize_query_label, nil)
     assert_nil normalized
