@@ -3,7 +3,7 @@ module RailsPulse
     module Tables
       class SlowRoutes
         include RailsPulse::FormattingHelper
-        
+
         def to_table_data
           # Get data for this week and last week
           this_week_start = 1.week.ago.beginning_of_week
@@ -29,7 +29,7 @@ module RailsPulse
           this_week_data.map do |record|
             this_week_avg = record.avg_duration.to_f.round(0)
             last_week_avg = last_week_averages[record.path]&.round(0) || 0
-            
+
             # Calculate percentage change
             percentage_change = if last_week_avg == 0
               this_week_avg > 0 ? 100.0 : 0.0

@@ -58,16 +58,16 @@ class RailsPulse::Requests::Charts::AverageResponseTimesTest < BaseChartTest
 
     assert_instance_of Hash, result
     assert result.any?, "Chart should return some data"
-    
+
     # NOTE: There's currently a known issue where the chart's fill_missing_periods
     # method doesn't properly match groupdate result keys with time periods,
     # causing all values to be 0. The underlying data query works correctly
     # (as verified by direct groupdate calls), but the mapping logic needs fixing.
     # For now, just verify the chart returns the expected structure.
-    
+
     # Verify we get 15 days of data (2 weeks + today)
     assert_equal 15, result.keys.count
-    
+
     # All values are currently 0 due to the key matching issue
     assert result.values.all? { |v| v[:value] == 0.0 }
   end
@@ -160,7 +160,7 @@ class RailsPulse::Requests::Charts::AverageResponseTimesTest < BaseChartTest
     result = chart.to_rails_chart
 
     assert_instance_of Hash, result
-    # Chart returns data points with zeros instead of empty result  
+    # Chart returns data points with zeros instead of empty result
     assert result.any?, "Should have chart data"
     assert result.values.all? { |v| v[:value] == 0.0 }
   end
@@ -205,7 +205,7 @@ class RailsPulse::Requests::Charts::AverageResponseTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    # Chart key matching issue - returns full time range instead of just days with data  
+    # Chart key matching issue - returns full time range instead of just days with data
     assert_equal 15, result.keys.count  # 2 weeks = 15 days
     # Chart key matching issue - all values return 0
     assert result.values.all? { |v| v[:value] == 0.0 }

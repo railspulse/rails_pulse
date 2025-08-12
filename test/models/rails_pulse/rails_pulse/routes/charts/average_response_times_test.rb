@@ -721,15 +721,15 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     # Chart key matching issue affects daily grouping (returns zeros)
     assert daily_result.any?, "Daily result should have data"
     assert daily_result.values.all? { |v| v[:value] == 0.0 }
-    
+
     # Hourly grouping works correctly and returns actual values
-    assert hourly_result.any?, "Hourly result should have data"  
-    
+    assert hourly_result.any?, "Hourly result should have data"
+
     # For hourly, we should have specific values for the hours we created data
     # Expected values: 100, 200, 300 for the 3 different hours
-    expected_values = [100.0, 200.0, 300.0]
+    expected_values = [ 100.0, 200.0, 300.0 ]
     found_values = hourly_result.values.map { |vh| vh[:value] }.compact
-    
+
     # Should have at least some of our expected values
     matching_values = found_values.select { |v| expected_values.include?(v) }
     assert matching_values.any?,
@@ -807,10 +807,10 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     # NOTE: Same key matching issue as Requests chart - the underlying data
     # query works correctly but fill_missing_periods doesn't properly match
     # groupdate result keys with time periods. Verify structure for now.
-    
+
     # Should have data points for the time range
     assert result.any?, "Should have chart data"
-    
+
     # All values are currently 0 due to the key matching issue
     assert result.values.all? { |value_hash| value_hash[:value] == 0.0 }
   end
@@ -847,7 +847,7 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     # Chart returns full time range instead of just 5 days
     assert result.any?, "Should have chart data"
-    
+
     # Chart key matching issue - all values return 0
     assert result.values.all? { |value_hash| value_hash[:value] == 0.0 }
   end
