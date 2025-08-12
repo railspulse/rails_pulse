@@ -2,50 +2,41 @@
 
 <div class="row">
   <div class="grid-item">
-    <%= render 'rails_pulse/components/panel' do %>
-      <dl class="descriptive-list">
+    <%= render 'rails_pulse/components/panel', title: 'Request Details' do %>
+      <dl class="descriptive-list mbs-4">
         <dt>Route</dt>
-        <dd><%= @request.route.path_and_method %></dd>
+        <dd><%= link_to @request.route.path_and_method, route_path(@request.route) %></dd>
         <dt>Timestamp</dt>
         <dd><%= human_readable_occurred_at(@request.occurred_at) %></dd>
+        <dt>Request UUID</dt>
+        <dd><code><%= @request.request_uuid %></code></dd>
         <dt>Duration</dt>
-        <dd><%= @request.duration.to_i %> ms</dd>
+        <dd><%= @request.duration.round(2) %> ms</dd>
         <dt>Status</dt>
         <dd><%= @request.status %></dd>
+        <dt>Error</dt>
+        <dd><%= @request.is_error? ? 'Yes' : 'No' %></dd>
       </dl>
     <% end %>
   </div>
 
   <div class="grid-item">
-    <%= render 'rails_pulse/components/panel' do %>
-      <%= render 'rails_pulse/components/metric_row', { title: 'Performance Breakdown' } do %>
-        <% breakdown = operations_performance_breakdown(@request.operations) %>
-        <div class="bar-container mbs-2">
-          <% current_left = 0 %>
-          <% if breakdown[:database] > 0 %>
-            <div class="bar db" style="left: <%= current_left %>%; width: <%= breakdown[:database] %>%;" title="Database: <%= breakdown[:database] %>%"></div>
-            <% current_left += breakdown[:database] %>
-          <% end %>
-          <% if breakdown[:view] > 0 %>
-            <div class="bar view" style="left: <%= current_left %>%; width: <%= breakdown[:view] %>%;" title="View Rendering: <%= breakdown[:view] %>%"></div>
-            <% current_left += breakdown[:view] %>
-          <% end %>
-          <% if breakdown[:application] > 0 %>
-            <div class="bar app" style="left: <%= current_left %>%; width: <%= breakdown[:application] %>%;" title="Application Logic: <%= breakdown[:application] %>%"></div>
-            <% current_left += breakdown[:application] %>
-          <% end %>
-          <% if breakdown[:other] > 0 %>
-            <div class="bar other" style="left: <%= current_left %>%; width: <%= breakdown[:other] %>%;" title="Other Operations: <%= breakdown[:other] %>%"></div>
-          <% end %>
-        </div>
-
-        <div class="text-xs text-subtle mbs-1">
-          DB: <%= breakdown[:database] %>% •
-          Views: <%= breakdown[:view] %>% •
-          App: <%= breakdown[:application] %>% •
-          Other: <%= breakdown[:other] %>%
-        </div>
-      <% end %>
+    <%= render 'rails_pulse/components/panel', title: 'Performance Breakdown' do %>
+      <% breakdown = operations_performance_breakdown(@request.operations) %>
+      <dl class="descriptive-list mbs-4">
+        <dt>Database</dt>
+        <dd><%= breakdown[:database] %>% (<%= pluralize(@request.operations.by_type('sql').count, 'query') %>)</dd>
+        <dt>View Rendering</dt>
+        <dd><%= breakdown[:view] %>%</dd>
+        <dt>Application Logic</dt>
+        <dd><%= breakdown[:application] %>%</dd>
+        <dt>Other Operations</dt>
+        <dd><%= breakdown[:other] %>%</dd>
+        <dt>Total Operations</dt>
+        <dd><%= @request.operations.count %></dd>
+        <dt>Slowest Operation</dt>
+        <dd><%= @request.operations.maximum(:duration)&.round(2) %> ms</dd>
+      </dl>
     <% end %>
   </div>
 </div>

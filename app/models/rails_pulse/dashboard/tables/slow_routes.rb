@@ -2,58 +2,44 @@ module RailsPulse
   module Dashboard
     module Tables
       class SlowRoutes
+        include RailsPulse::FormattingHelper
         def to_table_data
-          # Get data for this week and last week separately
+          # Get data for this week
           this_week_start = 1.week.ago.beginning_of_week
           this_week_end = Time.current.end_of_week
-          last_week_start = 2.weeks.ago.beginning_of_week
-          last_week_end = 1.week.ago.end_of_week
 
-          # Fetch this week's data
-          this_week_data = RailsPulse::Request.joins(:route)
+          # Fetch route data for this week
+          route_data = RailsPulse::Request.joins(:route)
             .where(occurred_at: this_week_start..this_week_end)
-            .group("rails_pulse_routes.path")
-            .select("rails_pulse_routes.path, AVG(rails_pulse_requests.duration) as avg_duration, COUNT(*) as request_count")
-            .each_with_object({}) do |record, hash|
-              hash[record.path] = {
-                avg_duration: record.avg_duration.to_f.round(0),
-                request_count: record.request_count
-              }
-            end
+            .group("rails_pulse_routes.path, rails_pulse_routes.id")
+            .select("rails_pulse_routes.path, rails_pulse_routes.id, AVG(rails_pulse_requests.duration) as avg_duration, COUNT(*) as request_count, MAX(rails_pulse_requests.occurred_at) as last_seen")
+            .order("avg_duration DESC")
+            .limit(5)
 
-          # Fetch last week's data
-          last_week_data = RailsPulse::Request.joins(:route)
-            .where(occurred_at: last_week_start..last_week_end)
-            .group("rails_pulse_routes.path")
-            .select("rails_pulse_routes.path, AVG(rails_pulse_requests.duration) as avg_duration")
-            .each_with_object({}) do |record, hash|
-              hash[record.path] = record.avg_duration.to_f.round(0)
-            end
-
-          # Merge data and calculate changes
-          combined_data = this_week_data.map do |route_path, this_week_info|
-            last_week_avg = last_week_data[route_path] || 0
-            this_week_avg = this_week_info[:avg_duration]
-
-            percentage_change = if last_week_avg.zero?
-              this_week_avg > 0 ? 100.0 : 0.0
-            else
-              ((this_week_avg - last_week_avg) / last_week_avg * 100).round(1)
-            end
-
+          # Build data rows
+          data_rows = route_data.map do |record|
             {
-              route_path: route_path,
-              this_week_avg: this_week_avg,
-              last_week_avg: last_week_avg,
-              percentage_change: percentage_change,
-              request_count: this_week_info[:request_count],
-              trend: percentage_change > 5 ? "worse" : (percentage_change < -5 ? "better" : "stable")
+              route_path: record.path,
+              route_id: record.id,
+              route_link: "/rails_pulse/routes/#{record.id}",
+              average_time: record.avg_duration.to_f.round(0),
+              request_count: record.request_count,
+              last_request: time_ago_in_words(record.last_seen)
             }
           end
 
-          # Sort by this week's average (slowest first) and take top 5
-          combined_data.sort_by { |route| -route[:this_week_avg] }.first(5)
+          # Return new structure with columns and data
+          {
+            columns: [
+              { field: :route_path, label: "Route", link_to: :route_link, class: "w-auto" },
+              { field: :average_time, label: "Average Time", class: "w-32" },
+              { field: :request_count, label: "Requests", class: "w-24" },
+              { field: :last_request, label: "Last Request", class: "w-32" }
+            ],
+            data: data_rows
+          }
         end
+
       end
     end
   end

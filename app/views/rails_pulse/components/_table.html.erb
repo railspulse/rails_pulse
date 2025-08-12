@@ -1,41 +1,49 @@
 <%
   # Extract the table data from the arguments
-  table_data = defined?(table_data) ? table_data : (defined?(data) ? data : [])
+  table_data = defined?(table_data) ? table_data : (defined?(data) ? data : {})
   
-  # If table_data is empty, try to find it in the local variables
-  if table_data.empty? && local_assigns.any?
-    table_data = local_assigns.values.find { |v| v.is_a?(Array) } || []
+  # Handle both old format (array) and new format (hash with columns and data)
+  if table_data.is_a?(Array)
+    # Legacy format - assume route data
+    columns = [
+      { field: :route_path, label: 'Route' },
+      { field: :this_week_avg, label: 'This Week Avg (ms)', highlight: :trend },
+      { field: :last_week_avg, label: 'Last Week Avg (ms)' },
+      { field: :percentage_change, label: 'Change', format: :percentage, highlight: :percentage_change },
+      { field: :request_count, label: 'Requests' }
+    ]
+    data_rows = table_data
+  else
+    # New format - dynamic columns and data
+    columns = table_data[:columns] || []
+    data_rows = table_data[:data] || []
   end
+  
+  colspan = columns.length
 %>
 
 <table class="table mbs-4">
   <thead>
     <tr>
-      <th>Route</th>
-      <th>This Week Avg (ms)</th>
-      <th>Last Week Avg (ms)</th>
-      <th>Change</th>
-      <th>Requests</th>
+      <% columns.each do |column| %>
+        <th class="<%= column[:class] %>"><%= column[:label] %></th>
+      <% end %>
     </tr>
   </thead>
   <tbody>
-    <% if table_data.any? %>
-      <% table_data.each do |route_data| %>
+    <% if data_rows.any? %>
+      <% data_rows.each do |row_data| %>
         <tr>
-          <td><%= route_data[:route_path] %></td>
-          <td class="<%= route_data[:trend] == 'worse' ? 'highlight-red' : (route_data[:trend] == 'better' ? 'highlight-green' : '') %>">
-            <%= route_data[:this_week_avg] %>
-          </td>
-          <td><%= route_data[:last_week_avg] %></td>
-          <td class="<%= route_data[:percentage_change] > 5 ? 'highlight-red' : (route_data[:percentage_change] < -5 ? 'highlight-green' : '') %>">
-            <%= route_data[:percentage_change] > 0 ? '+' : '' %><%= route_data[:percentage_change] %>%
-          </td>
-          <td><%= route_data[:request_count] %></td>
+          <% columns.each do |column| %>
+            <td class="<%= column[:cell_class] %> <%= cell_highlight_class(row_data, column) %>">
+              <%= render_cell_content(row_data, column) %>
+            </td>
+          <% end %>
         </tr>
       <% end %>
     <% else %>
       <tr>
-        <td colspan="5" class="text-center text-subtle">No route data available for the selected time period</td>
+        <td colspan="<%= colspan %>" class="text-center text-subtle">No data available for the selected time period</td>
       </tr>
     <% end %>
   </tbody>

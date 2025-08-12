@@ -1,7 +1,7 @@
 module RailsPulse
   module CachedComponentHelper
     def cached_component(options)
-      cache_key = ComponentCacheKey.build(options[:id], options[:context])
+      # cache_key = ComponentCacheKey.build(options[:id], options[:context])
 
       # Add refresh action for panels if requested
       if options[:refresh_action] && options[:component] == "panel"
@@ -9,6 +9,7 @@ module RailsPulse
         options[:actions] << refresh_action_params(options[:id], options[:context], options[:content_partial])
       end
 
+      # if Rails.cache.exist?(cache_key)
       if false
         render_cached_content(options)
       else

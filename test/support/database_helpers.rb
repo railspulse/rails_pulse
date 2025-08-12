@@ -165,7 +165,7 @@ module DatabaseHelpers
 
       # Test the connection
       ActiveRecord::Base.connection.execute("SELECT 1")
-      
+
       # Configure MySQL-specific test settings
       configure_mysql_test_settings
     rescue => e
@@ -184,7 +184,7 @@ module DatabaseHelpers
     if defined?(DatabaseCleaner)
       DatabaseCleaner.strategy = :truncation
     end
-    
+
     # Disable parallel testing in Rails
     if defined?(Minitest) && Minitest.respond_to?(:parallel_executor=)
       Minitest.parallel_executor = Minitest::Parallel::Executor.new(1)

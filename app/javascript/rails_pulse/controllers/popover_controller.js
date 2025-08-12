@@ -20,8 +20,11 @@ export default class extends Controller {
     this.cleanup()
   }
 
-  show() {
+  show(event) {
+    if (event) event.preventDefault()
     this.menuTarget.showPopover({ source: this.buttonTarget })
+    // Explicitly call orient after showing to ensure positioning
+    this.orient()
     this.loadOperationDetailsIfNeeded()
   }
 
@@ -29,8 +32,11 @@ export default class extends Controller {
     this.menuTarget.hidePopover()
   }
 
-  toggle() {
+  toggle(event) {
+    event.preventDefault()
     this.menuTarget.togglePopover({ source: this.buttonTarget })
+    // Explicitly call orient after toggling to ensure positioning
+    this.orient()
     this.loadOperationDetailsIfNeeded()
   }
 

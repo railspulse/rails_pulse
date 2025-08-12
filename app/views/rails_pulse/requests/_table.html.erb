@@ -20,7 +20,7 @@
           <td class="whitespace-nowrap"><%= link_to route_request.route.path_and_method, request_path(route_request), data: { turbo_frame: '_top' } %></td>
         <% end %>
         <td class="whitespace-nowrap"><%= link_to human_readable_occurred_at(route_request.occurred_at), request_path(route_request), data: { turbo_frame: '_top' } %></td>
-        <td class="whitespace-nowrap"><%= route_request.duration.to_i %> ms</td>
+        <td class="whitespace-nowrap"><%= route_request.duration.round(2) %> ms</td>
         <td class="whitespace-nowrap"><%= route_request.status %></td>
         <td class="whitespace-nowrap text-center"><%= request_status_indicator(route_request.duration) %></td>
       </tr>

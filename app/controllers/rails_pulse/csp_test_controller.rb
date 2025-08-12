@@ -8,7 +8,7 @@ class RailsPulse::CspTestController < RailsPulse::ApplicationController
   def show
     respond_to do |format|
       format.html { render :show }
-      format.json { render json: { status: 'ok', message: 'CSP test endpoint working' } }
+      format.json { render json: { status: "ok", message: "CSP test endpoint working" } }
     end
   end
 
@@ -29,10 +29,10 @@ class RailsPulse::CspTestController < RailsPulse::ApplicationController
       "base-uri" => "'self'",
       "form-action" => "'self'"
     }
-    
+
     response.headers["Content-Security-Policy"] = csp_directives.map { |k, v| "#{k} #{v}" }.join("; ")
   end
-  
+
   def build_script_src
     [
       "'self'",
@@ -40,7 +40,7 @@ class RailsPulse::CspTestController < RailsPulse::ApplicationController
       "'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='"  # Known safe inline script
     ].join(" ")
   end
-  
+
   def build_style_src
     [
       "'self'",

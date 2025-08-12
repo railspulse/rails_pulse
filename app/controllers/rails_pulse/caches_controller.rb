@@ -73,8 +73,8 @@ module RailsPulse
         Dashboard::Charts::P95ResponseTime.new.to_chart_data
       when "dashboard_slow_routes"
         Dashboard::Tables::SlowRoutes.new.to_table_data
-      when "dashboard_fast_routes"
-        Dashboard::Tables::FastRoutes.new.to_table_data
+      when "dashboard_slow_queries"
+        Dashboard::Tables::SlowQueries.new.to_table_data
       else
         { title: "Unknown Metric", summary: "N/A" }
       end

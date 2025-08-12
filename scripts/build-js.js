@@ -6,6 +6,7 @@ const esbuild = require('esbuild');
 
 // Configuration
 const ENABLE_SOURCE_MAPS = process.env.RAILS_PULSE_SOURCE_MAPS === 'true';
+const VERBOSE = process.env.RAILS_PULSE_VERBOSE === 'true';
 const ROOT_DIR = path.dirname(__dirname);
 const OUTPUT_DIR = path.join(ROOT_DIR, 'public', 'rails-pulse-assets');
 const JS_DIR = path.join(ROOT_DIR, 'app', 'javascript', 'rails_pulse');
@@ -43,20 +44,22 @@ async function buildJS() {
 
     // ECharts is now included in the bundle for full asset independence
 
-    const outputPath = path.join(OUTPUT_DIR, 'rails-pulse.js');
-    const stats = fs.statSync(outputPath);
-    console.log(`✅ JavaScript bundle: ${path.relative(ROOT_DIR, outputPath)} (${(stats.size / 1024).toFixed(1)}KB)`);
+    if (VERBOSE) {
+      const outputPath = path.join(OUTPUT_DIR, 'rails-pulse.js');
+      const stats = fs.statSync(outputPath);
+      console.log(`✅ JavaScript bundle: ${path.relative(ROOT_DIR, outputPath)} (${(stats.size / 1024).toFixed(1)}KB)`);
 
-    if (ENABLE_SOURCE_MAPS) {
-      const mapPath = path.join(OUTPUT_DIR, 'rails-pulse.js.map');
-      if (fs.existsSync(mapPath)) {
-        console.log(`🗺️  JavaScript source map: ${path.relative(ROOT_DIR, mapPath)}`);
+      if (ENABLE_SOURCE_MAPS) {
+        const mapPath = path.join(OUTPUT_DIR, 'rails-pulse.js.map');
+        if (fs.existsSync(mapPath)) {
+          console.log(`🗺️  JavaScript source map: ${path.relative(ROOT_DIR, mapPath)}`);
+        }
       }
-    }
 
-    if (result.warnings.length > 0) {
-      console.warn('⚠️  Build warnings:');
-      result.warnings.forEach(warning => console.warn(`   ${warning.text}`));
+      if (result.warnings.length > 0) {
+        console.warn('⚠️  Build warnings:');
+        result.warnings.forEach(warning => console.warn(`   ${warning.text}`));
+      }
     }
 
   } catch (error) {
