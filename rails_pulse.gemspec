@@ -23,7 +23,7 @@ Gem::Specification.new do |spec|
     Dir["{app,config,db,lib,public}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
   end
 
-  spec.add_dependency "rails", "~> 7.1", ">= 7.1.0"
+  spec.add_dependency "rails", ">= 7.1.0", "< 9.0.0"
   spec.add_dependency "css-zero", "~> 1.1", ">= 1.1.4"
   spec.add_dependency "rails_charts", "~> 0.0", ">= 0.0.6"
   spec.add_dependency "turbo-rails", "~> 2.0.11"

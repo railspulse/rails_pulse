@@ -81,6 +81,9 @@ class ActiveSupport::TestCase
   # Disable transactional tests for MySQL to avoid savepoint issues
   self.use_transactional_tests = false if ENV["DATABASE_ADAPTER"] == "mysql2"
 
+  # Disable transactional tests for MySQL to avoid savepoint issues
+  self.use_transactional_tests = false if ENV["DATABASE_ADAPTER"] == "mysql2"
+
   # Include test helpers
   include DatabaseHelpers
   include PerformanceHelpers

@@ -184,7 +184,6 @@ module DatabaseHelpers
     if defined?(DatabaseCleaner)
       DatabaseCleaner.strategy = :truncation
     end
-
     # Disable parallel testing in Rails
     if defined?(Minitest) && Minitest.respond_to?(:parallel_executor=)
       Minitest.parallel_executor = Minitest::Parallel::Executor.new(1)

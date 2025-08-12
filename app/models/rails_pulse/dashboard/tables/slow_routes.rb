@@ -39,7 +39,6 @@ module RailsPulse
             data: data_rows
           }
         end
-
       end
     end
   end
