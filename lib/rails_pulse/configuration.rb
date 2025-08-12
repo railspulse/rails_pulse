@@ -133,7 +133,12 @@ module RailsPulse
 
     def validate_authentication_settings!
       if @authentication_enabled && @authentication_method.nil?
-        Rails.logger.warn "RailsPulse: Authentication is enabled but no authentication method is configured. This will deny all access."
+        # Use Rails.logger if available, otherwise fall back to puts (for asset precompilation)
+        if Rails.logger
+          Rails.logger.warn "RailsPulse: Authentication is enabled but no authentication method is configured. This will deny all access."
+        else
+          puts "RailsPulse: Authentication is enabled but no authentication method is configured. This will deny all access."
+        end
       end
 
       if @authentication_method && ![ Proc, Symbol, String, NilClass ].include?(@authentication_method.class)

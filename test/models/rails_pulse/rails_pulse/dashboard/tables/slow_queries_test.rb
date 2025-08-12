@@ -2,6 +2,9 @@ require "test_helper"
 
 class RailsPulse::Dashboard::Tables::SlowQueriesTest < ActiveSupport::TestCase
   def setup
+    # Ensure tables exist before creating test data
+    DatabaseHelpers.ensure_test_tables_exist
+    
     @slow_queries = RailsPulse::Dashboard::Tables::SlowQueries.new
 
     # Create test data

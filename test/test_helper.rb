@@ -57,7 +57,7 @@ end
 
 begin
   require "minitest/reporters"
-  Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
+  Minitest::Reporters.use! Minitest::Reporters::ProgressReporter.new
 rescue LoadError
   puts "Warning: minitest-reporters not available for testing"
 end
@@ -174,8 +174,20 @@ else
   end
 end
 
-# Always ensure Rails Pulse tables exist, regardless of database type
+# Always ensure Rails Pulse tables exist BEFORE any tests run
 DatabaseHelpers.ensure_test_tables_exist
+
+# Force table creation immediately in CI to avoid timing issues
+if ENV["CI"] == "true"
+  puts "Forcing table verification in CI..."
+  required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations" ]
+  missing_tables = required_tables.reject { |table| ActiveRecord::Base.connection.table_exists?(table) }
+  if missing_tables.any?
+    puts "FATAL: Required tables missing after creation: #{missing_tables.join(', ')}"
+    exit 1
+  end
+  puts "All required tables confirmed present."
+end
 
 # Display test environment information
 puts "\n" + "=" * 80

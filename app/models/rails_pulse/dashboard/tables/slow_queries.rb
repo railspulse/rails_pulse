@@ -47,8 +47,8 @@ module RailsPulse
 
           # Remove extra whitespace and truncate
           cleaned_sql = sql.gsub(/\s+/, " ").strip
-          if cleaned_sql.length > 38
-            "#{cleaned_sql[0..35]}..."
+          if cleaned_sql.length > 80
+            "#{cleaned_sql[0..79]}..."
           else
             cleaned_sql
           end

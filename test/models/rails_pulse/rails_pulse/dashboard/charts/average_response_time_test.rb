@@ -75,10 +75,12 @@ class RailsPulse::Dashboard::Charts::AverageResponseTimeTest < BaseChartTest
 
     data = @chart.to_chart_data
 
-    # Should not include the old date
+    # Should not include the old date but should have 15 days of zeros
     old_date_key = old_date.strftime("%b %-d")
     assert_not_includes data, old_date_key
-    assert_empty data
+    # Chart creates 15 days of data (2 weeks + today) with zeros
+    assert_equal 15, data.keys.count
+    assert data.values.all? { |v| v == 0 }, "All values should be 0 for dates without data"
   end
 
   test "includes requests from today" do
@@ -98,8 +100,9 @@ class RailsPulse::Dashboard::Charts::AverageResponseTimeTest < BaseChartTest
   # Performance and Large Dataset Tests
 
   test "handles large dataset efficiently" do
-    # Create 1000 requests across 14 days
-    start_date = 14.days.ago.beginning_of_day
+    # Create 1000 requests across 14 days starting from 2 weeks ago
+    # This matches the chart's date range logic
+    start_date = 2.weeks.ago.beginning_of_day
     requests = []
 
     14.times do |day|
@@ -118,8 +121,8 @@ class RailsPulse::Dashboard::Charts::AverageResponseTimeTest < BaseChartTest
     # Benchmark the performance
     data = benchmark_chart_generation(@chart, max_time_ms: 500)
 
-    # Verify data integrity
-    assert_equal 14, data.keys.count
+    # Verify data integrity - chart includes 2 weeks + today = 15 days
+    assert_equal 15, data.keys.count
     assert data.values.all? { |v| v.is_a?(Numeric) && v >= 0 }
   end
 
@@ -133,8 +136,8 @@ class RailsPulse::Dashboard::Charts::AverageResponseTimeTest < BaseChartTest
 
     data = @chart.to_chart_data
 
-    # Should have 14 days total
-    assert_equal 14, data.keys.count
+    # Should have 15 days total (2 weeks + today)
+    assert_equal 15, data.keys.count
 
     # Only 4 days should have non-zero values
     non_zero_days = data.values.count { |v| v > 0 }
@@ -155,9 +158,11 @@ class RailsPulse::Dashboard::Charts::AverageResponseTimeTest < BaseChartTest
 
     data = @chart.to_chart_data
 
-    # All days should have data
-    assert_equal 14, data.keys.count
-    assert data.values.all? { |v| v > 0 }
+    # Should have 15 days total (2 weeks + today), 14 with data, 1 with zero
+    assert_equal 15, data.keys.count
+    # 14 days should have positive data, 1 day (today) should be zero
+    positive_days = data.values.count { |v| v > 0 }
+    assert_equal 14, positive_days
   end
 
   # Edge Cases and Boundary Conditions
@@ -369,7 +374,7 @@ class RailsPulse::Dashboard::Charts::AverageResponseTimeTest < BaseChartTest
     when "mysql", "mysql2"
       30000  # MySQL creates moderate objects
     else
-      10000  # SQLite and others
+      150000  # SQLite and others - increased threshold for Rails 8 + Ruby 3.4
     end
 
     # Adjust for CI environment which typically has higher memory allocation

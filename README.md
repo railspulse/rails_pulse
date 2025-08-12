@@ -632,7 +632,7 @@ The gem is available as open source under the terms of the [MIT License](https:/
 <div align="center">
   <strong>Built with ❤️ for the Rails community</strong>
 
-  [Documentation](https://github.com/scottharvey/rails_pulse/wiki) •
-  [Issues](https://github.com/scottharvey/rails_pulse/issues) •
+  [Documentation](https://github.com/railspulse/rails_pulse/wiki) •
+  [Issues](https://github.com/railspulse/rails_pulse/issues) •
   [Contributing](CONTRIBUTING.md)
 </div>

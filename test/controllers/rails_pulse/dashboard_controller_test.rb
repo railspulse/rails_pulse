@@ -9,18 +9,6 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     super
   end
 
-  test "should get dashboard index" do
-    skip "Controller test requires full Rails Pulse setup"
-    get rails_pulse.root_path
-
-    assert_response :success
-    assert_select "title", /Rails Pulse/
-  end
-
-  test "should display performance metrics" do
-    skip "Requires full Rails Pulse dashboard setup"
-  end
-
   test "should handle time range parameter" do
     get_rails_pulse("", time_range: "24h")
     assert_successful_response
@@ -40,10 +28,6 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
   test "should display breadcrumbs" do
     get rails_pulse.root_path
     assert_response :success
-  end
-
-  test "should handle authentication when configured" do
-    skip "Requires full Rails Pulse authentication setup"
   end
 
   test "should render chart skeleton when data is loading" do

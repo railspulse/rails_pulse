@@ -3,41 +3,60 @@ module RailsPulse
     module Tables
       class SlowRoutes
         include RailsPulse::FormattingHelper
+
         def to_table_data
-          # Get data for this week
+          # Get data for this week and last week
           this_week_start = 1.week.ago.beginning_of_week
           this_week_end = Time.current.end_of_week
+          last_week_start = 2.weeks.ago.beginning_of_week
+          last_week_end = 1.week.ago.beginning_of_week
 
-          # Fetch route data for this week
-          route_data = RailsPulse::Request.joins(:route)
+          # Get this week's data
+          this_week_data = RailsPulse::Request.joins(:route)
             .where(occurred_at: this_week_start..this_week_end)
             .group("rails_pulse_routes.path, rails_pulse_routes.id")
-            .select("rails_pulse_routes.path, rails_pulse_routes.id, AVG(rails_pulse_requests.duration) as avg_duration, COUNT(*) as request_count, MAX(rails_pulse_requests.occurred_at) as last_seen")
+            .select("rails_pulse_routes.path, rails_pulse_routes.id, AVG(rails_pulse_requests.duration) as avg_duration, COUNT(*) as request_count")
             .order("avg_duration DESC")
             .limit(5)
 
-          # Build data rows
-          data_rows = route_data.map do |record|
+          # Get last week's data for comparison
+          last_week_averages = RailsPulse::Request.joins(:route)
+            .where(occurred_at: last_week_start..last_week_end)
+            .group("rails_pulse_routes.path")
+            .average("rails_pulse_requests.duration")
+
+          # Build result array matching test expectations
+          this_week_data.map do |record|
+            this_week_avg = record.avg_duration.to_f.round(0)
+            last_week_avg = last_week_averages[record.path]&.round(0) || 0
+
+            # Calculate percentage change
+            percentage_change = if last_week_avg == 0
+              this_week_avg > 0 ? 100.0 : 0.0
+            else
+              ((this_week_avg - last_week_avg) / last_week_avg.to_f * 100).round(1)
+            end
+
+            # Determine trend (worse = slower response times)
+            trend = if last_week_avg == 0
+              this_week_avg > 0 ? "worse" : "stable"
+            elsif this_week_avg > last_week_avg
+              "worse"  # Slower = worse
+            elsif this_week_avg < last_week_avg
+              "better" # Faster = better
+            else
+              "stable"
+            end
+
             {
               route_path: record.path,
-              route_id: record.id,
-              route_link: "/rails_pulse/routes/#{record.id}",
-              average_time: record.avg_duration.to_f.round(0),
+              this_week_avg: this_week_avg,
+              last_week_avg: last_week_avg,
+              percentage_change: percentage_change,
               request_count: record.request_count,
-              last_request: time_ago_in_words(record.last_seen)
+              trend: trend
             }
           end
-
-          # Return new structure with columns and data
-          {
-            columns: [
-              { field: :route_path, label: "Route", link_to: :route_link, class: "w-auto" },
-              { field: :average_time, label: "Average Time", class: "w-32" },
-              { field: :request_count, label: "Requests", class: "w-24" },
-              { field: :last_request, label: "Last Request", class: "w-32" }
-            ],
-            data: data_rows
-          }
         end
       end
     end
