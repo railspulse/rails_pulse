@@ -4,6 +4,7 @@
       <table class="table operations-table">
         <thead>
           <tr>
+            <th class="w-8"></th>
             <th class="operations-label-cell">Operation</th>
             <th class="operations-duration-cell">Duration</th>
             <th class="w-20">Impact</th>
@@ -14,54 +15,48 @@
         </thead>
         <tbody>
           <% total_request_duration = @request.duration.to_f %>
-          <% @operation_timeline.bars.each do |bar| %>
+          <% @operation_timeline.bars.each_with_index do |bar, index| %>
+            <tbody data-controller="rails-pulse--expandable-row">
+            <!-- Main operation row -->
             <tr
-              class="<%= cycle('bg-shade', 'bg-white') %>"
-              data-controller="rails-pulse--popover"
-              data-rails-pulse--popover-placement-value="top-middle"
-              data-rails-pulse--popover-target="button"
-              data-action="click->rails-pulse--popover#toggle"
+              class="<%= cycle('bg-shade', 'bg-white') %> operation-row"
+              data-rails-pulse--expandable-row-target="trigger"
+              data-operation-id="<%= bar.operation.id %>"
             >
-              <td class="operations-label-cell">
-                <%= link_to "#",
-                    class: "text-link",
-                    style: "color: #{event_color(bar.operation.operation_type)};",
-                    data: {
-                      rails_pulse__popover_target: "button",
-                      action: "rails-pulse--popover#toggle"
-                    } do %>
-                  <%= html_escape(bar.operation.label) %>
-                <% end %>
-
-              </td>
-              <td class="whitespace-nowrap">
-                <!-- Turbo Frame Popover Content -->
-                <div popover class="popover card operation-details-popover"
-                     data-rails-pulse--popover-target="menu"
-                     data-operation-url="<%= operation_path(bar.operation) %>"
-                     style="--popover-size: min(70rem); max-inline-size: 70rem;">
-                  <%= turbo_frame_tag "operation_#{bar.operation.id}_details" do %>
-                    <div class="flex items-center justify-center p-4">
-                      <%= rails_pulse_icon("loader-circle", width: "24", height: "24", class: "animate-spin") %>
-                      <span class="mls-2">Loading operation details...</span>
-                    </div>
-                  <% end %>
+              <!-- Toggle chevron column -->
+              <td class="text-center cursor-pointer"
+                  data-action="click->rails-pulse--expandable-row#toggle">
+                <div data-rails-pulse--expandable-row-target="chevron">
+                  <%= rails_pulse_icon('chevron-right', width: '16', class: 'transition-transform duration-200') %>
                 </div>
-                <%= bar.duration %> ms
               </td>
+              
+              <td class="operations-label-cell">
+                <span class="text-link" style="color: <%= event_color(bar.operation.operation_type) %>;">
+                  <%= html_escape(bar.operation.label) %>
+                </span>
+              </td>
+              
+              <td class="whitespace-nowrap">
+                <%= bar.duration.round(2) %> ms
+              </td>
+              
               <td class="whitespace-nowrap">
                 <% impact_percentage = total_request_duration > 0 ? (bar.operation.duration / total_request_duration * 100).round(1) : 0 %>
                 <%= impact_percentage %>%
               </td>
+              
               <td class="whitespace-nowrap text-center">
                 <%= operation_status_indicator(bar.operation) %>
               </td>
+              
               <td class="operations-event-cell">
                 <div
                   class="operations-event"
                   style="left: <%= bar.left_pct %>%; width: <%= bar.width_pct %>%; background-color: <%= event_color(bar.operation.operation_type) %>;">
                 </div>
               </td>
+              
               <td>
                 <%= link_to rails_pulse_icon('eye', width: '16', class: 'inline-block mbi-2'), operation_path(bar.operation), title: 'View details', data: { turbo_frame: "_top" } %>
                 <% if bar.operation.operation_type == "sql" && bar.operation.query.present? %>
@@ -69,6 +64,19 @@
                 <% end %>
               </td>
             </tr>
+            
+            <!-- Expandable details row -->
+            <tr 
+              class="operation-details-row hidden"
+              data-rails-pulse--expandable-row-target="details"
+              data-operation-id="<%= bar.operation.id %>"
+            >
+              <td colspan="7" class="p-4">
+                <%= turbo_frame_tag "operation_#{bar.operation.id}_details", data: { "operation-url": operation_path(bar.operation) } do %>
+                <% end %>
+              </td>
+            </tr>
+            </tbody>
           <% end %>
         </tbody>
       </table>

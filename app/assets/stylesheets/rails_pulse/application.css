@@ -23,6 +23,10 @@ a:hover {
   cursor: pointer;
 }
 
+.hidden {
+  display: none;
+}
+
 /* REQUEST OPERATIONS GRAPH */
 .operations-table {
   width: 100%;

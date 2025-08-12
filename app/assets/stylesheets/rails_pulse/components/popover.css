@@ -24,4 +24,13 @@
       opacity: 0; transform: var(--scale-95);
     }
   }
+
+  /* Positioning rules for Floating UI */
+  &.positioned {
+    position: fixed !important;
+    left: var(--popover-x, 0) !important;
+    top: var(--popover-y, 0) !important;
+    margin: 0 !important;
+    inset: unset !important;
+  }
 }

@@ -20,8 +20,11 @@ export default class extends Controller {
     this.cleanup()
   }
 
-  show() {
+  show(event) {
+    if (event) event.preventDefault()
     this.menuTarget.showPopover({ source: this.buttonTarget })
+    // Explicitly call orient after showing to ensure positioning
+    this.orient()
     this.loadOperationDetailsIfNeeded()
   }
 
@@ -29,8 +32,11 @@ export default class extends Controller {
     this.menuTarget.hidePopover()
   }
 
-  toggle() {
+  toggle(event) {
+    event.preventDefault()
     this.menuTarget.togglePopover({ source: this.buttonTarget })
+    // Explicitly call orient after toggling to ensure positioning
+    this.orient()
     this.loadOperationDetailsIfNeeded()
   }
 
@@ -46,8 +52,11 @@ export default class extends Controller {
 
   orient() {
     computePosition(this.buttonTarget, this.menuTarget, this.#options).then(({x, y}) => {
-      this.menuTarget.style.insetInlineStart = `${x}px`
-      this.menuTarget.style.insetBlockStart  = `${y}px`
+      // Use CSS custom properties for CSP compliance
+      this.menuTarget.style.setProperty('--popover-x', `${x}px`)
+      this.menuTarget.style.setProperty('--popover-y', `${y}px`)
+      // Add class to apply the positioning
+      this.menuTarget.classList.add('positioned')
     })
   }
 

@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+
+# Rails Pulse Development Server
+# Builds assets and starts the Rails server
+
+set -e
+
+# Parse arguments
+VERBOSE=false
+RAILS_ARGS=()
+
+for arg in "$@"; do
+  case $arg in
+    --verbose|-v)
+      VERBOSE=true
+      shift
+      ;;
+    --help|-h)
+      echo "Rails Pulse Development Server"
+      echo ""
+      echo "Usage: ./bin/dev [options] [rails server options]"
+      echo ""
+      echo "Options:"
+      echo "  -v, --verbose    Show detailed output from asset building and watching"
+      echo "  -h, --help       Show this help message"
+      echo ""
+      echo "Examples:"
+      echo "  ./bin/dev                    # Start with quiet output"
+      echo "  ./bin/dev --verbose          # Start with detailed output"
+      echo "  ./bin/dev -p 3001            # Start on port 3001"
+      echo "  ./bin/dev --verbose -p 3001  # Verbose mode on port 3001"
+      exit 0
+      ;;
+    *)
+      RAILS_ARGS+=("$arg")
+      shift
+      ;;
+  esac
+done
+
+echo "🚀 Starting Rails Pulse development server..."
+
+# We're already in the Rails Pulse root directory
+ROOT_DIR="$(pwd)"
+DUMMY_DIR="$ROOT_DIR/test/dummy"
+
+# Check if npm is available
+if ! command -v npm &> /dev/null; then
+  echo "❌ npm is required but not installed. Please install Node.js and npm."
+  exit 1
+fi
+
+# Check if node_modules exists
+if [ ! -d "node_modules" ]; then
+  echo "📦 Installing npm dependencies..."
+  if [ "$VERBOSE" = true ]; then
+    npm install
+  else
+    npm install --silent
+  fi
+fi
+
+# Start asset watching in background
+if [ "$VERBOSE" = true ]; then
+  echo "👀 Starting asset watcher..."
+  RAILS_PULSE_VERBOSE=true npm run watch &
+else
+  echo "👀 Asset watcher started"
+  npm run watch > /dev/null 2>&1 &
+fi
+WATCH_PID=$!
+
+# Function to cleanup background processes
+cleanup() {
+  echo "🛑 Stopping asset watcher..."
+  kill $WATCH_PID 2>/dev/null || true
+  exit
+}
+
+# Trap cleanup on script exit
+trap cleanup EXIT INT TERM
+
+# Initial build
+if [ "$VERBOSE" = true ]; then
+  echo "🔨 Building Rails Pulse assets..."
+  RAILS_PULSE_VERBOSE=true npm run build
+else
+  echo "🔨 Assets built successfully"
+  npm run build > /dev/null 2>&1
+fi
+
+# Detect database adapter
+cd "$DUMMY_DIR"
+DATABASE_ADAPTER=${DATABASE_ADAPTER:-$(./bin/rails runner "puts ActiveRecord::Base.connection.adapter_name" 2>/dev/null || echo "sqlite3")}
+
+# Display database adapter info
+case "$DATABASE_ADAPTER" in
+  "SQLite")
+    echo "🗂️  Database: SQLite"
+    ;;
+  "PostgreSQL"|"postgresql")
+    echo "🐘 Database: PostgreSQL"
+    ;;
+  "MySQL"|"Mysql2"|"mysql2")
+    echo "🐬 Database: MySQL"
+    ;;
+  *)
+    echo "🗄️  Database: $DATABASE_ADAPTER"
+    ;;
+esac
+
+# Start the Rails server from the dummy app directory
+echo "🌐 Starting Rails server..."
+cd "$DUMMY_DIR"
+exec ./bin/rails server "${RAILS_ARGS[@]}"

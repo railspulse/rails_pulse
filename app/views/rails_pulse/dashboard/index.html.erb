@@ -14,7 +14,7 @@
       title: 'Average Response Time',
       help_heading: 'Average Response Time',
       help_text: 'This panel measures the average server-side response time in milliseconds for all HTTP requests processed by your application. This is the time it takes from the server receiving a request until the request is returned to the client in milliseconds.',
-      actions: [{ url: routes_path, icon: 'external-link', title: 'View details' }],
+      actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
       refresh_action: true,
       content_partial: 'rails_pulse/dashboard/charts/bar_chart')
     %>
@@ -28,7 +28,7 @@
       title: 'Query Performance',
       help_heading: 'Query Performance',
       help_text: 'This panel measures the 95th percentile response time in milliseconds for queries in your application. This represents the query performance below which 95% of queries fall, indicating the upper-bound performance for most database operations.',
-      actions: [{ url: routes_path, icon: 'external-link', title: 'View details' }],
+      actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
       refresh_action: true,
       content_partial: 'rails_pulse/dashboard/charts/bar_chart')
     %>
@@ -39,10 +39,10 @@
   <div class="grid-item">
     <%= cached_component(
       component: "panel",
-      id: "dashboard_fast_routes",
-      title: 'Fastest Routes This Week',
-      help_heading: 'Fastest Routes',
-      help_text: 'This panel shows the fastest routes in your application this week compared to last week, including average response time, week-over-week change, and total request count.',
+      id: "dashboard_slow_routes",
+      title: 'Slowest Routes This Week',
+      help_heading: 'Slowest Routes',
+      help_text: 'This panel shows the slowest routes in your application this week compared to last week, including average response time, week-over-week change, and total request count.',
       refresh_action: true,
       content_partial: 'rails_pulse/dashboard/tables/standard_table',
       class: "table-container")
@@ -52,10 +52,10 @@
   <div class="grid-item">
     <%= cached_component(
       component: "panel",
-      id: "dashboard_slow_routes",
-      title: 'Slowest Routes This Week',
-      help_heading: 'Slowest Routes',
-      help_text: 'This panel shows the slowest routes in your application this week compared to last week, including average response time, week-over-week change, and total request count.',
+      id: "dashboard_slow_queries",
+      title: 'Slowest Queries This Week',
+      help_heading: 'Slowest Queries',
+      help_text: 'This panel shows the slowest database queries in your application this week, including average execution time and when they were last seen.',
       refresh_action: true,
       content_partial: 'rails_pulse/dashboard/tables/standard_table',
       class: "table-container")

@@ -10,7 +10,7 @@
     <% @table_data.each do |query| %>
       <tr>
         <td class="whitespace-nowrap"><%= human_readable_occurred_at(query.occurred_at)  %></td>
-        <td class="whitespace-nowrap"><%= query.duration.to_i %>ms</td>
+        <td class="whitespace-nowrap"><%= query.duration.round(2) %> ms</td>
       </tr>
     <% end %>
   </tbody>

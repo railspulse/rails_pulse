@@ -147,15 +147,54 @@
         </div>
       </div>
 
+      <!-- AJAX Request Test -->
+      <div class="card">
+        <div class="p-4">
+          <h2 class="text-lg font-semibold mb-3">AJAX Request Test</h2>
+          <p class="text-subtle mb-4">Testing CSP compliance for dynamic content loading:</p>
+
+          <button 
+            id="ajax-test-btn"
+            class="btn btn--primary mb-3"
+            data-testid="ajax-test-button"
+          >
+            Test AJAX Loading
+          </button>
+          
+          <div id="ajax-result" class="bg-shade border border-main rounded-md p-4">
+            <span class="text-subtle">Click button to test AJAX request...</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chart Component Test -->
+      <div class="card">
+        <div class="p-4">
+          <h2 class="text-lg font-semibold mb-3">Chart Component Test</h2>
+          <p class="text-subtle mb-4">Testing rails_charts CSP compliance:</p>
+
+          <div id="chart-container" class="bg-shade border border-main rounded-md p-4 text-center">
+            <span class="text-subtle">Chart components would render here in a real dashboard</span>
+          </div>
+        </div>
+      </div>
+
       <!-- CSP Violation Test -->
       <div class="card">
         <div class="p-4">
-          <h2 class="text-lg font-semibold mb-3">CSP Violation Test</h2>
+          <h2 class="text-lg font-semibold mb-3">CSP Violation Summary</h2>
           <p class="mb-2">Check the browser console for any CSP violations.</p>
           <p class="text-subtle mb-4">A properly implemented CSP-safe system should show zero violations.</p>
 
           <div class="bg-shade border border-main rounded-md p-4">
-            <strong class="font-semibold">Expected Result:</strong> <span class="text-subtle">No CSP violations in browser console</span>
+            <div class="mb-2">
+              <strong class="font-semibold">Expected Result:</strong> 
+              <span class="text-subtle">No CSP violations in browser console</span>
+            </div>
+            <div>
+              <strong class="font-semibold">Violation Count:</strong> 
+              <span id="violation-count" class="badge badge--secondary">0</span>
+            </div>
           </div>
         </div>
       </div>

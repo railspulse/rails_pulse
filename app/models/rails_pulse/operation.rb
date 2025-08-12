@@ -79,26 +79,9 @@ module RailsPulse
       self.query = RailsPulse::Query.find_or_create_by(normalized_sql: normalized)
     end
 
-    # Generalized method to normalize SQL queries
+    # Normalize SQL query using the dedicated service
     def normalize_query_label(label)
-      return if label.blank?
-
-      # Replace numeric values (e.g., IDs) with placeholders
-      normalized = label.gsub(/\b\d+\b/, "?")
-
-      # Replace both single-quoted and double-quoted strings with placeholders
-      normalized = normalized.gsub(/(["']).*?\1/, "?")
-
-      # Replace floating-point numbers with placeholders
-      normalized = normalized.gsub(/\b\d+\.\d+\b/, "?")
-
-      # Handle IN clauses (e.g., IN (1, 2, 3))
-      normalized = normalized.gsub(/\bIN\s*\([^)]*\)/i, "IN (?)")
-
-      # Handle comparison operators (e.g., bar_id = ?, price > ?)
-      normalized = normalized.gsub(/\b(=|>|<|>=|<=)\s*\d+\b/, "\1 ?")
-
-      normalized.strip
+      RailsPulse::SqlQueryNormalizer.normalize(label)
     end
   end
 end
