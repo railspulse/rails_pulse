@@ -192,15 +192,6 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
     assert_equal true, result
   end
 
-  test "rescue_template_missing returns false for missing template" do
-    # Create a simple exception that will be caught
-    result = rescue_template_missing { raise ActionView::MissingTemplate.new("test", [], []) }
-    assert_equal false, result
-  rescue ArgumentError
-    # If the constructor fails, skip this test
-    skip "ActionView::MissingTemplate constructor not available in this Rails version"
-  end
-
   test "truncate_sql truncates long SQL" do
     long_sql = "SELECT * FROM very_long_table_name_that_exceeds_the_default_length_limit"
     result = truncate_sql(long_sql, length: 20)

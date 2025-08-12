@@ -17,7 +17,7 @@ Gem::Specification.new do |spec|
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
 
   spec.metadata["homepage_uri"] = "https://www.railspulse.com"
-  spec.metadata["source_code_uri"] = "https://github.com/scottharvey/rails_pulse"
+  spec.metadata["source_code_uri"] = "https://github.com/railspulse/rails_pulse"
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
     Dir["{app,config,db,lib,public}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]

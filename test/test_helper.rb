@@ -57,7 +57,7 @@ end
 
 begin
   require "minitest/reporters"
-  Minitest::Reporters.use! Minitest::Reporters::SpecReporter.new
+  Minitest::Reporters.use! Minitest::Reporters::ProgressReporter.new
 rescue LoadError
   puts "Warning: minitest-reporters not available for testing"
 end
