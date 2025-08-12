@@ -108,8 +108,16 @@ module DatabaseHelpers
       t.timestamps
     end
 
-    # Add required index for queries uniqueness validation
-    connection.add_index :rails_pulse_queries, [ :normalized_sql ], unique: true, name: "index_rails_pulse_queries_on_normalized_sql"
+    # Add required index for queries uniqueness validation with MySQL compatibility
+    if connection.adapter_name.downcase.include?("mysql")
+      # MySQL requires key length for TEXT columns - use first 255 characters for uniqueness
+      connection.add_index :rails_pulse_queries, [ :normalized_sql ], unique: true, 
+                          name: "index_rails_pulse_queries_on_normalized_sql", length: { normalized_sql: 255 }
+    else
+      # PostgreSQL and SQLite don't need length specification
+      connection.add_index :rails_pulse_queries, [ :normalized_sql ], unique: true, 
+                          name: "index_rails_pulse_queries_on_normalized_sql"
+    end
 
     # Create operations table
     connection.create_table :rails_pulse_operations, force: true do |t|
