@@ -42,28 +42,37 @@ module DatabaseHelpers
         required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations" ]
 
         if required_tables.all? { |table| ActiveRecord::Base.connection.table_exists?(table) }
-          puts "Tables already exist" if ENV["VERBOSE"]
           return
         end
 
-        puts "Creating Rails Pulse test tables..." if ENV["VERBOSE"]
-
-        # Create Rails Pulse tables for testing
-        ActiveRecord::Migration.suppress_messages do
+        # Create Rails Pulse tables for testing - don't suppress messages in CI
+        if ENV["CI"] == "true"
+          puts "Creating Rails Pulse test tables..."
           create_rails_pulse_test_schema
+        else
+          ActiveRecord::Migration.suppress_messages do
+            create_rails_pulse_test_schema
+          end
         end
 
         # Verify tables were created successfully
         missing_tables = required_tables.reject { |table| ActiveRecord::Base.connection.table_exists?(table) }
         if missing_tables.any?
-          puts "Warning: Some tables were not created: #{missing_tables.join(', ')}" if ENV["VERBOSE"]
-        else
-          puts "Tables created successfully" if ENV["VERBOSE"]
+          error_msg = "Rails Pulse test tables were not created: #{missing_tables.join(', ')}"
+          puts error_msg
+          raise "#{error_msg}. Database connection: #{ActiveRecord::Base.connection.adapter_name}"
         end
       rescue => e
-        # If table creation fails, continue anyway but log details
-        puts "Warning: Table creation failed: #{e.class} - #{e.message}" if ENV["VERBOSE"]
-        puts "Backtrace: #{e.backtrace.first(3).join("\n")}" if ENV["VERBOSE"]
+        # In CI, fail fast if table creation fails
+        if ENV["CI"] == "true"
+          puts "Table creation failed: #{e.class} - #{e.message}"
+          puts "Database: #{ActiveRecord::Base.connection_db_config.database}"
+          puts "Adapter: #{ActiveRecord::Base.connection.adapter_name}"
+          raise e
+        else
+          puts "Warning: Table creation failed: #{e.class} - #{e.message}" if ENV["VERBOSE"]
+          puts "Backtrace: #{e.backtrace.first(3).join("\n")}" if ENV["VERBOSE"]
+        end
       end
     end
   end
