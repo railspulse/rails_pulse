@@ -1,5 +1,7 @@
 # Configure Rails Environment
 ENV["RAILS_ENV"] = "test"
+# Disable parallel testing completely
+ENV["PARALLEL_WORKERS"] = "0"
 
 # Load environment variables from .env file
 begin
@@ -73,9 +75,15 @@ Dir[File.expand_path("support/**/*.rb", __dir__)].each { |f| require f }
 
 # Configure fast testing
 class ActiveSupport::TestCase
-  # Disable parallel testing to avoid race conditions with table creation
-  # Force disable parallel testing by setting workers to 1
-  parallelize(workers: 1) if respond_to?(:parallelize)
+  # Completely disable parallel testing to avoid race conditions with table creation
+  # Override the parallel executor to prevent any parallel execution
+  if defined?(Minitest::Parallel)
+    class << self
+      def parallelize(workers: 1)
+        # Do nothing - completely disable parallel testing
+      end
+    end
+  end
 
   # Disable transactional tests for MySQL to avoid savepoint issues
   self.use_transactional_tests = false if ENV["DATABASE_ADAPTER"] == "mysql2"
