@@ -31,10 +31,10 @@
   - [Cleanup Configuration](#cleanup-configuration)
   - [Manual Cleanup Operations](#manual-cleanup-operations)
   - [How Cleanup Works](#how-cleanup-works)
-- [Multiple Database Support](#multiple-database-support)
+- [Separate Database Support](#separate-database-support)
   - [Configuration](#configuration)
   - [Database Configuration](#database-configuration)
-  - [Migration](#migration)
+  - [Schema Loading](#schema-loading)
 - [Testing](#testing)
 - [Technology Stack](#technology-stack)
 - [Advantages Over Other Solutions](#advantages-over-other-solutions)
@@ -342,14 +342,18 @@ RailsPulse::CleanupJob.perform_later
 
 This two-phase approach ensures you keep the most valuable recent performance data while maintaining manageable database sizes.
 
-## Multiple Database Support
+## Separate Database Support
 
-Rails Pulse supports storing performance monitoring data in a separate database. This is particularly useful for:
+Rails Pulse supports storing performance monitoring data in a **separate database**. By default, Rails Pulse stores data in your main application database alongside your existing tables.
+
+**Use a separate database when you want:**
 
 - **Isolating monitoring data** from your main application database
 - **Using different database engines** optimized for time-series data
 - **Scaling monitoring independently** from your application
 - **Simplified backup strategies** with separate retention policies
+
+**For shared database setup (default)**, no database configuration is needed - simply run `rails db:prepare` after installation.
 
 ### Configuration
 
@@ -411,17 +415,25 @@ production:
 
 ### Schema Loading
 
-When using a separate database, Rails Pulse uses a schema-based approach similar to solid_queue:
+#### Default Setup (Shared Database)
+For most installations where Rails Pulse data shares your main database:
 
 ```bash
-# Load Rails Pulse schema on the configured database
 rails db:prepare
-
-# This will automatically load the Rails Pulse schema
-# alongside your main application schema
 ```
 
-The installation command creates `db/rails_pulse_schema.rb` containing all the necessary table definitions. This schema-based approach provides:
+That's it! The schema loads into your existing database alongside your application tables.
+
+#### Separate Database Setup
+When using a separate database with the configuration above:
+
+```bash
+rails db:prepare
+```
+
+This automatically loads the Rails Pulse schema on the configured separate database.
+
+The installation command creates `db/rails_pulse_schema.rb` containing all necessary table definitions. This schema-based approach provides:
 
 - **Clean Installation**: No migration clutter in new Rails apps
 - **Database Flexibility**: Easy separate database configuration  
