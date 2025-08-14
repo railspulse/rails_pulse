@@ -81,9 +81,6 @@ class ActiveSupport::TestCase
   # Disable transactional tests for MySQL to avoid savepoint issues
   self.use_transactional_tests = false if ENV["DATABASE_ADAPTER"] == "mysql2"
 
-  # Disable transactional tests for MySQL to avoid savepoint issues
-  self.use_transactional_tests = false if ENV["DATABASE_ADAPTER"] == "mysql2"
-
   # Include test helpers
   include DatabaseHelpers
   include PerformanceHelpers
@@ -111,9 +108,13 @@ class ActiveSupport::TestCase
     end
   end
 
-  # Configure database_cleaner - will be configured after database connection
+  # Configure database_cleaner - use different strategies based on database
   if defined?(DatabaseCleaner)
-    DatabaseCleaner.strategy = :transaction  # Default, will be changed for MySQL
+    if ENV["DATABASE_ADAPTER"] == "mysql2"
+      DatabaseCleaner.strategy = :truncation
+    else
+      DatabaseCleaner.strategy = :transaction
+    end
     DatabaseCleaner.start
   end
 
