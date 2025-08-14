@@ -73,10 +73,8 @@ Dir[File.expand_path("support/**/*.rb", __dir__)].each { |f| require f }
 
 # Configure fast testing
 class ActiveSupport::TestCase
-  # Enable parallel testing for speed (Rails 8.0+ only, but not for MySQL)
-  if Rails.version.to_f >= 8.0 && ENV["DATABASE_ADAPTER"] != "mysql2"
-    parallelize(workers: :number_of_processors)
-  end
+  # Disable parallel testing to avoid race conditions with table creation
+  # parallelize(workers: :number_of_processors)
 
   # Disable transactional tests for MySQL to avoid savepoint issues
   self.use_transactional_tests = false if ENV["DATABASE_ADAPTER"] == "mysql2"
@@ -111,7 +109,8 @@ class ActiveSupport::TestCase
   # Configure database_cleaner - use different strategies based on database
   if defined?(DatabaseCleaner)
     if ENV["DATABASE_ADAPTER"] == "mysql2"
-      DatabaseCleaner.strategy = :truncation
+      # Use deletion strategy for MySQL to avoid all transaction issues
+      DatabaseCleaner.strategy = :deletion
     else
       DatabaseCleaner.strategy = :transaction
     end

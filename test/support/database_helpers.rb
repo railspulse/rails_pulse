@@ -199,7 +199,7 @@ module DatabaseHelpers
   def self.configure_mysql_test_settings
     # Configure database cleaner for MySQL
     if defined?(DatabaseCleaner)
-      DatabaseCleaner.strategy = :truncation
+      DatabaseCleaner.strategy = :deletion
     end
     # Disable parallel testing in Rails
     if defined?(Minitest) && Minitest.respond_to?(:parallel_executor=)
