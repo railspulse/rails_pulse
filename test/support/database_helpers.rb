@@ -205,11 +205,9 @@ module DatabaseHelpers
     # Configure MySQL thread concurrency to prevent parallel execution issues
     if ActiveRecord::Base.connection.adapter_name == "Mysql2"
       begin
-        # Limit InnoDB thread concurrency to 1 to avoid savepoint issues
-        ActiveRecord::Base.connection.execute("SET GLOBAL innodb_thread_concurrency = 1")
-        # Also set session-level setting
+        # Set session-level thread concurrency (doesn't require GLOBAL privileges)
         ActiveRecord::Base.connection.execute("SET SESSION innodb_thread_concurrency = 1")
-        puts "MySQL thread concurrency limited to 1"
+        puts "MySQL thread concurrency limited to 1 for session"
       rescue => e
         puts "Warning: Could not set MySQL thread concurrency: #{e.message}"
       end
