@@ -17,7 +17,7 @@ require_relative "../test/dummy/config/environment"
 if ENV["DATABASE_ADAPTER"] == "mysql2" || ENV["DATABASE_ADAPTER"] == "mysql"
   require_relative "support/database_helpers"
   DatabaseHelpers.configure_test_database
-  
+
   # Configure MySQL to prevent parallel execution issues
   DatabaseHelpers.configure_mysql_test_settings
 end

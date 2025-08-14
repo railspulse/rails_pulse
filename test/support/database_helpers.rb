@@ -201,7 +201,7 @@ module DatabaseHelpers
     if defined?(DatabaseCleaner)
       DatabaseCleaner.strategy = :deletion
     end
-    
+
     # Configure MySQL thread concurrency to prevent parallel execution issues
     if ActiveRecord::Base.connection.adapter_name == "Mysql2"
       begin
@@ -214,7 +214,7 @@ module DatabaseHelpers
         puts "Warning: Could not set MySQL thread concurrency: #{e.message}"
       end
     end
-    
+
     # Disable parallel testing in Rails
     if defined?(Minitest) && Minitest.respond_to?(:parallel_executor=)
       Minitest.parallel_executor = Minitest::Parallel::Executor.new(1)
