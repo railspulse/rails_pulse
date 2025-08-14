@@ -102,10 +102,10 @@ Generate the installation files:
 rails generate rails_pulse:install
 ```
 
-Run the migrations:
+Load the database schema:
 
 ```bash
-rails db:migrate
+rails db:prepare
 ```
 
 Add the Rails Pulse route to your application:
@@ -380,6 +380,7 @@ production:
   rails_pulse:
     adapter: sqlite3
     database: storage/rails_pulse_production.sqlite3
+    migrations_paths: db/rails_pulse_migrate
     pool: 5
     timeout: 5000
 
@@ -392,6 +393,7 @@ production:
     username: rails_pulse_user
     password: <%= Rails.application.credentials.dig(:rails_pulse, :database_password) %>
     host: localhost
+    migrations_paths: db/rails_pulse_migrate
     pool: 5
 
 # For MySQL
@@ -403,20 +405,28 @@ production:
     username: rails_pulse_user
     password: <%= Rails.application.credentials.dig(:rails_pulse, :database_password) %>
     host: localhost
+    migrations_paths: db/rails_pulse_migrate
     pool: 5
 ```
 
-### Migration
+### Schema Loading
 
-When using a separate database, run migrations targeting the Rails Pulse database:
+When using a separate database, Rails Pulse uses a schema-based approach similar to solid_queue:
 
 ```bash
-# Run Rails Pulse migrations on the configured database
-rails db:migrate
+# Load Rails Pulse schema on the configured database
+rails db:prepare
 
-# If you need to run migrations on a specific database
-RAILS_ENV=production rails db:migrate
+# This will automatically load the Rails Pulse schema
+# alongside your main application schema
 ```
+
+The installation command creates `db/rails_pulse_schema.rb` containing all the necessary table definitions. This schema-based approach provides:
+
+- **Clean Installation**: No migration clutter in new Rails apps
+- **Database Flexibility**: Easy separate database configuration  
+- **Version Compatibility**: Schema adapts to your Rails version automatically
+- **Future Migrations**: Schema changes will come as regular migrations when needed
 
 **Note:** Rails Pulse maintains full backward compatibility. If no `connects_to` configuration is provided, all data will be stored in your main application database as before.
 
