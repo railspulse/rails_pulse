@@ -12,6 +12,7 @@ namespace :db do
     end
   end
 
-  # Hook into db:prepare to load schema
+  # Hook into common database tasks to load schema
   task prepare: "schema:load_rails_pulse"
+  task setup: "schema:load_rails_pulse"
 end

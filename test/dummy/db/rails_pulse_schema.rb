@@ -12,7 +12,7 @@ RailsPulse::Schema = lambda do |connection|
     t.timestamps
   end
 
-  connection.add_index :rails_pulse_routes, [:method, :path], unique: true, name: 'index_rails_pulse_routes_on_method_and_path'
+  connection.add_index :rails_pulse_routes, [ :method, :path ], unique: true, name: "index_rails_pulse_routes_on_method_and_path"
 
   connection.create_table :rails_pulse_queries do |t|
     t.string :normalized_sql, limit: 1000, null: false, comment: "Normalized SQL query string (e.g., SELECT * FROM users WHERE id = ?)"
@@ -32,9 +32,9 @@ RailsPulse::Schema = lambda do |connection|
     t.timestamps
   end
 
-  connection.add_index :rails_pulse_requests, :occurred_at, name: 'index_rails_pulse_requests_on_occurred_at'
-  connection.add_index :rails_pulse_requests, :request_uuid, unique: true, name: 'index_rails_pulse_requests_on_request_uuid'
-  connection.add_index :rails_pulse_requests, [:route_id, :occurred_at], name: 'index_rails_pulse_requests_on_route_id_and_occurred_at'
+  connection.add_index :rails_pulse_requests, :occurred_at, name: "index_rails_pulse_requests_on_occurred_at"
+  connection.add_index :rails_pulse_requests, :request_uuid, unique: true, name: "index_rails_pulse_requests_on_request_uuid"
+  connection.add_index :rails_pulse_requests, [ :route_id, :occurred_at ], name: "index_rails_pulse_requests_on_route_id_and_occurred_at"
 
   connection.create_table :rails_pulse_operations do |t|
     t.references :request, null: false, foreign_key: { to_table: :rails_pulse_requests }, comment: "Link to the request"
@@ -48,11 +48,11 @@ RailsPulse::Schema = lambda do |connection|
     t.timestamps
   end
 
-  connection.add_index :rails_pulse_operations, :operation_type, name: 'index_rails_pulse_operations_on_operation_type'
-  connection.add_index :rails_pulse_operations, :occurred_at, name: 'index_rails_pulse_operations_on_occurred_at'
-  connection.add_index :rails_pulse_operations, [:query_id, :occurred_at], name: 'index_rails_pulse_operations_on_query_and_time'
-  connection.add_index :rails_pulse_operations, [:query_id, :duration, :occurred_at], name: 'index_rails_pulse_operations_query_performance'
-  connection.add_index :rails_pulse_operations, [:occurred_at, :duration, :operation_type], name: 'index_rails_pulse_operations_on_time_duration_type'
+  connection.add_index :rails_pulse_operations, :operation_type, name: "index_rails_pulse_operations_on_operation_type"
+  connection.add_index :rails_pulse_operations, :occurred_at, name: "index_rails_pulse_operations_on_occurred_at"
+  connection.add_index :rails_pulse_operations, [ :query_id, :occurred_at ], name: "index_rails_pulse_operations_on_query_and_time"
+  connection.add_index :rails_pulse_operations, [ :query_id, :duration, :occurred_at ], name: "index_rails_pulse_operations_query_performance"
+  connection.add_index :rails_pulse_operations, [ :occurred_at, :duration, :operation_type ], name: "index_rails_pulse_operations_on_time_duration_type"
 end
 
 if defined?(RailsPulse::ApplicationRecord)

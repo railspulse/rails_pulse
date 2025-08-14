@@ -43,7 +43,7 @@ This project follows the [Contributor Covenant Code of Conduct](https://www.cont
 3. **Set up the test database:**
    ```bash
    cd test/dummy
-   rails db:setup
+   rails db:prepare
    cd ../..
    ```
 

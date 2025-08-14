@@ -4,7 +4,7 @@ module RailsPulse
       source_root File.expand_path("templates", __dir__)
 
       desc "Install Rails Pulse with schema-based setup"
-      
+
       def copy_schema
         copy_file "db/rails_pulse_schema.rb", "db/rails_pulse_schema.rb"
       end
