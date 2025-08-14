@@ -1,5 +1,8 @@
 require "bundler/setup"
 
+# Load environment variables from .env file
+require "dotenv/load" if File.exist?(".env")
+
 APP_RAKEFILE = File.expand_path("test/dummy/Rakefile", __dir__)
 load "rails/tasks/engine.rake"
 load "rails/tasks/statistics.rake"

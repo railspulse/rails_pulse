@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         database: ["sqlite3", "postgresql", "mysql2"]
-        rails: ["7.1.0", "7.2.0", "8.0.0"]
+        rails: ["7.2.0", "8.0.0"]
 
     services:
       postgres:
@@ -78,7 +78,6 @@ jobs:
       run: |
         # Map Rails version to gemfile
         case "${{ matrix.rails }}" in
-          "7.1.0") GEMFILE=gemfiles/rails_7_1.gemfile ;;
           "7.2.0") GEMFILE=gemfiles/rails_7_2.gemfile ;;
           "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
         esac
@@ -108,7 +107,6 @@ jobs:
       run: |
         # Set the appropriate gemfile for the Rails version
         case "${{ matrix.rails }}" in
-          "7.1.0") GEMFILE=gemfiles/rails_7_1.gemfile ;;
           "7.2.0") GEMFILE=gemfiles/rails_7_2.gemfile ;;
           "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
         esac
