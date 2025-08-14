@@ -183,8 +183,6 @@ module DatabaseHelpers
       # Test the connection
       ActiveRecord::Base.connection.execute("SELECT 1")
 
-      # Configure MySQL-specific test settings
-      configure_mysql_test_settings
     rescue => e
       retries -= 1
       if retries > 0
@@ -196,28 +194,6 @@ module DatabaseHelpers
     end
   end
 
-  def self.configure_mysql_test_settings
-    # Configure database cleaner for MySQL
-    if defined?(DatabaseCleaner)
-      DatabaseCleaner.strategy = :deletion
-    end
-
-    # Configure MySQL thread concurrency to prevent parallel execution issues
-    if ActiveRecord::Base.connection.adapter_name == "Mysql2"
-      begin
-        # Set session-level thread concurrency (doesn't require GLOBAL privileges)
-        ActiveRecord::Base.connection.execute("SET SESSION innodb_thread_concurrency = 1")
-        puts "MySQL thread concurrency limited to 1 for session"
-      rescue => e
-        puts "Warning: Could not set MySQL thread concurrency: #{e.message}"
-      end
-    end
-
-    # Disable parallel testing in Rails
-    if defined?(Minitest) && Minitest.respond_to?(:parallel_executor=)
-      Minitest.parallel_executor = Minitest::Parallel::Executor.new(1)
-    end
-  end
 
   def self.create_mysql_database_if_needed
     # Connect to MySQL server (not specific database) to create the test database

@@ -18,8 +18,6 @@ if ENV["DATABASE_ADAPTER"] == "mysql2" || ENV["DATABASE_ADAPTER"] == "mysql"
   require_relative "support/database_helpers"
   DatabaseHelpers.configure_test_database
 
-  # Configure MySQL to prevent parallel execution issues
-  DatabaseHelpers.configure_mysql_test_settings
 end
 # Only use dummy app migrations to avoid conflicts
 ActiveRecord::Migrator.migrations_paths = [
@@ -78,18 +76,9 @@ Dir[File.expand_path("support/**/*.rb", __dir__)].each { |f| require f }
 
 # Configure fast testing
 class ActiveSupport::TestCase
-  # Completely disable parallel testing to avoid race conditions with table creation
-  # Override the parallel executor to prevent any parallel execution
-  if defined?(Minitest::Parallel)
-    class << self
-      def parallelize(workers: 1)
-        # Do nothing - completely disable parallel testing
-      end
-    end
-  end
+  # Disable parallel testing to avoid race conditions with table creation
+  parallelize(workers: 1) if respond_to?(:parallelize)
 
-  # Disable transactional tests for MySQL to avoid savepoint issues
-  self.use_transactional_tests = false if ENV["DATABASE_ADAPTER"] == "mysql2"
 
   # Include test helpers
   include DatabaseHelpers
@@ -118,14 +107,9 @@ class ActiveSupport::TestCase
     end
   end
 
-  # Configure database_cleaner - use different strategies based on database
+  # Configure database_cleaner
   if defined?(DatabaseCleaner)
-    if ENV["DATABASE_ADAPTER"] == "mysql2"
-      # Use deletion strategy for MySQL to avoid all transaction issues
-      DatabaseCleaner.strategy = :deletion
-    else
-      DatabaseCleaner.strategy = :transaction
-    end
+    DatabaseCleaner.strategy = :transaction
     DatabaseCleaner.start
   end
 
