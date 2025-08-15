@@ -1,5 +1,4 @@
 require "rails_pulse/version"
-require "rails_pulse/migration"
 require "rails_pulse/middleware/request_collector"
 require "rails_pulse/middleware/asset_server"
 require "rails_pulse/subscribers/operation_subscriber"

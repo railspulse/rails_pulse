@@ -31,10 +31,10 @@
   - [Cleanup Configuration](#cleanup-configuration)
   - [Manual Cleanup Operations](#manual-cleanup-operations)
   - [How Cleanup Works](#how-cleanup-works)
-- [Multiple Database Support](#multiple-database-support)
+- [Separate Database Support](#separate-database-support)
   - [Configuration](#configuration)
   - [Database Configuration](#database-configuration)
-  - [Migration](#migration)
+  - [Schema Loading](#schema-loading)
 - [Testing](#testing)
 - [Technology Stack](#technology-stack)
 - [Advantages Over Other Solutions](#advantages-over-other-solutions)
@@ -102,10 +102,10 @@ Generate the installation files:
 rails generate rails_pulse:install
 ```
 
-Run the migrations:
+Load the database schema:
 
 ```bash
-rails db:migrate
+rails db:prepare
 ```
 
 Add the Rails Pulse route to your application:
@@ -342,14 +342,18 @@ RailsPulse::CleanupJob.perform_later
 
 This two-phase approach ensures you keep the most valuable recent performance data while maintaining manageable database sizes.
 
-## Multiple Database Support
+## Separate Database Support
 
-Rails Pulse supports storing performance monitoring data in a separate database. This is particularly useful for:
+Rails Pulse supports storing performance monitoring data in a **separate database**. By default, Rails Pulse stores data in your main application database alongside your existing tables.
+
+**Use a separate database when you want:**
 
 - **Isolating monitoring data** from your main application database
 - **Using different database engines** optimized for time-series data
 - **Scaling monitoring independently** from your application
 - **Simplified backup strategies** with separate retention policies
+
+**For shared database setup (default)**, no database configuration is needed - simply run `rails db:prepare` after installation.
 
 ### Configuration
 
@@ -380,6 +384,7 @@ production:
   rails_pulse:
     adapter: sqlite3
     database: storage/rails_pulse_production.sqlite3
+    migrations_paths: db/rails_pulse_migrate
     pool: 5
     timeout: 5000
 
@@ -392,6 +397,7 @@ production:
     username: rails_pulse_user
     password: <%= Rails.application.credentials.dig(:rails_pulse, :database_password) %>
     host: localhost
+    migrations_paths: db/rails_pulse_migrate
     pool: 5
 
 # For MySQL
@@ -403,20 +409,36 @@ production:
     username: rails_pulse_user
     password: <%= Rails.application.credentials.dig(:rails_pulse, :database_password) %>
     host: localhost
+    migrations_paths: db/rails_pulse_migrate
     pool: 5
 ```
 
-### Migration
+### Schema Loading
 
-When using a separate database, run migrations targeting the Rails Pulse database:
+#### Default Setup (Shared Database)
+For most installations where Rails Pulse data shares your main database:
 
 ```bash
-# Run Rails Pulse migrations on the configured database
-rails db:migrate
-
-# If you need to run migrations on a specific database
-RAILS_ENV=production rails db:migrate
+rails db:prepare
 ```
+
+That's it! The schema loads into your existing database alongside your application tables.
+
+#### Separate Database Setup
+When using a separate database with the configuration above:
+
+```bash
+rails db:prepare
+```
+
+This automatically loads the Rails Pulse schema on the configured separate database.
+
+The installation command creates `db/rails_pulse_schema.rb` containing all necessary table definitions. This schema-based approach provides:
+
+- **Clean Installation**: No migration clutter in new Rails apps
+- **Database Flexibility**: Easy separate database configuration  
+- **Version Compatibility**: Schema adapts to your Rails version automatically
+- **Future Migrations**: Schema changes will come as regular migrations when needed
 
 **Note:** Rails Pulse maintains full backward compatibility. If no `connects_to` configuration is provided, all data will be stored in your main application database as before.
 
