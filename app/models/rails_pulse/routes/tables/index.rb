@@ -21,7 +21,6 @@ module RailsPulse
           status_sql = build_status_sql(thresholds)
 
           @ransack_query.result(distinct: false)
-            .left_joins(:requests)
             .group("rails_pulse_routes.id")
             .select(
               "rails_pulse_routes.*",
