@@ -59,6 +59,8 @@ module StubHelpers
     chart = mock("chart")
     chart.stubs(:to_html).returns("<div>Mock Chart</div>")
     chart.stubs(:data).returns([ 100, 120, 95 ])
+    chart.stubs(:js_code).returns("console.log('mock chart');")
+    chart.stubs(:to_s).returns("<div>Mock Chart</div>")
     chart
   end
 

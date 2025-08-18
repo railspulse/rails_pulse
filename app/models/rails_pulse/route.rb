@@ -56,12 +56,6 @@ module RailsPulse
       Arel.sql("COUNT(rails_pulse_requests.id)")
     end
 
-    # Remove the problematic ransacker that causes SQL syntax errors
-    # The status_indicator will be handled differently or removed from filtering
-    # ransacker :status_indicator do
-    #   # Removed to fix SQL generation issues in tests
-    # end
-
     def to_breadcrumb
       path
     end

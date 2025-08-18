@@ -60,10 +60,10 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     assert_instance_of Hash, result
 
     # Should have data for the day we created requests
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     assert_includes result, expected_timestamp
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 } # Average of 100 and 200
+    # Should calculate correct average: (100+200)/2 = 150.0
+    assert_equal 150.0, result[expected_timestamp][:value]
   end
 
   # General routes data path tests (when route is nil)
@@ -94,10 +94,10 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     assert_instance_of Hash, result
 
     # Should have data for the day we created requests
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     assert_includes result, expected_timestamp
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 } # Average of 75 and 125
+    # Should calculate correct average: (75+125)/2 = 100.0
+    assert_equal 100.0, result[expected_timestamp][:value]
   end
 
   # Time normalization tests
@@ -123,8 +123,8 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     # Should normalize to beginning of day
     expected_timestamp = specific_time.beginning_of_day.to_i
     assert_includes result, expected_timestamp
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should return the duration value: 125.0
+    assert_equal 125.0, result[expected_timestamp][:value]
   end
 
   test "normalizes timestamps correctly for hourly grouping" do
@@ -176,8 +176,8 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     assert_instance_of Hash, result[timestamp]
     assert_includes result[timestamp], :value
     assert_instance_of Float, result[timestamp][:value]
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should return the duration value: 175.0
+    assert_equal 175.0, result[timestamp][:value]
   end
 
   # Edge cases
@@ -192,9 +192,8 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     result = chart.to_rails_chart
 
     assert_instance_of Hash, result
-    # Chart returns data points with zeros instead of empty result
-    assert result.any?, "Should have chart data"
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should be empty when no data exists (simplified implementation behavior)
+    assert result.empty?, "Should be empty when no data exists"
   end
 
   test "handles nil average durations correctly" do
@@ -208,10 +207,8 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     result = chart.to_rails_chart
 
     assert_instance_of Hash, result
-    # Should be empty when no data exists
-    # Chart returns data points with zeros instead of empty result
-    assert result.any?, "Should have chart data"
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should be empty when no data exists (simplified implementation behavior)
+    assert result.empty?, "Should be empty when no data exists"
   end
 
   # Multiple periods test
@@ -240,9 +237,12 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    # Chart key matching issue - returns full time range instead of just days with data
+    # Should have data for both days
     assert result.any?, "Should have chart data"
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    assert_equal 2, result.size, "Should have 2 data points for 2 different days"
+    # Each day should have its respective value: 100.0 and 200.0
+    assert result.values.any? { |v| v[:value] == 100.0 }, "Should include day1 value (100.0)"
+    assert result.values.any? { |v| v[:value] == 200.0 }, "Should include day2 value (200.0)"
   end
 
   # Configuration tests
@@ -300,10 +300,10 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     # Should use only the specific route's data (100), not other route's data (500)
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    assert_includes result, expected_timestamp
+    assert_equal 100.0, result[expected_timestamp][:value]
   end
 
   test "uses general routes data path when route is nil" do
@@ -329,10 +329,10 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    expected_timestamp = date.to_i
-    # Should aggregate data from all routes (average of 100 and 200)
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    expected_timestamp = date.beginning_of_day.to_i
+    # Should aggregate data from all routes: (100+200)/2 = 150.0
+    assert_includes result, expected_timestamp
+    assert_equal 150.0, result[expected_timestamp][:value]
   end
 
   # Performance scenario tests
@@ -357,10 +357,10 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     assert_includes result, expected_timestamp
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should calculate correct average: (50+100+150+200+250)/5 = 150.0
+    assert_equal 150.0, result[expected_timestamp][:value]
   end
 
   # Edge case: multiple requests at same time
@@ -387,8 +387,8 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     expected_timestamp = timestamp.beginning_of_day.to_i
     assert_includes result, expected_timestamp
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should calculate correct average: (100 + 200 + 300) / 3 = 200.0
+    assert_equal 200.0, result[expected_timestamp][:value]
   end
 
   # Time zone handling test
@@ -423,8 +423,8 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     # All should be grouped into same day
     expected_timestamp = base_date.to_i
     assert_includes result, expected_timestamp
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should calculate correct average: (100+200+300)/3 = 200.0
+    assert_equal 200.0, result[expected_timestamp][:value]
   end
 
   # Zero value handling
@@ -445,10 +445,10 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     assert_includes result, expected_timestamp
-    # Chart key matching issue - all values return 0 (which happens to match the expected 0.0)
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should return the duration value: 0.0
+    assert_equal 0.0, result[expected_timestamp][:value]
   end
 
   # Integration tests with route ransackers
@@ -474,10 +474,10 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     assert_includes result, expected_timestamp
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should calculate correct average: (80+120+160+200+240)/5 = 160.0
+    assert_equal 160.0, result[expected_timestamp][:value]
 
     # Verify this matches what the route's average_response_time_ms ransacker would find
     route_with_avg = @route.reload
@@ -507,12 +507,12 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     assert_includes result, expected_timestamp
 
-    # Chart key matching issue - all values return 0
+    # Should calculate average including outliers: (50+60+70+80+90+5000+15000)/7 ≈ 2907.14
     chart_average = result[expected_timestamp][:value]
-    assert_equal 0.0, chart_average
+    assert_in_delta 2907.14, chart_average, 0.01
   end
 
   test "database compatibility with chart grouping and averaging" do
@@ -536,13 +536,12 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     assert_includes result, expected_timestamp
 
     # Should handle fractional averages correctly
     # Average of [100.1, 100.5, 100.9, 101.1, 101.5] = 100.82
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    assert_equal 100.82, result[expected_timestamp][:value]
   end
 
   test "concurrent access with chart calculations" do
@@ -574,8 +573,8 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
       assert_equal first_value, result[expected_timestamp][:value]
     end
 
-    # Chart key matching issue - all values return 0
-    assert_equal 0.0, first_value
+    # Should calculate correct average: (20+40+60+80+100+120+140+160+180+200)/10 = 110.0
+    assert_equal 110.0, first_value
   end
 
   test "memory efficiency with large chart datasets" do
@@ -648,9 +647,16 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     )
     result_route2 = chart_route2.to_rails_chart
 
-    # Chart key matching issue - all values return 0 for both routes
-    assert result_route1.values.all? { |v| v[:value] == 0.0 }
-    assert result_route2.values.all? { |v| v[:value] == 0.0 }
+    # Each route should show its own calculated average
+    expected_timestamp = date.beginning_of_day.to_i
+    
+    # Route 1: (100+200+300)/3 = 200.0
+    assert_includes result_route1, expected_timestamp
+    assert_equal 200.0, result_route1[expected_timestamp][:value]
+    
+    # Route 2: (1000+2000+3000)/3 = 2000.0
+    assert_includes result_route2, expected_timestamp  
+    assert_equal 2000.0, result_route2[expected_timestamp][:value]
   end
 
   test "timezone handling in chart time grouping" do
@@ -718,9 +724,11 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     )
     hourly_result = hourly_chart.to_rails_chart
 
-    # Chart key matching issue affects daily grouping (returns zeros)
+    # Daily grouping should average all requests from the same day
     assert daily_result.any?, "Daily result should have data"
-    assert daily_result.values.all? { |v| v[:value] == 0.0 }
+    expected_daily_timestamp = base_date.beginning_of_day.to_i
+    assert_includes daily_result, expected_daily_timestamp
+    assert_equal 200.0, daily_result[expected_daily_timestamp][:value] # (100+200+300)/3
 
     # Hourly grouping works correctly and returns actual values
     assert hourly_result.any?, "Hourly result should have data"
@@ -765,12 +773,12 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
       )
       result = chart.to_rails_chart
 
-      expected_timestamp = date.to_i
+      expected_timestamp = date.beginning_of_day.to_i
       expected_average = test_case[:durations].sum.to_f / test_case[:durations].length
 
       assert_includes result, expected_timestamp
-      # Chart key matching issue - all values return 0
-      assert_equal 0.0, result[expected_timestamp][:value]
+      # Should calculate the correct average for each performance category
+      assert_in_delta expected_average, result[expected_timestamp][:value], 0.01
 
       # Verify this would integrate correctly with status_indicator thresholds
       assert route.requests.count == 3
@@ -811,8 +819,9 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     # Should have data points for the time range
     assert result.any?, "Should have chart data"
 
-    # All values are currently 0 due to the key matching issue
-    assert result.values.all? { |value_hash| value_hash[:value] == 0.0 }
+    # All values should be reasonable averages (within range of 1-1000 based on data)
+    assert result.values.all? { |value_hash| value_hash[:value] > 0.0 && value_hash[:value] <= 1000.0 }, 
+           "All averages should be positive and within the range of input data"
   end
 
   test "performance with multiple grouped time periods" do
@@ -845,10 +854,11 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     # Should complete in reasonable time
     assert execution_time < 1.0, "Chart processing took too long: #{execution_time}s"
 
-    # Chart returns full time range instead of just 5 days
+    # Should have data for the days with requests
     assert result.any?, "Should have chart data"
 
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |value_hash| value_hash[:value] == 0.0 }
+    # All values should be reasonable averages (between 50-150 based on random data)
+    assert result.values.all? { |value_hash| value_hash[:value] >= 50.0 && value_hash[:value] <= 150.0 }, 
+           "All averages should be between 50-150"
   end
 end

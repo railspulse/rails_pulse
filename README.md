@@ -31,10 +31,10 @@
   - [Cleanup Configuration](#cleanup-configuration)
   - [Manual Cleanup Operations](#manual-cleanup-operations)
   - [How Cleanup Works](#how-cleanup-works)
-- [Multiple Database Support](#multiple-database-support)
+- [Separate Database Support](#separate-database-support)
   - [Configuration](#configuration)
   - [Database Configuration](#database-configuration)
-  - [Migration](#migration)
+  - [Schema Loading](#schema-loading)
 - [Testing](#testing)
 - [Technology Stack](#technology-stack)
 - [Advantages Over Other Solutions](#advantages-over-other-solutions)
@@ -102,10 +102,10 @@ Generate the installation files:
 rails generate rails_pulse:install
 ```
 
-Run the migrations:
+Load the database schema:
 
 ```bash
-rails db:migrate
+rails db:prepare
 ```
 
 Add the Rails Pulse route to your application:
@@ -342,14 +342,18 @@ RailsPulse::CleanupJob.perform_later
 
 This two-phase approach ensures you keep the most valuable recent performance data while maintaining manageable database sizes.
 
-## Multiple Database Support
+## Separate Database Support
 
-Rails Pulse supports storing performance monitoring data in a separate database. This is particularly useful for:
+Rails Pulse supports storing performance monitoring data in a **separate database**. By default, Rails Pulse stores data in your main application database alongside your existing tables.
+
+**Use a separate database when you want:**
 
 - **Isolating monitoring data** from your main application database
 - **Using different database engines** optimized for time-series data
 - **Scaling monitoring independently** from your application
 - **Simplified backup strategies** with separate retention policies
+
+**For shared database setup (default)**, no database configuration is needed - simply run `rails db:prepare` after installation.
 
 ### Configuration
 
@@ -380,6 +384,7 @@ production:
   rails_pulse:
     adapter: sqlite3
     database: storage/rails_pulse_production.sqlite3
+    migrations_paths: db/rails_pulse_migrate
     pool: 5
     timeout: 5000
 
@@ -392,6 +397,7 @@ production:
     username: rails_pulse_user
     password: <%= Rails.application.credentials.dig(:rails_pulse, :database_password) %>
     host: localhost
+    migrations_paths: db/rails_pulse_migrate
     pool: 5
 
 # For MySQL
@@ -403,35 +409,48 @@ production:
     username: rails_pulse_user
     password: <%= Rails.application.credentials.dig(:rails_pulse, :database_password) %>
     host: localhost
+    migrations_paths: db/rails_pulse_migrate
     pool: 5
 ```
 
-### Migration
+### Schema Loading
 
-When using a separate database, run migrations targeting the Rails Pulse database:
+#### Default Setup (Shared Database)
+For most installations where Rails Pulse data shares your main database:
 
 ```bash
-# Run Rails Pulse migrations on the configured database
-rails db:migrate
-
-# If you need to run migrations on a specific database
-RAILS_ENV=production rails db:migrate
+rails db:prepare
 ```
+
+That's it! The schema loads into your existing database alongside your application tables.
+
+#### Separate Database Setup
+When using a separate database with the configuration above:
+
+```bash
+rails db:prepare
+```
+
+This automatically loads the Rails Pulse schema on the configured separate database.
+
+The installation command creates `db/rails_pulse_schema.rb` containing all necessary table definitions. This schema-based approach provides:
+
+- **Clean Installation**: No migration clutter in new Rails apps
+- **Database Flexibility**: Easy separate database configuration  
+- **Version Compatibility**: Schema adapts to your Rails version automatically
+- **Future Migrations**: Schema changes will come as regular migrations when needed
 
 **Note:** Rails Pulse maintains full backward compatibility. If no `connects_to` configuration is provided, all data will be stored in your main application database as before.
 
 ## Testing
 
-Rails Pulse includes a comprehensive test suite designed for speed and reliability across multiple databases (SQLite, MySQL, PostgreSQL) and Rails versions.
+Rails Pulse includes a comprehensive test suite designed for speed and reliability across multiple databases and Rails versions.
 
 ### Running the Complete Test Suite
 
 ```bash
 # Run all tests (unit, functional, integration)
 rails test:all
-
-# Run tests with speed optimizations
-rails test:fast
 ```
 
 ### Running Individual Test Types
@@ -458,62 +477,29 @@ rails test test/controllers/rails_pulse/dashboard_controller_test.rb
 
 # Run helper tests
 rails test test/helpers/rails_pulse/application_helper_test.rb
-
-# Run factory verification tests
-rails test test/factories_test.rb
 ```
 
-### Multi-Rails Version Testing
+### Multi-Database and Rails Version Testing
 
-Test against multiple Rails versions using Appraisal:
+Test against multiple databases and Rails versions using the matrix task:
 
 ```bash
-# Install dependencies for all Rails versions
-bundle exec appraisal install
-
-# Run tests against all Rails versions
-bundle exec appraisal rails test:all
-
-# Run tests against specific Rails version
-bundle exec appraisal rails-7-1 rails test:unit
+# Test all database and Rails version combinations locally
+rails test:matrix
 ```
 
-### Test Performance Features
+This command tests all combinations of:
+- **Databases**: SQLite3, PostgreSQL, MySQL2
+- **Rails versions**: 7.2, 8.0
 
-- **In-memory SQLite**: Unit and functional tests use fast in-memory databases
-- **Transaction rollback**: Tests use database transactions for fast cleanup
-- **Stubbed dependencies**: External calls and expensive operations are stubbed
-- **Parallel execution**: Tests run in parallel when supported
+### Development Environment Setup
 
-### Database Testing
-
-Rails Pulse supports testing with multiple database adapters using simplified Rake tasks:
-
-```bash
-# Quick Commands (Recommended)
-rails test:sqlite        # Test with SQLite (default)
-rails test:postgresql    # Test with PostgreSQL
-rails test:mysql         # Test with MySQL
-
-# Test Matrix (before pushing)
-rails test:matrix        # Test SQLite + PostgreSQL
-rails test:matrix_full   # Test all databases (SQLite + PostgreSQL + MySQL)
-```
-
-#### Development Environment Setup
-
-1. **Set up git hooks (optional but recommended):**
-   ```bash
-   ./scripts/setup-git-hooks
-   ```
-   This installs a pre-commit hook that runs RuboCop before each commit.
-
-2. **Copy the environment template:**
+1. **Copy the environment template:**
    ```bash
    cp .env.example .env
    ```
 
-3. **Configure your database credentials in `.env`:**
+2. **Configure your database credentials in `.env`:**
    ```bash
    # PostgreSQL Configuration
    POSTGRES_USERNAME=your_username
@@ -528,7 +514,7 @@ rails test:matrix_full   # Test all databases (SQLite + PostgreSQL + MySQL)
    MYSQL_PORT=3306
    ```
 
-4. **Create test databases:**
+3. **Create test databases:**
    ```bash
    # PostgreSQL
    createdb rails_pulse_test
@@ -537,32 +523,35 @@ rails test:matrix_full   # Test all databases (SQLite + PostgreSQL + MySQL)
    mysql -u root -p -e "CREATE DATABASE rails_pulse_test;"
    ```
 
-#### Manual Commands
-If you prefer the explicit approach:
+### Manual Database Testing
+
+If you prefer testing individual databases:
 
 ```bash
-# Test with SQLite (default, uses in-memory database)
+# Test with SQLite (default)
 rails test:all
 
-# Test with PostgreSQL (requires local PostgreSQL setup)
-DATABASE_ADAPTER=postgresql FORCE_DB_CONFIG=true rails test:all
+# Test with PostgreSQL
+DATABASE_ADAPTER=postgresql rails test:all
 
-# Test with MySQL (requires MySQL setup and mysql2 gem compilation)
-DATABASE_ADAPTER=mysql FORCE_DB_CONFIG=true rails test:all
+# Test with MySQL
+DATABASE_ADAPTER=mysql2 rails test:all
 ```
 
-**Note**: Database switching is disabled by default for stability. The Rake tasks automatically handle the `FORCE_DB_CONFIG=true` requirement.
+### CI Testing
 
-**MySQL Testing**: MySQL testing requires:
-- MySQL server running locally with a `rails_pulse_test` database
-- Successful compilation of the `mysql2` gem (may require system dependencies like `zstd`)
-- CI environments come pre-configured, but local setup may require additional dependencies
+The GitHub Actions CI automatically tests:
+- **Databases**: SQLite3, PostgreSQL
+- **Rails versions**: 7.2, 8.0
 
-### Quick Testing Before Push
-```bash
-# Recommended: Test the same databases as CI
-rails test:matrix
-```
+MySQL testing has been moved to local development only for better CI reliability.
+
+### Test Performance Features
+
+- **Fast SQLite**: Tests use optimized SQLite configurations
+- **Transaction rollback**: Fast test cleanup using database transactions
+- **Stubbed dependencies**: External calls and expensive operations are stubbed
+- **Sequential execution**: Tests run sequentially to avoid race conditions
 
 ## Technology Stack
 

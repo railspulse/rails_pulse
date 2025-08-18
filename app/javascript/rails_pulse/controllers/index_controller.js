@@ -7,22 +7,25 @@ export default class extends Controller {
     chartId: String        // The ID of the chart to be monitored
   }
 
-  // Add a property to track the last request time
+  // Add a property to track the last request time 
   lastTurboFrameRequestAt = 0;
 
   connect() {
     // Listen for the custom event 'chart:initialized' to set up the chart.
     // This event is sent from the RailsCharts library when the chart is ready.
     this.handleChartInitialized = this.onChartInitialized.bind(this);
-    document.addEventListener('chart:initialized', this.handleChartInitialized);
+
+    document.addEventListener('chart:rendered', this.handleChartInitialized);
 
     // If the chart is already initialized (e.g., on back navigation), set up immediately
-    if (window.RailsCharts?.charts?.[this.chartIdValue]) { this.setup(); }
+    if (window.RailsCharts?.charts?.[this.chartIdValue]) { 
+      this.setup(); 
+    }
   }
 
   disconnect() {
     // Remove the event listener from RailsCharts when the controller is disconnected
-    document.removeEventListener('chart:initialized', this.handleChartInitialized);
+    document.removeEventListener('chart:rendered', this.handleChartInitialized);
 
     // Remove chart event listeners if they exist
     if (this.chartTarget) {
@@ -34,17 +37,24 @@ export default class extends Controller {
 
   // After the chart is initialized, set up the event listeners and data tracking
   onChartInitialized(event) {
-    if (event.detail.chartId === this.chartIdValue) { this.setup(); }
+    if (event.detail.containerId === this.chartIdValue) { 
+      this.setup(); 
+    }
   }
 
   setup() {
-    if (this.setupDone) return; // Prevent multiple setups
-
+    if (this.setupDone) {
+      return; // Prevent multiple setups
+    }
+    
     // Get the chart element which the RailsCharts library has created
     this.chart = window.RailsCharts.charts[this.chartIdValue];
-    if (!this.chart) return;
+    if (!this.chart) {
+      return;
+    }
 
     this.visibleData = this.getVisibleData();
+    
     this.setupChartEventListeners();
     this.setupDone = true;
   }
@@ -52,18 +62,27 @@ export default class extends Controller {
   // Add some event listeners to the chart so we can track the zoom changes
   setupChartEventListeners() {
     // When clicking on the chart, we want to store the current visible data so we can compare it later
-    this.handleChartMouseDown = () => { this.visibleData = this.getVisibleData(); };
+    this.handleChartMouseDown = () => { 
+      this.visibleData = this.getVisibleData(); 
+    };
     this.chartTarget.addEventListener('mousedown', this.handleChartMouseDown);
 
+
     // When releasing the mouse button, we want to check if the visible data has changed
-    this.handleChartMouseUp = () => { this.handleZoomChange(); };
+    this.handleChartMouseUp = () => { 
+      this.handleZoomChange(); 
+    };
     this.chartTarget.addEventListener('mouseup', this.handleChartMouseUp);
 
     // When the chart is zoomed, we want to check if the visible data has changed
-    this.chart.on('datazoom', () => { this.handleZoomChange(); });
+    this.chart.on('datazoom', () => { 
+      this.handleZoomChange(); 
+    });
 
     // When releasing the mouse button outside the chart, we want to check if the visible data has changed
-    this.handleDocumentMouseUp = () => { this.handleZoomChange(); };
+    this.handleDocumentMouseUp = () => { 
+      this.handleZoomChange(); 
+    };
     document.addEventListener('mouseup', this.handleDocumentMouseUp);
   }
 
@@ -71,18 +90,37 @@ export default class extends Controller {
   // The xAxis data and series data are sliced based on the start and end values of the dataZoom component.
   // The series data will contain the actual data points that are visible in the chart.
   getVisibleData() {
-    const currentOption = this.chart.getOption();
-    const dataZoom = currentOption.dataZoom[1];
-    const xAxisData = currentOption.xAxis[0].data;
-    const seriesData = currentOption.series[0].data;
+    try {
+      const currentOption = this.chart.getOption();
+      
+      if (!currentOption.dataZoom || currentOption.dataZoom.length === 0) {
+        return { xAxis: [], series: [] };
+      }
+      
+      // Try to find the correct dataZoom component
+      let dataZoom = currentOption.dataZoom[1] || currentOption.dataZoom[0];
+      
+      if (!currentOption.xAxis || !currentOption.xAxis[0] || !currentOption.xAxis[0].data) {
+        return { xAxis: [], series: [] };
+      }
+      
+      if (!currentOption.series || !currentOption.series[0] || !currentOption.series[0].data) {
+        return { xAxis: [], series: [] };
+      }
+      
+      const xAxisData = currentOption.xAxis[0].data;
+      const seriesData = currentOption.series[0].data;
+      
+      const startValue = dataZoom.startValue || 0;
+      const endValue = dataZoom.endValue || xAxisData.length - 1;
 
-    const startValue = dataZoom.startValue;
-    const endValue = dataZoom.endValue;
-
-    return {
-      xAxis: xAxisData.slice(startValue, endValue + 1),
-      series: seriesData.slice(startValue, endValue + 1)
-    };
+      return {
+        xAxis: xAxisData.slice(startValue, endValue + 1),
+        series: seriesData.slice(startValue, endValue + 1)
+      };
+    } catch (error) {
+      return { xAxis: [], series: [] };
+    }
   }
 
   // When the zoom level changes, we want to check if the visible data has changed
@@ -90,6 +128,7 @@ export default class extends Controller {
   // we can update the table with the new data that is visible in the chart.
   handleZoomChange() {
     const newVisibleData = this.getVisibleData();
+    
     if (newVisibleData.xAxis.join() !== this.visibleData.xAxis.join()) {
       this.visibleData = newVisibleData;
       this.updateUrlWithZoomParams(newVisibleData);
@@ -130,7 +169,9 @@ export default class extends Controller {
   sendTurboFrameRequest(data) {
     const now = Date.now();
     // If less than 1 second since last request, ignore this call
-    if (now - this.lastTurboFrameRequestAt < 1000) { return; }
+    if (now - this.lastTurboFrameRequestAt < 1000) { 
+      return; 
+    }
     this.lastTurboFrameRequestAt = now;
 
     // Start with the current page's URL
@@ -159,7 +200,9 @@ export default class extends Controller {
         'Turbo-Frame': this.chartIdValue
       }
     })
-    .then(response => response.text()) // Get the raw HTML response
+    .then(response => {
+      return response.text();
+    })
     .then(html => {
       // Find the turbo-frame in the document using the target
       const frame = this.indexTableTarget;
@@ -179,7 +222,7 @@ export default class extends Controller {
         }
       }
     })
-    .catch(error => console.error('Error:', error));
+    .catch(error => console.error('[IndexController] Fetch error:', error));
   }
 
   // CSP-safe method to replace frame content using DOM methods

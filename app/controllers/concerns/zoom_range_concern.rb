@@ -35,6 +35,6 @@ module ZoomRangeConcern
       end_time = end_time_obj&.end_of_day || end_time_obj
     end
 
-    [ start_time, end_time ]
+    [ start_time.to_i, end_time.to_i ]
   end
 end

@@ -6,8 +6,7 @@ module TimeRangeConcern
     const_set(:TIME_RANGE_OPTIONS, [
       [ "Last 24 hours", :last_day ],
       [ "Last Week", :last_week ],
-      [ "Last Month", :last_month ],
-      [ "All Time", :all_time ]
+      [ "Last Month", :last_month ]
     ].freeze)
   end
 
@@ -34,7 +33,7 @@ module TimeRangeConcern
         when :last_day then 1.day.ago
         when :last_week then 1.week.ago
         when :last_month then 1.month.ago
-        when :all_time then 100.years.ago
+        else 1.day.ago # Default fallback
         end
     end
 

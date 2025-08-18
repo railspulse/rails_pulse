@@ -117,9 +117,13 @@ module RailsPulse
         # Chart data is a hash like: { 1234567890 => { value: 123.45 } }
         chart_timestamps = chart_data.keys
 
+        # Convert zoom parameters to integers (timestamps)
+        zoom_start_int = zoom_start.respond_to?(:to_i) ? zoom_start.to_i : zoom_start
+        zoom_end_int = zoom_end.respond_to?(:to_i) ? zoom_end.to_i : zoom_end
+
         if chart_timestamps.any?
-          closest_start = chart_timestamps.min_by { |ts| (ts - zoom_start).abs }
-          closest_end = chart_timestamps.min_by { |ts| (ts - zoom_end).abs }
+          closest_start = chart_timestamps.min_by { |ts| (ts - zoom_start_int).abs }
+          closest_end = chart_timestamps.min_by { |ts| (ts - zoom_end_int).abs }
 
           # Find the array indices of these timestamps
           start_index = chart_timestamps.index(closest_start)

@@ -1,5 +1,7 @@
 # Configure Rails Environment
 ENV["RAILS_ENV"] = "test"
+# Disable parallel testing completely
+ENV["PARALLEL_WORKERS"] = "0"
 
 # Load environment variables from .env file
 begin
@@ -15,6 +17,7 @@ require_relative "../test/dummy/config/environment"
 if ENV["DATABASE_ADAPTER"] == "mysql2" || ENV["DATABASE_ADAPTER"] == "mysql"
   require_relative "support/database_helpers"
   DatabaseHelpers.configure_test_database
+
 end
 # Only use dummy app migrations to avoid conflicts
 ActiveRecord::Migrator.migrations_paths = [
@@ -29,6 +32,13 @@ class ActiveRecord::Migration
 end
 
 require "rails/test_help"
+
+# Load rails-controller-testing for assigns()
+begin
+  require "rails-controller-testing"
+rescue LoadError
+  puts "Warning: rails-controller-testing not available for testing"
+end
 
 # Load test dependencies
 begin
@@ -73,16 +83,9 @@ Dir[File.expand_path("support/**/*.rb", __dir__)].each { |f| require f }
 
 # Configure fast testing
 class ActiveSupport::TestCase
-  # Enable parallel testing for speed (Rails 8.0+ only, but not for MySQL)
-  if Rails.version.to_f >= 8.0 && ENV["DATABASE_ADAPTER"] != "mysql2"
-    parallelize(workers: :number_of_processors)
-  end
+  # Disable parallel testing to avoid race conditions with table creation
+  parallelize(workers: 1) if respond_to?(:parallelize)
 
-  # Disable transactional tests for MySQL to avoid savepoint issues
-  self.use_transactional_tests = false if ENV["DATABASE_ADAPTER"] == "mysql2"
-
-  # Disable transactional tests for MySQL to avoid savepoint issues
-  self.use_transactional_tests = false if ENV["DATABASE_ADAPTER"] == "mysql2"
 
   # Include test helpers
   include DatabaseHelpers
@@ -111,9 +114,9 @@ class ActiveSupport::TestCase
     end
   end
 
-  # Configure database_cleaner - will be configured after database connection
+  # Configure database_cleaner
   if defined?(DatabaseCleaner)
-    DatabaseCleaner.strategy = :transaction  # Default, will be changed for MySQL
+    DatabaseCleaner.strategy = :transaction
     DatabaseCleaner.start
   end
 

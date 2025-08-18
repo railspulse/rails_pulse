@@ -32,16 +32,16 @@ module RailsPulse
 
     def build_chart_ransack_params(ransack_params)
       ransack_params.except(:s).merge(
-        occurred_at_gteq: @start_time,
-        occurred_at_lt: @end_time,
+        occurred_at_gteq: Time.at(@start_time),
+        occurred_at_lt: Time.at(@end_time),
         duration_gteq: @start_duration
       )
     end
 
     def build_table_ransack_params(ransack_params)
       ransack_params.merge(
-        occurred_at_gteq: @table_start_time,
-        occurred_at_lt: @table_end_time,
+        occurred_at_gteq: Time.at(@table_start_time),
+        occurred_at_lt: Time.at(@table_end_time),
         duration_gteq: @start_duration
       )
     end

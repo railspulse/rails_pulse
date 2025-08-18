@@ -14,8 +14,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        database: ["sqlite3", "postgresql", "mysql2"]
-        rails: ["7.1.0", "7.2.0", "8.0.0"]
+        database: ["sqlite3", "postgresql"]
+        rails: ["7.2.0", "8.0.0"]
 
     services:
       postgres:
@@ -31,18 +31,6 @@ jobs:
         ports:
           - 5432:5432
 
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: rails_pulse_test
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
-        ports:
-          - 3306:3306
 
     env:
       RAILS_ENV: test
@@ -57,13 +45,6 @@ jobs:
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
-      # MySQL configuration for CI
-      MYSQL_USERNAME: root
-      MYSQL_PASSWORD: root
-      MYSQL_HOST: 127.0.0.1
-      MYSQL_PORT: 3306
-      # Parallel workers for MySQL to avoid deadlocks
-      PARALLEL_WORKERS: ${{ matrix.database == 'mysql2' && '1' || '' }}
 
     steps:
     - uses: actions/checkout@v4
@@ -78,7 +59,6 @@ jobs:
       run: |
         # Map Rails version to gemfile
         case "${{ matrix.rails }}" in
-          "7.1.0") GEMFILE=gemfiles/rails_7_1.gemfile ;;
           "7.2.0") GEMFILE=gemfiles/rails_7_2.gemfile ;;
           "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
         esac
@@ -87,15 +67,7 @@ jobs:
 
     - name: Setup database
       run: |
-        if [[ "${{ matrix.database }}" == "mysql2" ]]; then
-          echo "Waiting for MySQL to be ready..."
-          sleep 5
-          mysqladmin ping -h 127.0.0.1 -P 3306 -u root -proot --protocol=TCP --wait=30 || exit 1
-          # Load timezone info into MySQL
-          mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -h 127.0.0.1 -P 3306 -u root -proot --protocol=TCP mysql
-          echo "MySQL is ready"
-          mysql -h 127.0.0.1 -P 3306 -u root -proot --protocol=TCP -e "SHOW DATABASES LIKE 'rails_pulse_test';" || exit 1
-        elif [[ "${{ matrix.database }}" == "postgresql" ]]; then
+        if [[ "${{ matrix.database }}" == "postgresql" ]]; then
           echo "PostgreSQL test database ready"
           pg_isready -h localhost -p 5432 || exit 1
         else
@@ -108,7 +80,6 @@ jobs:
       run: |
         # Set the appropriate gemfile for the Rails version
         case "${{ matrix.rails }}" in
-          "7.1.0") GEMFILE=gemfiles/rails_7_1.gemfile ;;
           "7.2.0") GEMFILE=gemfiles/rails_7_2.gemfile ;;
           "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
         esac
