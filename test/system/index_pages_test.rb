@@ -74,7 +74,5 @@ class IndexPagesTest < ApplicationSystemTestCase
     # - 1-3 operations per request
     # - Realistic performance distribution (fast/slow/errors)
     @test_data = generate_pagination_test_data
-
-    puts "Generated test data: #{@test_data[:routes].count} routes, #{@test_data[:total_requests]} requests"
   end
 end

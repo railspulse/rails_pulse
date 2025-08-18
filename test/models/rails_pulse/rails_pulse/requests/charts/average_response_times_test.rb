@@ -18,7 +18,7 @@ class RailsPulse::Requests::Charts::AverageResponseTimesTest < BaseChartTest
 
     assert_equal ransack_query, chart.instance_variable_get(:@ransack_query)
     assert_equal :group_by_day, chart.instance_variable_get(:@group_by)
-    assert_equal nil, chart.instance_variable_get(:@route)  # Requests charts don't store route
+    assert_nil chart.instance_variable_get(:@route)  # Requests charts don't store route
   end
 
   test "defaults to group_by_day when not specified" do
