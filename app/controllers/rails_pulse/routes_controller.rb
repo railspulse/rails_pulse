@@ -53,13 +53,13 @@ module RailsPulse
       if show_action?
         base_params.merge(
           route_id_eq: @route.id,
-          occurred_at_gteq: @table_start_time,
-          occurred_at_lt: @table_end_time
+          occurred_at_gteq: Time.at(@table_start_time),
+          occurred_at_lt: Time.at(@table_end_time)
         )
       else
         base_params.merge(
-          requests_occurred_at_gteq: @table_start_time,
-          requests_occurred_at_lt: @table_end_time
+          requests_occurred_at_gteq: Time.at(@table_start_time),
+          requests_occurred_at_lt: Time.at(@table_end_time)
         )
       end
     end

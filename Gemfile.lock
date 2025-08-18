@@ -1,3 +1,11 @@
+GIT
+  remote: https://github.com/railspulse/rails_charts.git
+  revision: 0a1492e6b08557950a2a4a1b47830b40c678b6b1
+  branch: chart-initialize-event
+  specs:
+    rails_charts (0.0.7)
+      rails
+
 PATH
   remote: .
   specs:
@@ -249,6 +257,10 @@ GEM
       activesupport (= 8.0.2)
       bundler (>= 1.15.0)
       railties (= 8.0.2)
+    rails-controller-testing (1.0.5)
+      actionpack (>= 5.0.1.rc1)
+      actionview (>= 5.0.1.rc1)
+      activesupport (>= 5.0.1.rc1)
     rails-dom-testing (2.3.0)
       activesupport (>= 5.0.0)
       minitest
@@ -256,8 +268,6 @@ GEM
     rails-html-sanitizer (1.6.2)
       loofah (~> 2.21)
       nokogiri (>= 1.15.7, != 1.16.7, != 1.16.6, != 1.16.5, != 1.16.4, != 1.16.3, != 1.16.2, != 1.16.1, != 1.16.0.rc1, != 1.16.0)
-    rails_charts (0.0.7)
-      rails
     railties (8.0.2)
       actionpack (= 8.0.2)
       activesupport (= 8.0.2)
@@ -383,7 +393,8 @@ DEPENDENCIES
   pg
   pry-byebug
   puma
-  rails_charts
+  rails-controller-testing
+  rails_charts!
   rails_pulse!
   ransack
   request_store

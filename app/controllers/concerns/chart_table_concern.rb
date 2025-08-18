@@ -43,6 +43,7 @@ module ChartTableConcern
 
     table_results = build_table_results
     handle_pagination
+
     @pagy, @table_data = pagy(table_results, limit: session_pagination_limit)
   end
 

@@ -36,14 +36,14 @@ module RailsPulse
       if show_action?
         base_params.merge(
           query_id_eq: @query.id,
-          occurred_at_gteq: @start_time,
-          occurred_at_lt: @end_time,
+          occurred_at_gteq: Time.at(@start_time),
+          occurred_at_lt: Time.at(@end_time),
           duration_gteq: @start_duration
         )
       else
         base_params.merge(
-          operations_occurred_at_gteq: @start_time,
-          operations_occurred_at_lt: @end_time,
+          operations_occurred_at_gteq: Time.at(@start_time),
+          operations_occurred_at_lt: Time.at(@end_time),
           operations_duration_gteq: @start_duration
         )
       end
@@ -53,14 +53,14 @@ module RailsPulse
       if show_action?
         ransack_params.merge(
           query_id_eq: @query.id,
-          occurred_at_gteq: @table_start_time,
-          occurred_at_lt: @table_end_time,
+          occurred_at_gteq: Time.at(@table_start_time),
+          occurred_at_lt: Time.at(@table_end_time),
           duration_gteq: @start_duration
         )
       else
         ransack_params.merge(
-          operations_occurred_at_gteq: @table_start_time,
-          operations_occurred_at_lt: @table_end_time,
+          operations_occurred_at_gteq: Time.at(@table_start_time),
+          operations_occurred_at_lt: Time.at(@table_end_time),
           operations_duration_gteq: @start_duration
         )
       end
@@ -79,7 +79,7 @@ module RailsPulse
         @ransack_query.result(distinct: false)
           .joins("INNER JOIN rails_pulse_operations ON rails_pulse_operations.query_id = rails_pulse_queries.id")
           .where("rails_pulse_operations.occurred_at >= ? AND rails_pulse_operations.occurred_at < ?",
-                 @table_start_time, @table_end_time)
+                 Time.at(@table_start_time), Time.at(@table_end_time))
           .group("rails_pulse_queries.id, rails_pulse_queries.normalized_sql, rails_pulse_queries.created_at, rails_pulse_queries.updated_at")
           .select(
             "rails_pulse_queries.*",

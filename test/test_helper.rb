@@ -33,6 +33,13 @@ end
 
 require "rails/test_help"
 
+# Load rails-controller-testing for assigns()
+begin
+  require "rails-controller-testing"
+rescue LoadError
+  puts "Warning: rails-controller-testing not available for testing"
+end
+
 # Load test dependencies
 begin
   require "mocha/minitest"

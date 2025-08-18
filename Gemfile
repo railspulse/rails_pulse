@@ -22,7 +22,7 @@ gem "rubocop-rails-omakase", require: false
 gem "css-zero"
 gem "groupdate", ">= 6.5.1"
 gem "importmap-rails"
-gem "rails_charts"
+gem "rails_charts", github: "railspulse/rails_charts", branch: "chart-initialize-event"
 gem "ransack"
 gem "turbo-rails"
 gem "pagy"

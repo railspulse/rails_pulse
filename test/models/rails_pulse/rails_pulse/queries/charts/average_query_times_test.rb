@@ -57,9 +57,11 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
 
     assert_instance_of Hash, result
 
-    # Chart key matching issue - all values return 0
-    assert result.any?, "Should have chart data"
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should have data for the day we created requests
+    expected_timestamp = date.beginning_of_day.to_i
+    assert_includes result, expected_timestamp
+    # Should calculate correct average: (100+200)/2 = 150.0
+    assert_equal 150.0, result[expected_timestamp][:value]
   end
 
   # Operations data path tests (when query is nil)
@@ -88,10 +90,10 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
     assert_instance_of Hash, result
 
     # Should have data for the day we created operations
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     assert_includes result, expected_timestamp
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should calculate correct average: (50+150)/2 = 100.0
+    assert_equal 100.0, result[expected_timestamp][:value]
   end
 
   # Time normalization tests
@@ -116,8 +118,8 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
     # Should normalize to beginning of day
     expected_timestamp = specific_time.beginning_of_day.to_i
     assert_includes result, expected_timestamp
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should return the duration value: 125.0
+    assert_equal 125.0, result[expected_timestamp][:value]
   end
 
   # Data format tests
@@ -139,13 +141,13 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
 
     assert_instance_of Hash, result
 
-    timestamp = date.to_i
+    timestamp = date.beginning_of_day.to_i
     assert_includes result, timestamp
     assert_instance_of Hash, result[timestamp]
     assert_includes result[timestamp], :value
     assert_instance_of Float, result[timestamp][:value]
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should return the duration value: 175.0
+    assert_equal 175.0, result[timestamp][:value]
   end
 
   # Edge cases
@@ -160,9 +162,8 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
     result = chart.to_rails_chart
 
     assert_instance_of Hash, result
-    # Chart returns 15 days of zeros instead of empty result
-    assert_equal 15, result.keys.count
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should be empty when no data exists
+    assert result.empty?, "Should be empty when no data exists"
   end
 
   test "handles nil average durations correctly" do
@@ -177,9 +178,7 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
 
     assert_instance_of Hash, result
     # Should be empty when no data exists
-    # Chart returns 15 days of zeros instead of empty result
-    assert_equal 15, result.keys.count
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    assert result.empty?, "Should be empty when no data exists"
   end
 
   # Multiple periods test
@@ -206,10 +205,12 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    # Chart returns 15 days (2-week range) instead of just the 2 days with data
-    assert_equal 15, result.keys.length
-    # All values are 0 due to key matching issue
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should have data for both days
+    assert result.any?, "Should have chart data"
+    assert_equal 2, result.size, "Should have 2 data points for 2 different days"
+    # Each day should have its respective value: 100.0 and 200.0
+    assert result.values.any? { |v| v[:value] == 100.0 }, "Should include day1 value (100.0)"
+    assert result.values.any? { |v| v[:value] == 200.0 }, "Should include day2 value (200.0)"
   end
 
   # Configuration tests
@@ -261,10 +262,11 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    # NOTE: Same chart key matching issue - all values return 0 due to
-    # groupdate result keys not matching time periods in fill_missing_periods
+    # Should use request data (100), not operation data (500)
     assert result.any?, "Should have chart data"
-    assert result.values.all? { |v| v[:value] == 0.0 }, "All values are 0 due to key matching issue"
+    expected_timestamp = date.beginning_of_day.to_i
+    assert_includes result, expected_timestamp
+    assert_equal 100.0, result[expected_timestamp][:value]
   end
 
   test "uses operations data path when query is nil" do
@@ -287,10 +289,10 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     # Should use operation duration (300), not request duration (100)
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    assert_includes result, expected_timestamp
+    assert_equal 300.0, result[expected_timestamp][:value]
   end
 
   # Performance and edge case tests
@@ -340,10 +342,10 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     # Average of [33, 34, 35] = 34.0
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    assert_includes result, expected_timestamp
+    assert_equal 34.0, result[expected_timestamp][:value]
     assert_instance_of Float, result[expected_timestamp][:value]
   end
 
@@ -366,10 +368,10 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    expected_timestamp = date.to_i
+    expected_timestamp = date.beginning_of_day.to_i
     # Average of [0, 0, 100, 200] = 75.0
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    assert_includes result, expected_timestamp
+    assert_equal 75.0, result[expected_timestamp][:value]
   end
 
   test "consistency across multiple calls" do
@@ -414,8 +416,12 @@ class RailsPulse::Queries::Charts::AverageQueryTimesTest < BaseChartTest
 
     result = chart.to_rails_chart
 
-    # Chart key matching issue - all values return 0
-    assert result.values.all? { |v| v[:value] == 0.0 }
+    # Should have reasonable averages for large durations
+    assert result.any?, "Should have chart data"
+    expected_timestamp = date.beginning_of_day.to_i
+    assert_includes result, expected_timestamp
+    # Average of [500000, 750000, 999999] ≈ 749999.67
+    assert_in_delta 749999.67, result[expected_timestamp][:value], 0.01
   end
 
   test "memory efficiency with concurrent access" do
