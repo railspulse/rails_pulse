@@ -5,15 +5,16 @@ module RailsPulse
     # Validations
     validates :date, presence: true
     validates :entity_type, presence: true, inclusion: { in: %w[route request query] }
-    validates :entity_id, presence: true
+    validates :entity_id, presence: true, unless: -> { entity_type == "request" }
     validates :total_requests, presence: true, numericality: { greater_than_or_equal_to: 0 }
     validates :avg_duration, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
     validates :max_duration, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
     validates :error_count, presence: true, numericality: { greater_than_or_equal_to: 0 }
     validates :p95_duration, numericality: { greater_than_or_equal_to: 0 }, allow_nil: true
 
-    # Unique constraint
-    validates :entity_id, uniqueness: { scope: [ :date, :entity_type ] }
+    # Unique constraint  
+    validates :entity_id, uniqueness: { scope: [ :date, :entity_type ] }, allow_nil: true
+    validates :date, uniqueness: { scope: :entity_type }, if: -> { entity_type == "request" && entity_id.nil? }
 
     # JSON field for hourly data
     # Format: {"0": {"requests": 45, "avg_duration": 234, "errors": 2}, "1": {...}, ...}

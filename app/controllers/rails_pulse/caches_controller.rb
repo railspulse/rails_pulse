@@ -52,28 +52,45 @@ module RailsPulse
       route = extract_route_from_context
       query = extract_query_from_context
 
-      case @component_id
-      when "average_response_times"
+      case [@context, @component_id]
+      # Routes context
+      when ["routes", "average_response_times"], [/^route_\d+$/, "average_response_times"]
         Routes::Cards::AverageResponseTimes.new(route: route).to_metric_card
-      when "percentile_response_times"
+      when ["routes", "percentile_response_times"], [/^route_\d+$/, "percentile_response_times"]
         Routes::Cards::PercentileResponseTimes.new(route: route).to_metric_card
-      when "request_count_totals"
+      when ["routes", "request_count_totals"], [/^route_\d+$/, "request_count_totals"]
         Routes::Cards::RequestCountTotals.new(route: route).to_metric_card
-      when "error_rate_per_route"
+      when ["routes", "error_rate_per_route"], [/^route_\d+$/, "error_rate_per_route"]
         Routes::Cards::ErrorRatePerRoute.new(route: route).to_metric_card
-      when "average_query_times"
+      
+      # Requests context
+      when ["requests", "average_response_times"]
+        Requests::Cards::AverageResponseTimes.new.to_metric_card
+      when ["requests", "percentile_response_times"]
+        Requests::Cards::PercentileResponseTimes.new.to_metric_card
+      when ["requests", "request_count_totals"]
+        Requests::Cards::RequestCountTotals.new.to_metric_card
+      when ["requests", "error_rate_per_route"]
+        Requests::Cards::ErrorRatePerRoute.new.to_metric_card
+      
+      # Queries context
+      when ["queries", "average_query_times"], [/^query_\d+$/, "average_query_times"]
         Queries::Cards::AverageQueryTimes.new(query: query).to_metric_card
-      when "percentile_query_times"
+      when ["queries", "percentile_query_times"], [/^query_\d+$/, "percentile_query_times"]
         Queries::Cards::PercentileQueryTimes.new(query: query).to_metric_card
-      when "execution_rate"
+      when ["queries", "execution_rate"], [/^query_\d+$/, "execution_rate"]
         Queries::Cards::ExecutionRate.new(query: query).to_metric_card
-      when "dashboard_average_response_time"
+      when ["queries", "query_count_totals"], [/^query_\d+$/, "query_count_totals"]
+        Queries::Cards::QueryCountTotals.new(query: query).to_metric_card
+      
+      # Dashboard context
+      when [nil, "dashboard_average_response_time"]
         Dashboard::Charts::AverageResponseTime.new.to_chart_data
-      when "dashboard_p95_response_time"
+      when [nil, "dashboard_p95_response_time"]
         Dashboard::Charts::P95ResponseTime.new.to_chart_data
-      when "dashboard_slow_routes"
+      when [nil, "dashboard_slow_routes"]
         Dashboard::Tables::SlowRoutes.new.to_table_data
-      when "dashboard_slow_queries"
+      when [nil, "dashboard_slow_queries"]
         Dashboard::Tables::SlowQueries.new.to_table_data
       else
         { title: "Unknown Metric", summary: "N/A" }

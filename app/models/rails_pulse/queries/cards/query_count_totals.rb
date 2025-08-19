@@ -1,7 +1,7 @@
 module RailsPulse
   module Queries
     module Cards
-      class ExecutionRate
+      class QueryCountTotals
         def initialize(query: nil)
           @query = query
         end
@@ -15,12 +15,13 @@ module RailsPulse
               calculate_from_raw_data
             end
 
+          # Calculate trend
           percentage = previous_period_count.zero? ? 0 : ((previous_period_count - current_period_count) / previous_period_count.to_f * 100).abs.round(1)
           trend_icon = percentage < 0.1 ? "move-right" : current_period_count < previous_period_count ? "trending-down" : "trending-up"
           trend_amount = previous_period_count.zero? ? "0%" : "#{percentage}%"
 
           {
-            title: "Execution Rate",
+            title: "Query Execution Total",
             summary: "#{average_operations_per_minute.round(2)} / min",
             line_chart_data: sparkline_data,
             trend_icon: trend_icon,
@@ -63,11 +64,11 @@ module RailsPulse
           average_operations_per_minute = total_operation_count.to_f / total_minutes
 
           # Calculate trend (last 7 days vs previous 7 days)
-          last_7_days_stats = daily_stats.where(date: 7.days.ago.to_date..Date.current)
-          previous_7_days_stats = daily_stats.where(date: 14.days.ago.to_date...7.days.ago.to_date)
+          last_7_days = daily_stats.where(date: 7.days.ago.to_date..Date.current)
+          previous_7_days = daily_stats.where(date: 14.days.ago.to_date...7.days.ago.to_date)
 
-          current_period_count = last_7_days_stats.sum(:total_requests) + current_hour_count
-          previous_period_count = previous_7_days_stats.sum(:total_requests)
+          current_period_count = last_7_days.sum(:total_requests) + current_hour_count
+          previous_period_count = previous_7_days.sum(:total_requests)
 
           # Create sparkline data by week
           sparkline_data = build_sparkline_from_daily_stats(daily_stats, current_hour_count)
@@ -83,8 +84,10 @@ module RailsPulse
             RailsPulse::Operation.all
           end
 
-          # Calculate total request count
-          total_request_count = operations.count
+          operations = operations.where("occurred_at >= ?", 2.weeks.ago.beginning_of_day)
+
+          # Calculate total operation count
+          total_operation_count = operations.count
 
           # Calculate trend by comparing last 7 days vs previous 7 days
           last_7_days = 7.days.ago.beginning_of_day
@@ -106,7 +109,7 @@ module RailsPulse
           min_time = operations.minimum(:occurred_at)
           max_time = operations.maximum(:occurred_at)
           total_minutes = min_time && max_time && min_time != max_time ? (max_time - min_time) / 60.0 : 1
-          average_operations_per_minute = total_request_count / total_minutes
+          average_operations_per_minute = total_operation_count / total_minutes
 
           [average_operations_per_minute, current_period_count, previous_period_count, sparkline_data]
         end

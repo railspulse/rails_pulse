@@ -1,10 +1,10 @@
 <%= render 'rails_pulse/components/breadcrumbs' %>
 
 <div class="row">
-  <%= cached_component(component: "metric_card", id: "average_response_times", context: "routes", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "percentile_response_times", context: "routes", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "request_count_totals", context: "routes", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "error_rate_per_route", context: "routes", class: "grid-item block") %>
+  <%= cached_component(component: "metric_card", id: "average_query_times", context: "queries", class: "grid-item block") %>
+  <%= cached_component(component: "metric_card", id: "percentile_query_times", context: "queries", class: "grid-item block") %>
+  <%= cached_component(component: "metric_card", id: "execution_rate", context: "queries", class: "grid-item block") %>
+  <%= cached_component(component: "metric_card", id: "query_count_totals", context: "queries", class: "grid-item block") %>
 </div>
 
 <div

@@ -3,7 +3,7 @@ class CreateRailsPulseDailyStats < ActiveRecord::Migration[8.0]
     create_table :rails_pulse_daily_stats do |t|
       t.date :date, null: false, comment: "The date this stat record represents"
       t.string :entity_type, null: false, comment: "Type of entity: route, request, query"
-      t.bigint :entity_id, null: false, comment: "ID of the entity (route_id, request_id, etc.)"
+      t.bigint :entity_id, null: true, comment: "ID of the entity (route_id, request_id, etc.)"
 
       # Daily aggregates
       t.integer :total_requests, null: false, default: 0, comment: "Total requests for this entity on this date"

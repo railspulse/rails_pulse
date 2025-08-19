@@ -1,27 +1,28 @@
 module RailsPulse
-  module Queries
+  module Requests
     module Cards
-      class ExecutionRate
-        def initialize(query: nil)
-          @query = query
+      class RequestCountTotals
+        def initialize(request: nil)
+          @request = request
         end
 
         def to_metric_card
           # Use daily stats for performance, fall back to raw data if needed
-          average_operations_per_minute, current_period_count, previous_period_count, sparkline_data =
+          average_requests_per_minute, current_period_count, previous_period_count, sparkline_data =
             if daily_stats_available?
               calculate_from_daily_stats
             else
               calculate_from_raw_data
             end
 
+          # Calculate trend
           percentage = previous_period_count.zero? ? 0 : ((previous_period_count - current_period_count) / previous_period_count.to_f * 100).abs.round(1)
           trend_icon = percentage < 0.1 ? "move-right" : current_period_count < previous_period_count ? "trending-down" : "trending-up"
           trend_amount = previous_period_count.zero? ? "0%" : "#{percentage}%"
 
           {
-            title: "Execution Rate",
-            summary: "#{average_operations_per_minute.round(2)} / min",
+            title: "Request Count Total",
+            summary: "#{average_requests_per_minute.round(2)} / min",
             line_chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
@@ -32,12 +33,9 @@ module RailsPulse
         private
 
         def daily_stats_available?
-          # Check if we have daily stats for queries entity
-          query_filter = @query ? [@query.id] : RailsPulse::Query.pluck(:id)
-          return false if query_filter.empty?
-
+          # Check if we have daily stats for requests entity
           stats_count = RailsPulse::DailyStat
-            .where(entity_type: "query", entity_id: query_filter)
+            .for_entity("request", nil)
             .where(date: 7.days.ago.to_date..Date.current)
             .count
           stats_count >= 5 # Need reasonable coverage
@@ -45,54 +43,48 @@ module RailsPulse
 
         def calculate_from_daily_stats
           # Get daily stats for the last 2 weeks
-          query_filter = @query ? [@query.id] : RailsPulse::Query.pluck(:id)
-
           daily_stats = RailsPulse::DailyStat
-            .where(entity_type: "query", entity_id: query_filter)
+            .for_entity("request", nil)
             .for_date_range(14.days.ago.to_date, Date.current)
             .where("total_requests > 0") # Only finalized stats
 
           # Add current hour raw data for real-time accuracy
           current_hour_count = get_current_hour_count
 
-          # Calculate total operation count and operations per minute
-          total_operation_count = daily_stats.sum(:total_requests) + current_hour_count
+          # Calculate total request count and requests per minute
+          total_request_count = daily_stats.sum(:total_requests) + current_hour_count
 
-          # Calculate average operations per minute over 2 weeks (2 weeks = 20,160 minutes)
+          # Calculate average requests per minute over 2 weeks (2 weeks = 20,160 minutes)
           total_minutes = 14 * 24 * 60 # 2 weeks in minutes
-          average_operations_per_minute = total_operation_count.to_f / total_minutes
+          average_requests_per_minute = total_request_count.to_f / total_minutes
 
           # Calculate trend (last 7 days vs previous 7 days)
-          last_7_days_stats = daily_stats.where(date: 7.days.ago.to_date..Date.current)
-          previous_7_days_stats = daily_stats.where(date: 14.days.ago.to_date...7.days.ago.to_date)
+          last_7_days = daily_stats.where(date: 7.days.ago.to_date..Date.current)
+          previous_7_days = daily_stats.where(date: 14.days.ago.to_date...7.days.ago.to_date)
 
-          current_period_count = last_7_days_stats.sum(:total_requests) + current_hour_count
-          previous_period_count = previous_7_days_stats.sum(:total_requests)
+          current_period_count = last_7_days.sum(:total_requests) + current_hour_count
+          previous_period_count = previous_7_days.sum(:total_requests)
 
           # Create sparkline data by week
           sparkline_data = build_sparkline_from_daily_stats(daily_stats, current_hour_count)
 
-          [average_operations_per_minute, current_period_count, previous_period_count, sparkline_data]
+          [average_requests_per_minute, current_period_count, previous_period_count, sparkline_data]
         end
 
         def calculate_from_raw_data
           # Fallback to original raw data approach
-          operations = if @query
-            RailsPulse::Operation.where(query: @query)
-          else
-            RailsPulse::Operation.all
-          end
+          requests = RailsPulse::Request.where("occurred_at >= ?", 2.weeks.ago.beginning_of_day)
 
           # Calculate total request count
-          total_request_count = operations.count
+          total_request_count = requests.count
 
           # Calculate trend by comparing last 7 days vs previous 7 days
           last_7_days = 7.days.ago.beginning_of_day
           previous_7_days = 14.days.ago.beginning_of_day
-          current_period_count = operations.where("occurred_at >= ?", last_7_days).count
-          previous_period_count = operations.where("occurred_at >= ? AND occurred_at < ?", previous_7_days, last_7_days).count
+          current_period_count = requests.where("occurred_at >= ?", last_7_days).count
+          previous_period_count = requests.where("occurred_at >= ? AND occurred_at < ?", previous_7_days, last_7_days).count
 
-          sparkline_data = operations
+          sparkline_data = requests
             .group_by_week(:occurred_at, time_zone: "UTC")
             .count
             .each_with_object({}) do |(date, count), hash|
@@ -102,26 +94,20 @@ module RailsPulse
               }
             end
 
-          # Calculate average operations per minute
-          min_time = operations.minimum(:occurred_at)
-          max_time = operations.maximum(:occurred_at)
+          # Calculate average requests per minute
+          min_time = requests.minimum(:occurred_at)
+          max_time = requests.maximum(:occurred_at)
           total_minutes = min_time && max_time && min_time != max_time ? (max_time - min_time) / 60.0 : 1
-          average_operations_per_minute = total_request_count / total_minutes
+          average_requests_per_minute = total_request_count / total_minutes
 
-          [average_operations_per_minute, current_period_count, previous_period_count, sparkline_data]
+          [average_requests_per_minute, current_period_count, previous_period_count, sparkline_data]
         end
 
         def get_current_hour_count
           current_hour_start = Time.current.beginning_of_hour.utc
           current_hour_end = current_hour_start + 1.hour
 
-          operations = if @query
-            RailsPulse::Operation.where(query: @query, occurred_at: current_hour_start...current_hour_end)
-          else
-            RailsPulse::Operation.where(occurred_at: current_hour_start...current_hour_end)
-          end
-
-          operations.count
+          RailsPulse::Request.where(occurred_at: current_hour_start...current_hour_end).count
         end
 
         def build_sparkline_from_daily_stats(daily_stats, current_hour_count)
@@ -129,18 +115,18 @@ module RailsPulse
           weekly_data = {}
 
           daily_stats.group_by { |stat| stat.date.beginning_of_week }.each do |week_start, stats|
-            total_operations = stats.sum(&:total_requests)
+            total_requests = stats.sum(&:total_requests)
             formatted_date = week_start.strftime("%b %-d")
-            weekly_data[formatted_date] = { value: total_operations }
+            weekly_data[formatted_date] = { value: total_requests }
           end
 
           # Add current week data if we're in the current week
           current_week_start = Date.current.beginning_of_week
           if daily_stats.any? { |s| s.date >= current_week_start } || current_hour_count > 0
             current_week_stats = daily_stats.select { |s| s.date >= current_week_start }
-            current_week_operations = current_week_stats.sum(&:total_requests) + current_hour_count
+            current_week_requests = current_week_stats.sum(&:total_requests) + current_hour_count
             formatted_date = current_week_start.strftime("%b %-d")
-            weekly_data[formatted_date] = { value: current_week_operations }
+            weekly_data[formatted_date] = { value: current_week_requests }
           end
 
           weekly_data
