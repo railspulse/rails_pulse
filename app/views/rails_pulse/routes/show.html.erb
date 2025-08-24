@@ -3,28 +3,27 @@
 <h1 class="text-2xl mbe-2"><%= @route.path_and_method %></h1>
 
 <div class="row">
-  <%= cached_component(component: "metric_card", id: "average_response_times", context: "routes_#{@route.id}", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "percentile_response_times", context: "routes_#{@route.id}", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "request_count_totals", context: "routes_#{@route.id}", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "error_rate_per_route", context: "routes_#{@route.id}", class: "grid-item block") %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_response_times_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @request_count_totals_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @error_rate_per_route_metric_card } %>
 </div>
 
 <div
   class="row"
   data-controller="rails-pulse--index"
   data-rails-pulse--index-chart-id-value="route_repsonses_chart"
-  data-rails-pulse--index-occurred-at-param-value="occurred_at"
 >
   <div class="grid-item">
     <%= render 'rails_pulse/components/panel', { title: 'Route Reqeusts', } do %>
       <%= search_form_for @ransack_query, url: route_path(@route), class: "flex items-center justify-between gap mb-4" do |form| %>
         <div class="flex items-center grow gap">
-          <%= form.select :occurred_at_range,
+          <%= form.select :period_start_range,
             RailsPulse::RoutesController::TIME_RANGE_OPTIONS,
             { selected: @selected_time_range },
             { class: "input" }
           %>
-          <%= form.select :duration,
+          <%= form.select :avg_duration,
             duration_options(:route),
             { selected: @selected_response_range },
             { class: "input" }

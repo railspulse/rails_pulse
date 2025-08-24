@@ -4,6 +4,7 @@ module RailsPulse
 
     # Associations
     has_many :operations, class_name: "RailsPulse::Operation", inverse_of: :query
+    has_many :summaries, as: :summarizable, class_name: "RailsPulse::Summary", dependent: :destroy
 
     # Validations
     validates :normalized_sql, presence: true, uniqueness: true

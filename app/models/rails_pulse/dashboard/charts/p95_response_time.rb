@@ -3,32 +3,28 @@ module RailsPulse
     module Charts
       class P95ResponseTime
         def to_chart_data
-          start_date = 2.weeks.ago.beginning_of_day
+          # Create a range of all dates in the past 2 weeks
+          start_date = 2.weeks.ago.beginning_of_day.to_date
+          end_date = Time.current.to_date
+          date_range = (start_date..end_date)
 
-          # Performance optimization: Single query instead of N+1 queries (15 queries -> 1 query)
-          # Fetch all requests for 2-week period, pre-sorted by date and duration
-          # For optimal performance, ensure index exists: (occurred_at, duration)
-          requests_by_day = RailsPulse::Request
-            .where(occurred_at: start_date..)
-            .select("occurred_at, duration, DATE(occurred_at) as request_date")
-            .order("request_date, duration")
-            .group_by { |r| r.request_date.to_date }
+          # Get the actual data from Summary records (queries for P95)
+          summaries = RailsPulse::Summary.where(
+            summarizable_type: "RailsPulse::Query",
+            period_type: "day",
+            period_start: start_date.beginning_of_day..end_date.end_of_day
+          )
 
-          # Generate all dates in range and calculate P95 for each
-          (start_date.to_date..Time.current.to_date).each_with_object({}) do |date, hash|
-            day_requests = requests_by_day[date] || []
+          actual_data = summaries
+            .group_by_day(:period_start, time_zone: Time.zone)
+            .average(:p95_duration)
+            .transform_keys { |date| date.to_date }
+            .transform_values { |avg| avg&.round(0) || 0 }
 
-            if day_requests.empty?
-              p95_value = 0
-            else
-              # Calculate P95 from in-memory sorted array (already sorted by DB)
-              count = day_requests.length
-              p95_index = (count * 0.95).ceil - 1
-              p95_value = day_requests[p95_index].duration.round(0)
-            end
-
+          # Fill in all dates with zero values for missing days
+          date_range.each_with_object({}) do |date, result|
             formatted_date = date.strftime("%b %-d")
-            hash[formatted_date] = p95_value
+            result[formatted_date] = actual_data[date] || 0
           end
         end
       end

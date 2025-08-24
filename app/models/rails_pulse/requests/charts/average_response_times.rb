@@ -2,27 +2,35 @@ module RailsPulse
   module Requests
     module Charts
       class AverageResponseTimes
-        def initialize(ransack_query:, group_by: :group_by_day, route: nil)
+        def initialize(ransack_query:, period_type: nil, route: nil, start_time: nil, end_time: nil, start_duration: nil)
           @ransack_query = ransack_query
-          @group_by = group_by
+          @period_type = period_type
           @route = route
+          @start_time = start_time
+          @end_time = end_time
+          @start_duration = start_duration
         end
 
         def to_rails_chart
-          # Let groupdate handle the grouping and series filling
-          actual_data = @ransack_query.result(distinct: false)
-            .public_send(@group_by, "occurred_at", series: true, time_zone: "UTC")
-            .average(:duration)
+          summaries = @ransack_query.result(distinct: false).where(
+            summarizable_type: "RailsPulse::Route",
+            period_type: @period_type
+          )
 
-          # Convert to the format expected by rails_charts
-          actual_data.transform_keys do |k|
-            if k.respond_to?(:to_i)
-              k.to_i
-            else
-              # For Date objects, use beginning_of_day to get consistent UTC timestamps
-              k.is_a?(Date) ? k.beginning_of_day.to_i : k.to_time.to_i
-            end
-          end.transform_values { |v| { value: v.to_f } }
+          summaries = summaries.where(summarizable_id: @route.id) if @route
+          summaries = summaries
+            .group(:period_start)
+            .having("AVG(avg_duration) > ?", @start_duration || 0)
+            .average(:avg_duration)
+            .transform_keys(&:to_i)
+
+          # Pad missing data points with zeros
+          step = @period_type == :hour ? 1.hour : 1.day
+          data = {}
+          (@start_time.to_i..@end_time.to_i).step(step) do |timestamp|
+            data[timestamp.to_i] = summaries[timestamp.to_i].to_f.round(2)
+          end
+          data
         end
       end
     end

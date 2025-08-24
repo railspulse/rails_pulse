@@ -1,9 +1,9 @@
 <%= render 'rails_pulse/components/breadcrumbs' %>
 
 <div class="row">
-  <%= cached_component(component: "metric_card", id: "average_query_times", context: "query_#{@query.id}", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "request_count_totals", context: "query_#{@query.id}", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "execution_rate", context: "query_#{@query.id}", class: "grid-item block") %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_query_times_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @execution_rate_metric_card } %>
 </div>
 
 <div class="mb-4">
@@ -14,13 +14,12 @@
   class="row"
   data-controller="rails-pulse--index"
   data-rails-pulse--index-chart-id-value="query_responses_chart"
-  data-rails-pulse--index-occurred-at-param-value="occurred_at"
 >
   <div class="grid-item">
     <%= render 'rails_pulse/components/panel', { title: 'Query Responses' } do %>
       <%= search_form_for @ransack_query, url: query_path(@query), class: "flex items-center justify-between gap mb-4" do |form| %>
         <div class="flex items-center grow gap">
-          <%= form.select :occurred_at_range,
+          <%= form.select :period_start_range,
             RailsPulse::RoutesController::TIME_RANGE_OPTIONS,
             { selected: @selected_time_range },
             { class: "input" }

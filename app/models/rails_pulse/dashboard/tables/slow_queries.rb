@@ -8,11 +8,22 @@ module RailsPulse
           this_week_start = 1.week.ago.beginning_of_week
           this_week_end = Time.current.end_of_week
 
-          # Fetch query data for this week
-          query_data = RailsPulse::Operation.joins(:query)
-            .where(occurred_at: this_week_start..this_week_end)
-            .group("rails_pulse_queries.id, rails_pulse_queries.normalized_sql")
-            .select("rails_pulse_queries.id, rails_pulse_queries.normalized_sql, AVG(rails_pulse_operations.duration) as avg_duration, COUNT(*) as request_count, MAX(rails_pulse_operations.occurred_at) as last_seen")
+          # Fetch query data from Summary records for this week
+          query_data = RailsPulse::Summary
+            .joins("INNER JOIN rails_pulse_queries ON rails_pulse_queries.id = rails_pulse_summaries.summarizable_id")
+            .where(
+              summarizable_type: "RailsPulse::Query",
+              period_type: "day",
+              period_start: this_week_start..this_week_end
+            )
+            .group("rails_pulse_summaries.summarizable_id, rails_pulse_queries.normalized_sql")
+            .select(
+              "rails_pulse_summaries.summarizable_id as query_id",
+              "rails_pulse_queries.normalized_sql",
+              "SUM(rails_pulse_summaries.avg_duration * rails_pulse_summaries.count) / SUM(rails_pulse_summaries.count) as avg_duration",
+              "SUM(rails_pulse_summaries.count) as request_count",
+              "MAX(rails_pulse_summaries.period_end) as last_seen"
+            )
             .order("avg_duration DESC")
             .limit(5)
 
@@ -20,8 +31,8 @@ module RailsPulse
           data_rows = query_data.map do |record|
             {
               query_text: truncate_query(record.normalized_sql),
-              query_id: record.id,
-              query_link: "/rails_pulse/queries/#{record.id}",
+              query_id: record.query_id,
+              query_link: "/rails_pulse/queries/#{record.query_id}",
               average_time: record.avg_duration.to_f.round(0),
               request_count: record.request_count,
               last_request: time_ago_in_words(record.last_seen)

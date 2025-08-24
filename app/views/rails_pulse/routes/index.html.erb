@@ -1,10 +1,10 @@
 <%= render 'rails_pulse/components/breadcrumbs' %>
 
 <div class="row">
-  <%= cached_component(component: "metric_card", id: "average_response_times", context: "routes", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "percentile_response_times", context: "routes", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "request_count_totals", context: "routes", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "error_rate_per_route", context: "routes", class: "grid-item block") %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_response_times_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @request_count_totals_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @error_rate_per_route_metric_card } %>
 </div>
 
 <div
@@ -16,13 +16,13 @@
     <%= render 'rails_pulse/components/panel', { title: 'Average Response Time', } do %>
       <%= search_form_for @ransack_query, url: routes_path, class: "flex items-center justify-between gap mb-4" do |form| %>
         <div class="flex items-center grow gap">
-          <%= form.search_field :path_cont, placeholder: "Filter by route", autocomplete: "off", class: "input", style: "max-inline-size: 250px" %>
-          <%= form.select :occurred_at_range,
+          <%= form.search_field :route_path_cont, placeholder: "Filter by route", autocomplete: "off", class: "input", style: "max-inline-size: 250px" %>
+          <%= form.select :period_start_range,
             RailsPulse::RoutesController::TIME_RANGE_OPTIONS,
             { selected: @selected_time_range },
             { class: "input" }
           %>
-          <%= form.select :duration,
+          <%= form.select :avg_duration,
             duration_options(:route),
             { selected: @selected_response_range },
             { class: "input" }

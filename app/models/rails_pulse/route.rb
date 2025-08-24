@@ -4,6 +4,7 @@ module RailsPulse
 
     # Associations
     has_many :requests, class_name: "RailsPulse::Request", foreign_key: "route_id", dependent: :restrict_with_exception
+    has_many :summaries, as: :summarizable, class_name: "RailsPulse::Summary", dependent: :destroy
 
     # Validations
     validates :method, presence: true

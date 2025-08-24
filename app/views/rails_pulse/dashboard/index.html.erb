@@ -1,64 +1,82 @@
 <div class="row">
-  <%= cached_component(component: "metric_card", id: "average_response_times", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "percentile_response_times", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "request_count_totals", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "error_rate_per_route", class: "grid-item block") %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_response_times_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @request_count_totals_metric_card } %>
+  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @error_rate_per_route_metric_card } %>
 </div>
 
 <div class="row">
   <div class="grid-item" style="height:300px">
-    <%= cached_component(
-      component: "panel",
-      id: "dashboard_average_response_time",
-      card_classes: 'b-full',
+    <%= render 'rails_pulse/components/panel', {
       title: 'Average Response Time',
+      card_classes: 'b-full',
       help_heading: 'Average Response Time',
       help_text: 'This panel measures the average server-side response time in milliseconds for all HTTP requests processed by your application. This is the time it takes from the server receiving a request until the request is returned to the client in milliseconds.',
-      actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
-      refresh_action: true,
-      content_partial: 'rails_pulse/dashboard/charts/bar_chart')
-    %>
+      actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
+    } do %>
+      <% if @average_response_time_chart_data.present? %>
+        <div class="chart-container chart-container--slim">
+          <%= bar_chart(
+            @average_response_time_chart_data,
+            code: false,
+            id: "dashboard_average_response_time_chart",
+            height: "100%",
+            options: bar_chart_options(
+              units: "ms"
+            )
+          ) %>
+        </div>
+      <% end %>
+    <% end %>
   </div>
 
   <div class="grid-item">
-    <%= cached_component(
-      component: "panel",
-      id: "dashboard_p95_response_time",
-      card_classes: 'b-full',
+    <%= render 'rails_pulse/components/panel', {
       title: 'Query Performance',
+      card_classes: 'b-full',
       help_heading: 'Query Performance',
       help_text: 'This panel measures the 95th percentile response time in milliseconds for queries in your application. This represents the query performance below which 95% of queries fall, indicating the upper-bound performance for most database operations.',
-      actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
-      refresh_action: true,
-      content_partial: 'rails_pulse/dashboard/charts/bar_chart')
-    %>
+      actions: [{ url: queries_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
+    } do %>
+      <% if @p95_response_time_chart_data.present? %>
+        <div class="chart-container chart-container--slim">
+          <%= bar_chart(
+            @p95_response_time_chart_data,
+            code: false,
+            id: "dashboard_p95_response_time_chart",
+            height: "100%",
+            options: bar_chart_options(
+              units: "ms"
+            )
+          ) %>
+        </div>
+      <% end %>
+    <% end %>
   </div>
 </div>
 
 <div class="row">
   <div class="grid-item">
-    <%= cached_component(
-      component: "panel",
-      id: "dashboard_slow_routes",
+    <%= render 'rails_pulse/components/panel', {
       title: 'Slowest Routes This Week',
       help_heading: 'Slowest Routes',
-      help_text: 'This panel shows the slowest routes in your application this week compared to last week, including average response time, week-over-week change, and total request count.',
-      refresh_action: true,
-      content_partial: 'rails_pulse/dashboard/tables/standard_table',
-      class: "table-container")
-    %>
+      help_text: 'This panel shows the slowest routes in your application this week, including average response time and total request count.',
+      actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
+      card_classes: 'table-container'
+    } do %>
+      <%= render 'rails_pulse/components/table', table_data: @slow_routes_table_data %>
+    <% end %>
   </div>
 
   <div class="grid-item">
-    <%= cached_component(
-      component: "panel",
-      id: "dashboard_slow_queries",
+    <%= render 'rails_pulse/components/panel', {
       title: 'Slowest Queries This Week',
-      help_heading: 'Slowest Queries',
+      help_heading: 'Slowest Queries', 
       help_text: 'This panel shows the slowest database queries in your application this week, including average execution time and when they were last seen.',
-      refresh_action: true,
-      content_partial: 'rails_pulse/dashboard/tables/standard_table',
-      class: "table-container")
-    %>
+      actions: [{ url: queries_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
+      card_classes: 'table-container'
+    } do %>
+      <%= render 'rails_pulse/components/table', table_data: @slow_queries_table_data %>
+    <% end %>
   </div>
 </div>
