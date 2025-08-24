@@ -1,6 +1,6 @@
 module RailsPulse
   module ChartFormatters
-    def self.occurred_at_as_time_or_date(time_diff_hours)
+    def self.period_as_time_or_date(time_diff_hours)
       if time_diff_hours <= 25
         <<~JS
           function(value) {
@@ -25,7 +25,7 @@ module RailsPulse
             const data = params[0];
             const date = new Date(data.axisValue * 1000);
             const dateString = date.getHours().toString().padStart(2, '0') + ':00';
-            return `${dateString} <br /> ${data.marker} ${parseInt(data.data.value)} ms`;
+            return `${dateString} <br /> ${data.marker} ${parseInt(data.data)} ms`;
           }
         JS
       else
@@ -34,7 +34,7 @@ module RailsPulse
             const data = params[0];
             const date = new Date(data.axisValue * 1000);
             const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-            return `${dateString} <br /> ${data.marker} ${parseInt(data.data.value)} ms`;
+            return `${dateString} <br /> ${data.marker} ${parseInt(data.data)} ms`;
           }
         JS
       end

@@ -54,8 +54,11 @@ module RailsPulse
     end
 
     def session_pagination_limit
-      # Keep default small for optimal performance
-      session[:pagination_limit] || 10
+      # Use URL param if present, otherwise session, otherwise default
+      limit = params[:limit].presence || session[:pagination_limit] || 10
+      # Update session if URL param was used
+      session[:pagination_limit] = limit.to_i if params[:limit].present?
+      limit.to_i
     end
 
     def store_pagination_limit(limit)

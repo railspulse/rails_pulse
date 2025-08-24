@@ -649,13 +649,13 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
 
     # Each route should show its own calculated average
     expected_timestamp = date.beginning_of_day.to_i
-    
+
     # Route 1: (100+200+300)/3 = 200.0
     assert_includes result_route1, expected_timestamp
     assert_equal 200.0, result_route1[expected_timestamp][:value]
-    
+
     # Route 2: (1000+2000+3000)/3 = 2000.0
-    assert_includes result_route2, expected_timestamp  
+    assert_includes result_route2, expected_timestamp
     assert_equal 2000.0, result_route2[expected_timestamp][:value]
   end
 
@@ -820,7 +820,7 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     assert result.any?, "Should have chart data"
 
     # All values should be reasonable averages (within range of 1-1000 based on data)
-    assert result.values.all? { |value_hash| value_hash[:value] > 0.0 && value_hash[:value] <= 1000.0 }, 
+    assert result.values.all? { |value_hash| value_hash[:value] > 0.0 && value_hash[:value] <= 1000.0 },
            "All averages should be positive and within the range of input data"
   end
 
@@ -858,7 +858,7 @@ class RailsPulse::Routes::Charts::AverageResponseTimesTest < BaseChartTest
     assert result.any?, "Should have chart data"
 
     # All values should be reasonable averages (between 50-150 based on random data)
-    assert result.values.all? { |value_hash| value_hash[:value] >= 50.0 && value_hash[:value] <= 150.0 }, 
+    assert result.values.all? { |value_hash| value_hash[:value] >= 50.0 && value_hash[:value] <= 150.0 },
            "All averages should be between 50-150"
   end
 end

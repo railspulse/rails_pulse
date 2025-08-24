@@ -1,8 +1,8 @@
 <% columns = [
-  { field: :path, label: 'Route', class: 'w-auto' },
-  { field: :average_response_time_ms, label: 'Average Response Time', class: 'w-36' },
-  { field: :max_response_time_ms, label: 'Max Response Time', class: 'w-32' },
-  { field: :request_count, label: 'Requests', class: 'w-24' },
+  { field: :route_path, label: 'Route', class: 'w-auto' },
+  { field: :avg_duration, label: 'Average Response Time', class: 'w-36' },
+  { field: :max_duration, label: 'Max Response Time', class: 'w-32' },
+  { field: :count, label: 'Requests', class: 'w-24' },
   { field: :requests_per_minute, label: 'Requests Per Minute', class: 'w-28' },
   { field: :error_rate_percentage, label: 'Error Rate (%)', class: 'w-20' },
   { field: :status_indicator, label: 'Status', class: 'w-16', sortable: false }
@@ -12,15 +12,15 @@
   <%= render "rails_pulse/components/table_head", columns: columns %>
 
   <tbody>
-    <% @table_data.each do |route| %>
+    <% @table_data.each do |summary| %>
       <tr>
-        <td class="whitespace-nowrap"><%= link_to route.path_and_method, route, data: { turbo_frame: '_top' } %></td>
-        <td class="whitespace-nowrap"><%= route.average_response_time_ms.to_i %> ms</td>
-        <td class="whitespace-nowrap"><%= route.max_response_time_ms.to_i %> ms</td>
-        <td class="whitespace-nowrap"><%= number_with_delimiter route.request_count %></td>
-        <td class="whitespace-nowrap"><%= route.requests_per_minute < 1 ? '< 1' : route.requests_per_minute.round(2) %></td>
-        <td class="whitespace-nowrap"><%= route.error_rate_percentage %>%</td>
-        <td class="whitespace-nowrap text-center"><%= route_status_indicator(route.status_indicator) %></td>
+        <td class="whitespace-nowrap"><%= link_to "#{summary.path} #{summary.route_method}", route_path(summary.route_id), data: { turbo_frame: '_top' } %></td>
+        <td class="whitespace-nowrap"><%= summary.avg_duration.to_i %> ms</td>
+        <td class="whitespace-nowrap"><%= summary.max_duration.to_i %> ms</td>
+        <td class="whitespace-nowrap"><%= number_with_delimiter summary.count %></td>
+        <td class="whitespace-nowrap"><%= summary.count < 1 ? '< 1' : (summary.count / 60.0).round(2) %></td>
+        <td class="whitespace-nowrap"><%= ((summary.error_count.to_f / summary.count) * 100).round(2) %>%</td>
+        <td class="whitespace-nowrap text-center"><%= route_status_indicator(summary.avg_duration >= 500 ? 1 : 0) %></td>
       </tr>
     <% end %>
   </tbody>

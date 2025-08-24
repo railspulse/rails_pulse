@@ -5,10 +5,13 @@ module ResponseRangeConcern
     ransack_params = params[:q] || {}
     thresholds = RailsPulse.configuration.public_send("#{type}_thresholds")
 
-    if ransack_params[:duration].present?
-      selected_range = ransack_params[:duration]
+    # Check both avg_duration (for Summary) and duration (for Request/Operation)
+    duration_param = ransack_params[:avg_duration] || ransack_params[:duration]
+
+    if duration_param.present?
+      selected_range = duration_param
       start_duration =
-        case ransack_params[:duration].to_sym
+        case duration_param.to_sym
         when :slow then thresholds[:slow]
         when :very_slow then thresholds[:very_slow]
         when :critical then thresholds[:critical]

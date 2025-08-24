@@ -11,33 +11,25 @@ export default class extends Controller {
     this.restorePaginationLimit()
   }
 
-  // Update pagination limit via AJAX and reload the page to reflect changes
-  async updateLimit() {
+  // Update pagination limit and refresh the turbo frame
+  updateLimit() {
     const limit = this.limitTarget.value
 
-    // Save to session storage
+    // Save to session storage only - no server request needed
     sessionStorage.setItem(this.storageKeyValue, limit)
 
-    try {
-      // Send AJAX request to update server session using Rails.ajax
-      const response = await fetch(this.urlValue, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': this.getCSRFToken()
-        },
-        body: JSON.stringify({ limit: limit })
-      })
-
-      if (response.ok) {
-        // Reload the page to reflect the new pagination limit
-        // This preserves all current URL parameters including Ransack search params
-        window.location.reload()
-      } else {
-        throw new Error(`HTTP error! status: ${response.status}`)
-      }
-    } catch (error) {
-      console.error('Error updating pagination limit:', error)
+    // Find the closest turbo frame and reload it to apply new pagination
+    const turboFrame = this.element.closest('turbo-frame')
+    if (turboFrame) {
+      // Add the limit as a URL parameter so server picks it up
+      const currentUrl = new URL(window.location)
+      currentUrl.searchParams.set('limit', limit)
+      turboFrame.src = currentUrl.pathname + currentUrl.search
+    } else {
+      // Fallback to page reload if not within a turbo frame
+      const currentUrl = new URL(window.location)
+      currentUrl.searchParams.set('limit', limit)
+      window.location.href = currentUrl.pathname + currentUrl.search
     }
   }
 
@@ -60,9 +52,7 @@ export default class extends Controller {
       // Only set if the current value is different (prevents unnecessary DOM updates)
       if (this.limitTarget.value !== savedLimit) {
         this.limitTarget.value = savedLimit
-
-        // Trigger a change event to ensure any other listeners are notified
-        this.limitTarget.dispatchEvent(new Event('change', { bubbles: true }))
+        // Don't trigger change event when restoring from session - prevents infinite loops
       }
     }
   }
