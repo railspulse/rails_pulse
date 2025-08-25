@@ -74,10 +74,7 @@ module RailsPulse
       if show_action?
         @ransack_query.result.select("id", "occurred_at", "duration")
       else
-        # Optimized query: Use INNER JOIN since we only want queries with operations in time range
-        # This dramatically reduces the dataset before aggregation
         @ransack_query.result(distinct: false)
-          .joins("INNER JOIN rails_pulse_operations ON rails_pulse_operations.query_id = rails_pulse_queries.id")
           .where("rails_pulse_operations.occurred_at >= ? AND rails_pulse_operations.occurred_at < ?",
                  Time.at(@table_start_time), Time.at(@table_end_time))
           .group("rails_pulse_queries.id, rails_pulse_queries.normalized_sql, rails_pulse_queries.created_at, rails_pulse_queries.updated_at")
