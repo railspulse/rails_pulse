@@ -28,9 +28,9 @@ module RailsPulse
           ).take
 
           # Calculate metrics from single query result
-          average_response_time = metrics.total_requests > 0 ? (metrics.total_weighted_duration / metrics.total_requests).round(0) : 0
-          current_period_avg = metrics.current_requests > 0 ? (metrics.current_weighted_duration / metrics.current_requests) : 0
-          previous_period_avg = metrics.previous_requests > 0 ? (metrics.previous_weighted_duration / metrics.previous_requests) : 0
+          average_response_time = metrics.total_requests.to_i > 0 ? (metrics.total_weighted_duration / metrics.total_requests).round(0) : 0
+          current_period_avg = metrics.current_requests.to_i > 0 ? (metrics.current_weighted_duration / metrics.current_requests) : 0
+          previous_period_avg = metrics.previous_requests.to_i > 0 ? (metrics.previous_weighted_duration / metrics.previous_requests) : 0
 
           percentage = previous_period_avg.zero? ? 0 : ((previous_period_avg - current_period_avg) / previous_period_avg * 100).abs.round(1)
           trend_icon = percentage < 0.1 ? "move-right" : current_period_avg < previous_period_avg ? "trending-down" : "trending-up"

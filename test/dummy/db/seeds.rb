@@ -503,8 +503,8 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
   RailsPulse::BackfillSummariesJob.perform_now(historical_start_time, historical_end_time, [ "day" ])
 
   # Generate hour summaries for the past 16 hours only
-  puts "\nGenerating hour summaries for the past 16 hours..."
-  hourly_start_time = 16.hours.ago
+  puts "\nGenerating hour summaries for the past 26 hours..."
+  hourly_start_time = 26.hours.ago
   hourly_end_time = Time.current
 
   puts "Creating hourly summaries from #{hourly_start_time.strftime('%B %d, %Y at %I:%M %p')} to #{hourly_end_time.strftime('%B %d, %Y at %I:%M %p')}"
