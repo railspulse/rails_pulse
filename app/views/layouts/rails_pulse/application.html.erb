@@ -28,12 +28,12 @@
         <dialog class="sheet sheet--left" style="--sheet-size: 288px;" data-rails-pulse--dialog-target="menu" data-action="click->rails-pulse--dialog#closeOnClickOutside">
           <div class="sheet__content p-2">
             <div class="sidebar-menu">
-              <a class="btn sidebar-menu__button" href="#">
+              <%= link_to rails_pulse.root_path, class: "btn sidebar-menu__button" do %>
                 <div class="flex flex-col text-start leading-tight overflow-hidden">
                   <span class="overflow-ellipsis font-semibold">Rails Pulse</span>
                   <span class="overflow-ellipsis text-xs">Open Source</span>
                 </div>
-              </a>
+              <% end %>
               <div class="sidebar-menu__content">
                 <div class="sidebar-menu__group">
                   <nav class="sidebar-menu__items">
@@ -47,9 +47,9 @@
       </div>
 
       <div class="flex items-center gap">
-        <a class="flex items-center gap mie-2" href="#">
+        <%= link_to rails_pulse.root_path, class: "flex items-center gap mie-2" do %>
           <span class="font-bold">Rails Pulse</span>
-        </a>
+        <% end %>
         <nav class="flex items-center gap text-sm text-subtle show@md" style="--column-gap: 1rem">
           <%= render 'layouts/rails_pulse/menu_items' %>
         </nav>
