@@ -2,9 +2,10 @@ module RailsPulse
   class ApplicationController < ActionController::Base
     before_action :authenticate_rails_pulse_user!
 
-    def set_pagination_limit
-      session[:pagination_limit] = params[:limit].to_i if params[:limit].present?
-      render json: { status: "ok" }
+    def set_pagination_limit(limit = nil)
+      limit = limit || params[:limit]
+      session[:pagination_limit] = limit.to_i if limit.present?
+      render json: { status: "ok" } if request.xhr?
     end
 
     private
