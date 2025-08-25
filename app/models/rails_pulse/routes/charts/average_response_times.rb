@@ -16,7 +16,6 @@ module RailsPulse
               .average(:duration)
           else
             @ransack_query.result(distinct: false)
-              .left_joins(:requests)
               .public_send(@group_by, "rails_pulse_requests.occurred_at", series: true, time_zone: "UTC")
               .average("rails_pulse_requests.duration")
           end
