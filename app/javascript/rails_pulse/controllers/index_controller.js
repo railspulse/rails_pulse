@@ -1,13 +1,13 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["chart", "paginationLimit", "indexTable"] // The chart element to be monitored
+  static targets = ["chart", "paginationLimit", "indexTable"]
 
   static values = {
     chartId: String        // The ID of the chart to be monitored
   }
 
-  // Add a property to track the last request time 
+  // Add a property to track the last request time
   lastTurboFrameRequestAt = 0;
 
   connect() {
@@ -18,8 +18,8 @@ export default class extends Controller {
     document.addEventListener('chart:rendered', this.handleChartInitialized);
 
     // If the chart is already initialized (e.g., on back navigation), set up immediately
-    if (window.RailsCharts?.charts?.[this.chartIdValue]) { 
-      this.setup(); 
+    if (window.RailsCharts?.charts?.[this.chartIdValue]) {
+      this.setup();
     }
   }
 
@@ -37,8 +37,8 @@ export default class extends Controller {
 
   // After the chart is initialized, set up the event listeners and data tracking
   onChartInitialized(event) {
-    if (event.detail.containerId === this.chartIdValue) { 
-      this.setup(); 
+    if (event.detail.containerId === this.chartIdValue) {
+      this.setup();
     }
   }
 
@@ -46,7 +46,7 @@ export default class extends Controller {
     if (this.setupDone) {
       return; // Prevent multiple setups
     }
-    
+
     // Get the chart element which the RailsCharts library has created
     this.chart = window.RailsCharts.charts[this.chartIdValue];
     if (!this.chart) {
@@ -54,34 +54,39 @@ export default class extends Controller {
     }
 
     this.visibleData = this.getVisibleData();
-    
+
     this.setupChartEventListeners();
     this.setupDone = true;
+
+    // Mark the chart as fully rendered for testing
+    if (this.chartTarget) {
+      document.getElementById(this.chartIdValue)?.setAttribute('data-chart-rendered', 'true');
+    }
   }
 
   // Add some event listeners to the chart so we can track the zoom changes
   setupChartEventListeners() {
     // When clicking on the chart, we want to store the current visible data so we can compare it later
-    this.handleChartMouseDown = () => { 
-      this.visibleData = this.getVisibleData(); 
+    this.handleChartMouseDown = () => {
+      this.visibleData = this.getVisibleData();
     };
     this.chartTarget.addEventListener('mousedown', this.handleChartMouseDown);
 
 
     // When releasing the mouse button, we want to check if the visible data has changed
-    this.handleChartMouseUp = () => { 
-      this.handleZoomChange(); 
+    this.handleChartMouseUp = () => {
+      this.handleZoomChange();
     };
     this.chartTarget.addEventListener('mouseup', this.handleChartMouseUp);
 
     // When the chart is zoomed, we want to check if the visible data has changed
-    this.chart.on('datazoom', () => { 
-      this.handleZoomChange(); 
+    this.chart.on('datazoom', () => {
+      this.handleZoomChange();
     });
 
     // When releasing the mouse button outside the chart, we want to check if the visible data has changed
-    this.handleDocumentMouseUp = () => { 
-      this.handleZoomChange(); 
+    this.handleDocumentMouseUp = () => {
+      this.handleZoomChange();
     };
     document.addEventListener('mouseup', this.handleDocumentMouseUp);
   }
@@ -92,25 +97,25 @@ export default class extends Controller {
   getVisibleData() {
     try {
       const currentOption = this.chart.getOption();
-      
+
       if (!currentOption.dataZoom || currentOption.dataZoom.length === 0) {
         return { xAxis: [], series: [] };
       }
-      
+
       // Try to find the correct dataZoom component
       let dataZoom = currentOption.dataZoom[1] || currentOption.dataZoom[0];
-      
+
       if (!currentOption.xAxis || !currentOption.xAxis[0] || !currentOption.xAxis[0].data) {
         return { xAxis: [], series: [] };
       }
-      
+
       if (!currentOption.series || !currentOption.series[0] || !currentOption.series[0].data) {
         return { xAxis: [], series: [] };
       }
-      
+
       const xAxisData = currentOption.xAxis[0].data;
       const seriesData = currentOption.series[0].data;
-      
+
       const startValue = dataZoom.startValue || 0;
       const endValue = dataZoom.endValue || xAxisData.length - 1;
 
@@ -128,7 +133,7 @@ export default class extends Controller {
   // we can update the table with the new data that is visible in the chart.
   handleZoomChange() {
     const newVisibleData = this.getVisibleData();
-    
+
     if (newVisibleData.xAxis.join() !== this.visibleData.xAxis.join()) {
       this.visibleData = newVisibleData;
       this.updateUrlWithZoomParams(newVisibleData);
@@ -169,8 +174,8 @@ export default class extends Controller {
   sendTurboFrameRequest(data) {
     const now = Date.now();
     // If less than 1 second since last request, ignore this call
-    if (now - this.lastTurboFrameRequestAt < 1000) { 
-      return; 
+    if (now - this.lastTurboFrameRequestAt < 1000) {
+      return;
     }
     this.lastTurboFrameRequestAt = now;
 
@@ -252,7 +257,7 @@ export default class extends Controller {
       // Parse HTML safely
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
-      
+
       // Clear existing content
       while (targetFrame.firstChild) {
         targetFrame.removeChild(targetFrame.firstChild);

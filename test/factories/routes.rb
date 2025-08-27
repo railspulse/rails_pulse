@@ -29,12 +29,16 @@ FactoryBot.define do
     end
 
     # Performance-related traits
+    trait :fast_endpoint do
+      sequence(:path) { |n| "/fast/endpoint_#{n}" }
+    end
+
     trait :slow_endpoint do
       sequence(:path) { |n| "/slow/endpoint_#{n}" }
     end
 
-    trait :fast_endpoint do
-      sequence(:path) { |n| "/fast/endpoint_#{n}" }
+    trait :very_slow_endpoint do
+      sequence(:path) { |n| "/very_slow/endpoint_#{n}" }
     end
 
     trait :critical_endpoint do
