@@ -200,6 +200,48 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
     assert_selector "table tbody tr", wait: 3
   end
 
+  test "zoom range parameters filter table data while chart shows all data" do
+    visit_rails_pulse_path "/routes"
+
+    # Wait for page to load with default data (recent routes)
+    assert_selector "table tbody tr", wait: 5
+
+    # Validate initial state - should show default scope routes (recent data)
+    default_routes = (@fast_routes + @slow_routes + @very_slow_routes + @critical_routes)
+
+    # Chart and table should show default data (no zoom yet)
+    validate_chart_data("#average_response_times_chart", expected_data: default_routes, filter_applied: "Default")
+    validate_table_data(page_type: :routes, expected_data: default_routes, filter_applied: "Default")
+
+    # Now apply zoom parameters to filter table to a narrow 1-hour window around our test data
+    # Our :recent test data is at 2.hours.ago, so zoom to that hour
+    zoom_start = 2.5.hours.ago.to_i
+    zoom_end = 1.5.hours.ago.to_i
+
+    zoom_params = {
+      "zoom_start_time" => zoom_start.to_s,
+      "zoom_end_time" => zoom_end.to_s
+    }
+
+    zoom_url = "/rails_pulse/routes?#{zoom_params.to_query}"
+    visit zoom_url
+
+    # Wait for page to reload with zoom applied
+    assert_selector "table tbody tr", wait: 5
+
+    # Chart should still show the SAME data (zoom is visual only on chart)
+    validate_chart_data("#average_response_times_chart", expected_data: default_routes, filter_applied: "Default with Zoom")
+
+    # Table should only show routes with data in the zoom range (2.5 to 1.5 hours ago)
+    # Based on our test data:
+    # - fast_routes: only have :recent data (will appear in zoom)
+    # - slow_routes: have both :recent and :last_week data (will appear in zoom)
+    # - very_slow_routes: only have :last_week data (will NOT appear in zoom)
+    # - critical_routes: only have :recent data (will appear in zoom)
+    zoomed_routes = (@fast_routes + @slow_routes + @critical_routes)
+    validate_table_data(page_type: :routes, expected_data: zoomed_routes, filter_applied: "Recent Zoom")
+  end
+
   private
 
   def all_test_routes
@@ -251,28 +293,27 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
 
   def create_performance_categorized_requests
     # Create requests with known performance characteristics aligned with thresholds
-    # Fast routes: < 500ms (configured threshold: 500ms)
+    # To test zoom functionality properly, we'll create different routes active at different times
+
+    # Fast routes: Only active in recent period (recent hour activity)
     @fast_routes.each do |route|
       create_requests_for_route(route, avg_duration: 200, count: 20, time_spread: :recent)
-      create_requests_for_route(route, avg_duration: 150, count: 15, time_spread: :last_week)
     end
 
-    # Slow routes: 500-1499ms (configured threshold: slow: 500ms, very_slow: 1500ms)
+    # Slow routes: Active in both recent and last week (will appear in both zoom and full view)
     @slow_routes.each do |route|
       create_requests_for_route(route, avg_duration: 800, count: 15, time_spread: :recent)
       create_requests_for_route(route, avg_duration: 750, count: 10, time_spread: :last_week)
     end
 
-    # Very slow routes: 1500-2999ms (configured threshold: very_slow: 1500ms, critical: 3000ms)
+    # Very slow routes: Only active in last week period (won't appear in recent zoom)
     @very_slow_routes.each do |route|
-      create_requests_for_route(route, avg_duration: 2000, count: 10, time_spread: :recent)
       create_requests_for_route(route, avg_duration: 1800, count: 8, time_spread: :last_week)
     end
 
-    # Critical routes: ≥ 3000ms (configured threshold: critical: 3000ms)
+    # Critical routes: Only active in recent period (will appear in zoom)
     @critical_routes.each do |route|
       create_requests_for_route(route, avg_duration: 4000, count: 5, time_spread: :recent)
-      create_requests_for_route(route, avg_duration: 3500, count: 3, time_spread: :last_week)
     end
 
     # Time-specific routes for testing filtering boundaries
@@ -351,7 +392,6 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
     service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
     service.perform
   end
-
 
   def calculate_expected_route_count_for_filter(filter_type, filter_value)
     case filter_type
