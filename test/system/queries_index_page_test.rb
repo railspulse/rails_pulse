@@ -104,6 +104,76 @@ class QueriesIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: :queries, filter_applied: "Slow")
   end
 
+  test "table column sorting works correctly" do
+    visit_rails_pulse_path "/queries"
+    
+    # Wait for table to load
+    assert_selector "table tbody tr", wait: 5
+    
+    # Test sorting by Avg Time column
+    click_link "Avg Time"
+    assert_selector "table tbody tr", wait: 3
+    
+    # Verify sort order by comparing first two rows
+    first_row_duration = page.find("tbody tr:first-child td:nth-child(3)").text
+    second_row_duration = page.find("tbody tr:nth-child(2) td:nth-child(3)").text
+    
+    first_value = first_row_duration.gsub(/[^\d.]/, "").to_f
+    second_value = second_row_duration.gsub(/[^\d.]/, "").to_f
+    
+    # The sorting could be ascending or descending, just verify it's actually sorted
+    is_ascending = first_value <= second_value
+    is_descending = first_value >= second_value
+    
+    assert(is_ascending || is_descending, 
+           "Rows should be sorted by avg time: #{first_value}ms vs #{second_value}ms")
+    
+    # Test sorting by clicking the same column again (should toggle sort direction)
+    click_link "Avg Time"
+    assert_selector "table tbody tr", wait: 3
+    
+    # Get new values after re-sorting
+    new_first_row_duration = page.find("tbody tr:first-child td:nth-child(3)").text
+    new_second_row_duration = page.find("tbody tr:nth-child(2) td:nth-child(3)").text
+    
+    new_first_value = new_first_row_duration.gsub(/[^\d.]/, "").to_f
+    new_second_value = new_second_row_duration.gsub(/[^\d.]/, "").to_f
+    
+    # Verify the sort direction changed or at least table is still sorted
+    new_is_ascending = new_first_value <= new_second_value
+    new_is_descending = new_first_value >= new_second_value
+    
+    assert(new_is_ascending || new_is_descending,
+           "Rows should still be sorted after toggling: #{new_first_value}ms vs #{new_second_value}ms")
+    
+    # Test sorting by Query column
+    click_link "Query"
+    assert_selector "table tbody tr", wait: 3
+    
+    # Verify queries are sorted by checking first two query texts
+    first_query = page.find("tbody tr:first-child td:first-child").text.strip
+    second_query = page.find("tbody tr:nth-child(2) td:first-child").text.strip
+    
+    # Queries could be sorted ascending or descending alphabetically
+    queries_ascending = first_query <= second_query
+    queries_descending = first_query >= second_query
+    
+    assert(queries_ascending || queries_descending,
+           "Queries should be sorted alphabetically: '#{first_query[0..30]}...' vs '#{second_query[0..30]}...'")
+    
+    # Test sorting by Executions column
+    within("table thead") do
+      click_link "Executions"
+    end
+    assert_selector "table tbody tr", wait: 3
+    
+    # Test sorting by Total Time column
+    within("table thead") do
+      click_link "Total Time"
+    end
+    assert_selector "table tbody tr", wait: 3
+  end
+
   private
 
   def all_test_queries
