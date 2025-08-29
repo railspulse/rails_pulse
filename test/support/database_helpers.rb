@@ -39,7 +39,7 @@ module DatabaseHelpers
     @table_creation_mutex.synchronize do
       begin
         # Check if all required tables exist
-        required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations" ]
+        required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations", "rails_pulse_summaries" ]
 
         if required_tables.all? { |table| ActiveRecord::Base.connection.table_exists?(table) }
           return
@@ -78,59 +78,11 @@ module DatabaseHelpers
   end
 
   def self.create_rails_pulse_test_schema
-    connection = ActiveRecord::Base.connection
-
-    # Create routes table
-    connection.create_table :rails_pulse_routes, force: true do |t|
-      t.string :method, null: false
-      t.string :path, null: false
-      t.timestamps
-    end
-
-    # Add required index for routes uniqueness validation
-    connection.add_index :rails_pulse_routes, [ :method, :path ], unique: true, name: "index_rails_pulse_routes_on_method_and_path"
-
-    # Create requests table
-    connection.create_table :rails_pulse_requests, force: true do |t|
-      t.references :route, null: false, foreign_key: { to_table: :rails_pulse_routes }
-      t.decimal :duration, precision: 15, scale: 6, null: false
-      t.integer :status, null: false
-      t.boolean :is_error, null: false, default: false
-      t.string :request_uuid, null: false
-      t.string :controller_action
-      t.timestamp :occurred_at, null: false
-      t.timestamps
-    end
-
-    # Create queries table
-    connection.create_table :rails_pulse_queries, force: true do |t|
-      t.text :normalized_sql, null: false
-      t.timestamps
-    end
-
-    # Add required index for queries uniqueness validation with MySQL compatibility
-    if connection.adapter_name.downcase.include?("mysql")
-      # MySQL requires key length for TEXT columns - use first 255 characters for uniqueness
-      connection.add_index :rails_pulse_queries, [ :normalized_sql ], unique: true,
-                          name: "index_rails_pulse_queries_on_normalized_sql", length: { normalized_sql: 255 }
-    else
-      # PostgreSQL and SQLite don't need length specification
-      connection.add_index :rails_pulse_queries, [ :normalized_sql ], unique: true,
-                          name: "index_rails_pulse_queries_on_normalized_sql"
-    end
-
-    # Create operations table
-    connection.create_table :rails_pulse_operations, force: true do |t|
-      t.references :request, null: false, foreign_key: { to_table: :rails_pulse_requests }
-      t.references :query, foreign_key: { to_table: :rails_pulse_queries }
-      t.string :operation_type, null: false
-      t.string :label, null: false
-      t.decimal :duration, precision: 15, scale: 6, null: false
-      t.string :codebase_location
-      t.float :start_time, null: false, default: 0.0
-      t.timestamp :occurred_at, null: false
-      t.timestamps
-    end
+    # Load the main Rails Pulse schema instead of duplicating table definitions
+    require_relative "../../db/rails_pulse_schema"
+    
+    # Call the schema lambda with the current connection
+    RailsPulse::Schema.call(ActiveRecord::Base.connection)
   end
 
   private

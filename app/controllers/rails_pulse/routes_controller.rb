@@ -101,6 +101,26 @@ module RailsPulse
       action_name == "show"
     end
 
+    def setup_table_data(ransack_params)
+      table_ransack_params = build_table_ransack_params(ransack_params)
+      @ransack_query = table_model.ransack(table_ransack_params)
+      
+      # Only apply default sort if not using Routes::Tables::Index (which handles its own sorting)
+      if show_action?
+        @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?
+      end
+
+      table_results = build_table_results
+      handle_pagination
+
+      @pagy, @table_data = pagy(table_results, limit: session_pagination_limit)
+    end
+
+    def handle_pagination
+      method = pagination_method
+      send(method, params[:limit]) if params[:limit].present?
+    end
+
     def pagination_method
       show_action? ? :set_pagination_limit : :store_pagination_limit
     end
