@@ -1,7 +1,6 @@
 require "support/application_system_test_case"
 
 class RoutesIndexPageTest < ApplicationSystemTestCase
-  include BulkDataHelpers
   include ChartValidationHelpers
   include TableValidationHelpers
 
@@ -24,7 +23,7 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
 
     # Verify chart data matches expected test data
     expected_routes = all_test_routes
-    validate_chart_data("#average_response_times_chart", expected_routes: expected_routes)
+    validate_chart_data("#average_response_times_chart", expected_data: expected_routes)
     validate_table_data(page_type: :routes, expected_data: expected_routes)
 
     # Try "Last Month" filter to see all our test routes
@@ -32,7 +31,7 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
     click_button "Search"
 
     validate_table_data(page_type: :routes, expected_data: expected_routes, filter_applied: "Last Month")
-    validate_chart_data("#average_response_times_chart", expected_routes: expected_routes, filter_applied: "Last Month")
+    validate_chart_data("#average_response_times_chart", expected_data: expected_routes, filter_applied: "Last Month")
   end
 
   test "route path filter works correctly" do
@@ -44,7 +43,7 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
 
     # Validate filtered results contain only API routes
     api_routes = all_test_routes.select { |r| r.path.include?("api") }
-    validate_chart_data("#average_response_times_chart", expected_routes: api_routes, filter_applied: "API routes")
+    validate_chart_data("#average_response_times_chart", expected_data: api_routes, filter_applied: "API routes")
     validate_table_data(page_type: :routes, filter_applied: "api")
 
     # Test filtering by "admin" should show admin routes
@@ -53,7 +52,7 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
 
     # Validate filtered results contain only admin routes
     admin_routes = all_test_routes.select { |r| r.path.include?("admin") }
-    validate_chart_data("#average_response_times_chart", expected_routes: admin_routes, filter_applied: "Admin routes")
+    validate_chart_data("#average_response_times_chart", expected_data: admin_routes, filter_applied: "Admin routes")
     validate_table_data(page_type: :routes, filter_applied: "admin")
   end
 
@@ -62,7 +61,7 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
 
     # Capture initial data - should show recent routes but not last_week_only, last_month_only, or old routes
     default_scope_routes = (@fast_routes + @slow_routes + @very_slow_routes + @critical_routes)
-    validate_chart_data("#average_response_times_chart", expected_routes: default_scope_routes)
+    validate_chart_data("#average_response_times_chart", expected_data: default_scope_routes)
     validate_table_data(page_type: :routes)
 
     # Test Last Week filter - should include last_week_only route but exclude last_month_only and old routes
@@ -72,7 +71,7 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
     # Verify page updated (may have query parameters)
     assert_current_path "/rails_pulse/routes", ignore_query: true
     last_week_routes = default_scope_routes + [ @last_week_only_route ]
-    validate_chart_data("#average_response_times_chart", expected_routes: last_week_routes, filter_applied: "Last Week")
+    validate_chart_data("#average_response_times_chart", expected_data: last_week_routes, filter_applied: "Last Week")
     validate_table_data(page_type: :routes, filter_applied: "Last Week")
 
     # Test Last Month filter - should include all except old route
@@ -80,7 +79,7 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
     click_button "Search"
 
     last_month_routes = default_scope_routes + [ @last_week_only_route, @last_month_only_route ]
-    validate_chart_data("#average_response_times_chart", expected_routes: last_month_routes, filter_applied: "Last Month")
+    validate_chart_data("#average_response_times_chart", expected_data: last_month_routes, filter_applied: "Last Month")
     validate_table_data(page_type: :routes, filter_applied: "Last Month")
   end
 
@@ -93,7 +92,7 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
 
     # Validate slow routes are shown (≥ 500ms average) - should include slow, very_slow, critical, and last_week_only
     slow_routes = (@slow_routes + @very_slow_routes + @critical_routes + [ @last_week_only_route ]).compact
-    validate_chart_data("#average_response_times_chart", expected_routes: slow_routes, filter_applied: "Slow")
+    validate_chart_data("#average_response_times_chart", expected_data: slow_routes, filter_applied: "Slow")
     validate_table_data(page_type: :routes, filter_applied: "Slow")
 
     # Test "Critical" filter - should show routes ≥ 3000ms (only critical routes)
@@ -103,18 +102,9 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
     click_button "Search"
 
     # Validate critical routes are shown (≥ 3000ms average)
-    # Note: Critical routes might not show up if the aggregated averages don't reach 3000ms threshold
-    # This tests that the filter correctly excludes non-critical routes
-    table_rows = page.all("tbody tr")
-    if table_rows.any?
-      critical_routes = @critical_routes
-      validate_chart_data("#average_response_times_chart", expected_routes: critical_routes, filter_applied: "Critical")
-      validate_table_data(page_type: :routes, filter_applied: "Critical")
-    else
-      # If no routes meet the critical threshold, that's also a valid result
-      # It means the filter is working correctly by excluding non-critical routes
-      assert page.has_text?("Total of 0 record"), "Should show 0 records when no routes meet critical threshold"
-    end
+    critical_routes = @critical_routes
+    validate_chart_data("#average_response_times_chart", expected_data: critical_routes, filter_applied: "Critical")
+    validate_table_data(page_type: :routes, filter_applied: "Critical")
   end
 
   test "combined filters work together" do
@@ -130,27 +120,13 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
     assert_selector "tbody tr", wait: 5
     sleep 0.5  # Allow DOM to fully stabilize
 
-    # Verify all results match combined criteria by re-querying each row
-    row_count = page.all("tbody tr").count
-
-    if row_count > 0
-      (1..row_count).each do |row_index|
-        # Re-query each row to avoid stale element references
-        row_selector = "tbody tr:nth-child(#{row_index})"
-
-        # Check if row still exists (in case of pagination changes)
-        next unless page.has_selector?(row_selector)
-
-        route_link_text = page.find("#{row_selector} td:first-child a").text
-        duration_text = page.find("#{row_selector} td:nth-child(2)").text
-        duration_value = duration_text.gsub(/[^\d]/, "").to_i
-
-        assert route_link_text.include?("api"), "Route should contain 'api': #{route_link_text}"
-        # Note: Performance filter validation happens in the dedicated performance filter test
-      end
-    else
-      puts "No results found for combined filter - this might be expected if no API routes are slow in the last week"
-    end
+    # Verify combined filtering results using standard validation
+    # Expected: API routes that are slow (≥ 500ms) from last week time range
+    api_slow_routes = (@slow_routes + @very_slow_routes + @critical_routes + [ @last_week_only_route ])
+                      .compact
+                      .select { |route| route.path.include?("api") }
+    validate_chart_data("#average_response_times_chart", expected_data: api_slow_routes, filter_applied: "Combined API + Slow + Last Week")
+    validate_table_data(page_type: :routes, filter_applied: "api")
   end
 
   private
@@ -270,17 +246,39 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
   end
 
   def create_summary_data_for_routes
-    # Run summarization for different time periods to ensure data shows up
-    periods = [
-      [ "hour", 1.hour.ago ],
-      [ "day", 1.day.ago ],
-      [ "week", 1.week.ago ]
-    ]
-
-    periods.each do |period_type, start_time|
-      service = RailsPulse::SummaryService.new(period_type, start_time)
+    # The SummaryService aggregates Requests into Summary records by time periods
+    # We need to create summaries that cover the exact time periods where our Requests exist
+    
+    # Get the actual time ranges where our Requests were created
+    time_spreads = {
+      recent: 2.hours.ago,
+      last_week: 10.days.ago, 
+      last_week_only: 6.days.ago,
+      last_month_only: 20.days.ago,
+      old: 40.days.ago
+    }
+    
+    time_spreads.each do |spread_type, base_time|
+      # For each time spread, create summaries that cover the full range
+      # where requests might exist (base_time to base_time + requests*10.minutes)
+      
+      # Create daily summaries for the day containing each time spread
+      service = RailsPulse::SummaryService.new("day", base_time.beginning_of_day)
       service.perform
+      
+      # For recent data, also create hourly summaries for more granular data
+      if spread_type == :recent
+        service = RailsPulse::SummaryService.new("hour", base_time.beginning_of_hour)
+        service.perform
+      end
     end
+    
+    # Also create a summary for "today" to ensure default view has data
+    service = RailsPulse::SummaryService.new("day", Time.current.beginning_of_day)
+    service.perform
+    
+    service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
+    service.perform
   end
 
 

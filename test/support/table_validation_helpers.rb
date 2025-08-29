@@ -17,8 +17,6 @@ module TableValidationHelpers
     else
       raise ArgumentError, "Unknown page_type: #{page_type}. Must be :routes, :requests, or :queries"
     end
-
-    table_rows.length
   end
 
   private
@@ -32,7 +30,7 @@ module TableValidationHelpers
       validate_route_path_cell(cells[0], index + 1, filter_applied)
 
       # Validate response time (second column)
-      validate_duration_cell(cells[1], index + 1, filter_applied)
+      validate_duration_cell(cells[1], index + 1, filter_applied, page_type: :routes)
 
       # Validate additional columns (error rate, throughput, etc.)
       validate_additional_numeric_columns(cells[2..-1], index + 1) if cells.length > 2
@@ -51,7 +49,7 @@ module TableValidationHelpers
       validate_route_path_cell(cells[0], index + 1, filter_applied)
 
       # Validate duration (second column)
-      validate_duration_cell(cells[1], index + 1, filter_applied)
+      validate_duration_cell(cells[1], index + 1, filter_applied, page_type: :requests)
 
       # Validate status code (third column)
       validate_status_code_cell(cells[2], index + 1)
@@ -67,16 +65,20 @@ module TableValidationHelpers
   def validate_queries_table(table_rows, expected_queries, filter_applied)
     table_rows.each_with_index do |row, index|
       cells = row.all("td")
-      assert cells.length >= 2, "Query row #{index + 1} should have at least 2 columns (SQL and duration)"
+      assert cells.length >= 3, "Query row #{index + 1} should have at least 3 columns (SQL, executions, avg time)"
 
       # Validate SQL query (first column)
       validate_sql_cell(cells[0], index + 1, filter_applied)
 
-      # Validate duration (second column)
-      validate_duration_cell(cells[1], index + 1, filter_applied)
+      # Validate executions count (second column)
+      executions_text = cells[1].text.strip
+      executions_value = executions_text.to_i
+      assert executions_value > 0, "Executions should be positive in row #{index + 1}, got: #{executions_value}"
 
-      # Validate caller if present (third column)
-      validate_caller_cell(cells[2], index + 1) if cells.length > 2
+      # Validate average duration (third column)
+      validate_duration_cell(cells[2], index + 1, filter_applied, page_type: :queries)
+
+      # Additional columns can be validated if needed (total time, status, last seen)
     end
 
     # Validate expected queries coverage
@@ -102,23 +104,33 @@ module TableValidationHelpers
     end
   end
 
-  def validate_duration_cell(cell, row_num, filter_applied)
+  def validate_duration_cell(cell, row_num, filter_applied, page_type: nil)
     duration_text = cell.text.strip
     duration_match = duration_text.match(/([0-9,]+(?:\.\d+)?)/)
-    assert duration_match, "Duration should contain numeric value in row #{row_num}, got: #{duration_text}"
+    assert duration_match, "Duration should contain numeric value in row #{row_num}, got: '#{duration_text}'"
 
     duration_value = duration_match[1].gsub(",", "").to_f
-    assert duration_value > 0, "Duration should be positive in row #{row_num}, got: #{duration_value}"
-    assert duration_value < 30000, "Duration should be reasonable (< 30s) in row #{row_num}, got: #{duration_value}ms"
+    assert duration_value > 0, "Duration should be positive in row #{row_num}, got: #{duration_value} from text '#{duration_text}'"
+    assert duration_value < 30000, "Duration should be reasonable (< 30s) in row #{row_num}, got: #{duration_value}ms from text '#{duration_text}'"
 
-    # Apply performance-based filters
+    # Apply performance-based filters - use different thresholds for queries vs routes
     case filter_applied
     when "Slow", /Slow.*≥.*ms/i
-      # Should show routes ≥ 500ms - if this fails, there's likely an application bug
-      assert duration_value >= 500, "Slow filter: duration should be ≥ 500ms in row #{row_num}, got: #{duration_value}ms"
+      if page_type == :queries
+        # Query slow threshold: ≥ 100ms
+        assert duration_value >= 100, "Slow filter: duration should be ≥ 100ms in row #{row_num}, got: #{duration_value}ms from text '#{duration_text}'"
+      else
+        # Route slow threshold: ≥ 500ms 
+        assert duration_value >= 500, "Slow filter: duration should be ≥ 500ms in row #{row_num}, got: #{duration_value}ms from text '#{duration_text}'"
+      end
     when "Critical", /Critical.*≥.*ms/i
-      # Should show routes ≥ 3000ms - if this fails, there's likely an application bug
-      assert duration_value >= 3000, "Critical filter: duration should be ≥ 3000ms in row #{row_num}, got: #{duration_value}ms"
+      if page_type == :queries
+        # Query critical threshold: ≥ 1000ms
+        assert duration_value >= 1000, "Critical filter: duration should be ≥ 1000ms in row #{row_num}, got: #{duration_value}ms from text '#{duration_text}'"
+      else
+        # Route critical threshold: ≥ 3000ms
+        assert duration_value >= 3000, "Critical filter: duration should be ≥ 3000ms in row #{row_num}, got: #{duration_value}ms from text '#{duration_text}'"
+      end
     end
   end
 
@@ -226,7 +238,7 @@ module TableValidationHelpers
       first_cell&.text&.strip&.truncate(50)
     end.compact
 
-    expected_sql = expected_queries.respond_to?(:map) ? expected_queries.map { |q| q.respond_to?(:sql) ? q.sql.truncate(50) : q.to_s.truncate(50) } : expected_queries
+    expected_sql = expected_queries.respond_to?(:map) ? expected_queries.map { |q| q.respond_to?(:normalized_sql) ? q.normalized_sql.truncate(50) : q.to_s.truncate(50) } : expected_queries
     overlapping_queries = expected_sql & sql_in_table
     coverage_ratio = overlapping_queries.length.to_f / [ expected_sql.length, 10 ].min
 
