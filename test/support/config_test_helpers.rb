@@ -53,7 +53,9 @@ module ConfigTestHelpers
       mock_config.stubs(:track_assets).returns(false)
       mock_config.stubs(:custom_asset_patterns).returns([])
       mock_config.stubs(:ignored_requests).returns([])
-      mock_config.stubs(:route_thresholds).returns({})
+      mock_config.stubs(:route_thresholds).returns(config[:route_thresholds])
+      mock_config.stubs(:request_thresholds).returns(config[:request_thresholds])
+      mock_config.stubs(:query_thresholds).returns(config[:query_thresholds])
 
       # Add the enabled method that was missing and causing failures
       mock_config.stubs(:enabled).returns(true)

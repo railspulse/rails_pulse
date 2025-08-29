@@ -88,11 +88,6 @@ module RailsPulse
       Arel.sql("rails_pulse_queries.normalized_sql")
     end
 
-    # Ransacker for average duration in grouped queries (needed for queries table sorting)
-    ransacker :avg_duration do
-      Arel.sql("AVG(rails_pulse_summaries.avg_duration)")
-    end
-
     class << self
       def calculate_period_end(period_type, start_time)
         case period_type

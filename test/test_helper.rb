@@ -95,7 +95,6 @@ class ActiveSupport::TestCase
   include ControllerTestHelpers
   include FactoryHelpers
   include PerformanceTestHelpers
-  include ConfigTestHelpers
 
   # Configure FactoryBot
   if defined?(FactoryBot)
@@ -140,8 +139,7 @@ class ActiveSupport::TestCase
   setup do
     setup_test_database if respond_to?(:setup_test_database)
 
-    # Stub expensive operations by default
-    stub_rails_pulse_configuration
+    # Stub time operations only
     stub_time_operations
   end
 

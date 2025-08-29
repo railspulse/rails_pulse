@@ -36,18 +36,23 @@ module RailsPulse
     end
 
     def build_chart_ransack_params(ransack_params)
-      ransack_params.except(:s).merge(
+      base_params = ransack_params.except(:s).merge(
         period_start_gteq: Time.at(@start_time),
         period_start_lt: Time.at(@end_time)
       )
+
+      # Only add duration filter if we have a meaningful threshold
+      base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+      base_params
     end
 
     def build_table_ransack_params(ransack_params)
-      ransack_params.merge(
+      params = ransack_params.merge(
         occurred_at_gteq: Time.at(@table_start_time),
-        occurred_at_lt: Time.at(@table_end_time),
-        duration_gteq: @start_duration
+        occurred_at_lt: Time.at(@table_end_time)
       )
+      params[:duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+      params
     end
 
     def default_table_sort

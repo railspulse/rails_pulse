@@ -40,10 +40,12 @@ module RailsPulse
 
     def build_chart_ransack_params(ransack_params)
       base_params = ransack_params.except(:s).merge(
-        avg_duration: @start_duration,
         period_start_gteq: Time.at(@start_time),
         period_start_lt: Time.at(@end_time)
       )
+
+      # Only add duration filter if we have a meaningful threshold
+      base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
 
       if show_action?
         base_params.merge(summarizable_id_eq: @query.id)
@@ -55,18 +57,21 @@ module RailsPulse
     def build_table_ransack_params(ransack_params)
       if show_action?
         # For Operation model on show page
-        ransack_params.merge(
+        params = ransack_params.merge(
           occurred_at_gteq: Time.at(@table_start_time),
           occurred_at_lt: Time.at(@table_end_time),
           query_id_eq: @query.id
-        ).tap { |params| params[:duration_gteq] = @start_duration if @start_duration }
+        )
+        params[:duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+        params
       else
         # For Summary model on index page
-        ransack_params.merge(
-          avg_duration: @start_duration,
+        params = ransack_params.merge(
           period_start_gteq: Time.at(@table_start_time),
           period_start_lt: Time.at(@table_end_time)
         )
+        params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+        params
       end
     end
 
