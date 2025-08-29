@@ -9,7 +9,7 @@
   trend_amount = data[:trend_amount]
   trend_text = data[:trend_text]
 %>
-<div class="grid-item" data-controller="rails-pulse--chart">
+<div class="grid-item" data-controller="rails-pulse--chart" id="<%= id %>">
   <%= render 'rails_pulse/components/panel', { title: title, card_classes: 'card-compact' } do %>
     <div class="row mbs-2" style="height: 50px; margin-bottom: 0;">
       <div class="grid-item">

@@ -4,7 +4,7 @@
 
 RailsPulse::Schema = lambda do |connection|
   # Skip if all tables already exist to prevent conflicts
-  required_tables = [:rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_summaries]
+  required_tables = [ :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_summaries ]
   return if required_tables.all? { |table| connection.table_exists?(table) }
 
   connection.create_table :rails_pulse_routes do |t|

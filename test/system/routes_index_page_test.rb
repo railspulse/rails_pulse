@@ -34,6 +34,37 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
     validate_chart_data("#average_response_times_chart", expected_data: expected_routes, filter_applied: "Last Month")
   end
 
+  test "metric cards display data correctly" do
+    visit_rails_pulse_path "/routes"
+
+    # Wait for page to load
+    assert_selector "table tbody tr", wait: 5
+
+    # Verify Average Response Time card
+    within("#average_response_times") do
+      assert_text "AVERAGE RESPONSE TIME"
+      assert_match(/\d+(\.\d+)?\s*ms/, text, "Average response time should show ms value")
+    end
+
+    # Verify 95th Percentile Response Time card
+    within("#percentile_response_times") do
+      assert_text "95TH PERCENTILE RESPONSE TIME"
+      assert_match(/\d+(\.\d+)?\s*ms/, text, "95th percentile should show ms value")
+    end
+
+    # Verify Request Count Total card
+    within("#request_count_totals") do
+      assert_text "REQUEST COUNT TOTAL"
+      assert_match(/\d+\s*\/\s*min/, text, "Request count should show per minute value")
+    end
+
+    # Verify Error Rate Per Route card
+    within("#error_rate_per_route") do
+      assert_text "ERROR RATE PER ROUTE"
+      assert_match(/\d+(\.\d+)?%/, text, "Error rate should show percentage value")
+    end
+  end
+
   test "route path filter works correctly" do
     visit_rails_pulse_path "/routes"
 

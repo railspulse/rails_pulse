@@ -120,7 +120,7 @@ module TableValidationHelpers
         # Query slow threshold: ≥ 100ms
         assert duration_value >= 100, "Slow filter: duration should be ≥ 100ms in row #{row_num}, got: #{duration_value}ms from text '#{duration_text}'"
       else
-        # Route slow threshold: ≥ 500ms 
+        # Route slow threshold: ≥ 500ms
         assert duration_value >= 500, "Slow filter: duration should be ≥ 500ms in row #{row_num}, got: #{duration_value}ms from text '#{duration_text}'"
       end
     when "Critical", /Critical.*≥.*ms/i

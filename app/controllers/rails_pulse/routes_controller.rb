@@ -104,7 +104,7 @@ module RailsPulse
     def setup_table_data(ransack_params)
       table_ransack_params = build_table_ransack_params(ransack_params)
       @ransack_query = table_model.ransack(table_ransack_params)
-      
+
       # Only apply default sort if not using Routes::Tables::Index (which handles its own sorting)
       if show_action?
         @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?

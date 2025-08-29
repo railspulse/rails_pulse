@@ -80,7 +80,7 @@ module DatabaseHelpers
   def self.create_rails_pulse_test_schema
     # Load the main Rails Pulse schema instead of duplicating table definitions
     require_relative "../../db/rails_pulse_schema"
-    
+
     # Call the schema lambda with the current connection
     RailsPulse::Schema.call(ActiveRecord::Base.connection)
   end
