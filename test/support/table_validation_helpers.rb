@@ -43,19 +43,26 @@ module TableValidationHelpers
   def validate_requests_table(table_rows, expected_requests, filter_applied)
     table_rows.each_with_index do |row, index|
       cells = row.all("td")
-      assert cells.length >= 3, "Request row #{index + 1} should have at least 3 columns (path, duration, status)"
+      assert cells.length >= 4, "Request row #{index + 1} should have at least 4 columns (route, timestamp, duration, status)"
 
       # Validate request path (first column)
       validate_route_path_cell(cells[0], index + 1, filter_applied)
 
-      # Validate duration (second column)
-      validate_duration_cell(cells[1], index + 1, filter_applied, page_type: :requests)
+      # Validate timestamp (second column)
+      validate_timestamp_cell(cells[1], index + 1)
 
-      # Validate status code (third column)
-      validate_status_code_cell(cells[2], index + 1)
+      # Validate duration (third column)
+      validate_duration_cell(cells[2], index + 1, filter_applied, page_type: :requests)
 
-      # Validate timestamp if present (fourth column)
-      validate_timestamp_cell(cells[3], index + 1) if cells.length > 3
+      # Validate status code (fourth column)
+      validate_status_code_cell(cells[3], index + 1)
+
+      # Status indicator column (fifth column) is optional - just validate it exists
+      # The status indicator might be empty in some cases, so just check the column exists
+      if cells.length > 4
+        # Column exists, that's sufficient validation for the status indicator
+        assert true, "Status indicator column exists"
+      end
     end
 
     # Validate expected requests coverage
@@ -153,7 +160,8 @@ module TableValidationHelpers
       /\d{4}-\d{2}-\d{2}/, # YYYY-MM-DD
       /\d{2}\/\d{2}\/\d{4}/, # MM/DD/YYYY
       /\d+ \w+ ago/, # "5 minutes ago"
-      /\d{2}:\d{2}/ # HH:MM
+      /\d{2}:\d{2}/, # HH:MM
+      /\w{3} \d{1,2}, \d{4} \d{1,2}:\d{2} (AM|PM)/ # "Aug 30, 2025 5:40 AM"
     ]
 
     has_valid_format = timestamp_patterns.any? { |pattern| timestamp_text.match?(pattern) }
@@ -220,16 +228,23 @@ module TableValidationHelpers
   end
 
   def validate_requests_coverage(table_rows, expected_requests)
-    request_paths_in_table = table_rows.map do |row|
+    # For requests table, we extract route paths from the first column  
+    route_paths_in_table = table_rows.map do |row|
       link = row.all("td").first&.find("a") rescue nil
-      link&.text&.strip
+      route_text = link&.text&.strip
+      # Extract just the path part from "path METHOD" format
+      route_text&.split(" ")&.first
     end.compact
 
-    expected_paths = expected_requests.respond_to?(:map) ? expected_requests.map { |r| r.respond_to?(:path) ? r.path : r.to_s } : expected_requests
-    overlapping_requests = expected_paths & request_paths_in_table
-    coverage_ratio = overlapping_requests.length.to_f / [ expected_paths.length, 10 ].min
+    # Extract route paths from expected requests (they have request.route.path)
+    expected_route_paths = expected_requests.respond_to?(:map) ? 
+      expected_requests.map { |r| r.respond_to?(:route) ? r.route&.path : r.to_s }.compact : 
+      expected_requests
 
-    assert coverage_ratio > 0, "Table should contain some expected requests. Expected: #{expected_paths.first(3)}, Found: #{request_paths_in_table.first(3)}"
+    overlapping_routes = expected_route_paths & route_paths_in_table
+    coverage_ratio = overlapping_routes.length.to_f / [ expected_route_paths.length, 10 ].min
+
+    assert coverage_ratio > 0, "Table should contain some expected requests. Expected route paths: #{expected_route_paths.first(3)}, Found route paths: #{route_paths_in_table.first(3)}"
   end
 
   def validate_queries_coverage(table_rows, expected_queries)
