@@ -25,7 +25,7 @@ module RailsPulse
             "SUM(CASE WHEN period_start >= '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS current_requests",
             "SUM(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN avg_duration * count ELSE 0 END) AS previous_weighted_duration",
             "SUM(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS previous_requests"
-          ).first
+          ).take
 
           # Calculate metrics from single query result
           average_query_time = metrics.total_requests.to_i > 0 ? (metrics.total_weighted_duration / metrics.total_requests).round(0) : 0

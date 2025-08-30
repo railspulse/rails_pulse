@@ -97,6 +97,15 @@ module RailsPulse
       Arel.sql("SUM(rails_pulse_summaries.success_count)")
     end
 
+    ransacker :total_time_consumed_sort do
+      Arel.sql("SUM(rails_pulse_summaries.count * rails_pulse_summaries.avg_duration)")
+    end
+
+    # Alias execution_count_sort to count_sort for queries table compatibility
+    ransacker :execution_count_sort do
+      Arel.sql("SUM(rails_pulse_summaries.count)")
+    end
+
     # Ransackers for queries table calculated fields
     ransacker :execution_count do
       Arel.sql("SUM(rails_pulse_summaries.count)")  # Total executions

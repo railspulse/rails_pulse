@@ -10,10 +10,6 @@ module RailsPulse
         end
 
         def to_table
-          # Use the full Ransack query but apply it to our grouped structure
-          # The controller has already built the proper ransack params with filtering
-
-          # Start with the base query from Ransack (this includes all filters)
           base_query = @ransack_query.result(distinct: false)
             .joins("INNER JOIN rails_pulse_routes ON rails_pulse_routes.id = rails_pulse_summaries.summarizable_id")
             .where(

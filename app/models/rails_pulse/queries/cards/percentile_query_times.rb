@@ -22,7 +22,7 @@ module RailsPulse
             "AVG(p95_duration) AS overall_p95",
             "AVG(CASE WHEN period_start >= '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN p95_duration ELSE NULL END) AS current_p95",
             "AVG(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN p95_duration ELSE NULL END) AS previous_p95"
-          ).first
+          ).take
 
           # Calculate metrics from single query result
           p95_query_time = (metrics.overall_p95 || 0).round(0)

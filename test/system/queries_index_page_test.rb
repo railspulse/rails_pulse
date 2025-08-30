@@ -34,6 +34,31 @@ class QueriesIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: :queries, expected_data: expected_queries, filter_applied: "Last Month")
   end
 
+  test "metric cards display data correctly" do
+    visit_rails_pulse_path "/queries"
+
+    # Wait for page to load
+    assert_selector "table tbody tr", wait: 5
+
+    # Verify Average Query Time card
+    within("#average_query_times") do
+      assert_text "AVERAGE QUERY TIME"
+      assert_match(/\d+(\.\d+)?\s*ms/, text, "Average query time should show ms value")
+    end
+
+    # Verify 95th Percentile Query Time card
+    within("#percentile_query_times") do
+      assert_text "95TH PERCENTILE QUERY TIME"
+      assert_match(/\d+(\.\d+)?\s*ms/, text, "95th percentile should show ms value")
+    end
+
+    # Verify Execution Rate card
+    within("#execution_rate") do
+      assert_text "EXECUTION RATE"
+      assert_match(/\d+(\.\d+)?\s*\/\s*min/, text, "Execution rate should show per minute value")
+    end
+  end
+
   test "time range filter updates chart and table data" do
     visit_rails_pulse_path "/queries"
 
@@ -172,6 +197,48 @@ class QueriesIndexPageTest < ApplicationSystemTestCase
       click_link "Total Time"
     end
     assert_selector "table tbody tr", wait: 3
+  end
+
+  test "zoom range parameters filter table data while chart shows all data" do
+    visit_rails_pulse_path "/queries"
+
+    # Wait for page to load with default data (recent queries)
+    assert_selector "table tbody tr", wait: 5
+
+    # Validate initial state - should show default scope queries (recent data)
+    default_queries = (@fast_queries + @slow_queries + @very_slow_queries + @critical_queries)
+
+    # Chart and table should show default data (no zoom yet)
+    validate_chart_data("#average_query_times_chart", expected_data: default_queries, filter_applied: "Default")
+    validate_table_data(page_type: :queries, expected_data: default_queries, filter_applied: "Default")
+
+    # Now apply zoom parameters to filter table to a narrow 1-hour window around our test data
+    # Our :recent test data is at 2.hours.ago, so zoom to that hour
+    zoom_start = 2.5.hours.ago.to_i
+    zoom_end = 1.5.hours.ago.to_i
+
+    zoom_params = {
+      "zoom_start_time" => zoom_start.to_s,
+      "zoom_end_time" => zoom_end.to_s
+    }
+
+    zoom_url = "/rails_pulse/queries?#{zoom_params.to_query}"
+    visit zoom_url
+
+    # Wait for page to reload with zoom applied
+    assert_selector "table tbody tr", wait: 5
+
+    # Chart should still show the SAME data (zoom is visual only on chart)
+    validate_chart_data("#average_query_times_chart", expected_data: default_queries, filter_applied: "Default with Zoom")
+
+    # Table should only show queries with data in the zoom range (2.5 to 1.5 hours ago)
+    # Based on our test data:
+    # - fast_queries: only have :recent data (will appear in zoom)
+    # - slow_queries: have both :recent and :last_week data (will appear in zoom)
+    # - very_slow_queries: have both :recent and :last_week data (will appear in zoom)
+    # - critical_queries: have both :recent and :last_week data (will appear in zoom)
+    zoomed_queries = (@fast_queries + @slow_queries + @very_slow_queries + @critical_queries)
+    validate_table_data(page_type: :queries, expected_data: zoomed_queries, filter_applied: "Recent Zoom")
   end
 
   private

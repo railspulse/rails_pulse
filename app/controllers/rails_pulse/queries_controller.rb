@@ -102,6 +102,26 @@ module RailsPulse
       show_action? ? :set_pagination_limit : :store_pagination_limit
     end
 
+    def setup_table_data(ransack_params)
+      table_ransack_params = build_table_ransack_params(ransack_params)
+      @ransack_query = table_model.ransack(table_ransack_params)
+
+      # Only apply default sort if not using Queries::Tables::Index (which handles its own sorting)
+      if show_action?
+        @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?
+      end
+
+      table_results = build_table_results
+      handle_pagination
+
+      @pagy, @table_data = pagy(table_results, limit: session_pagination_limit)
+    end
+
+    def handle_pagination
+      method = pagination_method
+      send(method, params[:limit]) if params[:limit].present?
+    end
+
     def setup_time_and_response_ranges
       @start_time, @end_time, @selected_time_range, @time_diff_hours = setup_time_range
       @start_duration, @selected_response_range = setup_duration_range(:query)

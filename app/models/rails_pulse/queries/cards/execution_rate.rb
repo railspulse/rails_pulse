@@ -22,7 +22,7 @@ module RailsPulse
             "SUM(count) AS total_count",
             "SUM(CASE WHEN period_start >= '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS current_count",
             "SUM(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS previous_count"
-          ).first
+          ).take
 
           # Calculate metrics from single query result
           total_execution_count = metrics.total_count || 0
