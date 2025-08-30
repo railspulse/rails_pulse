@@ -59,6 +59,7 @@ module RailsPulse
       Arel.sql("(SUM(rails_pulse_summaries.error_count) * 100.0) / SUM(rails_pulse_summaries.count)")  # Use SUM for both
     end
 
+
     # Ransacker for route path sorting (when joined with routes table)
     ransacker :route_path do
       Arel.sql("rails_pulse_routes.path")
@@ -72,6 +73,28 @@ module RailsPulse
           WHERE rails_pulse_routes.path LIKE '%' || ? || '%'
         )
       SQL
+    end
+
+    # Sorting-specific ransackers for GROUP BY compatibility (used only in ORDER BY)
+    # These use different names to avoid conflicts with filtering
+    ransacker :avg_duration_sort do
+      Arel.sql("AVG(rails_pulse_summaries.avg_duration)")
+    end
+
+    ransacker :max_duration_sort do
+      Arel.sql("MAX(rails_pulse_summaries.max_duration)")
+    end
+
+    ransacker :count_sort do
+      Arel.sql("SUM(rails_pulse_summaries.count)")
+    end
+
+    ransacker :error_count_sort do
+      Arel.sql("SUM(rails_pulse_summaries.error_count)")
+    end
+
+    ransacker :success_count_sort do
+      Arel.sql("SUM(rails_pulse_summaries.success_count)")
     end
 
     # Ransackers for queries table calculated fields
