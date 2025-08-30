@@ -1,252 +1,113 @@
-require "support/application_system_test_case"
+require "support/shared_index_page_test"
 
-class QueriesIndexPageTest < ApplicationSystemTestCase
-  include ChartValidationHelpers
-  include TableValidationHelpers
-
-  def setup
-    super
-    create_comprehensive_test_data
+class QueriesIndexPageTest < SharedIndexPageTest
+  def page_path
+    "/queries"
   end
 
-  test "queries index page loads and displays data" do
-    visit_rails_pulse_path "/queries"
-
-    # Verify basic page structure
-    assert_selector "body"
-    assert_selector "table"
-    assert_current_path "/rails_pulse/queries"
-
-    # Verify chart container exists
-    assert_selector "#average_query_times_chart"
-    assert_selector "[data-rails-pulse--index-target='chart']"
-
-    # Verify chart data matches expected test data
-    expected_queries = all_test_queries
-    validate_chart_data("#average_query_times_chart", expected_data: expected_queries)
-    validate_table_data(page_type: :queries, expected_data: expected_queries)
-
-    # Try "Last Month" filter to see all our test queries
-    select "Last Month", from: "q[period_start_range]"
-    click_button "Search"
-
-    validate_chart_data("#average_query_times_chart", expected_data: expected_queries, filter_applied: "Last Month")
-    validate_table_data(page_type: :queries, expected_data: expected_queries, filter_applied: "Last Month")
+  def page_type
+    :queries
   end
 
-  test "metric cards display data correctly" do
-    visit_rails_pulse_path "/queries"
-
-    # Wait for page to load
-    assert_selector "table tbody tr", wait: 5
-
-    # Verify Average Query Time card
-    within("#average_query_times") do
-      assert_text "AVERAGE QUERY TIME"
-      assert_match(/\d+(\.\d+)?\s*ms/, text, "Average query time should show ms value")
-    end
-
-    # Verify 95th Percentile Query Time card
-    within("#percentile_query_times") do
-      assert_text "95TH PERCENTILE QUERY TIME"
-      assert_match(/\d+(\.\d+)?\s*ms/, text, "95th percentile should show ms value")
-    end
-
-    # Verify Execution Rate card
-    within("#execution_rate") do
-      assert_text "EXECUTION RATE"
-      assert_match(/\d+(\.\d+)?\s*\/\s*min/, text, "Execution rate should show per minute value")
-    end
+  def chart_selector
+    "#average_query_times_chart"
   end
 
-  test "time range filter updates chart and table data" do
-    visit_rails_pulse_path "/queries"
-
-    # Capture initial data - should show recent queries but not last_week_only, last_month_only, or old queries
-    default_scope_queries = (@fast_queries + @slow_queries + @very_slow_queries + @critical_queries)
-    validate_chart_data("#average_query_times_chart", expected_data: default_scope_queries)
-    validate_table_data(page_type: :queries)
-
-    # Test Last Week filter - should include last_week_only query but exclude last_month_only and old queries
-    select "Last Week", from: "q[period_start_range]"
-    click_button "Search"
-
-    # Verify page updated (may have query parameters)
-    assert_current_path "/rails_pulse/queries", ignore_query: true
-    last_week_queries = default_scope_queries + [ @last_week_only_query ].compact
-    validate_chart_data("#average_query_times_chart", expected_data: last_week_queries, filter_applied: "Last Week")
-    validate_table_data(page_type: :queries, filter_applied: "Last Week")
-
-    # Test Last Month filter - should include all except old query
-    select "Last Month", from: "q[period_start_range]"
-    click_button "Search"
-
-    last_month_queries = default_scope_queries + [ @last_week_only_query, @last_month_only_query ].compact
-    validate_chart_data("#average_query_times_chart", expected_data: last_month_queries, filter_applied: "Last Month")
-    validate_table_data(page_type: :queries, filter_applied: "Last Month")
+  def performance_filter_options
+    {
+      slow: "Slow (≥ 100ms)",
+      critical: "Critical (≥ 1000ms)"
+    }
   end
 
-  test "performance duration filter works correctly" do
-    visit_rails_pulse_path "/queries"
-
-    # Test "Slow" filter - should show queries ≥ 100ms
-    select "Slow (≥ 100ms)", from: "q[avg_duration]"
-    click_button "Search"
-
-    # Validate slow queries are shown (≥ 100ms average) - should include slow, very_slow, critical, and last_week_only
-    slow_queries = (@slow_queries + @very_slow_queries + @critical_queries + [ @last_week_only_query ]).compact
-    validate_chart_data("#average_query_times_chart", expected_data: slow_queries, filter_applied: "Slow")
-    validate_table_data(page_type: :queries, filter_applied: "Slow")
-
-    # Test "Critical" filter - should show queries ≥ 1000ms (only critical queries)
-    # First, switch to "Last Month" to ensure we capture all our test data
-    select "Last Month", from: "q[period_start_range]"
-    select "Critical (≥ 1000ms)", from: "q[avg_duration]"
-    click_button "Search"
-
-    # Validate critical queries are shown (≥ 1000ms average)
-    critical_queries = @critical_queries
-    validate_chart_data("#average_query_times_chart", expected_data: critical_queries, filter_applied: "Critical")
-    validate_table_data(page_type: :queries, filter_applied: "Critical")
+  def all_test_data
+    (@fast_queries || []) + (@slow_queries || []) + (@very_slow_queries || []) + (@critical_queries || []) +
+    [ @last_week_only_query, @last_month_only_query, @old_query ].compact
   end
 
-  test "combined filters work together" do
-    visit_rails_pulse_path "/queries"
-
-    # Test combined filtering: slow queries from last week
-    select "Slow (≥ 100ms)", from: "q[avg_duration]"
-    select "Last Week", from: "q[period_start_range]"
-    click_button "Search"
-
-    # Wait for page to update
-    assert_selector "tbody", wait: 5
-    sleep 0.5  # Allow DOM to fully stabilize
-
-    # Verify combined filtering results using standard validation
-    # Expected: slow queries (≥ 100ms) from last week time range
-    expected_combined_queries = (@slow_queries + @very_slow_queries + @critical_queries + [ @last_week_only_query ]).compact
-    validate_chart_data("#average_query_times_chart", expected_data: expected_combined_queries, filter_applied: "Combined Slow + Last Week")
-    validate_table_data(page_type: :queries, filter_applied: "Slow")
+  def default_scope_data
+    (@fast_queries + @slow_queries + @very_slow_queries + @critical_queries)
   end
 
-  test "table column sorting works correctly" do
+  def last_week_data
+    default_scope_data + [ @last_week_only_query ].compact
+  end
+
+  def last_month_data
+    default_scope_data + [ @last_week_only_query, @last_month_only_query ].compact
+  end
+
+  def slow_performance_data
+    (@slow_queries + @very_slow_queries + @critical_queries + [ @last_week_only_query ]).compact
+  end
+
+  def critical_performance_data
+    @critical_queries
+  end
+
+  def zoomed_data
+    (@fast_queries + @slow_queries + @very_slow_queries + @critical_queries)
+  end
+
+  def metric_card_selectors
+    {
+      "#average_query_times" => {
+        title_regex: /AVERAGE QUERY TIME/,
+        title_message: "Average query time card should have correct title",
+        value_regex: /\d+(\.\d+)?\s*ms/,
+        value_message: "Average query time should show ms value"
+      },
+      "#percentile_query_times" => {
+        title_regex: /95TH PERCENTILE QUERY TIME/,
+        title_message: "95th percentile card should have correct title",
+        value_regex: /\d+(\.\d+)?\s*ms/,
+        value_message: "95th percentile should show ms value"
+      },
+      "#execution_rate" => {
+        title_regex: /EXECUTION RATE/,
+        title_message: "Execution rate card should have correct title",
+        value_regex: /\d+(\.\d+)?\s*\/\s*min/,
+        value_message: "Execution rate should show per minute value"
+      }
+    }
+  end
+
+  def sortable_columns
+    [
+      {
+        name: "Avg Time",
+        index: 3,
+        value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
+      },
+      {
+        name: "Query",
+        index: 1,
+        value_extractor: ->(text) { text.strip }
+      }
+    ]
+  end
+
+  # Test additional sortable columns specific to queries
+  def test_additional_sortable_columns_work
     visit_rails_pulse_path "/queries"
 
     # Wait for table to load
     assert_selector "table tbody tr", wait: 5
 
-    # Test sorting by Avg Time column
-    click_link "Avg Time"
-    assert_selector "table tbody tr", wait: 3
-
-    # Verify sort order by comparing first two rows
-    first_row_duration = page.find("tbody tr:first-child td:nth-child(3)").text
-    second_row_duration = page.find("tbody tr:nth-child(2) td:nth-child(3)").text
-
-    first_value = first_row_duration.gsub(/[^\d.]/, "").to_f
-    second_value = second_row_duration.gsub(/[^\d.]/, "").to_f
-
-    # The sorting could be ascending or descending, just verify it's actually sorted
-    is_ascending = first_value <= second_value
-    is_descending = first_value >= second_value
-
-    assert(is_ascending || is_descending,
-           "Rows should be sorted by avg time: #{first_value}ms vs #{second_value}ms")
-
-    # Test sorting by clicking the same column again (should toggle sort direction)
-    click_link "Avg Time"
-    assert_selector "table tbody tr", wait: 3
-
-    # Get new values after re-sorting
-    new_first_row_duration = page.find("tbody tr:first-child td:nth-child(3)").text
-    new_second_row_duration = page.find("tbody tr:nth-child(2) td:nth-child(3)").text
-
-    new_first_value = new_first_row_duration.gsub(/[^\d.]/, "").to_f
-    new_second_value = new_second_row_duration.gsub(/[^\d.]/, "").to_f
-
-    # Verify the sort direction changed or at least table is still sorted
-    new_is_ascending = new_first_value <= new_second_value
-    new_is_descending = new_first_value >= new_second_value
-
-    assert(new_is_ascending || new_is_descending,
-           "Rows should still be sorted after toggling: #{new_first_value}ms vs #{new_second_value}ms")
-
-    # Test sorting by Query column
-    click_link "Query"
-    assert_selector "table tbody tr", wait: 3
-
-    # Verify queries are sorted by checking first two query texts
-    first_query = page.find("tbody tr:first-child td:first-child").text.strip
-    second_query = page.find("tbody tr:nth-child(2) td:first-child").text.strip
-
-    # Queries could be sorted ascending or descending alphabetically
-    queries_ascending = first_query <= second_query
-    queries_descending = first_query >= second_query
-
-    assert(queries_ascending || queries_descending,
-           "Queries should be sorted alphabetically: '#{first_query[0..30]}...' vs '#{second_query[0..30]}...'")
-
-    # Test sorting by Executions column
+    # Test Executions column sorting
     within("table thead") do
       click_link "Executions"
     end
     assert_selector "table tbody tr", wait: 3
 
-    # Test sorting by Total Time column
+    # Test Total Time column sorting
     within("table thead") do
       click_link "Total Time"
     end
     assert_selector "table tbody tr", wait: 3
   end
 
-  test "zoom range parameters filter table data while chart shows all data" do
-    visit_rails_pulse_path "/queries"
-
-    # Wait for page to load with default data (recent queries)
-    assert_selector "table tbody tr", wait: 5
-
-    # Validate initial state - should show default scope queries (recent data)
-    default_queries = (@fast_queries + @slow_queries + @very_slow_queries + @critical_queries)
-
-    # Chart and table should show default data (no zoom yet)
-    validate_chart_data("#average_query_times_chart", expected_data: default_queries, filter_applied: "Default")
-    validate_table_data(page_type: :queries, expected_data: default_queries, filter_applied: "Default")
-
-    # Now apply zoom parameters to filter table to a narrow 1-hour window around our test data
-    # Our :recent test data is at 2.hours.ago, so zoom to that hour
-    zoom_start = 2.5.hours.ago.to_i
-    zoom_end = 1.5.hours.ago.to_i
-
-    zoom_params = {
-      "zoom_start_time" => zoom_start.to_s,
-      "zoom_end_time" => zoom_end.to_s
-    }
-
-    zoom_url = "/rails_pulse/queries?#{zoom_params.to_query}"
-    visit zoom_url
-
-    # Wait for page to reload with zoom applied
-    assert_selector "table tbody tr", wait: 5
-
-    # Chart should still show the SAME data (zoom is visual only on chart)
-    validate_chart_data("#average_query_times_chart", expected_data: default_queries, filter_applied: "Default with Zoom")
-
-    # Table should only show queries with data in the zoom range (2.5 to 1.5 hours ago)
-    # Based on our test data:
-    # - fast_queries: only have :recent data (will appear in zoom)
-    # - slow_queries: have both :recent and :last_week data (will appear in zoom)
-    # - very_slow_queries: have both :recent and :last_week data (will appear in zoom)
-    # - critical_queries: have both :recent and :last_week data (will appear in zoom)
-    zoomed_queries = (@fast_queries + @slow_queries + @very_slow_queries + @critical_queries)
-    validate_table_data(page_type: :queries, expected_data: zoomed_queries, filter_applied: "Recent Zoom")
-  end
-
   private
-
-  def all_test_queries
-    (@fast_queries || []) + (@slow_queries || []) + (@very_slow_queries || []) + (@critical_queries || []) +
-    [ @last_week_only_query, @last_month_only_query, @old_query ].compact
-  end
 
   def create_comprehensive_test_data
     # Create queries with predictable performance characteristics
@@ -260,7 +121,6 @@ class QueriesIndexPageTest < ApplicationSystemTestCase
   end
 
   def create_performance_categorized_queries
-    # Create queries for each performance threshold with distinctive SQL patterns
     # Query thresholds: fast < 100ms, slow 100-499ms, very_slow 500-999ms, critical ≥ 1000ms
     @fast_queries = [
       create(:query, :select_query, normalized_sql: "SELECT id FROM users WHERE id = ?"),
@@ -289,54 +149,47 @@ class QueriesIndexPageTest < ApplicationSystemTestCase
   end
 
   def create_performance_categorized_operations
-    # Create operations with known performance characteristics aligned with query thresholds
-    # Fast queries: < 100ms (configured threshold: 100ms)
+    # Fast queries: < 100ms
     @fast_queries.each do |query|
       create_operations_for_query(query, avg_duration: 50, count: 20, time_spread: :recent)
       create_operations_for_query(query, avg_duration: 30, count: 15, time_spread: :last_week)
     end
 
-    # Slow queries: 100-499ms (configured threshold: slow: 100ms, very_slow: 500ms)
+    # Slow queries: 100-499ms
     @slow_queries.each do |query|
       create_operations_for_query(query, avg_duration: 200, count: 15, time_spread: :recent)
       create_operations_for_query(query, avg_duration: 150, count: 10, time_spread: :last_week)
     end
 
-    # Very slow queries: 500-999ms (configured threshold: very_slow: 500ms, critical: 1000ms)
+    # Very slow queries: 500-999ms
     @very_slow_queries.each do |query|
       create_operations_for_query(query, avg_duration: 700, count: 10, time_spread: :recent)
       create_operations_for_query(query, avg_duration: 600, count: 8, time_spread: :last_week)
     end
 
-    # Critical queries: ≥ 1000ms (configured threshold: critical: 1000ms)
+    # Critical queries: ≥ 1000ms
     @critical_queries.each do |query|
       create_operations_for_query(query, avg_duration: 2000, count: 5, time_spread: :recent)
       create_operations_for_query(query, avg_duration: 1500, count: 3, time_spread: :last_week)
     end
 
     # Time-specific queries for testing filtering boundaries
-    # Last week only query - should appear in "Last Week" and "Last Month" filters but not default scope
     create_operations_for_query(@last_week_only_query, avg_duration: 200, count: 5, time_spread: :last_week_only)
-
-    # Last month only query - should appear only in "Last Month" filter
     create_operations_for_query(@last_month_only_query, avg_duration: 80, count: 8, time_spread: :last_month_only)
-
-    # Old query - should not appear in any time filter (older than 1 month)
     create_operations_for_query(@old_query, avg_duration: 800, count: 3, time_spread: :old)
   end
 
   def create_operations_for_query(query, avg_duration:, count:, time_spread:)
     base_time = case time_spread
-    when :recent then 2.hours.ago  # Within last 24 hours
-    when :last_week then 10.days.ago  # Clearly in "last month" range
-    when :last_week_only then 6.days.ago  # Only in last week, not in recent/default scope
-    when :last_month_only then 20.days.ago  # Only in last month, not in last week
-    when :old then 40.days.ago  # Older than any filter scope
+    when :recent then 2.hours.ago
+    when :last_week then 10.days.ago
+    when :last_week_only then 6.days.ago
+    when :last_month_only then 20.days.ago
+    when :old then 40.days.ago
     else 3.days.ago
     end
 
     count.times do |i|
-      # Add some variation around the average duration (±20%)
       duration_variation = (avg_duration * 0.4 * rand) - (avg_duration * 0.2)
       actual_duration = [ 1, avg_duration + duration_variation ].max.round
 
@@ -346,7 +199,7 @@ class QueriesIndexPageTest < ApplicationSystemTestCase
         route: create(:route, path: unique_path, method: "GET"),
         duration: actual_duration,
         occurred_at: base_time + (i * 10).minutes,
-        status: rand(10) == 0 ? 500 : 200, # 10% error rate
+        status: rand(10) == 0 ? 500 : 200,
         is_error: rand(10) == 0
       )
 
@@ -362,10 +215,6 @@ class QueriesIndexPageTest < ApplicationSystemTestCase
   end
 
   def create_summary_data_for_queries
-    # The SummaryService aggregates Operations into Summary records by time periods
-    # We need to create summaries that cover the exact time periods where our Operations exist
-
-    # Get the actual time ranges where our Operations were created
     time_spreads = {
       recent: 2.hours.ago,
       last_week: 10.days.ago,
@@ -375,21 +224,15 @@ class QueriesIndexPageTest < ApplicationSystemTestCase
     }
 
     time_spreads.each do |spread_type, base_time|
-      # For each time spread, create summaries that cover the full range
-      # where operations might exist (base_time to base_time + operations*10.minutes)
-
-      # Create daily summaries for the day containing each time spread
       service = RailsPulse::SummaryService.new("day", base_time.beginning_of_day)
       service.perform
 
-      # For recent data, also create hourly summaries for more granular data
       if spread_type == :recent
         service = RailsPulse::SummaryService.new("hour", base_time.beginning_of_hour)
         service.perform
       end
     end
 
-    # Also create a summary for "today" to ensure default view has data
     service = RailsPulse::SummaryService.new("day", Time.current.beginning_of_day)
     service.perform
 
