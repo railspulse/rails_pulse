@@ -172,7 +172,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     # Test combined filtering: slow from last week
     select performance_filter_options[:slow], from: "q[avg_duration]"
     select "Last Week", from: "q[period_start_range]"
-    
+
     # Add page-specific filtering if needed
     additional_filter_test
 
