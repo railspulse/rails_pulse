@@ -1,8 +1,6 @@
 require "test_helper"
-require_relative "../support/chart_validation_helpers"
 
 class DashboardIndexPageTest < ApplicationSystemTestCase
-  include ChartValidationHelpers
 
   def setup
     super

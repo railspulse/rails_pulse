@@ -86,7 +86,6 @@ class ActiveSupport::TestCase
   # Disable parallel testing to avoid race conditions with table creation
   parallelize(workers: 1) if respond_to?(:parallelize)
 
-
   # Include test helpers
   include DatabaseHelpers
   include PerformanceHelpers
@@ -226,4 +225,11 @@ class ActionDispatch::IntegrationTest
     DatabaseHelpers.configure_test_database
     super
   end
+end
+
+# System test specific configuration
+class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
+  # Include validation helpers for all system tests
+  include ChartValidationHelpers if defined?(ChartValidationHelpers)
+  include TableValidationHelpers if defined?(TableValidationHelpers)
 end

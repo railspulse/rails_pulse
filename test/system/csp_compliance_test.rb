@@ -1,4 +1,4 @@
-require "support/application_system_test_case"
+require "test_helper"
 
 class CspComplianceTest < ApplicationSystemTestCase
   test "CSP test page loads without violations" do

@@ -1,7 +1,3 @@
-require "test_helper"
-require_relative "chart_validation_helpers"  
-require_relative "table_validation_helpers"
-
 # Abstract base class - doesn't run tests itself
 class SharedIndexPageTest < ApplicationSystemTestCase
   # Don't run tests for this base class
@@ -9,8 +5,6 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     return [] if name == "SharedIndexPageTest"
     super
   end
-  include ChartValidationHelpers
-  include TableValidationHelpers
 
   def setup
     super

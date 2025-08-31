@@ -1,4 +1,5 @@
-require "support/shared_index_page_test"
+require "test_helper"
+require_relative "../support/shared_index_page_test"
 
 class RequestsIndexPageTest < SharedIndexPageTest
   def page_path
