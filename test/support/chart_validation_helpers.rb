@@ -152,4 +152,51 @@ module ChartValidationHelpers
       puts "Warning: All response times are 0ms - chart may be empty or have no data"
     end
   end
+
+  # Enhanced chart data validation for dashboard charts
+  def validate_dashboard_chart_data(chart_selector, expected_min_value:, expected_max_value:, data_type: "response time")
+    # Verify chart has data rendered by checking for canvas element
+    within chart_selector do
+      assert_selector "canvas", wait: 10
+    end
+
+    # Extract detailed chart data using JavaScript
+    chart_data = page.execute_script("
+      var chartElement = document.querySelector('#{chart_selector}');
+      var chartInstance = echarts && echarts.getInstanceByDom && echarts.getInstanceByDom(chartElement);
+      if (chartInstance) {
+        var option = chartInstance.getOption();
+        if (option.series && option.series[0] && option.series[0].data) {
+          var data = option.series[0].data;
+          return {
+            hasSeries: true,
+            hasData: data.length > 0,
+            dataPoints: data.length,
+            values: data.map(function(point) { return point.value || point; }),
+            maxValue: Math.max.apply(Math, data.map(function(point) { return point.value || point; })),
+            minValue: Math.min.apply(Math, data.map(function(point) { return point.value || point; }))
+          };
+        }
+      }
+      return { hasSeries: false, hasData: false };
+    ")
+
+    # Validate the extracted data
+    if chart_data && chart_data["hasSeries"]
+      assert chart_data["hasData"], "Chart should contain data points"
+      assert chart_data["dataPoints"] >= 3, "Chart should have multiple time periods of data"
+
+      # Verify values are realistic based on test data expectations
+      max_value = chart_data["maxValue"]
+      min_value = chart_data["minValue"]
+      assert max_value > 0, "Chart should show non-zero #{data_type} values"
+      assert max_value > min_value, "Chart should show variance in #{data_type} values"
+      assert max_value >= expected_min_value, "Chart should reflect test data with #{data_type} values >= #{expected_min_value}ms"
+      assert max_value <= expected_max_value, "Chart #{data_type} values should be reasonable (<= #{expected_max_value}ms)"
+    else
+      flunk "Chart should have series data available"
+    end
+
+    chart_data
+  end
 end

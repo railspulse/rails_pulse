@@ -256,12 +256,18 @@ module RailsPulse
 
     def event_color(operation_type)
       case operation_type
-      when "sql" then "#92c282;"
-      when "template", "partial", "layout", "collection" then "#b77cbf"
-      when "controller" then "#00adc4"
-      else "gray"
+      when "sql"
+        "#d27d6b"
+      when "template", "partial", "layout", "collection"
+        "#6c7ab9"
+      when "controller"
+        "#5ba6b0"
+      else
+        "#a6a6a6"
       end
     end
+
+
 
     def duration_options(type = :route)
       thresholds = RailsPulse.configuration.public_send("#{type}_thresholds")

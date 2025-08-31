@@ -30,33 +30,33 @@
                   <%= rails_pulse_icon('chevron-right', width: '16', class: 'transition-transform duration-200') %>
                 </div>
               </td>
-              
+
               <td class="operations-label-cell">
                 <span class="text-link" style="color: <%= event_color(bar.operation.operation_type) %>;">
                   <%= html_escape(bar.operation.label) %>
                 </span>
               </td>
-              
+
               <td class="whitespace-nowrap">
                 <%= bar.duration.round(2) %> ms
               </td>
-              
+
               <td class="whitespace-nowrap">
                 <% impact_percentage = total_request_duration > 0 ? (bar.operation.duration / total_request_duration * 100).round(1) : 0 %>
                 <%= impact_percentage %>%
               </td>
-              
+
               <td class="whitespace-nowrap text-center">
                 <%= operation_status_indicator(bar.operation) %>
               </td>
-              
+
               <td class="operations-event-cell">
                 <div
                   class="operations-event"
                   style="left: <%= bar.left_pct %>%; width: <%= bar.width_pct %>%; background-color: <%= event_color(bar.operation.operation_type) %>;">
                 </div>
               </td>
-              
+
               <td>
                 <%= link_to rails_pulse_icon('eye', width: '16', class: 'inline-block mbi-2'), operation_path(bar.operation), title: 'View details', data: { turbo_frame: "_top" } %>
                 <% if bar.operation.operation_type == "sql" && bar.operation.query.present? %>
@@ -64,9 +64,9 @@
                 <% end %>
               </td>
             </tr>
-            
+
             <!-- Expandable details row -->
-            <tr 
+            <tr
               class="operation-details-row hidden"
               data-rails-pulse--expandable-row-target="details"
               data-operation-id="<%= bar.operation.id %>"

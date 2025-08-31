@@ -1,4 +1,6 @@
-require "support/application_system_test_case"
+require "test_helper"
+require_relative "chart_validation_helpers"  
+require_relative "table_validation_helpers"
 
 # Abstract base class - doesn't run tests itself
 class SharedIndexPageTest < ApplicationSystemTestCase
