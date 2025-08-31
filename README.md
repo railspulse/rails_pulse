@@ -436,7 +436,7 @@ This automatically loads the Rails Pulse schema on the configured separate datab
 The installation command creates `db/rails_pulse_schema.rb` containing all necessary table definitions. This schema-based approach provides:
 
 - **Clean Installation**: No migration clutter in new Rails apps
-- **Database Flexibility**: Easy separate database configuration  
+- **Database Flexibility**: Easy separate database configuration
 - **Version Compatibility**: Schema adapts to your Rails version automatically
 - **Future Migrations**: Schema changes will come as regular migrations when needed
 
@@ -532,10 +532,10 @@ If you prefer testing individual databases:
 rails test:all
 
 # Test with PostgreSQL
-DATABASE_ADAPTER=postgresql rails test:all
+DB=postgresql rails test:all
 
 # Test with MySQL
-DATABASE_ADAPTER=mysql2 rails test:all
+DB=mysql2 rails test:all
 ```
 
 ### CI Testing

@@ -7,7 +7,7 @@ module DatabaseHelpers
     # and avoid reconfiguring to prevent issues
     return unless ENV["FORCE_DB_CONFIG"] == "true"
 
-    adapter = ENV.fetch("DATABASE_ADAPTER", "sqlite3")
+    adapter = ENV.fetch("DB", "sqlite3")
 
     # Configure database connection
     configure_database_connection(adapter)

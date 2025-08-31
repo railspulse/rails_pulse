@@ -111,7 +111,7 @@ module ConfigTestHelpers
   end
 
   def stub_database_adapter(adapter_name)
-    with_env_vars(DATABASE_ADAPTER: adapter_name) do
+    with_env_vars(DB: adapter_name) do
       yield
     end
   end

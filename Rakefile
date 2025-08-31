@@ -49,7 +49,7 @@ namespace :test do
 
           # Set environment variables
           env_vars = {
-            "DATABASE_ADAPTER" => database,
+            "DB" => database,
             "BUNDLE_GEMFILE" => gemfile,
             "FORCE_DB_CONFIG" => "true"
           }

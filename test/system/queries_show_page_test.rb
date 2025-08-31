@@ -86,7 +86,7 @@ class QueriesShowPageTest < SharedIndexPageTest
         value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
       },
       {
-        name: "Occurred At",
+        name: "Timestamp",
         index: 1,
         value_extractor: ->(text) { text.strip }
       }

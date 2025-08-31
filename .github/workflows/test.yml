@@ -34,7 +34,7 @@ jobs:
 
     env:
       RAILS_ENV: test
-      DATABASE_ADAPTER: ${{ matrix.database }}
+      DB: ${{ matrix.database }}
       RAILS_VERSION: ${{ matrix.rails }}
       FORCE_DB_CONFIG: true
       CI: true
@@ -62,7 +62,7 @@ jobs:
           "7.2.0") GEMFILE=gemfiles/rails_7_2.gemfile ;;
           "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
         esac
-        
+
         BUNDLE_GEMFILE=$GEMFILE bundle install
 
     - name: Setup database
@@ -83,7 +83,7 @@ jobs:
           "7.2.0") GEMFILE=gemfiles/rails_7_2.gemfile ;;
           "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
         esac
-        
+
         BUNDLE_GEMFILE=$GEMFILE bundle exec rails test:all
 
   lint:

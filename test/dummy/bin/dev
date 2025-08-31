@@ -46,10 +46,10 @@ npm run build
 
 # Detect database adapter
 cd "$DUMMY_DIR"
-DATABASE_ADAPTER=${DATABASE_ADAPTER:-$(./bin/rails runner "puts ActiveRecord::Base.connection.adapter_name" 2>/dev/null || echo "sqlite3")}
+DB=${DB:-$(./bin/rails runner "puts ActiveRecord::Base.connection.adapter_name" 2>/dev/null || echo "sqlite3")}
 
 # Display database adapter info
-case "$DATABASE_ADAPTER" in
+case "$DB" in
   "SQLite")
     echo "🗂️  Database: SQLite"
     ;;
@@ -60,7 +60,7 @@ case "$DATABASE_ADAPTER" in
     echo "🐬 Database: MySQL"
     ;;
   *)
-    echo "🗄️  Database: $DATABASE_ADAPTER"
+    echo "🗄️  Database: $DB"
     ;;
 esac
 

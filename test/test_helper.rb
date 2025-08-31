@@ -14,7 +14,7 @@ end
 require_relative "../test/dummy/config/environment"
 
 # Force database configuration early for MySQL in CI
-if ENV["DATABASE_ADAPTER"] == "mysql2" || ENV["DATABASE_ADAPTER"] == "mysql"
+if ENV["DB"] == "mysql2" || ENV["DB"] == "mysql"
   require_relative "support/database_helpers"
   DatabaseHelpers.configure_test_database
 
@@ -195,10 +195,10 @@ puts "🚀 Rails Pulse Test Suite"
 puts "=" * 80
 puts "Ruby version:       #{RUBY_VERSION}"
 puts "Rails version:      #{Rails.version}"
-requested_adapter = ENV["DATABASE_ADAPTER"] || "sqlite3"
+requested_adapter = ENV["DB"] || "sqlite3"
 display_adapter = requested_adapter == "sqlite3" && ENV["FORCE_DB_CONFIG"] != "true" ? "sqlite3 (default)" : requested_adapter
 actual_adapter = ActiveRecord::Base.connection.adapter_name
-puts "DATABASE_ADAPTER:   #{display_adapter}"
+puts "DB:                 #{display_adapter}"
 puts "Actual adapter:     #{actual_adapter}"
 if ENV["FORCE_DB_CONFIG"] != "true" && requested_adapter != "sqlite3"
   puts "📝 Note: Database switching disabled by default. Set FORCE_DB_CONFIG=true to enable."
