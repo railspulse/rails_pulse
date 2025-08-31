@@ -115,24 +115,24 @@ class RoutesShowPageTest < SharedIndexPageTest
   def validate_route_show_requests_table(table_rows, expected_requests, filter_applied)
     # Wait for table to stabilize after any DOM updates
     sleep 1 # Allow DOM to fully stabilize after filtering
-    
+
     # Get row count first to avoid stale references during iteration
     row_count = all("table tbody tr").length
-    
+
     # Validate that we have data when expected
     if expected_requests && expected_requests.any?
       assert row_count > 0, "Should have requests data in table after applying filter: #{filter_applied}"
     end
-    
+
     # If no rows, that might be valid (e.g., critical filter might return empty results)
     return if row_count == 0
-    
+
     # Validate each row by index to avoid stale element references
     (0...row_count).each do |index|
       # Re-find the specific row each time
       row_selector = "table tbody tr:nth-child(#{index + 1})"
       assert_selector row_selector, wait: 3
-      
+
       within(row_selector) do
         cells = all("td")
         assert cells.length >= 4, "Request row #{index + 1} should have at least 4 columns (timestamp, duration, status, indicator)"
@@ -195,7 +195,7 @@ class RoutesShowPageTest < SharedIndexPageTest
     end
     assert_selector "table tbody tr", wait: 3
 
-    # Test Status column sorting  
+    # Test Status column sorting
     within("table thead") do
       click_link "Status"
     end
@@ -241,29 +241,29 @@ class RoutesShowPageTest < SharedIndexPageTest
   def create_performance_categorized_requests_for_target_route
     # Focus on creating varied requests for our target route
     @target_route_requests = []
-    
+
     # Create requests with varied performance for the target route
     # Recent requests (will appear in zoomed view)
     12.times do |i|
-      duration = [600, 700, 800, 900, 1000].sample + rand(100)
+      duration = [ 600, 700, 800, 900, 1000 ].sample + rand(100)
       request = create(:request,
         route: target_route,
         duration: duration,
         occurred_at: 2.hours.ago + (i * 5).minutes,
-        status: [200, 200, 200, 500].sample,
-        is_error: duration > 900 ? [true, false].sample : false
+        status: [ 200, 200, 200, 500 ].sample,
+        is_error: duration > 900 ? [ true, false ].sample : false
       )
       @target_route_requests << request
     end
 
-    # Add a few critical requests (≥ 3000ms) 
+    # Add a few critical requests (≥ 3000ms)
     3.times do |i|
-      duration = [3100, 3500, 4000].sample + rand(500)
+      duration = [ 3100, 3500, 4000 ].sample + rand(500)
       request = create(:request,
         route: target_route,
         duration: duration,
         occurred_at: 2.hours.ago + (i * 8).minutes,
-        status: [200, 500].sample,
+        status: [ 200, 500 ].sample,
         is_error: true
       )
       @target_route_requests << request
@@ -272,13 +272,13 @@ class RoutesShowPageTest < SharedIndexPageTest
     # Last week requests
     @last_week_requests = []
     10.times do |i|
-      duration = [500, 600, 700, 800].sample + rand(100)
+      duration = [ 500, 600, 700, 800 ].sample + rand(100)
       request = create(:request,
         route: target_route,
         duration: duration,
         occurred_at: 8.days.ago + (i * 30).minutes,
-        status: [200, 200, 500].sample,
-        is_error: [true, false].sample
+        status: [ 200, 200, 500 ].sample,
+        is_error: [ true, false ].sample
       )
       @last_week_requests << request
       @target_route_requests << request
@@ -287,12 +287,12 @@ class RoutesShowPageTest < SharedIndexPageTest
     # Last month requests
     @last_month_requests = []
     8.times do |i|
-      duration = [400, 500, 600].sample + rand(100)
+      duration = [ 400, 500, 600 ].sample + rand(100)
       request = create(:request,
         route: target_route,
         duration: duration,
         occurred_at: 20.days.ago + (i * 60).minutes,
-        status: [200, 200, 200, 500].sample,
+        status: [ 200, 200, 200, 500 ].sample,
         is_error: false
       )
       @last_month_requests << request

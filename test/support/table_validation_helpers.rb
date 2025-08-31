@@ -228,7 +228,7 @@ module TableValidationHelpers
   end
 
   def validate_requests_coverage(table_rows, expected_requests)
-    # For requests table, we extract route paths from the first column  
+    # For requests table, we extract route paths from the first column
     route_paths_in_table = table_rows.map do |row|
       link = row.all("td").first&.find("a") rescue nil
       route_text = link&.text&.strip
@@ -237,8 +237,8 @@ module TableValidationHelpers
     end.compact
 
     # Extract route paths from expected requests (they have request.route.path)
-    expected_route_paths = expected_requests.respond_to?(:map) ? 
-      expected_requests.map { |r| r.respond_to?(:route) ? r.route&.path : r.to_s }.compact : 
+    expected_route_paths = expected_requests.respond_to?(:map) ?
+      expected_requests.map { |r| r.respond_to?(:route) ? r.route&.path : r.to_s }.compact :
       expected_requests
 
     overlapping_routes = expected_route_paths & route_paths_in_table

@@ -1,7 +1,6 @@
 require "test_helper"
 
 class DashboardIndexPageTest < ApplicationSystemTestCase
-
   def setup
     super
     create_comprehensive_test_data
@@ -16,7 +15,7 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
 
     # Verify the essential elements of the dashboard
     assert_text "AVERAGE RESPONSE TIME"
-    assert_text "95TH PERCENTILE RESPONSE TIME"  
+    assert_text "95TH PERCENTILE RESPONSE TIME"
     assert_text "REQUEST COUNT TOTAL"
     assert_text "ERROR RATE PER ROUTE"
 
