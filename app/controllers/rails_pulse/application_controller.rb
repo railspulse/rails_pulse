@@ -5,7 +5,7 @@ module RailsPulse
     def set_pagination_limit(limit = nil)
       limit = limit || params[:limit]
       session[:pagination_limit] = limit.to_i if limit.present?
-      render json: { status: "ok" } if request.xhr?
+      render json: { status: "ok" }
     end
 
     private

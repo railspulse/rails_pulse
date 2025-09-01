@@ -235,7 +235,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     column_index = column_config[:index]
     value_extractor = column_config[:value_extractor] || ->(text) { text.gsub(/[^\d.]/, "").to_f }
 
-    click_link column_name
+    within("table thead") { click_link column_name }
     assert_selector "table tbody tr", wait: 3
 
     # Verify sort order by comparing first two rows
@@ -253,7 +253,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
            "Rows should be sorted by #{column_name}: #{first_value} vs #{second_value}")
 
     # Test sorting by clicking the same column again (should toggle sort direction)
-    click_link column_name
+    within("table thead") { click_link column_name }
     assert_selector "table tbody tr", wait: 3
 
     # Get new values after re-sorting
