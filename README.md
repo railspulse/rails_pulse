@@ -118,6 +118,32 @@ Rails.application.routes.draw do
 end
 ```
 
+### Background Jobs
+
+Rails Pulse includes two background jobs for data summarization and cleanup:
+
+#### **Summary Job** - Data Aggregation
+The `SummaryJob` creates hourly, daily, weekly, and monthly performance summaries:
+
+```ruby
+# Schedule to run every hour
+RailsPulse::SummaryJob.perform_later
+
+# Or schedule with your job scheduler (cron, sidekiq-scheduler, etc.)
+# 0 * * * * /path/to/rails runner 'RailsPulse::SummaryJob.perform_later'
+```
+
+#### **Cleanup Job** - Data Retention
+The `CleanupJob` maintains your database size by removing old performance data:
+
+```ruby
+# Schedule to run daily
+RailsPulse::CleanupJob.perform_later
+
+# Or schedule with your job scheduler
+# 0 2 * * * /path/to/rails runner 'RailsPulse::CleanupJob.perform_later'
+```
+
 ### Quick Setup
 
 Rails Pulse automatically starts collecting performance data once installed. Access your monitoring dashboard at:
