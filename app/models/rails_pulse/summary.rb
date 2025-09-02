@@ -1,5 +1,5 @@
 module RailsPulse
-  class Summary < ApplicationRecord
+  class Summary < RailsPulse::ApplicationRecord
     self.table_name = "rails_pulse_summaries"
 
     PERIOD_TYPES = %w[hour day week month].freeze

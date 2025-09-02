@@ -40,8 +40,11 @@ module DatabaseHelpers
       begin
         # Check if all required tables exist
         required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations", "rails_pulse_summaries" ]
+        
+        # Use the same connection that Rails Pulse models will use
+        connection = defined?(RailsPulse::ApplicationRecord) ? RailsPulse::ApplicationRecord.connection : ActiveRecord::Base.connection
 
-        if required_tables.all? { |table| ActiveRecord::Base.connection.table_exists?(table) }
+        if required_tables.all? { |table| connection.table_exists?(table) }
           return
         end
 
@@ -56,11 +59,11 @@ module DatabaseHelpers
         end
 
         # Verify tables were created successfully
-        missing_tables = required_tables.reject { |table| ActiveRecord::Base.connection.table_exists?(table) }
+        missing_tables = required_tables.reject { |table| connection.table_exists?(table) }
         if missing_tables.any?
           error_msg = "Rails Pulse test tables were not created: #{missing_tables.join(', ')}"
           puts error_msg
-          raise "#{error_msg}. Database connection: #{ActiveRecord::Base.connection.adapter_name}"
+          raise "#{error_msg}. Database connection: #{connection.adapter_name}"
         end
       rescue => e
         # In CI, fail fast if table creation fails
@@ -81,8 +84,9 @@ module DatabaseHelpers
     # Load the main Rails Pulse schema instead of duplicating table definitions
     require_relative "../../db/rails_pulse_schema"
 
-    # Call the schema lambda with the current connection
-    RailsPulse::Schema.call(ActiveRecord::Base.connection)
+    # Call the schema lambda with the RailsPulse connection (falls back to ActiveRecord::Base if no separate connection)
+    connection = defined?(RailsPulse::ApplicationRecord) ? RailsPulse::ApplicationRecord.connection : ActiveRecord::Base.connection
+    RailsPulse::Schema.call(connection)
   end
 
   private
