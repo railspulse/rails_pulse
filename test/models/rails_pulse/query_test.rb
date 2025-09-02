@@ -17,7 +17,7 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
     # Presence validation
     assert validate_presence_of(:normalized_sql).matches?(query)
 
-    # Uniqueness validation (test manually for cross-database compatibility)  
+    # Uniqueness validation (test manually for cross-database compatibility)
     existing_query = create(:query)
     duplicate_query = build(:query, normalized_sql: existing_query.normalized_sql)
     refute duplicate_query.valid?

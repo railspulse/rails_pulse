@@ -5,6 +5,14 @@
 RailsPulse::Schema = lambda do |connection|
   # Skip if all tables already exist to prevent conflicts
   required_tables = [:rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_summaries]
+
+  if ENV["CI"] == "true"
+    existing_tables = required_tables.select { |table| connection.table_exists?(table) }
+    missing_tables = required_tables - existing_tables
+    puts "[RailsPulse::Schema] Existing tables: #{existing_tables.join(', ')}" if existing_tables.any?
+    puts "[RailsPulse::Schema] Missing tables: #{missing_tables.join(', ')}" if missing_tables.any?
+  end
+
   return if required_tables.all? { |table| connection.table_exists?(table) }
 
   connection.create_table :rails_pulse_routes do |t|
@@ -101,6 +109,11 @@ RailsPulse::Schema = lambda do |connection|
 
   connection.add_index :rails_pulse_operations, [ :created_at, :query_id ], name: "idx_operations_for_aggregation"
   connection.add_index :rails_pulse_operations, :created_at, name: "idx_operations_created_at"
+
+  if ENV["CI"] == "true"
+    created_tables = required_tables.select { |table| connection.table_exists?(table) }
+    puts "[RailsPulse::Schema] Successfully created tables: #{created_tables.join(', ')}"
+  end
 end
 
 if defined?(RailsPulse::ApplicationRecord)

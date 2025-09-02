@@ -184,10 +184,13 @@ DatabaseHelpers.ensure_test_tables_exist
 # Force table creation immediately in CI to avoid timing issues
 if ENV["CI"] == "true"
   puts "Forcing table verification in CI..."
-  required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations" ]
+  required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations", "rails_pulse_summaries" ]
   missing_tables = required_tables.reject { |table| ActiveRecord::Base.connection.table_exists?(table) }
   if missing_tables.any?
     puts "FATAL: Required tables missing after creation: #{missing_tables.join(', ')}"
+    puts "Available tables: #{ActiveRecord::Base.connection.tables.sort.join(', ')}"
+    puts "Database: #{ActiveRecord::Base.connection_db_config.database}"
+    puts "Adapter: #{ActiveRecord::Base.connection.adapter_name}"
     exit 1
   end
   puts "All required tables confirmed present."
