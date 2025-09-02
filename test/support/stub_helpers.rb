@@ -5,8 +5,6 @@ module StubHelpers
     RailsPulse::Middleware::RequestCollector.stubs(:new).returns(mock_middleware)
   end
 
-  # Note: stub_rails_pulse_configuration moved to ConfigTestHelpers to avoid conflicts
-
   # Stub expensive ActiveRecord operations
   def stub_expensive_queries
     return unless defined?(Mocha)

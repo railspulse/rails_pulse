@@ -5,7 +5,6 @@ require "capybara/minitest"
 # Explicitly require support modules
 require_relative "database_helpers"
 require_relative "factory_helpers"
-require_relative "config_test_helpers"
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   driven_by :selenium, using: :chrome, screen_size: [ 1400, 1400 ] do |options|
@@ -22,7 +21,6 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # Include test helpers
   include DatabaseHelpers
   include FactoryHelpers
-  include ConfigTestHelpers
 
   def setup
     setup_test_database
@@ -53,15 +51,5 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # Helper to visit RailsPulse routes
   def visit_rails_pulse_path(path)
     visit "/rails_pulse#{path}"
-  end
-
-  # Helper to wait for charts to load
-  def wait_for_charts_to_load
-    assert_selector "[data-chart]", wait: 10
-  end
-
-  # Helper to wait for tables to load
-  def wait_for_tables_to_load
-    assert_selector "table", wait: 10
   end
 end

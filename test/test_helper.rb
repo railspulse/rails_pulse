@@ -110,6 +110,10 @@ class ActiveSupport::TestCase
         with.library :rails
       end
     end
+    
+    # Include Shoulda Matchers in test classes
+    include Shoulda::Matchers::ActiveModel
+    include Shoulda::Matchers::ActiveRecord
   end
 
   # Configure database_cleaner

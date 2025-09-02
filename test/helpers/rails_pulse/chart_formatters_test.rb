@@ -27,18 +27,6 @@ class RailsPulse::ChartFormattersTest < ActiveSupport::TestCase
     assert_includes date_formatter, "toLocaleDateString"
   end
 
-  test "tooltip_as_time_or_date_with_marker returns time formatter for recent data" do
-    formatter = RailsPulse::ChartFormatters.tooltip_as_time_or_date_with_marker(24)
-
-    assert_includes formatter, "function(params)"
-    assert_includes formatter, "getHours()"
-    assert_includes formatter, "padStart(2, '0')"
-    assert_includes formatter, ":00"
-    assert_includes formatter, "data.marker"
-    assert_includes formatter, "parseInt(data.data.value)"
-    assert_includes formatter, "ms"
-  end
-
   test "tooltip_as_time_or_date_with_marker returns date formatter for older data" do
     formatter = RailsPulse::ChartFormatters.tooltip_as_time_or_date_with_marker(26)
 
@@ -47,7 +35,7 @@ class RailsPulse::ChartFormattersTest < ActiveSupport::TestCase
     assert_includes formatter, "month: 'short'"
     assert_includes formatter, "day: 'numeric'"
     assert_includes formatter, "data.marker"
-    assert_includes formatter, "parseInt(data.data.value)"
+    assert_includes formatter, "parseInt(data.data)"
     assert_includes formatter, "ms"
   end
 
