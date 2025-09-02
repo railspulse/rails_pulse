@@ -185,11 +185,11 @@ DatabaseHelpers.ensure_test_tables_exist
 if ENV["CI"] == "true"
   puts "Forcing table verification in CI..."
   required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations", "rails_pulse_summaries" ]
-  
+
   # Use the same connection that Rails Pulse models will use
   connection = defined?(RailsPulse::ApplicationRecord) ? RailsPulse::ApplicationRecord.connection : ActiveRecord::Base.connection
   missing_tables = required_tables.reject { |table| connection.table_exists?(table) }
-  
+
   if missing_tables.any?
     puts "FATAL: Required tables missing after creation: #{missing_tables.join(', ')}"
     puts "Available tables: #{connection.tables.sort.join(', ')}"

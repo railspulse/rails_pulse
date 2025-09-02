@@ -19,7 +19,8 @@ module DatabaseHelpers
   def self.configure_database_connection(adapter)
     case adapter
     when "sqlite3"
-      use_memory_database = ENV.fetch("MEMORY_DATABASE", "false") == "true"
+      # Force file-based SQLite in CI to avoid connection isolation issues
+      use_memory_database = ENV.fetch("MEMORY_DATABASE", "false") == "true" && ENV["CI"] != "true"
       if use_memory_database
         configure_memory_sqlite
       else
@@ -40,7 +41,7 @@ module DatabaseHelpers
       begin
         # Check if all required tables exist
         required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations", "rails_pulse_summaries" ]
-        
+
         # Use the same connection that Rails Pulse models will use
         connection = defined?(RailsPulse::ApplicationRecord) ? RailsPulse::ApplicationRecord.connection : ActiveRecord::Base.connection
 
