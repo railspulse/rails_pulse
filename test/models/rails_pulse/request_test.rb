@@ -13,20 +13,22 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
   # Test validations
   test "should have correct validations" do
     request = RailsPulse::Request.new
-    
+
     # Presence validations
     assert validate_presence_of(:route_id).matches?(request)
     assert validate_presence_of(:occurred_at).matches?(request)
     assert validate_presence_of(:duration).matches?(request)
     assert validate_presence_of(:status).matches?(request)
     assert validate_presence_of(:request_uuid).matches?(request)
-    
+
     # Numericality validation
     assert validate_numericality_of(:duration).is_greater_than_or_equal_to(0).matches?(request)
-    
-    # Uniqueness validation (requires existing record)
-    create(:request)
-    assert validate_uniqueness_of(:request_uuid).matches?(request)
+
+    # Uniqueness validation (test manually for cross-database compatibility)
+    existing_request = create(:request)
+    duplicate_request = build(:request, request_uuid: existing_request.request_uuid)
+    refute duplicate_request.valid?
+    assert_includes duplicate_request.errors[:request_uuid], "has already been taken"
   end
 
   test "should be valid with required attributes" do
@@ -39,10 +41,10 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
   test "should generate request_uuid when blank" do
     request = build(:request)
     request.request_uuid = nil
-    
+
     # Test the private method directly
     request.send(:set_request_uuid)
-    
+
     assert_not_nil request.request_uuid
     assert_match(/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i, request.request_uuid)
   end
@@ -77,7 +79,7 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
     operation1 = create(:operation, request: request1, operation_type: "sql")
     operation2 = create(:operation, request: request1, operation_type: "controller")
 
-    # Create operation for request2  
+    # Create operation for request2
     operation3 = create(:operation, request: request2, operation_type: "sql")
 
     # Test that each request returns only its own operations
@@ -100,7 +102,7 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
   test "should handle edge case durations for status_indicator" do
     # Test requests at threshold boundaries
     slow_request = create(:request, duration: 700.0)      # exactly at slow threshold
-    very_slow_request = create(:request, duration: 2000.0)  # exactly at very_slow threshold  
+    very_slow_request = create(:request, duration: 2000.0)  # exactly at very_slow threshold
     critical_request = create(:request, duration: 4000.0)   # exactly at critical threshold
 
     # All should be valid
@@ -111,7 +113,7 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
 
   test "request_uuid should be auto-generated if not provided" do
     request = build(:request, request_uuid: nil)
-    
+
     # Manually trigger the callback that should happen before validation
     request.send(:set_request_uuid)
 

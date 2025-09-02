@@ -6,7 +6,7 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     RailsPulse::Operation.delete_all
     RailsPulse::Request.delete_all
     RailsPulse::Route.delete_all
-    
+
     # Create real request record
     route = RailsPulse::Route.create!(path: "/test", method: "GET")
     @request = RailsPulse::Request.create!(
@@ -18,11 +18,11 @@ class OperationSubscriberTest < ActiveSupport::TestCase
       controller_action: "TestController#test",
       occurred_at: Time.current
     )
-    
+
     # Setup request context for operation tracking
     RequestStore.store[:rails_pulse_request_id] = @request.id
     RequestStore.store[:rails_pulse_operations] = []
-    
+
     super
   end
 
