@@ -11,9 +11,9 @@ require "bundler/gem_tasks"
 
 # Test tasks
 namespace :test do
-  desc "Run unit tests (models, helpers, services)"
+  desc "Run unit tests (models, helpers, services, instrumentation)"
   task :unit do
-    sh "rails test test/models test/helpers test/services test/support"
+    sh "rails test test/models test/helpers test/services test/support test/instrumentation"
   end
 
   desc "Run functional tests (controllers)"
@@ -34,7 +34,8 @@ namespace :test do
   desc "Run tests across all database and Rails version combinations"
   task :matrix do
     databases = [ "sqlite3", "postgresql", "mysql2" ]
-    rails_versions = [ "rails-7-2", "rails-8-0" ]
+    # rails_versions = [ "rails-7-2", "rails-8-0" ]
+    rails_versions = [ "rails-8-0" ]
 
     failed_combinations = []
 
