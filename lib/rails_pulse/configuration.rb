@@ -13,8 +13,6 @@ module RailsPulse
                   :full_retention_period,
                   :archiving_enabled,
                   :max_table_records,
-                  :component_cache_enabled,
-                  :component_cache_duration,
                   :connects_to,
                   :authentication_enabled,
                   :authentication_method,
@@ -39,8 +37,6 @@ module RailsPulse
         rails_pulse_routes: 1000,
         rails_pulse_queries: 500
       }
-      @component_cache_enabled = true
-      @component_cache_duration = 1.hour
       @connects_to = nil
       @authentication_enabled = Rails.env.production?
       @authentication_method = nil
@@ -66,7 +62,6 @@ module RailsPulse
       validate_thresholds!
       validate_retention_settings!
       validate_patterns!
-      validate_cache_settings!
       validate_database_settings!
       validate_authentication_settings!
     end
@@ -116,12 +111,6 @@ module RailsPulse
             end
           end
         end
-      end
-    end
-
-    def validate_cache_settings!
-      unless @component_cache_duration.respond_to?(:seconds)
-        raise ArgumentError, "component_cache_duration must be a time duration (e.g., 1.hour), got #{@component_cache_duration}"
       end
     end
 

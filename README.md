@@ -6,7 +6,7 @@
   **Real-time performance monitoring and debugging for Rails applications**
 
   ![Gem Version](https://img.shields.io/gem/v/rails_pulse)
-  ![Rails Version](https://img.shields.io/badge/Rails-8.0+-blue)
+  ![Rails Version](https://img.shields.io/badge/Rails-7.2+-blue)
   ![License](https://img.shields.io/badge/License-MIT-green)
   ![Ruby Version](https://img.shields.io/badge/Ruby-3.3+-red)
 </div>
@@ -44,33 +44,17 @@
 
 ## Introduction
 
-Rails Pulse is a comprehensive performance monitoring and debugging gem that provides real-time insights into your Rails application's health. Built as a Rails Engine, it seamlessly integrates with your existing application to capture, analyze, and visualize performance metrics without impacting your production workload.
-
-**Why Rails Pulse?**
-
-- **Visual**: Beautiful, responsive dashboards with actionable insights
-- **Comprehensive**: Monitors requests, database queries, and application operations
-- **Real-time**: Live performance metrics
-- **Zero Configuration**: Works out of the box with sensible defaults
-- **Lightweight**: Minimal performance overhead in production
-- **Asset Independent**: Pre-compiled assets work with any Rails build system
-- **CSP Compliant**: Secure by default with Content Security Policy support
+Rails Pulse is a comprehensive performance monitoring and debugging gem that provides insights into your Rails application's health. Built as a Rails Engine, it seamlessly integrates with your existing application to capture, analyze, and visualize performance metrics without impacting your production workload.
 
 ## Features
 
-### 🎯 **Performance Monitoring**
+### Performance Monitoring
 - Interactive dashboard with response time charts and request analytics
 - SQL query performance tracking with slow query identification
 - Route-specific metrics with configurable performance thresholds
 - Week-over-week trend analysis with visual indicators
 
-### 🔒 **Production Ready**
-- Content Security Policy (CSP) compliant with pre-compiled assets
-- Flexible authentication system with multiple authentication methods
-- Automatic data cleanup with configurable retention policies
-- Zero build dependencies - works with any Rails setup
-
-### ⚡ **Developer Experience**
+### Developer Experience
 - Zero configuration setup with sensible defaults
 - Beautiful responsive interface with dark/light mode
 - Smart caching with minimal performance overhead
@@ -111,37 +95,19 @@ rails db:prepare
 Add the Rails Pulse route to your application:
 
 ```ruby
-# config/routes.rb
 Rails.application.routes.draw do
   mount RailsPulse::Engine => "/rails_pulse"
-  # ... your other routes
 end
 ```
 
-### Background Jobs
-
-Rails Pulse includes two background jobs for data summarization and cleanup:
-
-#### **Summary Job** - Data Aggregation
-The `SummaryJob` creates hourly, daily, weekly, and monthly performance summaries:
+Schedule background jobs:
 
 ```ruby
-# Schedule to run every hour
+# Schedule to run 5 minutes past every hour
 RailsPulse::SummaryJob.perform_later
 
-# Or schedule with your job scheduler (cron, sidekiq-scheduler, etc.)
-# 0 * * * * /path/to/rails runner 'RailsPulse::SummaryJob.perform_later'
-```
-
-#### **Cleanup Job** - Data Retention
-The `CleanupJob` maintains your database size by removing old performance data:
-
-```ruby
 # Schedule to run daily
 RailsPulse::CleanupJob.perform_later
-
-# Or schedule with your job scheduler
-# 0 2 * * * /path/to/rails runner 'RailsPulse::CleanupJob.perform_later'
 ```
 
 ### Quick Setup
@@ -161,14 +127,14 @@ RailsPulse.configure do |config|
   # Enable or disable Rails Pulse
   config.enabled = true
 
-  # Set performance thresholds for routes (in milliseconds)
+  # Set performance thresholds for route response times (in milliseconds)
   config.route_thresholds = {
     slow: 500,
     very_slow: 1500,
     critical: 3000
   }
 
-  # Set performance thresholds for requests (in milliseconds)
+  # Set performance thresholds for request response times (in milliseconds)
   config.request_thresholds = {
     slow: 700,
     very_slow: 2000,
@@ -183,8 +149,8 @@ RailsPulse.configure do |config|
   }
 
   # Asset tracking configuration
-  config.track_assets = false  # Ignore asset requests by default
-  config.custom_asset_patterns = []  # Additional asset patterns to ignore
+  config.track_assets = false       # Ignore asset requests by default
+  config.custom_asset_patterns = [] # Additional asset patterns to ignore
 
   # Rails Pulse mount path (optional)
   # Specify if Rails Pulse is mounted at a custom path to prevent self-tracking
@@ -197,17 +163,13 @@ RailsPulse.configure do |config|
 
   # Data cleanup
   config.archiving_enabled = true        # Enable automatic cleanup
-  config.full_retention_period = 2.weeks  # Delete records older than this
+  config.full_retention_period = 2.weeks # Delete records older than this
   config.max_table_records = {           # Maximum records per table
     rails_pulse_requests: 10000,
     rails_pulse_operations: 50000,
     rails_pulse_routes: 1000,
     rails_pulse_queries: 500
   }
-
-  # Metric caching for performance
-  config.component_cache_enabled = true
-  config.component_cache_duration = 1.day
 
   # Multiple database support (optional)
   # Uncomment to store Rails Pulse data in a separate database
@@ -245,7 +207,7 @@ end
 
 Rails Pulse works with any authentication system. Here are common patterns:
 
-#### **Devise with Admin Role**
+#### Devise with Admin Role
 
 ```ruby
 config.authentication_method = proc {
@@ -255,36 +217,7 @@ config.authentication_method = proc {
 }
 ```
 
-#### **Custom Session-based Authentication**
-
-```ruby
-config.authentication_method = proc {
-  unless session[:user_id] && User.find_by(id: session[:user_id])&.admin?
-    redirect_to main_app.login_path, alert: "Please log in as an admin"
-  end
-}
-```
-
-#### **HTTP Basic Authentication**
-
-```ruby
-config.authentication_method = proc {
-  authenticate_or_request_with_http_basic do |username, password|
-    username == ENV['RAILS_PULSE_USERNAME'] &&
-    password == ENV['RAILS_PULSE_PASSWORD']
-  end
-}
-```
-
-#### **Warden Authentication**
-
-```ruby
-config.authentication_method = proc {
-  warden.authenticate!(scope: :admin)
-}
-```
-
-#### **Custom Authorization Logic**
+#### Custom Authorization Logic
 
 ```ruby
 config.authentication_method = proc {
@@ -294,16 +227,6 @@ config.authentication_method = proc {
   end
 }
 ```
-
-### Security Considerations
-
-- **Production Security**: Always enable authentication in production environments
-- **Admin-only Access**: Limit access to administrators or authorized personnel
-- **Environment Variables**: Use environment variables for credentials, never hardcode
-- **HTTPS Required**: Always use HTTPS in production when authentication is enabled
-- **Regular Access Review**: Periodically review who has access to monitoring data
-
-**Important**: The authentication method runs in the context of the Rails Pulse ApplicationController, giving you access to all standard Rails controller methods like `redirect_to`, `render`, `session`, and any methods from your host application's authentication system.
 
 ## Data Management
 
@@ -355,24 +278,14 @@ rails rails_pulse:cleanup_stats
 
 **Schedule automated cleanup:**
 ```ruby
-# Using whenever gem or similar scheduler
 RailsPulse::CleanupJob.perform_later
 ```
-
-### How Cleanup Works
-
-1. **Time-based Phase**: Delete all records older than `full_retention_period`
-2. **Count-based Phase**: If tables still exceed limits, delete oldest remaining records
-3. **Safe Deletion**: Respects foreign key constraints (operations → requests → queries/routes)
-4. **Comprehensive Logging**: Detailed cleanup statistics and operation logs
-
-This two-phase approach ensures you keep the most valuable recent performance data while maintaining manageable database sizes.
 
 ## Separate Database Support
 
 Rails Pulse supports storing performance monitoring data in a **separate database**. By default, Rails Pulse stores data in your main application database alongside your existing tables.
 
-**Use a separate database when you want:**
+Use a separate database when you want:
 
 - **Isolating monitoring data** from your main application database
 - **Using different database engines** optimized for time-series data
@@ -441,32 +354,15 @@ production:
 
 ### Schema Loading
 
-#### Default Setup (Shared Database)
-For most installations where Rails Pulse data shares your main database:
+After installation, load the Rails Pulse database schema:
 
 ```bash
 rails db:prepare
 ```
 
-That's it! The schema loads into your existing database alongside your application tables.
-
-#### Separate Database Setup
-When using a separate database with the configuration above:
-
-```bash
-rails db:prepare
-```
-
-This automatically loads the Rails Pulse schema on the configured separate database.
-
-The installation command creates `db/rails_pulse_schema.rb` containing all necessary table definitions. This schema-based approach provides:
-
-- **Clean Installation**: No migration clutter in new Rails apps
-- **Database Flexibility**: Easy separate database configuration
-- **Version Compatibility**: Schema adapts to your Rails version automatically
-- **Future Migrations**: Schema changes will come as regular migrations when needed
-
-**Note:** Rails Pulse maintains full backward compatibility. If no `connects_to` configuration is provided, all data will be stored in your main application database as before.
+This command works for both:
+- Shared database setup (default): Loads tables into your main application database
+- Separate database setup: Automatically loads tables into your configured Rails Pulse database
 
 ## Testing
 
@@ -475,7 +371,7 @@ Rails Pulse includes a comprehensive test suite designed for speed and reliabili
 ### Running the Complete Test Suite
 
 ```bash
-# Run all tests (unit, functional, integration)
+# Run all tests (unit, functional, integration, instrumentation)
 rails test:all
 ```
 
@@ -497,12 +393,6 @@ rails test:integration
 ```bash
 # Run a specific test file
 rails test test/models/rails_pulse/request_test.rb
-
-# Run controller tests
-rails test test/controllers/rails_pulse/dashboard_controller_test.rb
-
-# Run helper tests
-rails test test/helpers/rails_pulse/application_helper_test.rb
 ```
 
 ### Multi-Database and Rails Version Testing
@@ -572,13 +462,6 @@ The GitHub Actions CI automatically tests:
 
 MySQL testing has been moved to local development only for better CI reliability.
 
-### Test Performance Features
-
-- **Fast SQLite**: Tests use optimized SQLite configurations
-- **Transaction rollback**: Fast test cleanup using database transactions
-- **Stubbed dependencies**: External calls and expensive operations are stubbed
-- **Sequential execution**: Tests run sequentially to avoid race conditions
-
 ## Technology Stack
 
 Rails Pulse is built using modern, battle-tested technologies that ensure reliability, performance, and maintainability:
@@ -616,12 +499,6 @@ Rails Pulse is built using modern, battle-tested technologies that ensure reliab
 - **Data Privacy**: All performance data stays in your database(s)
 - **Customizable**: Full control over metrics, thresholds, and interface
 - **Asset Independence**: Works with any Rails build system (Sprockets, esbuild, Webpack, Vite)
-
-### **vs. Built-in Rails Logging**
-- **Visual Interface**: Beautiful dashboards instead of log parsing
-- **Structured Data**: Queryable metrics instead of text logs
-- **Historical Analysis**: Persistent storage with trend analysis
-- **Real-time Monitoring**: Live updates and health scoring
 
 ### **vs. Custom Monitoring Solutions**
 - **Batteries Included**: Complete monitoring solution out of the box
