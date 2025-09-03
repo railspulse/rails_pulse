@@ -75,7 +75,7 @@
     <tbody>
       <% @query.operations.group_by(&:codebase_location).each do |codebase_location, operations| %>
         <tr>
-          <td><%= link_to codebase_location, '#' %></td>
+          <td><%= codebase_location %></td>
           <td><%= (operations.sum(&:duration) / operations.count).round(2) %></td>
           <td><%= operations.count %></td>
         </tr>

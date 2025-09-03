@@ -39,7 +39,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
   end
 
   test "should include ransackable attributes" do
-    expected_attributes = %w[id occurred_at label duration start_time average_query_time_ms query_count operation_type]
+    expected_attributes = %w[id occurred_at label duration start_time average_query_time_ms query_count operation_type query_id]
     assert_equal expected_attributes.sort, RailsPulse::Operation.ransackable_attributes.sort
   end
 

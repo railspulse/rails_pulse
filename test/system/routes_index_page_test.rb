@@ -141,6 +141,28 @@ class RoutesIndexPageTest < SharedIndexPageTest
     assert_selector "table tbody tr", wait: 3
   end
 
+  def test_average_response_time_sorting_fails
+    visit_rails_pulse_path "/routes"
+
+    # Wait for table to load
+    assert_selector "table tbody tr", wait: 5
+
+    # Get initial order of rows
+    initial_rows = all("table tbody tr").map(&:text)
+
+    # Click on Average Response Time header
+    within("table thead") do
+      click_link "Average Response Time"
+    end
+
+    # Wait and get new order of rows  
+    sleep 1
+    sorted_rows = all("table tbody tr").map(&:text)
+
+    # Assert that clicking the header actually changed the order
+    refute_equal initial_rows, sorted_rows, "Expected row order to change when clicking Average Response Time header, but it remained the same"
+  end
+
   private
 
   def create_comprehensive_test_data
