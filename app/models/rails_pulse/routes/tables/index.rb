@@ -48,20 +48,20 @@ module RailsPulse
           if has_sorts
             # Apply custom sorting based on ransack parameters
             sort = @ransack_query.sorts.first
-            direction = sort.dir == 'desc' ? :desc : :asc
+            direction = sort.dir == "desc" ? :desc : :asc
 
             case sort.name
-            when 'avg_duration_sort'
+            when "avg_duration_sort"
               grouped_query = grouped_query.order(Arel.sql("AVG(rails_pulse_summaries.avg_duration)").send(direction))
-            when 'max_duration_sort'
+            when "max_duration_sort"
               grouped_query = grouped_query.order(Arel.sql("MAX(rails_pulse_summaries.max_duration)").send(direction))
-            when 'count_sort'
+            when "count_sort"
               grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.count)").send(direction))
-            when 'requests_per_minute'
+            when "requests_per_minute"
               grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.count) / 60.0").send(direction))
-            when 'error_rate_percentage'
+            when "error_rate_percentage"
               grouped_query = grouped_query.order(Arel.sql("(SUM(rails_pulse_summaries.error_count) * 100.0) / SUM(rails_pulse_summaries.count)").send(direction))
-            when 'route_path'
+            when "route_path"
               grouped_query = grouped_query.order(Arel.sql("rails_pulse_routes.path").send(direction))
             else
               # Unknown sort field, fallback to default

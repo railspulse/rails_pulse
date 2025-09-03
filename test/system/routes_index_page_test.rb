@@ -155,7 +155,7 @@ class RoutesIndexPageTest < SharedIndexPageTest
       click_link "Average Response Time"
     end
 
-    # Wait and get new order of rows  
+    # Wait and get new order of rows
     sleep 1
     sorted_rows = all("table tbody tr").map(&:text)
 
