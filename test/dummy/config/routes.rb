@@ -1,6 +1,6 @@
 Rails.application.routes.draw do
   mount RailsPulse::Engine => "/rails_pulse"
-  
+
   root "home#index"
 
   get "fast", to: "home#fast"
