@@ -39,8 +39,7 @@ module RailsPulse
               "AVG(rails_pulse_summaries.avg_duration) as avg_duration",
               "MAX(rails_pulse_summaries.max_duration) as max_duration",
               "SUM(rails_pulse_summaries.count) as execution_count",
-              "SUM(rails_pulse_summaries.count * rails_pulse_summaries.avg_duration) as total_time_consumed",
-              "MAX(rails_pulse_summaries.period_end) as occurred_at"
+              "SUM(rails_pulse_summaries.count * rails_pulse_summaries.avg_duration) as total_time_consumed"
             )
 
           # Apply sorting based on ransack sorts or use default
@@ -58,8 +57,6 @@ module RailsPulse
               grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.count * rails_pulse_summaries.avg_duration)").send(direction))
             when "normalized_sql"
               grouped_query = grouped_query.order(Arel.sql("rails_pulse_queries.normalized_sql").send(direction))
-            when "occurred_at"
-              grouped_query = grouped_query.order(Arel.sql("MAX(rails_pulse_summaries.period_end)").send(direction))
             else
               # Unknown sort field, fallback to default
               grouped_query = grouped_query.order(Arel.sql("AVG(rails_pulse_summaries.avg_duration)").desc)

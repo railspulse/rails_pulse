@@ -17,6 +17,8 @@ module RailsPulse
     private
 
     def setup_metric_cards
+      return if turbo_frame_request?
+
       @average_query_times_metric_card = RailsPulse::Routes::Cards::AverageResponseTimes.new(route: @route).to_metric_card
       @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: @route).to_metric_card
       @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: @route).to_metric_card

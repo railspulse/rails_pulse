@@ -43,25 +43,21 @@ module TableValidationHelpers
   def validate_requests_table(table_rows, expected_requests, filter_applied)
     table_rows.each_with_index do |row, index|
       cells = row.all("td")
-      assert cells.length >= 4, "Request row #{index + 1} should have at least 4 columns (route, timestamp, duration, status)"
 
-      # Validate request path (first column)
-      validate_route_path_cell(cells[0], index + 1, filter_applied)
+      # Determine if we have a route column by checking if first cell contains route info
+      has_route_column = cells[0].text.include?(' ') || cells[0].text.include?('/')
 
-      # Validate timestamp (second column)
-      validate_timestamp_cell(cells[1], index + 1)
-
-      # Validate duration (third column)
-      validate_duration_cell(cells[2], index + 1, filter_applied, page_type: :requests)
-
-      # Validate status code (fourth column)
-      validate_status_code_cell(cells[3], index + 1)
-
-      # Status indicator column (fifth column) is optional - just validate it exists
-      # The status indicator might be empty in some cases, so just check the column exists
-      if cells.length > 4
-        # Column exists, that's sufficient validation for the status indicator
-        assert true, "Status indicator column exists"
+      if has_route_column
+        # Table has route column: route, duration, status, status_indicator
+        assert cells.length >= 4, "Request row #{index + 1} should have at least 4 columns with route column"
+        validate_route_path_cell(cells[0], index + 1, filter_applied)
+        validate_duration_cell(cells[1], index + 1, filter_applied, page_type: :requests)
+        validate_status_code_cell(cells[2], index + 1)
+      else
+        # Table without route column: duration, status, status_indicator
+        assert cells.length >= 3, "Request row #{index + 1} should have at least 3 columns without route column"
+        validate_duration_cell(cells[0], index + 1, filter_applied, page_type: :requests)
+        validate_status_code_cell(cells[1], index + 1)
       end
     end
 

@@ -37,7 +37,7 @@ class RailsPulse::SummaryTest < ActiveSupport::TestCase
     expected_attributes = %w[
       period_start period_end avg_duration max_duration count error_count
       requests_per_minute error_rate_percentage route_path_cont
-      execution_count total_time_consumed normalized_sql occurred_at
+      execution_count total_time_consumed normalized_sql
     ]
     assert_equal expected_attributes.sort, RailsPulse::Summary.ransackable_attributes.sort
   end

@@ -1,10 +1,12 @@
 <%= render 'rails_pulse/components/breadcrumbs' %>
 
-<div class="row">
-  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
-  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_query_times_metric_card } %>
-  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @execution_rate_metric_card } %>
-</div>
+<% unless turbo_frame_request? %>
+  <div class="row">
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_query_times_metric_card } %>
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @execution_rate_metric_card } %>
+  </div>
+<% end %>
 
 <div
   class="row"

@@ -82,11 +82,6 @@ class RequestsIndexPageTest < SharedIndexPageTest
   def sortable_columns
     [
       {
-        name: "Duration",
-        index: 3,
-        value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
-      },
-      {
         name: "Route",
         index: 1,
         value_extractor: ->(text) { text.strip }
@@ -101,9 +96,9 @@ class RequestsIndexPageTest < SharedIndexPageTest
     # Wait for table to load
     assert_selector "table tbody tr", wait: 5
 
-    # Test Timestamp column sorting
+    # Test Response Time column sorting
     within("table thead") do
-      click_link "Timestamp"
+      click_link "Response Time"
     end
     assert_selector "table tbody tr", wait: 3
 

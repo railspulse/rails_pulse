@@ -87,14 +87,9 @@ class RoutesShowPageTest < SharedIndexPageTest
   def sortable_columns
     [
       {
-        name: "Duration",
-        index: 2,
-        value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
-      },
-      {
-        name: "Timestamp",
+        name: "Response Time",
         index: 1,
-        value_extractor: ->(text) { text.strip }
+        value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
       }
     ]
   end
@@ -135,23 +130,18 @@ class RoutesShowPageTest < SharedIndexPageTest
 
       within(row_selector) do
         cells = all("td")
-        assert cells.length >= 4, "Request row #{index + 1} should have at least 4 columns (timestamp, duration, status, indicator)"
+        assert cells.length >= 3, "Request row #{index + 1} should have at least 3 columns (duration, status, indicator)"
 
-        # Validate timestamp (first column) - should be a link
-        within("td:nth-child(1)") do
-          assert has_link?, "Timestamp in row #{index + 1} should be a link"
-        end
-
-        # Validate duration (second column) - should contain "ms"
-        duration_text = find("td:nth-child(2)").text
+        # Validate duration (first column) - should contain "ms"
+        duration_text = find("td:nth-child(1)").text
         assert_match(/\d+(\.\d+)?\s*ms/, duration_text, "Duration should show milliseconds in row #{index + 1}, got: #{duration_text}")
 
-        # Validate HTTP status (third column) - should be numeric
-        status_text = find("td:nth-child(3)").text
+        # Validate HTTP status (second column) - should be numeric
+        status_text = find("td:nth-child(2)").text
         assert_match(/\d{3}/, status_text, "HTTP Status should be 3-digit code in row #{index + 1}, got: #{status_text}")
 
-        # Fourth column is status indicator - just verify it exists
-        assert has_css?("td:nth-child(4)"), "Row #{index + 1} should have status indicator column"
+        # Third column is status indicator - just verify it exists
+        assert has_css?("td:nth-child(3)"), "Row #{index + 1} should have status indicator column"
       end
     end
 
@@ -160,8 +150,6 @@ class RoutesShowPageTest < SharedIndexPageTest
       assert row_count > 0, "Should have requests data in table"
     end
   end
-
-  private
 
   # Route show specific test
   def test_route_details_are_displayed

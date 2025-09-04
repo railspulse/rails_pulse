@@ -5,18 +5,12 @@ module RailsPulse
     before_action :set_query, only: :show
 
     def index
-      @average_query_times_metric_card = RailsPulse::Queries::Cards::AverageQueryTimes.new(query: @query).to_metric_card
-      @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(query: @query).to_metric_card
-      @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(query: @query).to_metric_card
-
+      setup_metric_cards
       setup_chart_and_table_data
     end
 
     def show
-      @average_query_times_metric_card = RailsPulse::Queries::Cards::AverageQueryTimes.new(query: @query).to_metric_card
-      @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(query: @query).to_metric_card
-      @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(query: @query).to_metric_card
-
+      setup_metric_cards
       setup_chart_and_table_data
     end
 
@@ -93,6 +87,14 @@ module RailsPulse
     end
 
     private
+
+    def setup_metric_cards
+      return if turbo_frame_request?
+
+      @average_query_times_metric_card = RailsPulse::Queries::Cards::AverageQueryTimes.new(query: @query).to_metric_card
+      @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(query: @query).to_metric_card
+      @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(query: @query).to_metric_card
+    end
 
     def show_action?
       action_name == "show"
