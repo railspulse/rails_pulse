@@ -45,7 +45,7 @@ module TableValidationHelpers
       cells = row.all("td")
 
       # Determine if we have a route column by checking if first cell contains route info
-      has_route_column = cells[0].text.include?(' ') || cells[0].text.include?('/')
+      has_route_column = cells[0].text.include?(" ") || cells[0].text.include?("/")
 
       if has_route_column
         # Table has route column: route, duration, status, status_indicator
