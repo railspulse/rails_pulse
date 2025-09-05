@@ -163,6 +163,26 @@ class RoutesIndexPageTest < SharedIndexPageTest
     refute_equal initial_rows, sorted_rows, "Expected row order to change when clicking Average Response Time header, but it remained the same"
   end
 
+  def test_empty_state_displays_when_no_data_matches_filters
+    # Clear all data to ensure empty state
+    RailsPulse::Summary.destroy_all
+    RailsPulse::Request.destroy_all
+    RailsPulse::Route.destroy_all
+
+    visit_rails_pulse_path "/routes"
+
+    # Should show empty state when no data exists
+    assert_text "No route data found for the selected filters."
+    assert_text "Try adjusting your time range or filters to see results."
+    
+    # Check for the search.svg image in the empty state
+    assert_selector "img[src*='search.svg']"
+    
+    # Should not show chart or table
+    assert_no_selector "#average_response_times_chart"
+    assert_no_selector "table tbody tr"
+  end
+
   private
 
   def create_comprehensive_test_data

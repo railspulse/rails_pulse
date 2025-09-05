@@ -157,6 +157,25 @@ class QueriesShowPageTest < SharedIndexPageTest
     validate_table_data(page_type: page_type, filter_applied: "Slow")
   end
 
+  def test_empty_state_displays_when_no_operations_for_query
+    # Clear operations for this specific query to ensure empty state
+    RailsPulse::Operation.where(query: target_query).destroy_all
+    RailsPulse::Summary.where(summarizable: target_query).destroy_all
+
+    visit_rails_pulse_path page_path
+
+    # Should show empty state when no operations exist for this query
+    assert_text "No query responses found for the selected filters."
+    assert_text "Try adjusting your time range or filters to see results."
+    
+    # Check for the search.svg image in the empty state
+    assert_selector "img[src*='search.svg']"
+    
+    # Should not show chart or table
+    assert_no_selector "#query_responses_chart"
+    assert_no_selector "table tbody tr"
+  end
+
   private
 
   def query_test_column_sorting(column_config)

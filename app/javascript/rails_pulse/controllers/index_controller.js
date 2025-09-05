@@ -7,8 +7,10 @@ export default class extends Controller {
     chartId: String        // The ID of the chart to be monitored
   }
 
-  // Add a property to track the last request time
+  // Add properties for improved debouncing
   lastTurboFrameRequestAt = 0;
+  pendingRequestTimeout = null;
+  pendingRequestData = null;
 
   connect() {
     // Listen for the custom event 'chart:initialized' to set up the chart.
@@ -28,11 +30,16 @@ export default class extends Controller {
     document.removeEventListener('chart:rendered', this.handleChartInitialized);
 
     // Remove chart event listeners if they exist
-    if (this.chartTarget) {
+    if (this.hasChartTarget && this.chartTarget) {
       this.chartTarget.removeEventListener('mousedown', this.handleChartMouseDown);
       this.chartTarget.removeEventListener('mouseup', this.handleChartMouseUp);
     }
     document.removeEventListener('mouseup', this.handleDocumentMouseUp);
+
+    // Clear any pending timeout
+    if (this.pendingRequestTimeout) {
+      clearTimeout(this.pendingRequestTimeout);
+    }
   }
 
   // After the chart is initialized, set up the event listeners and data tracking
@@ -47,19 +54,28 @@ export default class extends Controller {
       return; // Prevent multiple setups
     }
 
+    // We need both the chart target in DOM and the chart object from RailsCharts
+    let hasTarget = false;
+    try {
+      hasTarget = !!this.chartTarget;
+    } catch (e) {
+      hasTarget = false;
+    }
+    
     // Get the chart element which the RailsCharts library has created
     this.chart = window.RailsCharts.charts[this.chartIdValue];
-    if (!this.chart) {
+    
+    // Only proceed if we have BOTH the DOM target and the chart object
+    if (!hasTarget || !this.chart) {
       return;
     }
 
     this.visibleData = this.getVisibleData();
-
     this.setupChartEventListeners();
     this.setupDone = true;
 
     // Mark the chart as fully rendered for testing
-    if (this.chartTarget) {
+    if (hasTarget) {
       document.getElementById(this.chartIdValue)?.setAttribute('data-chart-rendered', 'true');
     }
   }
@@ -71,7 +87,6 @@ export default class extends Controller {
       this.visibleData = this.getVisibleData();
     };
     this.chartTarget.addEventListener('mousedown', this.handleChartMouseDown);
-
 
     // When releasing the mouse button, we want to check if the visible data has changed
     this.handleChartMouseUp = () => {
@@ -133,8 +148,10 @@ export default class extends Controller {
   // we can update the table with the new data that is visible in the chart.
   handleZoomChange() {
     const newVisibleData = this.getVisibleData();
+    const newDataString = newVisibleData.xAxis.join();
+    const currentDataString = this.visibleData.xAxis.join();
 
-    if (newVisibleData.xAxis.join() !== this.visibleData.xAxis.join()) {
+    if (newDataString !== currentDataString) {
       this.visibleData = newVisibleData;
       this.updateUrlWithZoomParams(newVisibleData);
       this.sendTurboFrameRequest(newVisibleData);
@@ -168,16 +185,35 @@ export default class extends Controller {
       window.history.replaceState({}, '', url);
     }
 
-  // After the zoom level changes, we want to send a request to the server with the new visible data.
-  // The server will then return the full page HTML with the updated table data wrapped in a turbo-frame.
-  // We will then replace the innerHTML of the turbo-frame with the new HTML.
+  // Improved debouncing with guaranteed final request
   sendTurboFrameRequest(data) {
     const now = Date.now();
-    // If less than 1 second since last request, ignore this call
-    if (now - this.lastTurboFrameRequestAt < 1000) {
-      return;
+    const timeSinceLastRequest = now - this.lastTurboFrameRequestAt;
+    
+    // Store the latest data for potential delayed execution
+    this.pendingRequestData = data;
+    
+    // Clear any existing timeout
+    if (this.pendingRequestTimeout) {
+      clearTimeout(this.pendingRequestTimeout);
     }
-    this.lastTurboFrameRequestAt = now;
+    
+    // If enough time has passed since last request, execute immediately
+    if (timeSinceLastRequest >= 1000) {
+      this.executeTurboFrameRequest(data);
+    } else {
+      // Otherwise, schedule execution for later to ensure final request goes through
+      const remainingTime = 1000 - timeSinceLastRequest;
+      this.pendingRequestTimeout = setTimeout(() => {
+        this.executeTurboFrameRequest(this.pendingRequestData);
+        this.pendingRequestTimeout = null;
+      }, remainingTime);
+    }
+  }
+
+  // Execute the actual AJAX request
+  executeTurboFrameRequest(data) {
+    this.lastTurboFrameRequestAt = Date.now();
 
     // Start with the current page's URL
     const url = new URL(window.location.href);

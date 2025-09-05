@@ -24,6 +24,9 @@ module ChartTableConcern
 
     # Setup table data using zoom parameters if present, otherwise use chart parameters
     setup_table_data(ransack_params)
+    
+    # Set flag to determine if we have meaningful data to display
+    @has_data = has_meaningful_data?
   end
 
   def setup_chart_data(ransack_params)
@@ -70,6 +73,12 @@ module ChartTableConcern
 
   def group_by
     @time_diff_hours <= 25 ? :group_by_hour : :group_by_day
+  end
+
+  def has_meaningful_data?
+    has_chart_data = @chart_data && @chart_data.values.any? { |v| v > 0 }
+    has_table_data = @table_data && @table_data.any?
+    has_chart_data || has_table_data
   end
 
   def handle_pagination

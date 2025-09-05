@@ -190,6 +190,25 @@ class RoutesShowPageTest < SharedIndexPageTest
     assert_selector "table tbody tr", wait: 3
   end
 
+  def test_empty_state_displays_when_no_requests_for_route
+    # Clear requests for this specific route to ensure empty state
+    RailsPulse::Request.where(route: target_route).destroy_all
+    RailsPulse::Summary.where(summarizable: target_route).destroy_all
+
+    visit_rails_pulse_path page_path
+
+    # Should show empty state when no requests exist for this route
+    assert_text "No route requests found for the selected filters."
+    assert_text "Try adjusting your time range or filters to see results."
+    
+    # Check for the search.svg image in the empty state
+    assert_selector "img[src*='search.svg']"
+    
+    # Should not show chart or table
+    assert_no_selector "#route_repsonses_chart"
+    assert_no_selector "table tbody tr"
+  end
+
   private
 
   def create_comprehensive_test_data
