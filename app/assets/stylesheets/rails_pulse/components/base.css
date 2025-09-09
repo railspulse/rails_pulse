@@ -31,12 +31,13 @@ html[data-color-scheme="dark"] {
   --color-text: white;
   --color-text-reversed: black;
   --color-text-subtle: var(--zinc-400);
-  --color-link: var(--blue-400);
+  /* Use brand yellow for links in dark mode */
+  --color-link: #ffc91f !important;
   --color-border-light: var(--zinc-900);
   --color-border: var(--zinc-800);
   --color-border-dark: var(--zinc-600);
   --color-selected: var(--blue-950);
-  --color-selected-dark: var(--blue-800);
+  --color-selected-dark: #ffc91f;
   --color-highlight: var(--yellow-900);
 
   /* Accent colors */

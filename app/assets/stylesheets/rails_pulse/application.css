@@ -23,6 +23,37 @@ a:hover {
   cursor: pointer;
 }
 
+/* Dark mode */
+html[data-color-scheme="dark"] a {
+  color: #ffc91f;
+}
+
+html[data-color-scheme="dark"] .card {
+  background-color: rgb(47, 47, 47);
+  border: 1px solid rgb(64, 64, 64);
+}
+
+html[data-color-scheme="dark"] #header {
+  background-color: rgb(32, 32, 32)
+}
+
+html[data-color-scheme="dark"] #header a {
+  color: #ffc91f;
+}
+
+html[data-color-scheme="dark"] .badge--positive-inverse {
+  background-color: rgb(47, 47, 47);
+}
+
+html[data-color-scheme="dark"] .badge--negative-inverse {
+  background-color: rgb(47, 47, 47);
+}
+
+html[data-color-scheme="dark"] .input {
+  background: #535252;
+  border: 1px solid #7e7d7d;
+}
+
 .hidden {
   display: none;
 }
