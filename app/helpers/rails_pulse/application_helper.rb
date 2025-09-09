@@ -3,7 +3,6 @@ module RailsPulse
     include Pagy::Frontend
 
     include BreadcrumbsHelper
-    include CachedComponentHelper
     include ChartHelper
     include FormattingHelper
     include StatusHelper

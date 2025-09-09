@@ -7,7 +7,7 @@ module DatabaseHelpers
     # and avoid reconfiguring to prevent issues
     return unless ENV["FORCE_DB_CONFIG"] == "true"
 
-    adapter = ENV.fetch("DATABASE_ADAPTER", "sqlite3")
+    adapter = ENV.fetch("DB", "sqlite3")
 
     # Configure database connection
     configure_database_connection(adapter)
@@ -19,7 +19,8 @@ module DatabaseHelpers
   def self.configure_database_connection(adapter)
     case adapter
     when "sqlite3"
-      use_memory_database = ENV.fetch("MEMORY_DATABASE", "false") == "true"
+      # Force file-based SQLite in CI to avoid connection isolation issues
+      use_memory_database = ENV.fetch("MEMORY_DATABASE", "false") == "true" && ENV["CI"] != "true"
       if use_memory_database
         configure_memory_sqlite
       else
@@ -39,28 +40,28 @@ module DatabaseHelpers
     @table_creation_mutex.synchronize do
       begin
         # Check if all required tables exist
-        required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations" ]
+        required_tables = [ "rails_pulse_routes", "rails_pulse_requests", "rails_pulse_queries", "rails_pulse_operations", "rails_pulse_summaries" ]
 
-        if required_tables.all? { |table| ActiveRecord::Base.connection.table_exists?(table) }
+        # Use the same connection that Rails Pulse models will use
+        connection = defined?(RailsPulse::ApplicationRecord) ? RailsPulse::ApplicationRecord.connection : ActiveRecord::Base.connection
+
+        if required_tables.all? { |table| connection.table_exists?(table) }
           return
         end
 
-        # Create Rails Pulse tables for testing - don't suppress messages in CI
-        if ENV["CI"] == "true"
-          puts "Creating Rails Pulse test tables..."
+        # Create Rails Pulse tables for testing
+        puts "Creating Rails Pulse test tables..." if ENV["CI"] == "true" || ENV["VERBOSE"] == "true"
+
+        ActiveRecord::Migration.suppress_messages do
           create_rails_pulse_test_schema
-        else
-          ActiveRecord::Migration.suppress_messages do
-            create_rails_pulse_test_schema
-          end
         end
 
         # Verify tables were created successfully
-        missing_tables = required_tables.reject { |table| ActiveRecord::Base.connection.table_exists?(table) }
+        missing_tables = required_tables.reject { |table| connection.table_exists?(table) }
         if missing_tables.any?
           error_msg = "Rails Pulse test tables were not created: #{missing_tables.join(', ')}"
           puts error_msg
-          raise "#{error_msg}. Database connection: #{ActiveRecord::Base.connection.adapter_name}"
+          raise "#{error_msg}. Database connection: #{connection.adapter_name}"
         end
       rescue => e
         # In CI, fail fast if table creation fails
@@ -70,67 +71,20 @@ module DatabaseHelpers
           puts "Adapter: #{ActiveRecord::Base.connection.adapter_name}"
           raise e
         else
-          puts "Warning: Table creation failed: #{e.class} - #{e.message}" if ENV["VERBOSE"]
-          puts "Backtrace: #{e.backtrace.first(3).join("\n")}" if ENV["VERBOSE"]
+          puts "Warning: Table creation failed: #{e.class} - #{e.message}" if ENV["VERBOSE"] == "true"
+          puts "Backtrace: #{e.backtrace.first(3).join("\n")}" if ENV["VERBOSE"] == "true"
         end
       end
     end
   end
 
   def self.create_rails_pulse_test_schema
-    connection = ActiveRecord::Base.connection
+    # Load the main Rails Pulse schema instead of duplicating table definitions
+    require_relative "../../db/rails_pulse_schema"
 
-    # Create routes table
-    connection.create_table :rails_pulse_routes, force: true do |t|
-      t.string :method, null: false
-      t.string :path, null: false
-      t.timestamps
-    end
-
-    # Add required index for routes uniqueness validation
-    connection.add_index :rails_pulse_routes, [ :method, :path ], unique: true, name: "index_rails_pulse_routes_on_method_and_path"
-
-    # Create requests table
-    connection.create_table :rails_pulse_requests, force: true do |t|
-      t.references :route, null: false, foreign_key: { to_table: :rails_pulse_routes }
-      t.decimal :duration, precision: 15, scale: 6, null: false
-      t.integer :status, null: false
-      t.boolean :is_error, null: false, default: false
-      t.string :request_uuid, null: false
-      t.string :controller_action
-      t.timestamp :occurred_at, null: false
-      t.timestamps
-    end
-
-    # Create queries table
-    connection.create_table :rails_pulse_queries, force: true do |t|
-      t.text :normalized_sql, null: false
-      t.timestamps
-    end
-
-    # Add required index for queries uniqueness validation with MySQL compatibility
-    if connection.adapter_name.downcase.include?("mysql")
-      # MySQL requires key length for TEXT columns - use first 255 characters for uniqueness
-      connection.add_index :rails_pulse_queries, [ :normalized_sql ], unique: true,
-                          name: "index_rails_pulse_queries_on_normalized_sql", length: { normalized_sql: 255 }
-    else
-      # PostgreSQL and SQLite don't need length specification
-      connection.add_index :rails_pulse_queries, [ :normalized_sql ], unique: true,
-                          name: "index_rails_pulse_queries_on_normalized_sql"
-    end
-
-    # Create operations table
-    connection.create_table :rails_pulse_operations, force: true do |t|
-      t.references :request, null: false, foreign_key: { to_table: :rails_pulse_requests }
-      t.references :query, foreign_key: { to_table: :rails_pulse_queries }
-      t.string :operation_type, null: false
-      t.string :label, null: false
-      t.decimal :duration, precision: 15, scale: 6, null: false
-      t.string :codebase_location
-      t.float :start_time, null: false, default: 0.0
-      t.timestamp :occurred_at, null: false
-      t.timestamps
-    end
+    # Call the schema lambda with the RailsPulse connection (falls back to ActiveRecord::Base if no separate connection)
+    connection = defined?(RailsPulse::ApplicationRecord) ? RailsPulse::ApplicationRecord.connection : ActiveRecord::Base.connection
+    RailsPulse::Schema.call(connection)
   end
 
   private
@@ -226,20 +180,15 @@ module DatabaseHelpers
     )
   end
 
-  # Fast database cleanup using transactions
+  # Simple database setup/teardown
   def setup_test_database
-    # Ensure tables exist before starting transaction
-    DatabaseHelpers.ensure_test_tables_exist
-
-    # Use transactions for cleanup instead of truncation
-    ActiveRecord::Base.connection.begin_transaction(joinable: false)
+    # Tables are already ensured to exist in the main setup
+    # No custom transaction management needed - let Rails handle it
   end
 
   def teardown_test_database
-    # Rollback transaction to clean up test data
-    if ActiveRecord::Base.connection.transaction_open?
-      ActiveRecord::Base.connection.rollback_transaction
-    end
+    # Let DatabaseCleaner and Rails handle cleanup
+    # No manual transaction management needed
   end
 
   def using_memory_database?

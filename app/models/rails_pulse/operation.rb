@@ -34,7 +34,7 @@ module RailsPulse
     before_validation :associate_query
 
     def self.ransackable_attributes(auth_object = nil)
-      %w[id occurred_at label duration start_time average_query_time_ms query_count operation_type]
+      %w[id occurred_at label duration start_time average_query_time_ms query_count operation_type query_id]
     end
 
     def self.ransackable_associations(auth_object = nil)

@@ -5,21 +5,23 @@ module RailsPulse
     before_action :set_query, only: :show
 
     def index
+      setup_metric_cards
       setup_chart_and_table_data
     end
 
     def show
+      setup_metric_cards
       setup_chart_and_table_data
     end
 
     private
 
     def chart_model
-      show_action? ? Operation : Query
+      Summary
     end
 
     def table_model
-      show_action? ? Operation : Query
+      show_action? ? Operation : Summary
     end
 
     def chart_class
@@ -31,73 +33,67 @@ module RailsPulse
     end
 
     def build_chart_ransack_params(ransack_params)
-      base_params = ransack_params.except(:s)
+      base_params = ransack_params.except(:s).merge(
+        period_start_gteq: Time.at(@start_time),
+        period_start_lt: Time.at(@end_time)
+      )
+
+      # Only add duration filter if we have a meaningful threshold
+      base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
 
       if show_action?
-        base_params.merge(
-          query_id_eq: @query.id,
-          occurred_at_gteq: Time.at(@start_time),
-          occurred_at_lt: Time.at(@end_time),
-          duration_gteq: @start_duration
-        )
+        base_params.merge(summarizable_id_eq: @query.id)
       else
-        base_params.merge(
-          operations_occurred_at_gteq: Time.at(@start_time),
-          operations_occurred_at_lt: Time.at(@end_time),
-          operations_duration_gteq: @start_duration
-        )
+        base_params
       end
     end
 
     def build_table_ransack_params(ransack_params)
       if show_action?
-        ransack_params.merge(
-          query_id_eq: @query.id,
+        # For Operation model on show page
+        params = ransack_params.merge(
           occurred_at_gteq: Time.at(@table_start_time),
           occurred_at_lt: Time.at(@table_end_time),
-          duration_gteq: @start_duration
+          query_id_eq: @query.id
         )
+        params[:duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+        params
       else
-        ransack_params.merge(
-          operations_occurred_at_gteq: Time.at(@table_start_time),
-          operations_occurred_at_lt: Time.at(@table_end_time),
-          operations_duration_gteq: @start_duration
+        # For Summary model on index page
+        params = ransack_params.merge(
+          period_start_gteq: Time.at(@table_start_time),
+          period_start_lt: Time.at(@table_end_time)
         )
+        params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+        params
       end
     end
 
     def default_table_sort
-      "occurred_at desc"
+      show_action? ? "occurred_at desc" : "period_start desc"
     end
 
     def build_table_results
       if show_action?
-        @ransack_query.result.select("id", "occurred_at", "duration")
+        @ransack_query.result
       else
-        # Optimized query: Use INNER JOIN since we only want queries with operations in time range
-        # This dramatically reduces the dataset before aggregation
-        @ransack_query.result(distinct: false)
-          .joins("INNER JOIN rails_pulse_operations ON rails_pulse_operations.query_id = rails_pulse_queries.id")
-          .where("rails_pulse_operations.occurred_at >= ? AND rails_pulse_operations.occurred_at < ?",
-                 Time.at(@table_start_time), Time.at(@table_end_time))
-          .group("rails_pulse_queries.id, rails_pulse_queries.normalized_sql, rails_pulse_queries.created_at, rails_pulse_queries.updated_at")
-          .select(
-            "rails_pulse_queries.*",
-            optimized_aggregations_sql
-          )
+        Queries::Tables::Index.new(
+          ransack_query: @ransack_query,
+          period_type: period_type,
+          start_time: @start_time,
+          params: params
+        ).to_table
       end
     end
 
     private
 
-    def optimized_aggregations_sql
-      # Efficient aggregations that work with our composite indexes
-      [
-        "COALESCE(AVG(rails_pulse_operations.duration), 0) AS average_query_time_ms",
-        "COUNT(rails_pulse_operations.id) AS execution_count",
-        "COALESCE(SUM(rails_pulse_operations.duration), 0) AS total_time_consumed",
-        "MAX(rails_pulse_operations.occurred_at) AS occurred_at"
-      ].join(", ")
+    def setup_metric_cards
+      return if turbo_frame_request?
+
+      @average_query_times_metric_card = RailsPulse::Queries::Cards::AverageQueryTimes.new(query: @query).to_metric_card
+      @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(query: @query).to_metric_card
+      @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(query: @query).to_metric_card
     end
 
     def show_action?
@@ -108,14 +104,33 @@ module RailsPulse
       show_action? ? :set_pagination_limit : :store_pagination_limit
     end
 
-    def set_query
-      @query = Query.find(params[:id])
+    def setup_table_data(ransack_params)
+      table_ransack_params = build_table_ransack_params(ransack_params)
+      @ransack_query = table_model.ransack(table_ransack_params)
+
+      # Only apply default sort if not using Queries::Tables::Index (which handles its own sorting)
+      if show_action?
+        @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?
+      end
+
+      table_results = build_table_results
+      handle_pagination
+
+      @pagy, @table_data = pagy(table_results, limit: session_pagination_limit)
     end
 
-    def setup_metic_cards
-      @average_query_times_card = Queries::Cards::AverageQueryTimes.new(query: @query).to_metric_card
-      @percentile_response_times_card = Queries::Cards::PercentileQueryTimes.new(query: @query).to_metric_card
-      @execution_rate_card = Queries::Cards::ExecutionRate.new(query: @query).to_metric_card
+    def handle_pagination
+      method = pagination_method
+      send(method, params[:limit]) if params[:limit].present?
+    end
+
+    def setup_time_and_response_ranges
+      @start_time, @end_time, @selected_time_range, @time_diff_hours = setup_time_range
+      @start_duration, @selected_response_range = setup_duration_range(:query)
+    end
+
+    def set_query
+      @query = Query.find(params[:id])
     end
   end
 end

@@ -30,19 +30,6 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "should render chart skeleton when data is loading" do
-    RailsPulse::Dashboard::Charts::AverageResponseTime.stubs(:call).returns({
-      labels: [],
-      data: []
-    })
-
-    get rails_pulse.root_path
-
-    assert_response :success
-    # Should include skeleton loading state
-    assert_select ".skeleton", minimum: 1
-  end
-
   private
 
   def rails_pulse

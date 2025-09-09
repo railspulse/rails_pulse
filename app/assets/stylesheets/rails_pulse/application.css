@@ -80,18 +80,6 @@ a:hover {
   position:absolute;
   top:0
 }
-.bar.db {
-  background-color:#92c282
-}
-.bar.app {
-  background-color:#00adc4
-}
-.bar.gc {
-  background-color:#323333
-}
-.bar.view {
-  background-color:#b48da3
-}
 .bar:first-child {
   border-bottom-left-radius:1px;
   border-top-left-radius:1px

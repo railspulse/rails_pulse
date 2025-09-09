@@ -72,18 +72,6 @@ RailsPulse.configure do |config|
   config.ignored_queries  = []
 
   # ====================================================================================================
-  #                                               CACHING
-  # ====================================================================================================
-  # Configure metric card caching to improve performance of the Rails Pulse dashboard.
-  # Caching reduces database load for expensive metric calculations.
-
-  # Enable/disable metric card caching
-  config.component_cache_enabled = true
-
-  # How long to cache metric card results
-  config.component_cache_duration = 1.hour
-
-  # ====================================================================================================
   #                                            DATABASE CONFIGURATION
   # ====================================================================================================
   # Configure Rails Pulse to use a separate database for performance monitoring data.

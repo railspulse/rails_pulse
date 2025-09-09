@@ -1,11 +1,12 @@
 <%= render 'rails_pulse/components/breadcrumbs' %>
 
-<div class="row">
-  <%= cached_component(component: "metric_card", id: "average_response_times", context: "routes", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "percentile_response_times", context: "routes", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "request_count_totals", context: "routes", class: "grid-item block") %>
-  <%= cached_component(component: "metric_card", id: "error_rate_per_route", context: "routes", class: "grid-item block") %>
-</div>
+<% unless turbo_frame_request? %>
+  <div class="row">
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_query_times_metric_card } %>
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @execution_rate_metric_card } %>
+  </div>
+<% end %>
 
 <div
   class="row"
@@ -16,12 +17,12 @@
     <%= render 'rails_pulse/components/panel', { title: 'Average Query Time', } do %>
       <%= search_form_for @ransack_query, url: queries_path, class: "flex items-center justify-between gap mb-4" do |form| %>
         <div class="flex items-center grow gap">
-          <%= form.select :occurred_at_range,
+          <%= form.select :period_start_range,
             RailsPulse::QueriesController::TIME_RANGE_OPTIONS,
             { selected: @selected_time_range },
             { class: "input" }
           %>
-          <%= form.select :duration,
+          <%= form.select :avg_duration,
             duration_options(:query),
             { selected: @selected_response_range },
             { class: "input" }
@@ -31,33 +32,39 @@
         </div>
       <% end %>
 
-      <% if @chart_data.present? %>
-        <div
-          class="chart-container chart-container--slim"
-          data-rails-pulse--index-target="chart"
-        >
-          <%= bar_chart(
-            @chart_data,
-            code: false,
-            id: "average_query_times_chart",
-            height: "100%",
-            options: bar_chart_options(
-              units: "ms",
-              zoom: true,
-              chart_start: 0,
-              chart_end: @chart_data.length - 1,
-              xaxis_formatter: @xaxis_formatter,
-              tooltip_formatter: @tooltip_formatter,
-              zoom_start: @zoom_start,
-              zoom_end: @zoom_end,
-              chart_data: @chart_data
-            )
-          ) %>
-        </div>
-      <% end %>
+      <% if @has_data %>
+        <% if @chart_data && @chart_data.values.any? { |v| v > 0 } %>
+          <div
+            class="chart-container chart-container--slim"
+            data-rails-pulse--index-target="chart"
+          >
+            <%= bar_chart(
+              @chart_data,
+              code: false,
+              id: "average_query_times_chart",
+              height: "100%",
+              options: bar_chart_options(
+                units: "ms",
+                zoom: true,
+                chart_start: 0,
+                chart_end: @chart_data.length - 1,
+                xaxis_formatter: @xaxis_formatter,
+                tooltip_formatter: @tooltip_formatter,
+                zoom_start: @zoom_start,
+                zoom_end: @zoom_end,
+                chart_data: @chart_data
+              )
+            ) %>
+          </div>
+        <% end %>
 
-      <%= turbo_frame_tag :queries_index_table, data: { rails_pulse__index_target: "indexTable" } do %>
-        <%= render 'rails_pulse/queries/table' %>
+        <%= turbo_frame_tag :queries_index_table, data: { rails_pulse__index_target: "indexTable" } do %>
+          <%= render 'rails_pulse/queries/table' %>
+        <% end %>
+      <% else %>
+        <%= render 'rails_pulse/components/empty_state', 
+            title: 'No query data found for the selected filters.', 
+            description: 'Try adjusting your time range or filters to see results.' %>
       <% end %>
     <% end %>
   </div>

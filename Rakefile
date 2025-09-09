@@ -11,9 +11,9 @@ require "bundler/gem_tasks"
 
 # Test tasks
 namespace :test do
-  desc "Run unit tests (models, helpers, services)"
+  desc "Run unit tests (models, helpers, services, instrumentation)"
   task :unit do
-    sh "rails test test/models test/helpers test/services test/support"
+    sh "rails test test/models test/helpers test/services test/support test/instrumentation"
   end
 
   desc "Run functional tests (controllers)"
@@ -31,7 +31,7 @@ namespace :test do
     sh "rails test"
   end
 
-  desc "Run tests across all database and Rails version combinations"
+  desc "Run tests across all database and Rails version combinations (local only - CI uses sqlite3 + postgresql)"
   task :matrix do
     databases = [ "sqlite3", "postgresql", "mysql2" ]
     rails_versions = [ "rails-7-2", "rails-8-0" ]
@@ -41,7 +41,8 @@ namespace :test do
     databases.each do |database|
       rails_versions.each do |rails_version|
         puts "\n" + "=" * 80
-        puts "🧪 Testing: #{database.upcase} + #{rails_version.upcase}"
+        puts "🧪 Local Testing: #{database.upcase} + #{rails_version.upcase}"
+        puts "(CI only tests SQLite3 + PostgreSQL for reliability)"
         puts "=" * 80
 
         begin
@@ -49,7 +50,7 @@ namespace :test do
 
           # Set environment variables
           env_vars = {
-            "DATABASE_ADAPTER" => database,
+            "DB" => database,
             "BUNDLE_GEMFILE" => gemfile,
             "FORCE_DB_CONFIG" => "true"
           }
@@ -89,7 +90,8 @@ namespace :test do
     end
 
     puts "\n" + "=" * 80
-    puts "🏁 Test Matrix Results"
+    puts "🏁 Local Test Matrix Results"
+    puts "(CI automatically tests SQLite3 + PostgreSQL only)"
     puts "=" * 80
 
     if failed_combinations.empty?

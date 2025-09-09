@@ -16,14 +16,17 @@ module ChartTableConcern
   def setup_chart_and_table_data
     ransack_params = params[:q] || {}
 
-    # Setup chart data first using original time range (no sorting from table)
     unless turbo_frame_request?
-      setup_chart_formatters
+      # Setup chart data first using original time range (no sorting from table)
       setup_chart_data(ransack_params)
+      setup_chart_formatters
     end
 
     # Setup table data using zoom parameters if present, otherwise use chart parameters
     setup_table_data(ransack_params)
+
+    # Set flag to determine if we have meaningful data to display
+    @has_data = has_meaningful_data?
   end
 
   def setup_chart_data(ransack_params)
@@ -31,7 +34,10 @@ module ChartTableConcern
     chart_ransack_query = chart_model.ransack(chart_ransack_params)
     @chart_data = chart_class.new(
       ransack_query: chart_ransack_query,
-      group_by: group_by,
+      period_type: period_type,
+      start_time: @start_time,
+      end_time: @end_time,
+      start_duration: @start_duration,
       **chart_options
     ).to_rails_chart
   end
@@ -57,12 +63,22 @@ module ChartTableConcern
   end
 
   def setup_chart_formatters
-    @xaxis_formatter = RailsPulse::ChartFormatters.occurred_at_as_time_or_date(@time_diff_hours)
+    @xaxis_formatter = RailsPulse::ChartFormatters.period_as_time_or_date(@time_diff_hours)
     @tooltip_formatter = RailsPulse::ChartFormatters.tooltip_as_time_or_date_with_marker(@time_diff_hours)
+  end
+
+  def period_type
+    @time_diff_hours <= 25 ? :hour : :day
   end
 
   def group_by
     @time_diff_hours <= 25 ? :group_by_hour : :group_by_day
+  end
+
+  def has_meaningful_data?
+    has_chart_data = @chart_data && @chart_data.values.any? { |v| v > 0 }
+    has_table_data = @table_data && @table_data.any?
+    has_chart_data || has_table_data
   end
 
   def handle_pagination

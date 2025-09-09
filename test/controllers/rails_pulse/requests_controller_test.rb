@@ -31,7 +31,7 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
   test "uses correct chart and table models" do
     controller = RailsPulse::RequestsController.new
 
-    assert_equal RailsPulse::Request, controller.send(:chart_model)
+    assert_equal RailsPulse::Summary, controller.send(:chart_model)
     assert_equal RailsPulse::Request, controller.send(:table_model)
   end
 
@@ -40,10 +40,10 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_equal RailsPulse::Requests::Charts::AverageResponseTimes, controller.send(:chart_class)
   end
 
-  test "chart options include route parameter" do
+  test "chart options are empty for requests index" do
     controller = RailsPulse::RequestsController.new
     options = controller.send(:chart_options)
-    assert_equal({ route: true }, options)
+    assert_equal({}, options)
   end
 
   test "default table sort is by occurred_at descending" do

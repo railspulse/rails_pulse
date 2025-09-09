@@ -7,58 +7,47 @@ module RailsPulse
         end
 
         def to_metric_card
-          operations = if @query
-            RailsPulse::Operation.where(query: @query)
-          else
-            RailsPulse::Operation.all
-          end
-
-          # Calculate overall 95th percentile response time
-          count = operations.count
-          percentile_95th = if count > 0
-            operations.select("duration").order("duration").limit(1).offset((count * 0.95).floor).pluck(:duration).first || 0
-          else
-            0
-          end
-
-          # Calculate trend by comparing last 7 days vs previous 7 days for 95th percentile
           last_7_days = 7.days.ago.beginning_of_day
           previous_7_days = 14.days.ago.beginning_of_day
 
-          current_period = operations.where("occurred_at >= ?", last_7_days)
-          current_count = current_period.count
-          current_period_95th = if current_count > 0
-            current_period.select("duration").order("duration").limit(1).offset((current_count * 0.95).floor).pluck(:duration).first || 0
-          else
-            0
-          end
+          # Single query to get all P95 metrics with conditional aggregation
+          base_query = RailsPulse::Summary.where(
+            summarizable_type: "RailsPulse::Query",
+            period_type: "day",
+            period_start: 2.weeks.ago.beginning_of_day..Time.current
+          )
+          base_query = base_query.where(summarizable_id: @query.id) if @query
 
-          previous_period = operations.where("occurred_at >= ? AND occurred_at < ?", previous_7_days, last_7_days)
-          previous_count = previous_period.count
-          previous_period_95th = if previous_count > 0
-            previous_period.select("duration").order("duration").limit(1).offset((previous_count * 0.95).floor).pluck(:duration).first || 0
-          else
-            0
-          end
+          metrics = base_query.select(
+            "AVG(p95_duration) AS overall_p95",
+            "AVG(CASE WHEN period_start >= '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN p95_duration ELSE NULL END) AS current_p95",
+            "AVG(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN p95_duration ELSE NULL END) AS previous_p95"
+          ).take
 
-          percentage = previous_period_95th.zero? ?  0 : ((previous_period_95th - current_period_95th) / previous_period_95th * 100).abs.round(1)
-          trend_icon = percentage < 0.1 ?  "move-right" : current_period_95th < previous_period_95th ? "trending-down" : "trending-up"
-          trend_amount = previous_period_95th.zero? ? "0%" : "#{percentage}%"
+          # Calculate metrics from single query result
+          p95_query_time = (metrics.overall_p95 || 0).round(0)
+          current_period_p95 = metrics.current_p95 || 0
+          previous_period_p95 = metrics.previous_p95 || 0
 
-          sparkline_data = operations
-            .group_by_week(:occurred_at, time_zone: "UTC")
-            .average(:duration)
-            .each_with_object({}) do |(date, avg), hash|
-              formatted_date = date.strftime("%b %-d")
-              value = avg&.round(0) || 0
-              hash[formatted_date] = {
-                value: value
-              }
+          percentage = previous_period_p95.zero? ? 0 : ((previous_period_p95 - current_period_p95) / previous_period_p95 * 100).abs.round(1)
+          trend_icon = percentage < 0.1 ? "move-right" : current_period_p95 < previous_period_p95 ? "trending-down" : "trending-up"
+          trend_amount = previous_period_p95.zero? ? "0%" : "#{percentage}%"
+
+          # Separate query for sparkline data - group by week using Rails
+          sparkline_data = base_query
+            .group_by_week(:period_start, time_zone: "UTC")
+            .average(:p95_duration)
+            .each_with_object({}) do |(week_start, avg_p95), hash|
+              formatted_date = week_start.strftime("%b %-d")
+              value = (avg_p95 || 0).round(0)
+              hash[formatted_date] = { value: value }
             end
 
           {
+            id: "percentile_query_times",
+            context: "queries",
             title: "95th Percentile Query Time",
-            summary: "#{percentile_95th} ms",
+            summary: "#{p95_query_time} ms",
             line_chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,

@@ -17,17 +17,13 @@ module TimeRangeConcern
 
     ransack_params = params[:q] || {}
 
-    if ransack_params[:requests_occurred_at_gteq].present?
-      # Custom time range from routes index chart zoom which filters requests through an association
-      start_time = parse_time_param(ransack_params[:requests_occurred_at_gteq])
-      end_time = parse_time_param(ransack_params[:requests_occurred_at_lt])
-    elsif ransack_params[:occurred_at_gteq].present?
+    if ransack_params[:occurred_at_gteq].present?
       # Custom time range from chart zoom where there is no association
       start_time = parse_time_param(ransack_params[:occurred_at_gteq])
       end_time = parse_time_param(ransack_params[:occurred_at_lt])
-    elsif ransack_params[:occurred_at_range]
+    elsif ransack_params[:period_start_range]
       # Predefined time range from dropdown
-      selected_time_range = ransack_params[:occurred_at_range]
+      selected_time_range = ransack_params[:period_start_range]
       start_time =
         case selected_time_range.to_sym
         when :last_day then 1.day.ago

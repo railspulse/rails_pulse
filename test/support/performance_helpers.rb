@@ -67,4 +67,150 @@ module PerformanceHelpers
 
     data
   end
+
+  # Threshold testing patterns (merged from performance_test_helpers)
+  def assert_performance_threshold(actual_duration, expected_threshold, comparison: :under)
+    case comparison
+    when :under
+      assert actual_duration < expected_threshold,
+        "Expected duration #{actual_duration}ms to be under threshold #{expected_threshold}ms"
+    when :over
+      assert actual_duration > expected_threshold,
+        "Expected duration #{actual_duration}ms to be over threshold #{expected_threshold}ms"
+    when :at
+      assert_equal expected_threshold, actual_duration,
+        "Expected duration #{actual_duration}ms to equal threshold #{expected_threshold}ms"
+    end
+  end
+
+  def assert_fast_request(request, threshold: 100)
+    assert_performance_threshold(request.duration, threshold, comparison: :under)
+  end
+
+  def assert_slow_request(request, threshold: 500)
+    assert_performance_threshold(request.duration, threshold, comparison: :over)
+  end
+
+  def assert_critical_request(request, threshold: 1000)
+    assert_performance_threshold(request.duration, threshold, comparison: :over)
+  end
+
+  # Performance scenario generators
+  def create_fast_scenario(count: 10)
+    create_list(:request, count, :fast)
+  end
+
+  def create_slow_scenario(count: 5)
+    create_list(:request, count, :slow)
+  end
+
+  def create_critical_scenario(count: 2)
+    create_list(:request, count, :critical)
+  end
+
+  def create_mixed_performance_scenario(total: 20)
+    fast_count = (total * 0.7).to_i
+    slow_count = (total * 0.2).to_i
+    critical_count = total - fast_count - slow_count
+
+    {
+      fast: create_fast_scenario(count: fast_count),
+      slow: create_slow_scenario(count: slow_count),
+      critical: create_critical_scenario(count: critical_count)
+    }
+  end
+
+  # Time-based test data creation
+  def create_requests_over_time(
+    duration: 1.day,
+    interval: 1.hour,
+    starting_at: 1.day.ago,
+    request_traits: [ :realistic ]
+  )
+    requests = []
+    current_time = starting_at
+    end_time = starting_at + duration
+
+    while current_time < end_time
+      traits = request_traits.dup
+      traits << { occurred_at: current_time }
+      requests << create(:request, *traits)
+      current_time += interval
+    end
+
+    requests
+  end
+
+  # Metrics calculation test helpers
+  def assert_average_duration(requests, expected_average, tolerance: 5)
+    actual_average = requests.sum(&:duration) / requests.count.to_f
+    assert_in_delta expected_average, actual_average, tolerance,
+      "Expected average duration to be around #{expected_average}ms, got #{actual_average}ms"
+  end
+
+  def assert_percentile_duration(requests, percentile: 95, expected_duration: nil, max_duration: nil)
+    durations = requests.map(&:duration).sort
+    index = ((percentile / 100.0) * durations.length).ceil - 1
+    actual_percentile = durations[index]
+
+    if expected_duration
+      assert_equal expected_duration, actual_percentile,
+        "Expected #{percentile}th percentile to be #{expected_duration}ms, got #{actual_percentile}ms"
+    end
+
+    if max_duration
+      assert actual_percentile <= max_duration,
+        "Expected #{percentile}th percentile (#{actual_percentile}ms) to be under #{max_duration}ms"
+    end
+
+    actual_percentile
+  end
+
+  def assert_error_rate(requests, expected_rate, tolerance: 0.01)
+    error_count = requests.count(&:is_error)
+    actual_rate = error_count / requests.count.to_f
+
+    assert_in_delta expected_rate, actual_rate, tolerance,
+      "Expected error rate to be around #{expected_rate}, got #{actual_rate}"
+  end
+
+  # Stub helpers (merged from stub_helpers.rb)
+  def stub_rails_pulse_middleware
+    return unless defined?(Mocha)
+    RailsPulse::Middleware::RequestCollector.stubs(:new).returns(mock_middleware)
+  end
+
+  def stub_expensive_queries
+    return unless defined?(Mocha)
+    RailsPulse::Request.stubs(:group_by_hour).returns(mock_grouped_data)
+    RailsPulse::Request.stubs(:group_by_day).returns(mock_grouped_data)
+    RailsPulse::Request.stubs(:ransack).returns(mock_ransack_result)
+  end
+
+  def stub_all_external_dependencies
+    stub_expensive_queries
+    stub_chart_calculations
+  end
+
+  private
+
+  def mock_middleware
+    middleware = mock("middleware")
+    middleware.stubs(:call).returns([ 200, {}, [ "OK" ] ])
+    middleware
+  end
+
+  def mock_grouped_data
+    {
+      Time.current => 100,
+      1.hour.ago => 120,
+      2.hours.ago => 95
+    }
+  end
+
+  def mock_ransack_result
+    result = mock("ransack_result")
+    result.stubs(:result).returns(RailsPulse::Request.none)
+    result
+  end
 end

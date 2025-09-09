@@ -2,13 +2,27 @@ require "test_helper"
 
 class OperationSubscriberTest < ActiveSupport::TestCase
   def setup
-    setup_clean_database
-    stub_rails_pulse_configuration
+    # Clean database
+    RailsPulse::Operation.delete_all
+    RailsPulse::Request.delete_all
+    RailsPulse::Route.delete_all
+
+    # Create real request record
+    route = RailsPulse::Route.create!(path: "/test", method: "GET")
+    @request = RailsPulse::Request.create!(
+      route: route,
+      duration: 100,
+      status: 200,
+      is_error: false,
+      request_uuid: SecureRandom.uuid,
+      controller_action: "TestController#test",
+      occurred_at: Time.current
+    )
 
     # Setup request context for operation tracking
-    @request = create(:request)
     RequestStore.store[:rails_pulse_request_id] = @request.id
     RequestStore.store[:rails_pulse_operations] = []
+
     super
   end
 
