@@ -92,6 +92,7 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
   RailsPulse::Query.destroy_all
   RailsPulse::Request.destroy_all
   RailsPulse::Route.destroy_all
+  RailsPulse::Summary.destroy_all
 
   # Define realistic routes based on the home controller
   routes_data = [
@@ -477,4 +478,38 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
   puts "Operations: #{RailsPulse::Operation.count}"
   puts "Average request duration: #{RailsPulse::Request.average(:duration).to_f.round(2)} ms"
   puts "Error rate: #{(RailsPulse::Request.where(is_error: true).count.to_f / RailsPulse::Request.count * 100).round(2)}%"
+
+  # Generate day summaries for all historical data
+  puts "\nGenerating day summaries for all historical data..."
+
+  # Find the earliest Rails Pulse data to determine start time
+  earliest_request = RailsPulse::Request.minimum(:occurred_at)
+  earliest_operation = RailsPulse::Operation.minimum(:occurred_at)
+
+  historical_start_time = if earliest_request && earliest_operation
+    [ earliest_request, earliest_operation ].min.beginning_of_day
+  elsif earliest_request
+    earliest_request.beginning_of_day
+  elsif earliest_operation
+    earliest_operation.beginning_of_day
+  else
+    puts "No Rails Pulse data found - skipping summary generation"
+    return
+  end
+
+  historical_end_time = Time.current
+
+  puts "Creating day summaries from #{historical_start_time.strftime('%B %d, %Y at %I:%M %p')} to #{historical_end_time.strftime('%B %d, %Y at %I:%M %p')}"
+  RailsPulse::BackfillSummariesJob.perform_now(historical_start_time, historical_end_time, [ "day" ])
+
+  # Generate hour summaries for the past 16 hours only
+  puts "\nGenerating hour summaries for the past 26 hours..."
+  hourly_start_time = 26.hours.ago
+  hourly_end_time = Time.current
+
+  puts "Creating hourly summaries from #{hourly_start_time.strftime('%B %d, %Y at %I:%M %p')} to #{hourly_end_time.strftime('%B %d, %Y at %I:%M %p')}"
+  RailsPulse::BackfillSummariesJob.perform_now(hourly_start_time, hourly_end_time, [ "hour" ])
+
+  puts "Summary generation completed!"
+  puts "Generated summaries: #{RailsPulse::Summary.count}"
 end

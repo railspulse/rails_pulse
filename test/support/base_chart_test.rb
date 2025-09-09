@@ -9,11 +9,6 @@ class BaseChartTest < ActiveSupport::TestCase
   def setup
     ENV["TEST_TYPE"] = "unit"
 
-    # Stub only what we need for chart tests, avoiding groupdate stubbing
-    stub_rails_pulse_configuration
-    stub_chart_data_generation
-    stub_file_operations
-
     # Ensure tables exist before running chart tests
     DatabaseHelpers.ensure_test_tables_exist
 
@@ -196,6 +191,7 @@ class BaseChartTest < ActiveSupport::TestCase
 
   def cleanup_chart_test_data
     # Clean up in reverse dependency order
+    RailsPulse::Summary.delete_all if RailsPulse::Summary.table_exists?
     RailsPulse::Operation.delete_all if RailsPulse::Operation.table_exists?
     RailsPulse::Request.delete_all if RailsPulse::Request.table_exists?
     RailsPulse::Route.delete_all if RailsPulse::Route.table_exists?

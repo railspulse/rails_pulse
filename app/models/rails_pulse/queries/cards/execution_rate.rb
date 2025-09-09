@@ -7,44 +7,51 @@ module RailsPulse
         end
 
         def to_metric_card
-          operations = if @query
-            RailsPulse::Operation.where(query: @query)
-          else
-            RailsPulse::Operation.all
-          end
-
-          # Calculate total request count
-          total_request_count = operations.count
-
-          # Calculate trend by comparing last 7 days vs previous 7 days
           last_7_days = 7.days.ago.beginning_of_day
           previous_7_days = 14.days.ago.beginning_of_day
-          current_period_count = operations.where("occurred_at >= ?", last_7_days).count
-          previous_period_count = operations.where("occurred_at >= ? AND occurred_at < ?", previous_7_days, last_7_days).count
+
+          # Single query to get all count metrics with conditional aggregation
+          base_query = RailsPulse::Summary.where(
+            summarizable_type: "RailsPulse::Query",
+            period_type: "day",
+            period_start: 2.weeks.ago.beginning_of_day..Time.current
+          )
+          base_query = base_query.where(summarizable_id: @query.id) if @query
+
+          metrics = base_query.select(
+            "SUM(count) AS total_count",
+            "SUM(CASE WHEN period_start >= '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS current_count",
+            "SUM(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS previous_count"
+          ).take
+
+          # Calculate metrics from single query result
+          total_execution_count = metrics.total_count || 0
+          current_period_count = metrics.current_count || 0
+          previous_period_count = metrics.previous_count || 0
 
           percentage = previous_period_count.zero? ? 0 : ((previous_period_count - current_period_count) / previous_period_count.to_f * 100).abs.round(1)
           trend_icon = percentage < 0.1 ? "move-right" : current_period_count < previous_period_count ? "trending-down" : "trending-up"
           trend_amount = previous_period_count.zero? ? "0%" : "#{percentage}%"
 
-          sparkline_data = operations
-            .group_by_week(:occurred_at, time_zone: "UTC")
-            .count
-            .each_with_object({}) do |(date, count), hash|
-              formatted_date = date.strftime("%b %-d")
-              hash[formatted_date] = {
-                value: count
-              }
+          # Separate query for sparkline data - group by week using Rails
+          sparkline_data = base_query
+            .group_by_week(:period_start, time_zone: "UTC")
+            .sum(:count)
+            .each_with_object({}) do |(week_start, total_count), hash|
+              formatted_date = week_start.strftime("%b %-d")
+              value = total_count || 0
+              hash[formatted_date] = { value: value }
             end
 
-          # Calculate average operations per minute
-          min_time = operations.minimum(:occurred_at)
-          max_time = operations.maximum(:occurred_at)
-          total_minutes = min_time && max_time && min_time != max_time ? (max_time - min_time) / 60.0 : 1
-          average_operations_per_minute = total_request_count / total_minutes
+          # Calculate average executions per minute over 2-week period
+          total_minutes = 2.weeks / 1.minute
+          average_executions_per_minute = total_execution_count / total_minutes
 
           {
+            id: "execution_rate",
+            context: "queries",
             title: "Execution Rate",
-            summary: "#{average_operations_per_minute.round(2)} / min",
+            summary: "#{average_executions_per_minute.round(2)} / min",
             line_chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,

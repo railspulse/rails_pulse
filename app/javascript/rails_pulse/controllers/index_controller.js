@@ -1,14 +1,16 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["chart", "paginationLimit", "indexTable"] // The chart element to be monitored
+  static targets = ["chart", "paginationLimit", "indexTable"]
 
   static values = {
     chartId: String        // The ID of the chart to be monitored
   }
 
-  // Add a property to track the last request time 
+  // Add properties for improved debouncing
   lastTurboFrameRequestAt = 0;
+  pendingRequestTimeout = null;
+  pendingRequestData = null;
 
   connect() {
     // Listen for the custom event 'chart:initialized' to set up the chart.
@@ -18,8 +20,8 @@ export default class extends Controller {
     document.addEventListener('chart:rendered', this.handleChartInitialized);
 
     // If the chart is already initialized (e.g., on back navigation), set up immediately
-    if (window.RailsCharts?.charts?.[this.chartIdValue]) { 
-      this.setup(); 
+    if (window.RailsCharts?.charts?.[this.chartIdValue]) {
+      this.setup();
     }
   }
 
@@ -28,17 +30,22 @@ export default class extends Controller {
     document.removeEventListener('chart:rendered', this.handleChartInitialized);
 
     // Remove chart event listeners if they exist
-    if (this.chartTarget) {
+    if (this.hasChartTarget && this.chartTarget) {
       this.chartTarget.removeEventListener('mousedown', this.handleChartMouseDown);
       this.chartTarget.removeEventListener('mouseup', this.handleChartMouseUp);
     }
     document.removeEventListener('mouseup', this.handleDocumentMouseUp);
+
+    // Clear any pending timeout
+    if (this.pendingRequestTimeout) {
+      clearTimeout(this.pendingRequestTimeout);
+    }
   }
 
   // After the chart is initialized, set up the event listeners and data tracking
   onChartInitialized(event) {
-    if (event.detail.containerId === this.chartIdValue) { 
-      this.setup(); 
+    if (event.detail.containerId === this.chartIdValue) {
+      this.setup();
     }
   }
 
@@ -46,42 +53,55 @@ export default class extends Controller {
     if (this.setupDone) {
       return; // Prevent multiple setups
     }
+
+    // We need both the chart target in DOM and the chart object from RailsCharts
+    let hasTarget = false;
+    try {
+      hasTarget = !!this.chartTarget;
+    } catch (e) {
+      hasTarget = false;
+    }
     
     // Get the chart element which the RailsCharts library has created
     this.chart = window.RailsCharts.charts[this.chartIdValue];
-    if (!this.chart) {
+    
+    // Only proceed if we have BOTH the DOM target and the chart object
+    if (!hasTarget || !this.chart) {
       return;
     }
 
     this.visibleData = this.getVisibleData();
-    
     this.setupChartEventListeners();
     this.setupDone = true;
+
+    // Mark the chart as fully rendered for testing
+    if (hasTarget) {
+      document.getElementById(this.chartIdValue)?.setAttribute('data-chart-rendered', 'true');
+    }
   }
 
   // Add some event listeners to the chart so we can track the zoom changes
   setupChartEventListeners() {
     // When clicking on the chart, we want to store the current visible data so we can compare it later
-    this.handleChartMouseDown = () => { 
-      this.visibleData = this.getVisibleData(); 
+    this.handleChartMouseDown = () => {
+      this.visibleData = this.getVisibleData();
     };
     this.chartTarget.addEventListener('mousedown', this.handleChartMouseDown);
 
-
     // When releasing the mouse button, we want to check if the visible data has changed
-    this.handleChartMouseUp = () => { 
-      this.handleZoomChange(); 
+    this.handleChartMouseUp = () => {
+      this.handleZoomChange();
     };
     this.chartTarget.addEventListener('mouseup', this.handleChartMouseUp);
 
     // When the chart is zoomed, we want to check if the visible data has changed
-    this.chart.on('datazoom', () => { 
-      this.handleZoomChange(); 
+    this.chart.on('datazoom', () => {
+      this.handleZoomChange();
     });
 
     // When releasing the mouse button outside the chart, we want to check if the visible data has changed
-    this.handleDocumentMouseUp = () => { 
-      this.handleZoomChange(); 
+    this.handleDocumentMouseUp = () => {
+      this.handleZoomChange();
     };
     document.addEventListener('mouseup', this.handleDocumentMouseUp);
   }
@@ -92,25 +112,25 @@ export default class extends Controller {
   getVisibleData() {
     try {
       const currentOption = this.chart.getOption();
-      
+
       if (!currentOption.dataZoom || currentOption.dataZoom.length === 0) {
         return { xAxis: [], series: [] };
       }
-      
+
       // Try to find the correct dataZoom component
       let dataZoom = currentOption.dataZoom[1] || currentOption.dataZoom[0];
-      
+
       if (!currentOption.xAxis || !currentOption.xAxis[0] || !currentOption.xAxis[0].data) {
         return { xAxis: [], series: [] };
       }
-      
+
       if (!currentOption.series || !currentOption.series[0] || !currentOption.series[0].data) {
         return { xAxis: [], series: [] };
       }
-      
+
       const xAxisData = currentOption.xAxis[0].data;
       const seriesData = currentOption.series[0].data;
-      
+
       const startValue = dataZoom.startValue || 0;
       const endValue = dataZoom.endValue || xAxisData.length - 1;
 
@@ -128,8 +148,10 @@ export default class extends Controller {
   // we can update the table with the new data that is visible in the chart.
   handleZoomChange() {
     const newVisibleData = this.getVisibleData();
-    
-    if (newVisibleData.xAxis.join() !== this.visibleData.xAxis.join()) {
+    const newDataString = newVisibleData.xAxis.join();
+    const currentDataString = this.visibleData.xAxis.join();
+
+    if (newDataString !== currentDataString) {
       this.visibleData = newVisibleData;
       this.updateUrlWithZoomParams(newVisibleData);
       this.sendTurboFrameRequest(newVisibleData);
@@ -163,16 +185,35 @@ export default class extends Controller {
       window.history.replaceState({}, '', url);
     }
 
-  // After the zoom level changes, we want to send a request to the server with the new visible data.
-  // The server will then return the full page HTML with the updated table data wrapped in a turbo-frame.
-  // We will then replace the innerHTML of the turbo-frame with the new HTML.
+  // Improved debouncing with guaranteed final request
   sendTurboFrameRequest(data) {
     const now = Date.now();
-    // If less than 1 second since last request, ignore this call
-    if (now - this.lastTurboFrameRequestAt < 1000) { 
-      return; 
+    const timeSinceLastRequest = now - this.lastTurboFrameRequestAt;
+    
+    // Store the latest data for potential delayed execution
+    this.pendingRequestData = data;
+    
+    // Clear any existing timeout
+    if (this.pendingRequestTimeout) {
+      clearTimeout(this.pendingRequestTimeout);
     }
-    this.lastTurboFrameRequestAt = now;
+    
+    // If enough time has passed since last request, execute immediately
+    if (timeSinceLastRequest >= 1000) {
+      this.executeTurboFrameRequest(data);
+    } else {
+      // Otherwise, schedule execution for later to ensure final request goes through
+      const remainingTime = 1000 - timeSinceLastRequest;
+      this.pendingRequestTimeout = setTimeout(() => {
+        this.executeTurboFrameRequest(this.pendingRequestData);
+        this.pendingRequestTimeout = null;
+      }, remainingTime);
+    }
+  }
+
+  // Execute the actual AJAX request
+  executeTurboFrameRequest(data) {
+    this.lastTurboFrameRequestAt = Date.now();
 
     // Start with the current page's URL
     const url = new URL(window.location.href);
@@ -252,7 +293,7 @@ export default class extends Controller {
       // Parse HTML safely
       const parser = new DOMParser();
       const doc = parser.parseFromString(html, 'text/html');
-      
+
       // Clear existing content
       while (targetFrame.firstChild) {
         targetFrame.removeChild(targetFrame.firstChild);

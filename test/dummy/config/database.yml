@@ -1,12 +1,12 @@
 # Multi-database support with environment variable switching
-# Set DATABASE_ADAPTER in your .env file to switch between databases
+# Set DB in your .env file to switch between databases
 #
-# DATABASE_ADAPTER=sqlite3 (default)
-# DATABASE_ADAPTER=postgresql
-# DATABASE_ADAPTER=mysql
+# DB=sqlite3 (default)
+# DB=postgresql
+# DB=mysql
 
-<% 
-  adapter = ENV.fetch('DATABASE_ADAPTER', 'sqlite3')
+<%
+  adapter = ENV.fetch('DB', 'sqlite3')
   database_config = case adapter
   when 'postgresql'
     {

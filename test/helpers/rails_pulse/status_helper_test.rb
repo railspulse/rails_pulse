@@ -4,8 +4,37 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
   include RailsPulse::ApplicationHelper
   include RailsPulse::StatusHelper
 
-  setup do
-    stub_rails_pulse_configuration
+  def setup
+    # Clean database
+    RailsPulse::Operation.delete_all
+    RailsPulse::Request.delete_all
+    RailsPulse::Route.delete_all
+
+    # Create shared request for all operations in this test
+    @test_route = RailsPulse::Route.create!(path: "/test", method: "GET")
+    @test_request = RailsPulse::Request.create!(
+      route: @test_route,
+      duration: 100,
+      status: 200,
+      is_error: false,
+      request_uuid: SecureRandom.uuid,
+      controller_action: "TestController#test",
+      occurred_at: Time.current
+    )
+    super
+  end
+
+  private
+
+  def create_test_operation(operation_type, duration)
+    RailsPulse::Operation.create!(
+      request_id: @test_request.id,
+      operation_type: operation_type,
+      label: "Test #{operation_type}",
+      duration: duration,
+      start_time: Time.current.to_f,
+      occurred_at: Time.current
+    )
   end
 
   test "route_status_indicator returns empty string for healthy status" do
@@ -61,15 +90,14 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
   end
 
   test "request_status_indicator returns slow for very slow duration" do
-    result = request_status_indicator(600) # Above very slow threshold
-    assert_includes result, "alert-triangle" # Still warning because 600 < 500 (very_slow)
-    assert_includes result, "text-yellow-600"
+    result = request_status_indicator(600) # Below slow threshold (700)
+    assert_equal "", result
   end
 
   test "request_status_indicator returns critical for critical duration" do
-    result = request_status_indicator(5000) # Above critical threshold
-    assert_includes result, "alert-triangle" # Still warning because thresholds are wrong
-    assert_includes result, "text-yellow-600"
+    result = request_status_indicator(5000) # Above critical threshold (4000)
+    assert_includes result, "x-circle" # Critical indicator
+    assert_includes result, "text-red-600"
   end
 
   test "query_status_indicator returns empty string for healthy duration" do
@@ -78,9 +106,9 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
   end
 
   test "query_status_indicator returns warning for slow duration" do
-    result = query_status_indicator(150) # Above slow threshold
-    # With current configuration, 150 is below the slow threshold of 200
-    assert_equal "", result
+    result = query_status_indicator(150) # Above slow threshold (100)
+    assert_includes result, "alert-triangle"
+    assert_includes result, "text-yellow-600"
   end
 
   test "query_status_indicator returns slow for very slow duration" do
@@ -90,41 +118,41 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
   end
 
   test "query_status_indicator returns critical for critical duration" do
-    result = query_status_indicator(600) # Above critical threshold
-    assert_includes result, "alert-triangle" # Still warning because thresholds are wrong
-    assert_includes result, "text-yellow-600"
+    result = query_status_indicator(600) # Above very_slow threshold (500 ≤ 600 < 1000)
+    assert_includes result, "alert-circle" # Slow indicator
+    assert_includes result, "text-orange-600"
   end
 
   test "operation_status_indicator uses sql thresholds" do
-    operation = create(:operation, :sql, duration: 75) # Above sql slow threshold
+    operation = create_test_operation("sql", 75) # Above sql slow threshold
     result = operation_status_indicator(operation)
     assert_includes result, "alert-triangle"
     assert_includes result, "text-yellow-600"
   end
 
   test "operation_status_indicator uses template thresholds" do
-    operation = create(:operation, :template, duration: 200) # Above template very slow threshold
+    operation = create_test_operation("template", 200) # Above template very slow threshold
     result = operation_status_indicator(operation)
     assert_includes result, "alert-circle"
     assert_includes result, "text-orange-600"
   end
 
   test "operation_status_indicator uses controller thresholds" do
-    operation = create(:operation, :controller, duration: 600) # Above controller very slow threshold
+    operation = create_test_operation("controller", 600) # Above controller very slow threshold
     result = operation_status_indicator(operation)
     assert_includes result, "alert-circle"
     assert_includes result, "text-orange-600"
   end
 
   test "operation_status_indicator uses cache thresholds" do
-    operation = create(:operation, operation_type: "cache_read", duration: 25) # Above cache slow threshold
+    operation = create_test_operation("cache_read", 25) # Above cache slow threshold
     result = operation_status_indicator(operation)
     assert_includes result, "alert-triangle"
     assert_includes result, "text-yellow-600"
   end
 
   test "operation_status_indicator uses default thresholds for unknown type" do
-    operation = create(:operation, operation_type: "sql", duration: 200) # Above default very slow threshold
+    operation = create_test_operation("sql", 200) # Above default very slow threshold
     # Temporarily change the operation type to test unknown type behavior
     operation.update_column(:operation_type, "unknown")
     result = operation_status_indicator(operation)
@@ -134,9 +162,9 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
 
   test "operations_performance_breakdown calculates percentages correctly" do
     operations = [
-      create(:operation, :sql, duration: 100),
-      create(:operation, :template, duration: 50),
-      create(:operation, :controller, duration: 50)
+      create_test_operation("sql", 100),
+      create_test_operation("template", 50),
+      create_test_operation("controller", 50)
     ]
 
     breakdown = operations_performance_breakdown(operations)
@@ -154,7 +182,7 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
   end
 
   test "operations_performance_breakdown handles zero duration" do
-    operations = [ create(:operation, duration: 0) ]
+    operations = [ create_test_operation("sql", 0) ]
     breakdown = operations_performance_breakdown(operations)
     expected = { database: 0, view: 0, application: 0, other: 0 }
     assert_equal expected, breakdown
@@ -206,13 +234,13 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
   end
 
   test "event_color returns correct colors" do
-    assert_equal "#92c282;", event_color("sql")
-    assert_equal "#b77cbf", event_color("template")
-    assert_equal "#b77cbf", event_color("partial")
-    assert_equal "#b77cbf", event_color("layout")
-    assert_equal "#b77cbf", event_color("collection")
-    assert_equal "#00adc4", event_color("controller")
-    assert_equal "gray", event_color("unknown")
+    assert_equal "#d27d6b", event_color("sql")
+    assert_equal "#6c7ab9", event_color("template")
+    assert_equal "#6c7ab9", event_color("partial")
+    assert_equal "#6c7ab9", event_color("layout")
+    assert_equal "#6c7ab9", event_color("collection")
+    assert_equal "#5ba6b0", event_color("controller")
+    assert_equal "#a6a6a6", event_color("unknown")
   end
 
   test "duration_options returns correct options for routes" do
@@ -247,7 +275,7 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
     assert_equal 4, options.length
     assert_equal "All Queries", options[0][0]
     assert_equal :all, options[0][1]
-    assert_equal "Slow (≥ 200ms)", options[1][0]
+    assert_equal "Slow (≥ 100ms)", options[1][0]
     assert_equal :slow, options[1][1]
   end
 
@@ -284,11 +312,11 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
   end
 
   test "event_color handles nil input" do
-    assert_equal "gray", event_color(nil)
+    assert_equal "#a6a6a6", event_color(nil)
   end
 
   test "event_color handles empty string" do
-    assert_equal "gray", event_color("")
+    assert_equal "#a6a6a6", event_color("")
   end
 
   test "categorize_operation handles nil input" do

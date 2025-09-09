@@ -5,6 +5,13 @@ module RailsPulse
     before_action :set_request, only: :show
 
     def index
+      unless turbo_frame_request?
+        @average_response_times_metric_card = RailsPulse::Routes::Cards::AverageResponseTimes.new(route: nil).to_metric_card
+        @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: nil).to_metric_card
+        @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: nil).to_metric_card
+        @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: nil).to_metric_card
+      end
+
       setup_chart_and_table_data
     end
 
@@ -15,7 +22,7 @@ module RailsPulse
     private
 
     def chart_model
-      Request
+      Summary
     end
 
     def table_model
@@ -27,23 +34,27 @@ module RailsPulse
     end
 
     def chart_options
-      { route: true }
+      {}
     end
 
     def build_chart_ransack_params(ransack_params)
-      ransack_params.except(:s).merge(
-        occurred_at_gteq: Time.at(@start_time),
-        occurred_at_lt: Time.at(@end_time),
-        duration_gteq: @start_duration
+      base_params = ransack_params.except(:s).merge(
+        period_start_gteq: Time.at(@start_time),
+        period_start_lt: Time.at(@end_time)
       )
+
+      # Only add duration filter if we have a meaningful threshold
+      base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+      base_params
     end
 
     def build_table_ransack_params(ransack_params)
-      ransack_params.merge(
+      params = ransack_params.merge(
         occurred_at_gteq: Time.at(@table_start_time),
-        occurred_at_lt: Time.at(@table_end_time),
-        duration_gteq: @start_duration
+        occurred_at_lt: Time.at(@table_end_time)
       )
+      params[:duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+      params
     end
 
     def default_table_sort
@@ -52,13 +63,14 @@ module RailsPulse
 
     def build_table_results
       @ransack_query.result
-        .includes(:route)
+        .joins(:route)
         .select(
           "rails_pulse_requests.id",
           "rails_pulse_requests.occurred_at",
           "rails_pulse_requests.duration",
           "rails_pulse_requests.status",
-          "rails_pulse_requests.route_id"
+          "rails_pulse_requests.route_id",
+          "rails_pulse_routes.path"
         )
     end
 

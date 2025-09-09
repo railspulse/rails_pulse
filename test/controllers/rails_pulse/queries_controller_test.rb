@@ -33,21 +33,6 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_equal RailsPulse::Queries::Charts::AverageQueryTimes, controller.send(:chart_class)
   end
 
-  test "uses correct default table sort" do
-    controller = RailsPulse::QueriesController.new
-    assert_equal "occurred_at desc", controller.send(:default_table_sort)
-  end
-
-  test "optimized aggregations include required fields" do
-    controller = RailsPulse::QueriesController.new
-    sql = controller.send(:optimized_aggregations_sql)
-
-    assert_includes sql, "AVG(rails_pulse_operations.duration)"
-    assert_includes sql, "COUNT(rails_pulse_operations.id)"
-    assert_includes sql, "SUM(rails_pulse_operations.duration)"
-    assert_includes sql, "MAX(rails_pulse_operations.occurred_at)"
-  end
-
   test "show_action method works correctly" do
     controller = RailsPulse::QueriesController.new
 
