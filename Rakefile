@@ -31,18 +31,18 @@ namespace :test do
     sh "rails test"
   end
 
-  desc "Run tests across all database and Rails version combinations"
+  desc "Run tests across all database and Rails version combinations (local only - CI uses sqlite3 + postgresql)"
   task :matrix do
     databases = [ "sqlite3", "postgresql", "mysql2" ]
-    # rails_versions = [ "rails-7-2", "rails-8-0" ]
-    rails_versions = [ "rails-8-0" ]
+    rails_versions = [ "rails-7-2", "rails-8-0" ]
 
     failed_combinations = []
 
     databases.each do |database|
       rails_versions.each do |rails_version|
         puts "\n" + "=" * 80
-        puts "🧪 Testing: #{database.upcase} + #{rails_version.upcase}"
+        puts "🧪 Local Testing: #{database.upcase} + #{rails_version.upcase}"
+        puts "(CI only tests SQLite3 + PostgreSQL for reliability)"
         puts "=" * 80
 
         begin
@@ -90,7 +90,8 @@ namespace :test do
     end
 
     puts "\n" + "=" * 80
-    puts "🏁 Test Matrix Results"
+    puts "🏁 Local Test Matrix Results"
+    puts "(CI automatically tests SQLite3 + PostgreSQL only)"
     puts "=" * 80
 
     if failed_combinations.empty?

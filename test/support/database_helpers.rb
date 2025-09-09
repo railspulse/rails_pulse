@@ -49,14 +49,11 @@ module DatabaseHelpers
           return
         end
 
-        # Create Rails Pulse tables for testing - don't suppress messages in CI
-        if ENV["CI"] == "true"
-          puts "Creating Rails Pulse test tables..."
+        # Create Rails Pulse tables for testing
+        puts "Creating Rails Pulse test tables..." if ENV["CI"] == "true" || ENV["VERBOSE"] == "true"
+        
+        ActiveRecord::Migration.suppress_messages do
           create_rails_pulse_test_schema
-        else
-          ActiveRecord::Migration.suppress_messages do
-            create_rails_pulse_test_schema
-          end
         end
 
         # Verify tables were created successfully
@@ -74,8 +71,8 @@ module DatabaseHelpers
           puts "Adapter: #{ActiveRecord::Base.connection.adapter_name}"
           raise e
         else
-          puts "Warning: Table creation failed: #{e.class} - #{e.message}" if ENV["VERBOSE"]
-          puts "Backtrace: #{e.backtrace.first(3).join("\n")}" if ENV["VERBOSE"]
+          puts "Warning: Table creation failed: #{e.class} - #{e.message}" if ENV["VERBOSE"] == "true"
+          puts "Backtrace: #{e.backtrace.first(3).join("\n")}" if ENV["VERBOSE"] == "true"
         end
       end
     end
@@ -183,20 +180,15 @@ module DatabaseHelpers
     )
   end
 
-  # Fast database cleanup using transactions
+  # Simple database setup/teardown
   def setup_test_database
-    # Ensure tables exist before starting transaction
-    DatabaseHelpers.ensure_test_tables_exist
-
-    # Use transactions for cleanup instead of truncation
-    ActiveRecord::Base.connection.begin_transaction(joinable: false)
+    # Tables are already ensured to exist in the main setup
+    # No custom transaction management needed - let Rails handle it
   end
 
   def teardown_test_database
-    # Rollback transaction to clean up test data
-    if ActiveRecord::Base.connection.transaction_open?
-      ActiveRecord::Base.connection.rollback_transaction
-    end
+    # Let DatabaseCleaner and Rails handle cleanup
+    # No manual transaction management needed
   end
 
   def using_memory_database?

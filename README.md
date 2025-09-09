@@ -402,9 +402,11 @@ Test against multiple databases and Rails versions using the matrix task:
 rails test:matrix
 ```
 
-This command tests all combinations of:
-- **Databases**: SQLite3, PostgreSQL, MySQL2
+This command tests all combinations locally:
+- **Databases**: SQLite3, PostgreSQL, MySQL2 (local testing only)
 - **Rails versions**: 7.2, 8.0
+
+**Note**: CI only tests SQLite3 + PostgreSQL for reliability. MySQL is available for local testing but excluded from CI due to flakiness.
 
 ### Development Environment Setup
 
@@ -413,15 +415,15 @@ This command tests all combinations of:
    cp .env.example .env
    ```
 
-2. **Configure your database credentials in `.env`:**
+2. **Configure your database credentials in `.env` (for local multi-database testing):**
    ```bash
-   # PostgreSQL Configuration
+   # PostgreSQL Configuration (used in CI + local)
    POSTGRES_USERNAME=your_username
    POSTGRES_PASSWORD=your_password
    POSTGRES_HOST=localhost
    POSTGRES_PORT=5432
 
-   # MySQL Configuration
+   # MySQL Configuration (local testing only)
    MYSQL_USERNAME=root
    MYSQL_PASSWORD=your_password
    MYSQL_HOST=localhost
@@ -439,26 +441,30 @@ This command tests all combinations of:
 
 ### Manual Database Testing
 
-If you prefer testing individual databases:
+Test individual databases locally:
 
 ```bash
 # Test with SQLite (default)
 rails test:all
 
-# Test with PostgreSQL
-DB=postgresql rails test:all
+# Test with PostgreSQL  
+DB=postgresql FORCE_DB_CONFIG=true rails test:all
 
-# Test with MySQL
-DB=mysql2 rails test:all
+# Test with MySQL (local only)
+DB=mysql2 FORCE_DB_CONFIG=true rails test:all
 ```
 
 ### CI Testing
 
-The GitHub Actions CI automatically tests:
-- **Databases**: SQLite3, PostgreSQL
+GitHub Actions CI automatically tests:
+- **Databases**: SQLite3, PostgreSQL only (MySQL excluded for reliability)
 - **Rails versions**: 7.2, 8.0
+- **Environment**: Uses memory SQLite and PostgreSQL service
 
-MySQL testing has been moved to local development only for better CI reliability.
+**Local vs CI differences**:
+- **Local**: Can test all 3 databases (SQLite3, PostgreSQL, MySQL2)
+- **CI**: Only SQLite3 + PostgreSQL for fast, reliable builds
+- **Database switching**: Requires `FORCE_DB_CONFIG=true` locally
 
 ## Technology Stack
 
