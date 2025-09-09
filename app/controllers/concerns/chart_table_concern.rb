@@ -24,7 +24,7 @@ module ChartTableConcern
 
     # Setup table data using zoom parameters if present, otherwise use chart parameters
     setup_table_data(ransack_params)
-    
+
     # Set flag to determine if we have meaningful data to display
     @has_data = has_meaningful_data?
   end

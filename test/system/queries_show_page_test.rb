@@ -167,10 +167,10 @@ class QueriesShowPageTest < SharedIndexPageTest
     # Should show empty state when no operations exist for this query
     assert_text "No query responses found for the selected filters."
     assert_text "Try adjusting your time range or filters to see results."
-    
+
     # Check for the search.svg image in the empty state
     assert_selector "img[src*='search.svg']"
-    
+
     # Should not show chart or table
     assert_no_selector "#query_responses_chart"
     assert_no_selector "table tbody tr"

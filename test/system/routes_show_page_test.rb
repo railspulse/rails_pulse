@@ -200,10 +200,10 @@ class RoutesShowPageTest < SharedIndexPageTest
     # Should show empty state when no requests exist for this route
     assert_text "No route requests found for the selected filters."
     assert_text "Try adjusting your time range or filters to see results."
-    
+
     # Check for the search.svg image in the empty state
     assert_selector "img[src*='search.svg']"
-    
+
     # Should not show chart or table
     assert_no_selector "#route_repsonses_chart"
     assert_no_selector "table tbody tr"

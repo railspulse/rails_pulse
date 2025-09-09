@@ -51,7 +51,7 @@ module DatabaseHelpers
 
         # Create Rails Pulse tables for testing
         puts "Creating Rails Pulse test tables..." if ENV["CI"] == "true" || ENV["VERBOSE"] == "true"
-        
+
         ActiveRecord::Migration.suppress_messages do
           create_rails_pulse_test_schema
         end

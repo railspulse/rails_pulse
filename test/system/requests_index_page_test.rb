@@ -256,10 +256,10 @@ class RequestsIndexPageTest < SharedIndexPageTest
     # Should show empty state when no data exists
     assert_text "No request data found for the selected filters."
     assert_text "Try adjusting your time range or filters to see results."
-    
+
     # Check for the search.svg image in the empty state
     assert_selector "img[src*='search.svg']"
-    
+
     # Should not show chart or table
     assert_no_selector "#average_response_times_chart"
     assert_no_selector "table tbody tr"

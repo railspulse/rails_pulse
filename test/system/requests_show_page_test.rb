@@ -21,7 +21,7 @@ class RequestsShowPageTest < ApplicationSystemTestCase
 
   def test_empty_state_displays_when_no_operations_exist
     # Create a request without operations
-    request_without_operations = create(:request, 
+    request_without_operations = create(:request,
       route: create(:route, path: "/test/no-ops", method: "GET"),
       duration: 100
     )
@@ -34,10 +34,10 @@ class RequestsShowPageTest < ApplicationSystemTestCase
     # Should show empty state for operations
     assert_text "No operations found for this request."
     assert_text "This request may not have had any tracked operations."
-    
+
     # Check for the search.svg image in the empty state
     assert_selector "img[src*='search.svg']"
-    
+
     # Should not show operations table
     assert_no_selector "table.operations-table"
   end
@@ -47,19 +47,19 @@ class RequestsShowPageTest < ApplicationSystemTestCase
   def create_test_data
     @route = create(:route, path: "/api/test", method: "GET")
     @request = create(:request, route: @route, duration: 250)
-    
+
     # Create some operations for the request
-    create(:operation, 
-      request: @request, 
-      operation_type: "sql", 
-      duration: 50, 
+    create(:operation,
+      request: @request,
+      operation_type: "sql",
+      duration: 50,
       label: "SELECT * FROM users",
       occurred_at: @request.occurred_at
     )
-    create(:operation, 
-      request: @request, 
-      operation_type: "template", 
-      duration: 100, 
+    create(:operation,
+      request: @request,
+      operation_type: "template",
+      duration: 100,
       label: "Render users/index",
       occurred_at: @request.occurred_at + 0.05
     )
