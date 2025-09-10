@@ -16,7 +16,7 @@ import ColorSchemeController from "./controllers/color_scheme_controller";
 import PaginationController from "./controllers/pagination_controller";
 import TimezoneController from "./controllers/timezone_controller";
 import IconController from "./controllers/icon_controller";
-import ExpandableRowController from "./controllers/expandable_row_controller";
+import ExpandableRowsController from "./controllers/expandable_rows_controller";
 
 const application = Application.start();
 
@@ -41,7 +41,7 @@ application.register("rails-pulse--color-scheme", ColorSchemeController);
 application.register("rails-pulse--pagination", PaginationController);
 application.register("rails-pulse--timezone", TimezoneController);
 application.register("rails-pulse--icon", IconController);
-application.register("rails-pulse--expandable-row", ExpandableRowController);
+application.register("rails-pulse--expandable-rows", ExpandableRowsController);
 
 // Ensure Turbo Frames are loaded after page load
 document.addEventListener('DOMContentLoaded', () => {

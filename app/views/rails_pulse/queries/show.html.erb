@@ -8,7 +8,7 @@
   </div>
 <% end %>
 
-<div class="mb-4">
+<div class="mb-4 mis-2">
   <%= render 'rails_pulse/components/code_panel', { title: 'Normalized SQL', value: @query.normalized_sql } %>
 </div>
 
@@ -63,8 +63,8 @@
           <%= render 'rails_pulse/queries/show_table' %>
         <% end %>
       <% else %>
-        <%= render 'rails_pulse/components/empty_state', 
-            title: 'No query responses found for the selected filters.', 
+        <%= render 'rails_pulse/components/empty_state',
+            title: 'No query responses found for the selected filters.',
             description: 'Try adjusting your time range or filters to see results.' %>
       <% end %>
     <% end %>
