@@ -2387,6 +2387,11 @@ body {
       flex: none;
   }
 
+  /* Tables should stack in single column on mobile */
+  .row:has(.table-container) > * {
+      flex: 0 0 100%;
+  }
+
   /* Single column for very small screens */
   @media (max-width: 480px) {
     .row > * {
@@ -2404,8 +2409,8 @@ body {
 
     /* Make charts smaller on mobile */
     .row > .grid-item .chart-container {
-        height: 120px !important;
-        max-height: 120px;
+        height: 60px !important;
+        max-height: 60px;
     }
   }
 }
@@ -2490,6 +2495,29 @@ body {
   margin-inline-start: var(--size-4);
   padding: var(--size-0_5) var(--size-2);
   row-gap: var(--size-1);
+}
+
+/* Sheet component styles for mobile menu */
+.sheet {
+  border: 0;
+  background: var(--color-bg);
+  max-block-size: none;
+  max-inline-size: none;
+  padding: 0;
+}
+
+.sheet--left {
+  block-size: 100vh;
+  inline-size: var(--sheet-size, 288px);
+  inset-block-start: 0;
+  inset-inline-start: 0;
+}
+
+.sheet__content {
+  block-size: 100%;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
 }
 
 

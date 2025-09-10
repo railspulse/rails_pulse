@@ -47,6 +47,11 @@
       flex: none;
   }
 
+  /* Tables should stack in single column on mobile */
+  .row:has(.table-container) > * {
+      flex: 0 0 100%;
+  }
+
   /* Single column for very small screens */
   @media (max-width: 480px) {
     .row > * {
@@ -64,8 +69,8 @@
 
     /* Make charts smaller on mobile */
     .row > .grid-item .chart-container {
-        height: 120px !important;
-        max-height: 120px;
+        height: 60px !important;
+        max-height: 60px;
     }
   }
 }
