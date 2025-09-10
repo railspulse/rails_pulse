@@ -56,3 +56,16 @@
   --badge-border-color: transparent;
   --badge-color: var(--color-negative);
 }
+
+/* Trend badge icon lightening (dark mode only) */
+.badge--trend rails-pulse-icon { color: var(--badge-color, currentColor); }
+html[data-color-scheme="dark"] .badge--trend rails-pulse-icon {
+  /* Lighten icon relative to badge text color for contrast */
+  color: color-mix(in srgb, var(--badge-color) 55%, white 45%);
+}
+
+/* Trend amount lightening (dark mode only) */
+.badge--trend .badge__trend-amount { color: var(--badge-color, currentColor); }
+html[data-color-scheme="dark"] .badge--trend .badge__trend-amount {
+  color: color-mix(in srgb, var(--badge-color) 55%, white 45%);
+}

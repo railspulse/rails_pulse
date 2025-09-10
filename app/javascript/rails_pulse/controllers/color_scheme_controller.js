@@ -16,5 +16,7 @@ export default class extends Controller {
     console.log("Toggling color scheme to", current)
     this.html.setAttribute("data-color-scheme", current)
     localStorage.setItem(this.storageKey, current)
+    // Notify listeners (e.g., charts) that scheme changed
+    document.dispatchEvent(new CustomEvent('rails-pulse:color-scheme-changed', { detail: { scheme: current }}))
   }
 }
