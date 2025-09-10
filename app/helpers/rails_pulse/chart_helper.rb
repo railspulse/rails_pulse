@@ -67,7 +67,7 @@ module RailsPulse
       base_chart_options.deep_merge({
         series: {
           type: "bar",
-          itemStyle: { borderRadius: [2, 2, 0, 0] },
+          itemStyle: { borderRadius: [ 2, 2, 0, 0 ] },
           barCategoryGap: "10%",
           barGap: "0%"
         },
