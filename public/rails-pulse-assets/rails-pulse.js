@@ -159905,6 +159905,34 @@
     }
   };
 
+  // app/javascript/rails_pulse/controllers/collapsible_controller.js
+  var collapsible_controller_default = class extends Controller {
+    connect() {
+      this.collapse();
+    }
+    toggle() {
+      if (this.element.classList.contains(this.collapsedClass)) {
+        this.expand();
+      } else {
+        this.collapse();
+      }
+    }
+    collapse() {
+      this.element.classList.add(this.collapsedClass);
+      if (this.hasToggleTarget) {
+        this.toggleTarget.textContent = "show more";
+      }
+    }
+    expand() {
+      this.element.classList.remove(this.collapsedClass);
+      if (this.hasToggleTarget) {
+        this.toggleTarget.textContent = "show less";
+      }
+    }
+  };
+  __publicField(collapsible_controller_default, "targets", ["content", "toggle"]);
+  __publicField(collapsible_controller_default, "classes", ["collapsed"]);
+
   // app/javascript/rails_pulse/application.js
   var application = Application.start();
   application.debug = false;
@@ -159922,6 +159950,7 @@
   application.register("rails-pulse--timezone", timezone_controller_default);
   application.register("rails-pulse--icon", icon_controller_default);
   application.register("rails-pulse--expandable-rows", expandable_rows_controller_default);
+  application.register("rails-pulse--collapsible", collapsible_controller_default);
   document.addEventListener("DOMContentLoaded", () => {
     const frames = document.querySelectorAll("turbo-frame[src]:not([complete])");
     frames.forEach((frame) => {

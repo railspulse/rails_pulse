@@ -17,6 +17,7 @@ import PaginationController from "./controllers/pagination_controller";
 import TimezoneController from "./controllers/timezone_controller";
 import IconController from "./controllers/icon_controller";
 import ExpandableRowsController from "./controllers/expandable_rows_controller";
+import CollapsibleController from "./controllers/collapsible_controller";
 
 const application = Application.start();
 
@@ -42,6 +43,7 @@ application.register("rails-pulse--pagination", PaginationController);
 application.register("rails-pulse--timezone", TimezoneController);
 application.register("rails-pulse--icon", IconController);
 application.register("rails-pulse--expandable-rows", ExpandableRowsController);
+application.register("rails-pulse--collapsible", CollapsibleController);
 
 // Ensure Turbo Frames are loaded after page load
 document.addEventListener('DOMContentLoaded', () => {

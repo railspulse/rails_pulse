@@ -1,0 +1,30 @@
+.collapsible-code.collapsed pre {
+  max-height: 4.5em;
+  overflow: hidden;
+  position: relative;
+}
+
+.collapsible-code.collapsed pre::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 1em;
+  background: linear-gradient(transparent, var(--color-border-light));
+  pointer-events: none;
+}
+
+.collapsible-toggle {
+  margin-top: 0.5rem;
+  font-size: 0.875rem;
+  color: var(--color-link);
+  text-decoration: underline;
+  transform: lowercase;
+  cursor: pointer;
+  border: none;
+  background: none;
+  padding: 0;
+  font-weight: normal;
+  margin-left: 10px;
+}
