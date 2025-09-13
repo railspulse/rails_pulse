@@ -159364,6 +159364,7 @@
       __publicField(this, "lastTurboFrameRequestAt", 0);
       __publicField(this, "pendingRequestTimeout", null);
       __publicField(this, "pendingRequestData", null);
+      __publicField(this, "selectedColumnIndex", null);
     }
     connect() {
       this.handleChartInitialized = this.onChartInitialized.bind(this);
@@ -159427,6 +159428,9 @@
         this.handleZoomChange();
       };
       document.addEventListener("mouseup", this.handleDocumentMouseUp);
+      this.chart.on("click", (params) => {
+        this.handleColumnClick(params);
+      });
     }
     // This returns the visible data from the chart based on the current zoom level.
     // The xAxis data and series data are sliced based on the start and end values of the dataZoom component.
@@ -159573,6 +159577,61 @@
         targetFrame.innerHTML = html;
       }
     }
+    handleColumnClick(params) {
+      const clickedIndex = params.dataIndex;
+      if (this.selectedColumnIndex === clickedIndex) {
+        this.resetColumnColors();
+        this.selectedColumnIndex = null;
+      } else {
+        this.highlightColumn(clickedIndex);
+        this.selectedColumnIndex = clickedIndex;
+      }
+    }
+    highlightColumn(selectedIndex) {
+      const option = this.chart.getOption();
+      const seriesData = option.series[0].data;
+      const newData = seriesData.map((item, index) => {
+        const value = typeof item === "object" ? item.value : item;
+        if (index === selectedIndex) {
+          return {
+            value,
+            itemStyle: {
+              color: null
+              // Use default color
+            }
+          };
+        } else {
+          return {
+            value,
+            itemStyle: {
+              color: "#cccccc"
+              // Gray color
+            }
+          };
+        }
+      });
+      this.chart.setOption({
+        series: [{
+          data: newData
+        }]
+      });
+    }
+    resetColumnColors() {
+      const option = this.chart.getOption();
+      const seriesData = option.series[0].data;
+      const newData = seriesData.map((item) => ({
+        value: typeof item === "object" ? item.value : item,
+        itemStyle: {
+          color: null
+          // Use default color
+        }
+      }));
+      this.chart.setOption({
+        series: [{
+          data: newData
+        }]
+      });
+    }
   };
   __publicField(index_controller_default, "targets", ["chart", "paginationLimit", "indexTable"]);
   __publicField(index_controller_default, "values", {
@@ -159593,7 +159652,6 @@
     toggle(event) {
       event.preventDefault();
       const current = this.html.getAttribute("data-color-scheme") === "dark" ? "light" : "dark";
-      console.log("Toggling color scheme to", current);
       this.html.setAttribute("data-color-scheme", current);
       localStorage.setItem(this.storageKey, current);
       document.dispatchEvent(new CustomEvent("rails-pulse:color-scheme-changed", { detail: { scheme: current } }));

@@ -11,6 +11,7 @@ export default class extends Controller {
   lastTurboFrameRequestAt = 0;
   pendingRequestTimeout = null;
   pendingRequestData = null;
+  selectedColumnIndex = null;
 
   connect() {
     // Listen for the custom event 'chart:initialized' to set up the chart.
@@ -61,10 +62,10 @@ export default class extends Controller {
     } catch (e) {
       hasTarget = false;
     }
-    
+
     // Get the chart element which the RailsCharts library has created
     this.chart = window.RailsCharts.charts[this.chartIdValue];
-    
+
     // Only proceed if we have BOTH the DOM target and the chart object
     if (!hasTarget || !this.chart) {
       return;
@@ -104,6 +105,11 @@ export default class extends Controller {
       this.handleZoomChange();
     };
     document.addEventListener('mouseup', this.handleDocumentMouseUp);
+
+    // Add click event handler for bar chart columns
+    this.chart.on('click', (params) => {
+      this.handleColumnClick(params);
+    });
   }
 
   // This returns the visible data from the chart based on the current zoom level.
@@ -189,15 +195,15 @@ export default class extends Controller {
   sendTurboFrameRequest(data) {
     const now = Date.now();
     const timeSinceLastRequest = now - this.lastTurboFrameRequestAt;
-    
+
     // Store the latest data for potential delayed execution
     this.pendingRequestData = data;
-    
+
     // Clear any existing timeout
     if (this.pendingRequestTimeout) {
       clearTimeout(this.pendingRequestTimeout);
     }
-    
+
     // If enough time has passed since last request, execute immediately
     if (timeSinceLastRequest >= 1000) {
       this.executeTurboFrameRequest(data);
@@ -310,5 +316,73 @@ export default class extends Controller {
       // Last resort fallback
       targetFrame.innerHTML = html;
     }
+  }
+
+  handleColumnClick(params) {
+    const clickedIndex = params.dataIndex;
+
+    // If clicking the same column that's already selected, deselect all
+    if (this.selectedColumnIndex === clickedIndex) {
+      this.resetColumnColors();
+      this.selectedColumnIndex = null;
+    } else {
+      // Select the clicked column and gray out others
+      this.highlightColumn(clickedIndex);
+      this.selectedColumnIndex = clickedIndex;
+    }
+  }
+
+  highlightColumn(selectedIndex) {
+    const option = this.chart.getOption();
+    const seriesData = option.series[0].data;
+
+    // Create new data array with colors
+    const newData = seriesData.map((item, index) => {
+      const value = typeof item === 'object' ? item.value : item;
+
+      if (index === selectedIndex) {
+        // Keep selected column at normal color
+        return {
+          value: value,
+          itemStyle: {
+            color: null // Use default color
+          }
+        };
+      } else {
+        // Gray out other columns
+        return {
+          value: value,
+          itemStyle: {
+            color: '#cccccc' // Gray color
+          }
+        };
+      }
+    });
+
+    // Update the chart with new colors
+    this.chart.setOption({
+      series: [{
+        data: newData
+      }]
+    });
+  }
+
+  resetColumnColors() {
+    const option = this.chart.getOption();
+    const seriesData = option.series[0].data;
+
+    // Reset all columns to default color
+    const newData = seriesData.map(item => ({
+      value: typeof item === 'object' ? item.value : item,
+      itemStyle: {
+        color: null // Use default color
+      }
+    }));
+
+    this.chart.setOption({
+      series: [{
+        data: newData
+      }]
+    });
   }
 }

@@ -13,7 +13,6 @@ export default class extends Controller {
   toggle(event) {
     event.preventDefault()
     const current = this.html.getAttribute("data-color-scheme") === "dark" ? "light" : "dark"
-    console.log("Toggling color scheme to", current)
     this.html.setAttribute("data-color-scheme", current)
     localStorage.setItem(this.storageKey, current)
     // Notify listeners (e.g., charts) that scheme changed
