@@ -159290,6 +159290,7 @@
       __privateSet(this, _hideTimer, setTimeout(() => this.hide(), 300));
     }
     orient() {
+      console.log("orient called, options:", __privateGet(this, _options, options_get));
       computePosition2(this.buttonTarget, this.menuTarget, __privateGet(this, _options, options_get)).then(({ x, y }) => {
         this.menuTarget.style.setProperty("--popover-x", `${x}px`);
         this.menuTarget.style.setProperty("--popover-y", `${y}px`);
@@ -159321,7 +159322,7 @@
     return { placement: this.placementValue, middleware: [offset2(4), flip2(), shift2({ padding: 4 })] };
   };
   __publicField(popover_controller_default, "targets", ["button", "menu"]);
-  __publicField(popover_controller_default, "values", { placement: { type: String, default: "bottom" } });
+  __publicField(popover_controller_default, "values", { placement: { type: String, default: "top" } });
 
   // app/javascript/rails_pulse/controllers/form_controller.js
   var form_controller_default = class extends Controller {
