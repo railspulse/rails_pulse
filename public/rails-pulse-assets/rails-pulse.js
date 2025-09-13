@@ -159519,7 +159519,7 @@
       const endTimestamp = data.xAxis[data.xAxis.length - 1];
       currentParams.set("zoom_start_time", startTimestamp);
       currentParams.set("zoom_end_time", endTimestamp);
-      url.searchParams.set("limit", this.paginationLimitTarget.value);
+      currentParams.set("limit", this.paginationLimitTarget.value);
       url.search = currentParams.toString();
       fetch(url, {
         method: "GET",
@@ -160055,6 +160055,17 @@
   __publicField(collapsible_controller_default, "targets", ["content", "toggle"]);
   __publicField(collapsible_controller_default, "classes", ["collapsed"]);
 
+  // app/javascript/rails_pulse/controllers/table_sort_controller.js
+  var table_sort_controller_default = class extends Controller {
+    updateUrl(event) {
+      const link = event.currentTarget;
+      const href = link.getAttribute("href");
+      if (href) {
+        window.history.replaceState({}, "", href);
+      }
+    }
+  };
+
   // app/javascript/rails_pulse/application.js
   var application = Application.start();
   application.debug = false;
@@ -160073,6 +160084,7 @@
   application.register("rails-pulse--icon", icon_controller_default);
   application.register("rails-pulse--expandable-rows", expandable_rows_controller_default);
   application.register("rails-pulse--collapsible", collapsible_controller_default);
+  application.register("rails-pulse--table-sort", table_sort_controller_default);
   document.addEventListener("DOMContentLoaded", () => {
     const frames = document.querySelectorAll("turbo-frame[src]:not([complete])");
     frames.forEach((frame) => {

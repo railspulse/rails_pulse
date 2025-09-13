@@ -18,6 +18,7 @@ import TimezoneController from "./controllers/timezone_controller";
 import IconController from "./controllers/icon_controller";
 import ExpandableRowsController from "./controllers/expandable_rows_controller";
 import CollapsibleController from "./controllers/collapsible_controller";
+import TableSortController from "./controllers/table_sort_controller";
 
 const application = Application.start();
 
@@ -44,6 +45,7 @@ application.register("rails-pulse--timezone", TimezoneController);
 application.register("rails-pulse--icon", IconController);
 application.register("rails-pulse--expandable-rows", ExpandableRowsController);
 application.register("rails-pulse--collapsible", CollapsibleController);
+application.register("rails-pulse--table-sort", TableSortController);
 
 // Ensure Turbo Frames are loaded after page load
 document.addEventListener('DOMContentLoaded', () => {

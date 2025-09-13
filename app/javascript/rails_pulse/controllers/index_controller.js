@@ -175,7 +175,7 @@ export default class extends Controller {
     const startTimestamp = data.xAxis[0];
     const endTimestamp = data.xAxis[data.xAxis.length - 1];
 
-    // Update zoom parameters in URL
+    // Update zoom parameters in URL while preserving all other parameters including sort
     currentParams.set('zoom_start_time', startTimestamp);
     currentParams.set('zoom_end_time', endTimestamp);
 
@@ -224,10 +224,10 @@ export default class extends Controller {
   executeTurboFrameRequest(data) {
     this.lastTurboFrameRequestAt = Date.now();
 
-    // Start with the current page's URL
+    // Start with the current page's URL to preserve all existing parameters including sort
     const url = new URL(window.location.href);
 
-    // Preserve existing URL parameters
+    // Preserve existing URL parameters (including sort parameters like q[s])
     const currentParams = new URLSearchParams(url.search);
 
     const startTimestamp = data.xAxis[0];
@@ -238,7 +238,7 @@ export default class extends Controller {
     currentParams.set('zoom_end_time', endTimestamp);
 
     // Set the limit param based on the value in the pagination selector
-    url.searchParams.set('limit', this.paginationLimitTarget.value);
+    currentParams.set('limit', this.paginationLimitTarget.value);
 
     // Update the URL's search parameters
     url.search = currentParams.toString();
@@ -391,11 +391,11 @@ export default class extends Controller {
       return;
     }
 
-    // Build the request URL with column selection parameter
+    // Build the request URL with column selection parameter, preserving all existing params including sort
     const url = new URL(window.location.href);
     const currentParams = new URLSearchParams(url.search);
 
-    // Keep zoom parameters and add column selection parameter
+    // Keep all existing parameters (including sort like q[s]) and add column selection parameter
     currentParams.set('selected_column_time', selectedTimestamp);
 
     // Preserve pagination limit
@@ -411,11 +411,11 @@ export default class extends Controller {
   }
 
   sendColumnDeselectionRequest() {
-    // Build the request URL without column selection parameter
+    // Build the request URL without column selection parameter, preserving all other params including sort
     const url = new URL(window.location.href);
     const currentParams = new URLSearchParams(url.search);
 
-    // Remove column selection parameter
+    // Remove only the column selection parameter, keep all others (including sort like q[s])
     currentParams.delete('selected_column_time');
 
     // Preserve pagination limit
