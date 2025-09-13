@@ -4,23 +4,25 @@
 
 <div class="card">
   <%= turbo_frame_tag "operation_#{@operation.id}_details" do %>
+    <% if @operation.operation_type == "sql" %>
+      <div class="mbe-4">
+        <%= render 'rails_pulse/components/code_panel', { value: @operation.label } %>
+      </div>
+    <% end %>
+
     <dl class="descriptive-list">
-      <dt>
-        <% if @operation.operation_type == "sql" %>
-          Query
-        <% elsif ["template", "partial", "layout", "collection"].include?(@operation.operation_type) %>
-          View Render
-        <% else %>
+      <% if @operation.operation_type != "sql" %>
+        <dt>
+          <% if ["template", "partial", "layout", "collection"].include?(@operation.operation_type) %>
+            View Render
+          <% else %>
+            <%= html_escape(@operation.label) %>
+          <% end %>
+        </dt>
+        <dd>
           <%= html_escape(@operation.label) %>
-        <% end %>
-      </dt>
-      <dd>
-        <% if @operation.operation_type == "sql" %>
-          <%= render 'rails_pulse/components/code_panel', { value: @operation.label } %>
-        <% else %>
-          <%= html_escape(@operation.label) %>
-        <% end %>
-      </dd>
+        </dd>
+      <% end %>
 
       <dt>Operation Type</dt>
       <dd><pre><%= @operation.operation_type %></pre></dd>
