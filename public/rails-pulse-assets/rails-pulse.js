@@ -159290,7 +159290,6 @@
       __privateSet(this, _hideTimer, setTimeout(() => this.hide(), 300));
     }
     orient() {
-      console.log("orient called, options:", __privateGet(this, _options, options_get));
       computePosition2(this.buttonTarget, this.menuTarget, __privateGet(this, _options, options_get)).then(({ x, y }) => {
         this.menuTarget.style.setProperty("--popover-x", `${x}px`);
         this.menuTarget.style.setProperty("--popover-y", `${y}px`);
@@ -159410,6 +159409,7 @@
       if (hasTarget) {
         document.getElementById(this.chartIdValue)?.setAttribute("data-chart-rendered", "true");
       }
+      this.initializeColumnSelectionFromUrl();
     }
     // Add some event listeners to the chart so we can track the zoom changes
     setupChartEventListeners() {
@@ -159582,39 +159582,48 @@
       if (this.selectedColumnIndex === clickedIndex) {
         this.resetColumnColors();
         this.selectedColumnIndex = null;
+        this.sendColumnDeselectionRequest();
       } else {
         this.highlightColumn(clickedIndex);
         this.selectedColumnIndex = clickedIndex;
+        this.sendColumnSelectionRequest(clickedIndex);
       }
     }
     highlightColumn(selectedIndex) {
-      const option = this.chart.getOption();
-      const seriesData = option.series[0].data;
-      const newData = seriesData.map((item, index) => {
-        const value = typeof item === "object" ? item.value : item;
-        if (index === selectedIndex) {
-          return {
-            value,
-            itemStyle: {
-              color: null
-              // Use default color
-            }
-          };
-        } else {
-          return {
-            value,
-            itemStyle: {
-              color: "#cccccc"
-              // Gray color
-            }
-          };
+      try {
+        const option = this.chart.getOption();
+        if (!option.series || !option.series[0] || !option.series[0].data) {
+          return;
         }
-      });
-      this.chart.setOption({
-        series: [{
-          data: newData
-        }]
-      });
+        const seriesData = option.series[0].data;
+        const newData = seriesData.map((item, index) => {
+          const value = typeof item === "object" ? item.value : item;
+          if (index === selectedIndex) {
+            return {
+              value,
+              itemStyle: {
+                color: null
+                // Use default color
+              }
+            };
+          } else {
+            return {
+              value,
+              itemStyle: {
+                color: "#cccccc"
+                // Gray color
+              }
+            };
+          }
+        });
+        this.chart.setOption({
+          series: [{
+            data: newData
+          }]
+        });
+      } catch (error3) {
+        console.error("Error highlighting column:", error3);
+      }
     }
     resetColumnColors() {
       const option = this.chart.getOption();
@@ -159631,6 +159640,76 @@
           data: newData
         }]
       });
+    }
+    sendColumnSelectionRequest(columnIndex) {
+      const option = this.chart.getOption();
+      const xAxisData = option.xAxis[0].data;
+      const selectedTimestamp = xAxisData[columnIndex];
+      if (!selectedTimestamp) {
+        console.error("Could not find timestamp for column index:", columnIndex);
+        return;
+      }
+      const url = new URL(window.location.href);
+      const currentParams = new URLSearchParams(url.search);
+      currentParams.set("selected_column_time", selectedTimestamp);
+      currentParams.set("limit", this.paginationLimitTarget.value);
+      url.search = currentParams.toString();
+      window.history.replaceState({}, "", url);
+      this.executeTurboFrameRequestForColumn(url);
+    }
+    sendColumnDeselectionRequest() {
+      const url = new URL(window.location.href);
+      const currentParams = new URLSearchParams(url.search);
+      currentParams.delete("selected_column_time");
+      currentParams.set("limit", this.paginationLimitTarget.value);
+      url.search = currentParams.toString();
+      window.history.replaceState({}, "", url);
+      this.executeTurboFrameRequestForColumn(url);
+    }
+    executeTurboFrameRequestForColumn(url) {
+      fetch(url, {
+        method: "GET",
+        headers: {
+          "Accept": "text/html; turbo-frame",
+          "Turbo-Frame": this.chartIdValue
+        }
+      }).then((response) => {
+        return response.text();
+      }).then((html) => {
+        const frame = this.indexTableTarget;
+        if (frame) {
+          const parser = new DOMParser();
+          const doc = parser.parseFromString(html, "text/html");
+          const responseFrame = doc.querySelector(`turbo-frame#${frame.id}`);
+          if (responseFrame) {
+            this.replaceFrameContent(frame, responseFrame);
+          } else {
+            this.replaceFrameContentFromHTML(frame, html);
+          }
+        }
+      }).catch((error3) => console.error("[IndexController] Column selection fetch error:", error3));
+    }
+    initializeColumnSelectionFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const selectedColumnTime = urlParams.get("selected_column_time");
+      if (selectedColumnTime) {
+        const option = this.chart.getOption();
+        if (!option.xAxis || !option.xAxis[0] || !option.xAxis[0].data) {
+          return;
+        }
+        const xAxisData = option.xAxis[0].data;
+        let columnIndex = xAxisData.findIndex((timestamp) => timestamp.toString() === selectedColumnTime);
+        if (columnIndex === -1) {
+          const selectedTimeNumber = parseInt(selectedColumnTime);
+          columnIndex = xAxisData.findIndex((timestamp) => parseInt(timestamp) === selectedTimeNumber);
+        }
+        if (columnIndex !== -1) {
+          this.selectedColumnIndex = columnIndex;
+          requestAnimationFrame(() => {
+            this.highlightColumn(columnIndex);
+          });
+        }
+      }
     }
   };
   __publicField(index_controller_default, "targets", ["chart", "paginationLimit", "indexTable"]);

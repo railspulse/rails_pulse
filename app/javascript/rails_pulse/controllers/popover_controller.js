@@ -75,7 +75,6 @@ export default class extends Controller {
   }
 
   orient() {
-    console.log('orient called, options:', this.#options)
     computePosition(this.buttonTarget, this.menuTarget, this.#options).then(({x, y}) => {
       // Use CSS custom properties for CSP compliance
       this.menuTarget.style.setProperty('--popover-x', `${x}px`)

@@ -79,6 +79,9 @@ export default class extends Controller {
     if (hasTarget) {
       document.getElementById(this.chartIdValue)?.setAttribute('data-chart-rendered', 'true');
     }
+
+    // Initialize column selection from URL parameters after chart is fully ready
+    this.initializeColumnSelectionFromUrl();
   }
 
   // Add some event listeners to the chart so we can track the zoom changes
@@ -325,46 +328,56 @@ export default class extends Controller {
     if (this.selectedColumnIndex === clickedIndex) {
       this.resetColumnColors();
       this.selectedColumnIndex = null;
+      this.sendColumnDeselectionRequest();
     } else {
       // Select the clicked column and gray out others
       this.highlightColumn(clickedIndex);
       this.selectedColumnIndex = clickedIndex;
+      this.sendColumnSelectionRequest(clickedIndex);
     }
   }
 
   highlightColumn(selectedIndex) {
-    const option = this.chart.getOption();
-    const seriesData = option.series[0].data;
-
-    // Create new data array with colors
-    const newData = seriesData.map((item, index) => {
-      const value = typeof item === 'object' ? item.value : item;
-
-      if (index === selectedIndex) {
-        // Keep selected column at normal color
-        return {
-          value: value,
-          itemStyle: {
-            color: null // Use default color
-          }
-        };
-      } else {
-        // Gray out other columns
-        return {
-          value: value,
-          itemStyle: {
-            color: '#cccccc' // Gray color
-          }
-        };
+    try {
+      const option = this.chart.getOption();
+      if (!option.series || !option.series[0] || !option.series[0].data) {
+        return;
       }
-    });
 
-    // Update the chart with new colors
-    this.chart.setOption({
-      series: [{
-        data: newData
-      }]
-    });
+      const seriesData = option.series[0].data;
+
+      // Create new data array with colors
+      const newData = seriesData.map((item, index) => {
+        const value = typeof item === 'object' ? item.value : item;
+
+        if (index === selectedIndex) {
+          // Keep selected column at normal color
+          return {
+            value: value,
+            itemStyle: {
+              color: null // Use default color
+            }
+          };
+        } else {
+          // Gray out other columns
+          return {
+            value: value,
+            itemStyle: {
+              color: '#cccccc' // Gray color
+            }
+          };
+        }
+      });
+
+      // Update the chart with new colors
+      this.chart.setOption({
+        series: [{
+          data: newData
+        }]
+      });
+    } catch (error) {
+      console.error('Error highlighting column:', error);
+    }
   }
 
   resetColumnColors() {
@@ -384,5 +397,122 @@ export default class extends Controller {
         data: newData
       }]
     });
+  }
+
+  sendColumnSelectionRequest(columnIndex) {
+    // Get the timestamp for the selected column
+    const option = this.chart.getOption();
+    const xAxisData = option.xAxis[0].data;
+    const selectedTimestamp = xAxisData[columnIndex];
+
+    if (!selectedTimestamp) {
+      console.error('Could not find timestamp for column index:', columnIndex);
+      return;
+    }
+
+    // Build the request URL with column selection parameter
+    const url = new URL(window.location.href);
+    const currentParams = new URLSearchParams(url.search);
+
+    // Keep zoom parameters and add column selection parameter
+    currentParams.set('selected_column_time', selectedTimestamp);
+
+    // Preserve pagination limit
+    currentParams.set('limit', this.paginationLimitTarget.value);
+
+    url.search = currentParams.toString();
+
+    // Update browser URL to persist column selection
+    window.history.replaceState({}, '', url);
+
+    // Send the turbo frame request
+    this.executeTurboFrameRequestForColumn(url);
+  }
+
+  sendColumnDeselectionRequest() {
+    // Build the request URL without column selection parameter
+    const url = new URL(window.location.href);
+    const currentParams = new URLSearchParams(url.search);
+
+    // Remove column selection parameter
+    currentParams.delete('selected_column_time');
+
+    // Preserve pagination limit
+    currentParams.set('limit', this.paginationLimitTarget.value);
+
+    url.search = currentParams.toString();
+
+    // Update browser URL to remove column selection
+    window.history.replaceState({}, '', url);
+
+    // Send the turbo frame request to restore default/zoom view
+    this.executeTurboFrameRequestForColumn(url);
+  }
+
+  executeTurboFrameRequestForColumn(url) {
+    fetch(url, {
+      method: 'GET',
+      headers: {
+        'Accept': 'text/html; turbo-frame',
+        'Turbo-Frame': this.chartIdValue
+      }
+    })
+    .then(response => {
+      return response.text();
+    })
+    .then(html => {
+      // Find the turbo-frame in the document using the target
+      const frame = this.indexTableTarget;
+      if (frame) {
+        // Parse the response HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(html, 'text/html');
+
+        // Find the turbo-frame in the response using the frame's ID
+        const responseFrame = doc.querySelector(`turbo-frame#${frame.id}`);
+        if (responseFrame) {
+          // CSP-safe content replacement using DOM methods
+          this.replaceFrameContent(frame, responseFrame);
+        } else {
+          // Fallback: parse the entire HTML response
+          this.replaceFrameContentFromHTML(frame, html);
+        }
+      }
+    })
+    .catch(error => console.error('[IndexController] Column selection fetch error:', error));
+  }
+
+  initializeColumnSelectionFromUrl() {
+    // Check if there's a selected_column_time parameter in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const selectedColumnTime = urlParams.get('selected_column_time');
+
+    if (selectedColumnTime) {
+      // Find the column index that matches this timestamp
+      const option = this.chart.getOption();
+      if (!option.xAxis || !option.xAxis[0] || !option.xAxis[0].data) {
+        return;
+      }
+
+      const xAxisData = option.xAxis[0].data;
+
+      // Try exact match first
+      let columnIndex = xAxisData.findIndex(timestamp => timestamp.toString() === selectedColumnTime);
+
+      // If no exact match, try converting to numbers and comparing
+      if (columnIndex === -1) {
+        const selectedTimeNumber = parseInt(selectedColumnTime);
+        columnIndex = xAxisData.findIndex(timestamp => parseInt(timestamp) === selectedTimeNumber);
+      }
+
+      if (columnIndex !== -1) {
+        // Set the selected column index and apply visual styling
+        this.selectedColumnIndex = columnIndex;
+        // Use requestAnimationFrame to ensure ECharts is ready
+        requestAnimationFrame(() => {
+          this.highlightColumn(columnIndex);
+        });
+      }
+    }
   }
 }
