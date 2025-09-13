@@ -159596,29 +159596,17 @@
           return;
         }
         const seriesData = option.series[0].data;
-        const newData = seriesData.map((item, index) => {
-          const value = typeof item === "object" ? item.value : item;
-          if (index === selectedIndex) {
-            return {
-              value,
-              itemStyle: {
-                color: null
-                // Use default color
-              }
-            };
-          } else {
-            return {
-              value,
-              itemStyle: {
-                color: "#cccccc"
-                // Gray color
-              }
-            };
-          }
-        });
+        const currentOption = this.chart.getOption();
+        const defaultColor = currentOption.color?.[0] || "#5470c6";
         this.chart.setOption({
           series: [{
-            data: newData
+            data: seriesData,
+            // Keep original data format for tooltips
+            itemStyle: {
+              color: (params) => {
+                return params.dataIndex === selectedIndex ? defaultColor : "#cccccc";
+              }
+            }
           }]
         });
       } catch (error3) {
@@ -159628,16 +159616,12 @@
     resetColumnColors() {
       const option = this.chart.getOption();
       const seriesData = option.series[0].data;
-      const newData = seriesData.map((item) => ({
-        value: typeof item === "object" ? item.value : item,
-        itemStyle: {
-          color: null
-          // Use default color
-        }
-      }));
       this.chart.setOption({
         series: [{
-          data: newData
+          data: seriesData,
+          // Keep original data format for tooltips
+          itemStyle: null
+          // Remove custom styling
         }]
       });
     }

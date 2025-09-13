@@ -346,33 +346,20 @@ export default class extends Controller {
 
       const seriesData = option.series[0].data;
 
-      // Create new data array with colors
-      const newData = seriesData.map((item, index) => {
-        const value = typeof item === 'object' ? item.value : item;
+      // Instead of changing data structure, modify the series itemStyle
+      const currentOption = this.chart.getOption();
 
-        if (index === selectedIndex) {
-          // Keep selected column at normal color
-          return {
-            value: value,
-            itemStyle: {
-              color: null // Use default color
-            }
-          };
-        } else {
-          // Gray out other columns
-          return {
-            value: value,
-            itemStyle: {
-              color: '#cccccc' // Gray color
-            }
-          };
-        }
-      });
+      // Get the default color from the chart theme
+      const defaultColor = currentOption.color?.[0] || '#5470c6'; // ECharts default blue
 
-      // Update the chart with new colors
       this.chart.setOption({
         series: [{
-          data: newData
+          data: seriesData, // Keep original data format for tooltips
+          itemStyle: {
+            color: (params) => {
+              return params.dataIndex === selectedIndex ? defaultColor : '#cccccc';
+            }
+          }
         }]
       });
     } catch (error) {
@@ -384,17 +371,11 @@ export default class extends Controller {
     const option = this.chart.getOption();
     const seriesData = option.series[0].data;
 
-    // Reset all columns to default color
-    const newData = seriesData.map(item => ({
-      value: typeof item === 'object' ? item.value : item,
-      itemStyle: {
-        color: null // Use default color
-      }
-    }));
-
+    // Reset all columns to default color by removing custom itemStyle
     this.chart.setOption({
       series: [{
-        data: newData
+        data: seriesData, // Keep original data format for tooltips
+        itemStyle: null // Remove custom styling
       }]
     });
   }
