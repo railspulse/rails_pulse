@@ -241,7 +241,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
         click_link column[:name]
       end
     end
-    
+
     # Wait for sort to complete and capture sorted rows
     assert_selector "table tbody tr", wait: 3
     sleep 0.5 # Allow DOM to stabilize
@@ -260,7 +260,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
           var option = chart.getOption();
           var seriesData = option.series[0].data;
           var xAxisData = option.xAxis[0].data;
-          
+
           for (var i = 0; i < seriesData.length; i++) {
             var value = typeof seriesData[i] === 'object' ? seriesData[i].value : seriesData[i];
             if (value && value > 0) {
