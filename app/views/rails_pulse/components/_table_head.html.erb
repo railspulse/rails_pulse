@@ -12,9 +12,9 @@
           <%= sort_link @ransack_query, column[:field], column[:label],
             sort_params.merge(
               class: "flex items-center",
-              data: { 
-                turbo_prefetch: "false", 
-                turbo_frame: "routes_index_table",
+              data: {
+                turbo_prefetch: "false",
+                turbo_frame: "index_table",
                 action: "click->rails-pulse--table-sort#updateUrl"
               }
             ) %>

@@ -56,7 +56,7 @@
         </div>
       <% end %>
 
-      <%= turbo_frame_tag :queries_index_table, data: { rails_pulse__index_target: "indexTable" } do %>
+      <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
         <%= render 'rails_pulse/queries/table' %>
       <% end %>
     <% else %>

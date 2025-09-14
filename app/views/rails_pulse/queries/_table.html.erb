@@ -6,7 +6,7 @@
   { field: :performance_status, label: 'Status', class: 'w-16', sortable: false }
 ] %>
 
-<table class="table mbs-4">
+<table class="table mbs-4" data-controller="rails-pulse--table-sort">
   <%= render "rails_pulse/components/table_head", columns: columns %>
 
   <tbody>
