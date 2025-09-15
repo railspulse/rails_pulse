@@ -12,6 +12,7 @@ export default class extends Controller {
   pendingRequestTimeout = null;
   pendingRequestData = null;
   selectedColumnIndex = null;
+  originalSeriesOption = null;
 
   connect() {
     // Listen for the custom event 'chart:initialized' to set up the chart.
@@ -72,6 +73,10 @@ export default class extends Controller {
     }
 
     this.visibleData = this.getVisibleData();
+
+    // Store the original series configuration BEFORE any modifications
+    this.storeOriginalSeriesOption();
+
     this.setupChartEventListeners();
     this.setupDone = true;
 
@@ -81,6 +86,7 @@ export default class extends Controller {
     }
 
     // Initialize column selection from URL parameters after chart is fully ready
+    // This must come AFTER storing the original option to avoid storing modified state
     this.initializeColumnSelectionFromUrl();
   }
 
@@ -246,8 +252,9 @@ export default class extends Controller {
     fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'text/html; turbo-frame',
-        'Turbo-Frame': this.chartIdValue
+        'Accept': 'text/vnd.turbo-stream.html, text/html',
+        'Turbo-Frame': this.indexTableTarget.id,
+        'X-Requested-With': 'XMLHttpRequest'
       }
     })
     .then(response => {
@@ -367,17 +374,53 @@ export default class extends Controller {
     }
   }
 
-  resetColumnColors() {
-    const option = this.chart.getOption();
-    const seriesData = option.series[0].data;
+  storeOriginalSeriesOption() {
+    try {
+      const option = this.chart.getOption();
+      if (option.series && option.series[0]) {
+        // Deep clone the original series configuration to restore later
+        const originalSeries = JSON.parse(JSON.stringify(option.series[0]));
 
-    // Reset all columns to default color by removing custom itemStyle
-    this.chart.setOption({
-      series: [{
-        data: seriesData, // Keep original data format for tooltips
-        itemStyle: null // Remove custom styling
-      }]
-    });
+        // Ensure we don't store any column selection modifications
+        // Remove any custom itemStyle that might have color functions
+        if (originalSeries.itemStyle && typeof originalSeries.itemStyle.color === 'function') {
+          delete originalSeries.itemStyle.color;
+        }
+
+        this.originalSeriesOption = originalSeries;
+      }
+    } catch (error) {
+      console.error('Error storing original series option:', error);
+    }
+  }
+
+  resetColumnColors() {
+    try {
+      if (!this.originalSeriesOption) {
+        console.warn('No original series option stored, cannot reset properly');
+        return;
+      }
+
+      const option = this.chart.getOption();
+      const seriesData = option.series[0].data;
+
+      // Restore original series configuration but keep current data
+      const restoredOption = {
+        ...this.originalSeriesOption,
+        data: seriesData // Keep current data to preserve tooltips
+      };
+
+      // Explicitly remove any color function that might be lingering
+      if (restoredOption.itemStyle) {
+        delete restoredOption.itemStyle.color;
+      }
+
+      this.chart.setOption({
+        series: [restoredOption]
+      }, false); // Use replace mode to ensure clean state
+    } catch (error) {
+      console.error('Error resetting column colors:', error);
+    }
   }
 
   sendColumnSelectionRequest(columnIndex) {
@@ -434,8 +477,9 @@ export default class extends Controller {
     fetch(url, {
       method: 'GET',
       headers: {
-        'Accept': 'text/html; turbo-frame',
-        'Turbo-Frame': this.chartIdValue
+        'Accept': 'text/vnd.turbo-stream.html, text/html',
+        'Turbo-Frame': this.indexTableTarget.id,
+        'X-Requested-With': 'XMLHttpRequest'
       }
     })
     .then(response => {

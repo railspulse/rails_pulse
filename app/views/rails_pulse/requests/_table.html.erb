@@ -3,7 +3,7 @@
   columns << { field: :route_path, label: 'Route', class: 'w-auto' } if @route.blank?
 
   columns += [
-    { field: :occurred_at, label: 'Timestamp' },
+    { field: :occurred_at, label: 'Timestamp', class: 'w-36' },
     { field: :duration, label: 'Response Time', class: 'w-24' },
     { field: :status, label: 'HTTP Status', class: 'w-20' },
     { field: :status_indicator, label: 'Status', class: 'w-16' }
