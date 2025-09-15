@@ -17,7 +17,28 @@
       </div>
       <div class="grid-item">
         <div class="chart-container chart-container--slim">
-          <%= bar_chart line_chart_data, height: "100%", options: sparkline_chart_options %>
+          <%
+            # Match chart color to trending icon - use hex equivalents of CSS variables
+            # These colors match the badge colors exactly
+            chart_color = case trend_icon
+            when "trending-up"
+              "#dc2626" # equivalent to --red-600 (negative trend)
+            when "trending-down"
+              "#16a34a" # equivalent to --green-600 (positive trend)
+            else
+              "#18181b" # equivalent to --zinc-900 (neutral/primary)
+            end
+
+            chart_options = sparkline_chart_options.deep_merge(
+              color: [chart_color],
+              series: {
+                itemStyle: {
+                  color: chart_color
+                }
+              }
+            )
+          %>
+          <%= bar_chart line_chart_data, height: "100%", options: chart_options %>
         </div>
       </div>
     </div>
