@@ -69,7 +69,7 @@ module RailsPulse
       @ransack_query.result
         .joins(:route)
         .joins(<<~SQL)
-          INNER JOIN rails_pulse_summaries ON 
+          INNER JOIN rails_pulse_summaries ON
             rails_pulse_summaries.summarizable_id = 0 AND
             rails_pulse_summaries.summarizable_type = 'RailsPulse::Request' AND
             rails_pulse_summaries.period_type = '#{period_type}' AND

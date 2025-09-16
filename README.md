@@ -60,7 +60,13 @@ Rails Pulse is a comprehensive performance monitoring and debugging gem that pro
 
 ## Screenshots
 
-<img src="app/assets/images/rails_pulse/dashboard.png" alt="Rails Pulse" />
+<table>
+  <tr>
+    <td><img src="app/assets/images/rails_pulse/dashboard.png" alt="Rails Pulse Dashboard" width="400" /></td>
+    <td><img src="app/assets/images/rails_pulse/request.png" alt="Rails Pulse Requests" width="400" /></td>
+  </tr>
+</table>
+
 
 ## Getting Started
 
@@ -447,7 +453,7 @@ Test individual databases locally:
 # Test with SQLite (default)
 rails test:all
 
-# Test with PostgreSQL  
+# Test with PostgreSQL
 DB=postgresql FORCE_DB_CONFIG=true rails test:all
 
 # Test with MySQL (local only)
