@@ -16,7 +16,9 @@ import ColorSchemeController from "./controllers/color_scheme_controller";
 import PaginationController from "./controllers/pagination_controller";
 import TimezoneController from "./controllers/timezone_controller";
 import IconController from "./controllers/icon_controller";
-import ExpandableRowController from "./controllers/expandable_row_controller";
+import ExpandableRowsController from "./controllers/expandable_rows_controller";
+import CollapsibleController from "./controllers/collapsible_controller";
+import TableSortController from "./controllers/table_sort_controller";
 
 const application = Application.start();
 
@@ -41,7 +43,9 @@ application.register("rails-pulse--color-scheme", ColorSchemeController);
 application.register("rails-pulse--pagination", PaginationController);
 application.register("rails-pulse--timezone", TimezoneController);
 application.register("rails-pulse--icon", IconController);
-application.register("rails-pulse--expandable-row", ExpandableRowController);
+application.register("rails-pulse--expandable-rows", ExpandableRowsController);
+application.register("rails-pulse--collapsible", CollapsibleController);
+application.register("rails-pulse--table-sort", TableSortController);
 
 // Ensure Turbo Frames are loaded after page load
 document.addEventListener('DOMContentLoaded', () => {
@@ -95,6 +99,32 @@ window.addEventListener('resize', function() {
   }
 });
 
+// Apply axis label colors based on current color scheme
+function applyChartAxisLabelColors() {
+  if (!window.RailsCharts || !window.RailsCharts.charts) return;
+  const scheme = document.documentElement.getAttribute('data-color-scheme');
+  const isDark = scheme === 'dark';
+  const axisColor = isDark ? '#ffffff' : '#999999';
+  Object.keys(window.RailsCharts.charts).forEach(function(chartID) {
+    const chart = window.RailsCharts.charts[chartID];
+    try {
+      chart.setOption({
+        xAxis: { axisLabel: { color: axisColor } },
+        yAxis: { axisLabel: { color: axisColor } }
+      });
+    } catch (e) {
+      // noop
+    }
+  });
+}
+
+// Initial apply after charts initialize and on scheme changes
+document.addEventListener('DOMContentLoaded', () => {
+  // run shortly after load to allow charts to initialize
+  setTimeout(applyChartAxisLabelColors, 50);
+});
+document.addEventListener('rails-pulse:color-scheme-changed', applyChartAxisLabelColors);
+
 // Global function to initialize Rails Charts in any container.
 // This is needed as we render Rails Charts in Turbo Frames.
 window.initializeChartsInContainer = function(containerId) {
@@ -108,6 +138,8 @@ window.initializeChartsInContainer = function(containerId) {
         window[match[1]]();
       }
     });
+    // ensure colors are correct for any charts initialized in this container
+    setTimeout(applyChartAxisLabelColors, 10);
   });
 };
 
@@ -116,4 +148,3 @@ window.RailsPulse = {
   application,
   version: "1.0.0"
 };
-

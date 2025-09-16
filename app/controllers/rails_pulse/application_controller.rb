@@ -5,7 +5,11 @@ module RailsPulse
     def set_pagination_limit(limit = nil)
       limit = limit || params[:limit]
       session[:pagination_limit] = limit.to_i if limit.present?
-      render json: { status: "ok" }
+
+      # Render JSON for direct API calls or AJAX requests (but not turbo frame requests)
+      if (request.xhr? && !turbo_frame_request?) || (request.patch? && action_name == "set_pagination_limit")
+        render json: { status: "ok" }
+      end
     end
 
     private

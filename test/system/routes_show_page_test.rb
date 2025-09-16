@@ -130,18 +130,19 @@ class RoutesShowPageTest < SharedIndexPageTest
 
       within(row_selector) do
         cells = all("td")
-        assert cells.length >= 3, "Request row #{index + 1} should have at least 3 columns (duration, status, indicator)"
+        assert cells.length >= 4, "Request row #{index + 1} should have at least 4 columns (timestamp, duration, status, indicator)"
 
-        # Validate duration (first column) - should contain "ms"
-        duration_text = find("td:nth-child(1)").text
+        # Skip timestamp validation (first column) - can vary in format
+        # Validate duration (second column) - should contain "ms"
+        duration_text = find("td:nth-child(2)").text
         assert_match(/\d+(\.\d+)?\s*ms/, duration_text, "Duration should show milliseconds in row #{index + 1}, got: #{duration_text}")
 
-        # Validate HTTP status (second column) - should be numeric
-        status_text = find("td:nth-child(2)").text
+        # Validate HTTP status (third column) - should be numeric
+        status_text = find("td:nth-child(3)").text
         assert_match(/\d{3}/, status_text, "HTTP Status should be 3-digit code in row #{index + 1}, got: #{status_text}")
 
-        # Third column is status indicator - just verify it exists
-        assert has_css?("td:nth-child(3)"), "Row #{index + 1} should have status indicator column"
+        # Fourth column is status indicator - just verify it exists
+        assert has_css?("td:nth-child(4)"), "Row #{index + 1} should have status indicator column"
       end
     end
 

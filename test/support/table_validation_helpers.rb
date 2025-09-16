@@ -48,16 +48,18 @@ module TableValidationHelpers
       has_route_column = cells[0].text.include?(" ") || cells[0].text.include?("/")
 
       if has_route_column
-        # Table has route column: route, duration, status, status_indicator
-        assert cells.length >= 4, "Request row #{index + 1} should have at least 4 columns with route column"
+        # Table has route column: route, timestamp, duration, status, status_indicator
+        assert cells.length >= 5, "Request row #{index + 1} should have at least 5 columns with route column"
         validate_route_path_cell(cells[0], index + 1, filter_applied)
+        # Skip timestamp validation (cells[1]) as it can vary in format
+        validate_duration_cell(cells[2], index + 1, filter_applied, page_type: :requests)
+        validate_status_code_cell(cells[3], index + 1)
+      else
+        # Table without route column: timestamp, duration, status, status_indicator
+        assert cells.length >= 4, "Request row #{index + 1} should have at least 4 columns without route column"
+        # Skip timestamp validation (cells[0]) as it can vary in format
         validate_duration_cell(cells[1], index + 1, filter_applied, page_type: :requests)
         validate_status_code_cell(cells[2], index + 1)
-      else
-        # Table without route column: duration, status, status_indicator
-        assert cells.length >= 3, "Request row #{index + 1} should have at least 3 columns without route column"
-        validate_duration_cell(cells[0], index + 1, filter_applied, page_type: :requests)
-        validate_status_code_cell(cells[1], index + 1)
       end
     end
 

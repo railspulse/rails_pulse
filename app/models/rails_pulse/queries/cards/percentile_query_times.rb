@@ -33,15 +33,20 @@ module RailsPulse
           trend_icon = percentage < 0.1 ? "move-right" : current_period_p95 < previous_period_p95 ? "trending-down" : "trending-up"
           trend_amount = previous_period_p95.zero? ? "0%" : "#{percentage}%"
 
-          # Separate query for sparkline data - group by week using Rails
-          sparkline_data = base_query
-            .group_by_week(:period_start, time_zone: "UTC")
+          # Sparkline data by day with zero-filled days over the last 14 days
+          grouped_daily = base_query
+            .group_by_day(:period_start, time_zone: "UTC")
             .average(:p95_duration)
-            .each_with_object({}) do |(week_start, avg_p95), hash|
-              formatted_date = week_start.strftime("%b %-d")
-              value = (avg_p95 || 0).round(0)
-              hash[formatted_date] = { value: value }
-            end
+
+          start_day = 2.weeks.ago.beginning_of_day.to_date
+          end_day = Time.current.to_date
+
+          sparkline_data = {}
+          (start_day..end_day).each do |day|
+            avg = grouped_daily[day]&.round(0) || 0
+            label = day.strftime("%b %-d")
+            sparkline_data[label] = { value: avg }
+          end
 
           {
             id: "percentile_query_times",

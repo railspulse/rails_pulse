@@ -11,12 +11,35 @@
 %>
 <div class="grid-item" data-controller="rails-pulse--chart" id="<%= id %>">
   <%= render 'rails_pulse/components/panel', { title: title, card_classes: 'card-compact' } do %>
-    <div class="row mbs-2" style="height: 50px; margin-bottom: 0;">
+    <div class="row mbs-2" style="--columns: 2; align-items: center; margin-bottom: 0;">
       <div class="grid-item">
         <h4 class="text-xl mbs-1 font-bold"><%= summary %></h4>
       </div>
       <div class="grid-item">
-        <%= line_chart line_chart_data, height: "100%", options: sparkline_chart_options %>
+        <div class="chart-container chart-container--slim">
+          <%
+            # Match chart color to trending icon - use hex equivalents of CSS variables
+            # These colors match the badge colors exactly
+            chart_color = case trend_icon
+            when "trending-up"
+              "#dc2626" # equivalent to --red-600 (negative trend)
+            when "trending-down"
+              "#16a34a" # equivalent to --green-600 (positive trend)
+            else
+              "#18181b" # equivalent to --zinc-900 (neutral/primary)
+            end
+
+            chart_options = sparkline_chart_options.deep_merge(
+              color: [chart_color],
+              series: {
+                itemStyle: {
+                  color: chart_color
+                }
+              }
+            )
+          %>
+          <%= bar_chart line_chart_data, height: "100%", options: chart_options %>
+        </div>
       </div>
     </div>
     <div class="mbs-2" style="height: 10px;">
@@ -30,9 +53,9 @@
           end
       %>
       <div class="flex items-center justify-between">
-        <span class="badge <%= badge %> p-0">
+        <span class="badge <%= badge %> badge--trend p-0">
           <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
-          <%= trend_amount %>
+          <span class="badge__trend-amount"><%= trend_amount %></span>
           <p class="mis-2 text-subtle text-xs"><%= trend_text %></p>
         </span>
       </div>

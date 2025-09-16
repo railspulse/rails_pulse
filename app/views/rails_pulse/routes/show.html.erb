@@ -1,6 +1,6 @@
 <%= render 'rails_pulse/components/breadcrumbs' %>
 
-<h1 class="text-2xl mbe-2"><%= @route.path_and_method %></h1>
+<h1 class="text-2xl mis-2"><%= @route.path_and_method %></h1>
 
 <% unless turbo_frame_request? %>
   <div class="row">
@@ -61,12 +61,12 @@
           </div>
         <% end %>
 
-        <%= turbo_frame_tag :index_table do %>
+        <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
           <%= render 'rails_pulse/requests/table' %>
         <% end %>
       <% else %>
-        <%= render 'rails_pulse/components/empty_state', 
-            title: 'No route requests found for the selected filters.', 
+        <%= render 'rails_pulse/components/empty_state',
+            title: 'No route requests found for the selected filters.',
             description: 'Try adjusting your time range or filters to see results.' %>
       <% end %>
     <% end %>

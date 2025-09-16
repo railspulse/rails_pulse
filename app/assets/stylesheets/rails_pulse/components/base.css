@@ -5,6 +5,10 @@
   --color-text-reversed: white;
   --color-text-subtle: var(--zinc-500);
   --color-link: var(--blue-700);
+  /* Header tokens */
+  --header-bg: #ffc91f;
+  --header-link: black;
+  --header-link-hover-bg: #ffe284;
   --color-border-light: var(--zinc-100);
   --color-border: var(--zinc-200);
   --color-border-dark: var(--zinc-400);
@@ -30,14 +34,20 @@ html[data-color-scheme="dark"] {
   --color-bg: var(--zinc-800);
   --color-text: white;
   --color-text-reversed: black;
-  --color-text-subtle: var(--zinc-400);
-  --color-link: var(--blue-400);
+  --color-text-subtle: var(--zinc-300);
+  /* Use brand yellow for links in dark mode */
+  --color-link: #ffc91f;
   --color-border-light: var(--zinc-900);
   --color-border: var(--zinc-800);
   --color-border-dark: var(--zinc-600);
   --color-selected: var(--blue-950);
   --color-selected-dark: var(--blue-800);
   --color-highlight: var(--yellow-900);
+
+  /* Header tokens */
+  --header-bg: rgb(32, 32, 32);
+  --header-link: #ffc91f;
+  --header-link-hover-bg: #ffe284; /* keep existing hover color */
 
   /* Accent colors */
   --color-primary: var(--zinc-50);

@@ -84,7 +84,25 @@ module RailsPulse
 
     def build_table_results
       if show_action?
-        @ransack_query.result
+        # Only show requests that belong to time periods where we have route summaries
+        # This ensures the table data is consistent with the chart data
+        base_query = @ransack_query.result
+          .joins(<<~SQL)
+            INNER JOIN rails_pulse_summaries ON
+              rails_pulse_summaries.summarizable_id = rails_pulse_requests.route_id AND
+              rails_pulse_summaries.summarizable_type = 'RailsPulse::Route' AND
+              rails_pulse_summaries.period_type = '#{period_type}' AND
+              rails_pulse_requests.occurred_at >= rails_pulse_summaries.period_start AND
+              rails_pulse_requests.occurred_at < rails_pulse_summaries.period_end
+          SQL
+
+        # For PostgreSQL compatibility with DISTINCT + ORDER BY
+        # we need to include computed columns in SELECT when ordering by them
+        if ordering_by_computed_column?
+          base_query.select("rails_pulse_requests.*, #{status_indicator_sql} as status_indicator_value").distinct
+        else
+          base_query.distinct
+        end
       else
         Routes::Tables::Index.new(
           ransack_query: @ransack_query,
@@ -129,6 +147,27 @@ module RailsPulse
 
     def set_route
       @route = Route.find(params[:id])
+    end
+
+    def ordering_by_computed_column?
+      # Check if we're ordering by status_indicator (computed column)
+      @ransack_query.sorts.any? { |sort| sort.name == "status_indicator" }
+    end
+
+    def status_indicator_sql
+      # Same logic as in the Request model's ransacker
+      config = RailsPulse.configuration rescue nil
+      thresholds = config&.request_thresholds || { slow: 500, very_slow: 1000, critical: 2000 }
+      slow = thresholds[:slow] || 500
+      very_slow = thresholds[:very_slow] || 1000
+      critical = thresholds[:critical] || 2000
+
+      "CASE
+        WHEN rails_pulse_requests.duration < #{slow} THEN 0
+        WHEN rails_pulse_requests.duration < #{very_slow} THEN 1
+        WHEN rails_pulse_requests.duration < #{critical} THEN 2
+        ELSE 3
+      END"
     end
   end
 end

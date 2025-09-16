@@ -4,23 +4,46 @@
 
 a {
   text-decoration: underline;
-  color: #0048b5;
+  color: var(--color-link);
 }
 
 #header {
-  background-color: #ffc91f;
+  background-color: var(--header-bg);
 }
 
 #header a {
-  color: black
+  color: var(--header-link);
+  text-decoration: none;
 }
 
 #header a:hover {
-  background-color: #ffe284;
+  background-color: transparent;
+  text-decoration: underline;
 }
 
 a:hover {
   cursor: pointer;
+}
+
+/* Dark mode */
+
+/* Dark scheme tweaks via component variables */
+html[data-color-scheme="dark"] .card {
+  /* Scope card surfaces slightly darker than page */
+  --color-bg: rgb(47, 47, 47);
+  --color-border: rgb(64, 64, 64);
+}
+
+/* Header colors are handled by --header-* tokens in base.css */
+
+html[data-color-scheme="dark"] .badge--positive-inverse,
+html[data-color-scheme="dark"] .badge--negative-inverse {
+  --badge-background: rgb(47, 47, 47);
+}
+
+html[data-color-scheme="dark"] .input {
+  --input-background: #535252;
+  --input-border-color: #7e7d7d;
 }
 
 .hidden {
@@ -66,7 +89,7 @@ a:hover {
   height: 16px;
   padding: 2px;
   position: absolute;
-  top: 11px;
+  top: 20px;
 }
 
 /* REQUEST OPERATIONS BAR */

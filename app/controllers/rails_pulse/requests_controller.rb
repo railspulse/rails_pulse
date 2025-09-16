@@ -40,7 +40,9 @@ module RailsPulse
     def build_chart_ransack_params(ransack_params)
       base_params = ransack_params.except(:s).merge(
         period_start_gteq: Time.at(@start_time),
-        period_start_lt: Time.at(@end_time)
+        period_start_lt: Time.at(@end_time),
+        summarizable_type_eq: "RailsPulse::Request",
+        summarizable_id_eq: 0
       )
 
       # Only add duration filter if we have a meaningful threshold
@@ -62,8 +64,18 @@ module RailsPulse
     end
 
     def build_table_results
+      # Only show requests that belong to time periods where we have overall request summaries
+      # This ensures the table data is consistent with the chart data
       @ransack_query.result
         .joins(:route)
+        .joins(<<~SQL)
+          INNER JOIN rails_pulse_summaries ON
+            rails_pulse_summaries.summarizable_id = 0 AND
+            rails_pulse_summaries.summarizable_type = 'RailsPulse::Request' AND
+            rails_pulse_summaries.period_type = '#{period_type}' AND
+            rails_pulse_requests.occurred_at >= rails_pulse_summaries.period_start AND
+            rails_pulse_requests.occurred_at < rails_pulse_summaries.period_end
+        SQL
         .select(
           "rails_pulse_requests.id",
           "rails_pulse_requests.occurred_at",
@@ -72,6 +84,7 @@ module RailsPulse
           "rails_pulse_requests.route_id",
           "rails_pulse_routes.path"
         )
+        .distinct
     end
 
     def set_request

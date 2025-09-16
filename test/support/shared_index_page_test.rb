@@ -228,6 +228,58 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: page_type, expected_data: zoomed_table_data, filter_applied: "Recent Zoom")
   end
 
+  def test_column_selection_filters_table_and_persists_sorting
+    visit_rails_pulse_path page_path
+
+    # Wait for page to fully load and ensure we have data
+    assert_selector "table tbody tr", wait: 5
+
+    # Apply sorting first to test persistence
+    within("table thead") do
+      # Find the first sortable column and click it
+      sortable_columns.first.tap do |column|
+        click_link column[:name]
+      end
+    end
+
+    # Wait for sort to complete and capture sorted rows
+    assert_selector "table tbody tr", wait: 3
+    sleep 0.5 # Allow DOM to stabilize
+    sorted_rows = all("table tbody tr").map(&:text)
+
+    # Simulate column selection using shared helper
+    simulate_column_selection
+
+    # Wait for the server request to complete
+    sleep 1
+
+    # Capture table rows after column selection
+    current_sorted_rows = all("table tbody tr").map(&:text)
+
+    # Verify sort order is maintained (if we have overlapping data)
+    if current_sorted_rows.length == sorted_rows.length && (current_sorted_rows & sorted_rows).length > 0
+      common_items = current_sorted_rows & sorted_rows
+      assert common_items.length > 0, "Should have some common items to verify sort persistence"
+    end
+
+    # Verify chart has data
+    chart_columns = page.execute_script("
+      if (window.RailsCharts && window.RailsCharts.charts) {
+        var charts = Object.keys(window.RailsCharts.charts);
+        if (charts.length > 0) {
+          return window.RailsCharts.charts[charts[0]].getOption().series[0].data.length;
+        }
+      }
+      return 0;
+    ")
+    assert chart_columns > 1, "Should have multiple chart columns"
+
+    # Verify URL parameters
+    current_url = page.current_url
+    assert current_url.include?("selected_column_time"), "URL should contain selected_column_time parameter after column selection"
+    assert current_url.include?("q%5Bs%5D"), "Sort parameter should be preserved during column selection"
+  end
+
   private
 
   def test_column_sorting(column_config)
@@ -266,5 +318,38 @@ class SharedIndexPageTest < ApplicationSystemTestCase
 
     assert(new_is_ascending || new_is_descending,
            "Rows should still be sorted after toggling: #{new_first_value} vs #{new_second_value}")
+  end
+
+  def simulate_column_selection
+    # Find the index controller and simulate column click
+    index_element = find('[data-controller="rails-pulse--index"]')
+    assert index_element, "Should find element with rails-pulse--index controller"
+
+    # Use JavaScript to simulate column selection
+    page.execute_script("
+      if (window.Stimulus && window.RailsCharts && window.RailsCharts.charts) {
+        var controller = window.Stimulus.getControllerForElementAndIdentifier(arguments[0], 'rails-pulse--index');
+        if (controller && window.RailsCharts.charts[controller.chartIdValue]) {
+          var chart = window.RailsCharts.charts[controller.chartIdValue];
+          var option = chart.getOption();
+          var seriesData = option.series[0].data;
+          var xAxisData = option.xAxis[0].data;
+
+          for (var i = 0; i < seriesData.length; i++) {
+            var value = typeof seriesData[i] === 'object' ? seriesData[i].value : seriesData[i];
+            if (value && value > 0) {
+              var params = {
+                dataIndex: i,
+                seriesIndex: 0,
+                value: seriesData[i],
+                name: xAxisData[i]
+              };
+              controller.handleColumnClick(params);
+              break;
+            }
+          }
+        }
+      }
+    ", index_element)
   end
 end

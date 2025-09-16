@@ -38,9 +38,8 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
 
   test "sparkline_chart_options hides axes and grid" do
     opts = sparkline_chart_options
-    assert_equal "line", opts[:series][:type]
+    assert_equal "bar", opts[:series][:type]
     refute opts[:yAxis][:show]
-    assert_equal "none", opts[:series][:symbol]
   end
 
   test "area_chart_options sets symbol and line style" do

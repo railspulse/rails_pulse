@@ -22,7 +22,6 @@
         <div class="hide@md" data-controller="rails-pulse--dialog">
           <button type="button" class="btn btn--icon" data-action="rails-pulse--dialog#showModal">
             <%= rails_pulse_icon 'menu', width: '20' %>
-            <span class="sr-only">Open menu</span>
           </button>
 
         <dialog class="sheet sheet--left" style="--sheet-size: 288px;" data-rails-pulse--dialog-target="menu" data-action="click->rails-pulse--dialog#closeOnClickOutside">
@@ -31,7 +30,6 @@
               <%= link_to rails_pulse.root_path, class: "btn sidebar-menu__button" do %>
                 <div class="flex flex-col text-start leading-tight overflow-hidden">
                   <span class="overflow-ellipsis font-semibold">Rails Pulse</span>
-                  <span class="overflow-ellipsis text-xs">Open Source</span>
                 </div>
               <% end %>
               <div class="sidebar-menu__content">

@@ -36,27 +36,27 @@ module RailsPulse
           trend_icon = percentage < 0.1 ? "move-right" : current_period_avg < previous_period_avg ? "trending-down" : "trending-up"
           trend_amount = previous_period_avg.zero? ? "0%" : "#{percentage}%"
 
-          # Separate query for sparkline data - manually calculate weighted averages by week
+          # Sparkline data by day with zero-filled days over the last 14 days
+          # Use Groupdate to get grouped sums and compute weighted averages per day
+          grouped_weighted = base_query
+            .group_by_day(:period_start, time_zone: "UTC")
+            .sum(Arel.sql("avg_duration * count"))
+
+          grouped_counts = base_query
+            .group_by_day(:period_start, time_zone: "UTC")
+            .sum(:count)
+
+          # Build a continuous 14-day range, fill missing days with 0
+          start_day = 2.weeks.ago.beginning_of_day.to_date
+          end_day = Time.current.to_date
+
           sparkline_data = {}
-          base_query.each do |summary|
-            week_start = summary.period_start.beginning_of_week
-            formatted_date = week_start.strftime("%b %-d")
-
-            if sparkline_data[formatted_date]
-              sparkline_data[formatted_date][:total_weighted] += (summary.avg_duration || 0) * (summary.count || 0)
-              sparkline_data[formatted_date][:total_count] += (summary.count || 0)
-            else
-              sparkline_data[formatted_date] = {
-                total_weighted: (summary.avg_duration || 0) * (summary.count || 0),
-                total_count: (summary.count || 0)
-              }
-            end
-          end
-
-          # Convert to final format
-          sparkline_data = sparkline_data.transform_values do |data|
-            weighted_avg = data[:total_count] > 0 ? (data[:total_weighted] / data[:total_count]).round(0) : 0
-            { value: weighted_avg }
+          (start_day..end_day).each do |day|
+            weighted_sum = grouped_weighted[day] || 0
+            count_sum = grouped_counts[day] || 0
+            avg = count_sum > 0 ? (weighted_sum.to_f / count_sum).round(0) : 0
+            label = day.strftime("%b %-d")
+            sparkline_data[label] = { value: avg }
           end
 
           {

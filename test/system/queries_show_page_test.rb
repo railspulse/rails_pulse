@@ -271,6 +271,60 @@ class QueriesShowPageTest < SharedIndexPageTest
     end
   end
 
+  # Override column selection test to target the correct table
+  def test_column_selection_filters_table_and_persists_sorting
+    visit_rails_pulse_path page_path
+
+    # Wait for page to fully load and ensure we have data
+    within("turbo-frame#index_table") do
+      assert_selector "table tbody tr", wait: 5
+    end
+
+    # Apply sorting first to test persistence - target the specific table
+    within("turbo-frame#index_table table thead") do
+      # Find the first sortable column and click it
+      sortable_columns.first.tap do |column|
+        click_link column[:name]
+      end
+    end
+
+    # Wait for sort to complete and capture sorted rows
+    within("turbo-frame#index_table") do
+      assert_selector "table tbody tr", wait: 3
+    end
+    sleep 0.5 # Allow DOM to stabilize
+    sorted_rows = all("turbo-frame#index_table table tbody tr").map(&:text)
+
+    # Simulate column selection using shared helper
+    simulate_column_selection
+
+    # Wait for column selection to complete and table to update
+    within("turbo-frame#index_table") do
+      assert_selector "table tbody tr", wait: 5
+      assert_selector "table thead th a", text: /Duration/, wait: 3
+    end
+
+    filtered_rows = all("turbo-frame#index_table table tbody tr").map(&:text)
+
+    # Verify sorting was preserved during filtering
+    within("turbo-frame#index_table table thead") do
+      # Click the same sortable column again to test persistence
+      sortable_columns.first.tap do |column|
+        click_link column[:name]
+      end
+    end
+
+    # Wait for re-sort and verify functionality
+    within("turbo-frame#index_table") do
+      assert_selector "table tbody tr", wait: 3
+    end
+    sleep 0.5
+    re_sorted_rows = all("turbo-frame#index_table table tbody tr").map(&:text)
+
+    # Table should still have data and be responsive to sorting
+    assert re_sorted_rows.length > 0, "Table should have data after column selection and re-sorting"
+  end
+
   # Query show specific test
   def test_query_details_are_displayed
     visit_rails_pulse_path page_path

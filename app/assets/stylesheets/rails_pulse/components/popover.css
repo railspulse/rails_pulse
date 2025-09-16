@@ -31,6 +31,5 @@
     left: var(--popover-x, 0) !important;
     top: var(--popover-y, 0) !important;
     margin: 0 !important;
-    inset: unset !important;
   }
 }

@@ -63,16 +63,24 @@ module RailsPulse
     end
 
     def sparkline_chart_options
+      # Compact sparkline columns that fill the canvas with no axes/labels/gaps
       base_chart_options.deep_merge({
         series: {
-          type: "line",
-          smooth: true,
-          lineStyle: { width: 2 },
-          symbol: "none"
+          type: "bar",
+          itemStyle: { borderRadius: [ 2, 2, 0, 0 ] },
+          barCategoryGap: "10%",
+          barGap: "0%"
         },
-        yAxis: { show: false },
-        xAxis: { splitLine: { show: false } },
-        grid: { show: false }
+        yAxis: { show: false, splitLine: { show: false } },
+        xAxis: {
+          type: "category",
+          boundaryGap: true,
+          axisLine: { show: false },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false }
+        },
+        grid: { left: 0, right: 0, top: 0, bottom: 0, containLabel: false, show: false }
       })
     end
 

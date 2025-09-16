@@ -1,9 +1,33 @@
 import { Controller } from "@hotwired/stimulus"
 import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/dom"
 
+/**
+ * Popover Stimulus Controller
+ *
+ * Usage:
+ *   <div data-controller="popover" data-popover-placement-value="top">
+ *     <button data-popover-target="button" data-action="click->popover#toggle">Toggle</button>
+ *     <div data-popover-target="menu" popover>Menu content</div>
+ *   </div>
+ *
+ * Targets:
+ *   - button: The element that triggers the popover
+ *   - menu: The popover content element
+ *
+ * Values:
+ *   - placement: Controls popover positioning (default: "top")
+ *     Valid values: "top", "top-start", "top-end", "bottom", "bottom-start",
+ *     "bottom-end", "left", "left-start", "left-end", "right", "right-start", "right-end"
+ *
+ * Features:
+ *   - Auto-positioning with collision detection
+ *   - Lazy loading of operation details via Turbo frames
+ *   - CSP-compliant styling using CSS custom properties
+ */
+
 export default class extends Controller {
   static targets = [ "button", "menu" ]
-  static values  = { placement: { type: String, default: "bottom" } }
+  static values  = { placement: { type: String, default: "top" } }
 
   #showTimer = null
   #hideTimer = null
@@ -64,16 +88,16 @@ export default class extends Controller {
     // Check if this popover has operation details to load
     const operationUrl = this.menuTarget.dataset.operationUrl
     if (!operationUrl) return
-    
+
     // Find the turbo frame inside the popover
     const turboFrame = this.menuTarget.querySelector('turbo-frame')
     if (!turboFrame) return
-    
+
     // Only load if not already loaded (check if still shows loading content)
     // Use CSP-safe method to check for loading content
     const hasLoadingContent = this.hasLoadingContent(turboFrame)
     if (!hasLoadingContent) return
-    
+
     // Set the src attribute to trigger the turbo frame loading
     turboFrame.src = operationUrl
   }

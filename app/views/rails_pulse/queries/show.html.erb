@@ -9,66 +9,66 @@
 <% end %>
 
 <div class="mb-4">
-  <%= render 'rails_pulse/components/code_panel', { title: 'Normalized SQL', value: @query.normalized_sql } %>
+  <%= render 'rails_pulse/components/code_panel', { value: @query.normalized_sql } %>
 </div>
 
 <div
-  class="row"
   data-controller="rails-pulse--index"
   data-rails-pulse--index-chart-id-value="query_responses_chart"
 >
-  <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', { title: 'Query Responses' } do %>
-      <%= search_form_for @ransack_query, url: query_path(@query), class: "flex items-center justify-between gap mb-4" do |form| %>
-        <div class="flex items-center grow gap">
-          <%= form.select :period_start_range,
-            RailsPulse::RoutesController::TIME_RANGE_OPTIONS,
-            { selected: @selected_time_range },
-            { class: "input" }
-          %>
-          <%= form.select :duration,
-            duration_options(:query),
-            { selected: @selected_response_range },
-            { class: "input" }
-          %>
-          <%= link_to "Reset", query_path(@query), class: "btn btn--borderless show@md" if params.has_key?(:q) %>
-          <%= form.submit "Search", class: "btn show@sm" %>
+  <%= render 'rails_pulse/components/panel', { title: 'Query Responses' } do %>
+    <%= search_form_for @ransack_query, url: query_path(@query), class: "flex items-center justify-between gap mb-4" do |form| %>
+      <div class="flex items-center grow gap">
+        <%= form.select :period_start_range,
+          RailsPulse::RoutesController::TIME_RANGE_OPTIONS,
+          { selected: @selected_time_range },
+          { class: "input" }
+        %>
+        <%= form.select :duration,
+          duration_options(:query),
+          { selected: @selected_response_range },
+          { class: "input" }
+        %>
+        <%= link_to "Reset", query_path(@query), class: "btn btn--borderless show@md" if params.has_key?(:q) %>
+        <%= form.submit "Search", class: "btn show@sm" %>
+      </div>
+    <% end %>
+
+    <% if @has_data %>
+      <% if @chart_data && @chart_data.values.any? { |v| v > 0 } %>
+        <div
+          class="chart-container chart-container--slim"
+          data-rails-pulse--index-target="chart"
+        >
+          <%= bar_chart(
+            @chart_data,
+            code: false,
+            id: "query_responses_chart",
+            height: "100%",
+            options: bar_chart_options(
+              units: "ms",
+              zoom: true,
+              chart_start: 0,
+              chart_end: @chart_data.length - 1,
+              xaxis_formatter: @xaxis_formatter,
+              tooltip_formatter: @tooltip_formatter,
+              zoom_start: @zoom_start,
+              zoom_end: @zoom_end,
+              chart_data: @chart_data
+            )
+          ) %>
         </div>
       <% end %>
 
-      <% if @has_data %>
-        <% if @chart_data && @chart_data.values.any? { |v| v > 0 } %>
-          <div
-            class="chart-container chart-container--slim"
-            data-rails-pulse--index-target="chart"
-          >
-            <%= bar_chart(
-              @chart_data,
-              code: false,
-              id: "query_responses_chart",
-              height: "100%",
-              options: bar_chart_options(
-                units: "ms",
-                zoom: true,
-                chart_start: 0,
-                chart_end: @chart_data.length - 1,
-                xaxis_formatter: @xaxis_formatter,
-                tooltip_formatter: @tooltip_formatter
-              )
-            ) %>
-          </div>
-        <% end %>
-
-        <%= turbo_frame_tag :index_table do %>
-          <%= render 'rails_pulse/queries/show_table' %>
-        <% end %>
-      <% else %>
-        <%= render 'rails_pulse/components/empty_state', 
-            title: 'No query responses found for the selected filters.', 
-            description: 'Try adjusting your time range or filters to see results.' %>
+      <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
+        <%= render 'rails_pulse/queries/show_table' %>
       <% end %>
+    <% else %>
+      <%= render 'rails_pulse/components/empty_state',
+          title: 'No query responses found for the selected filters.',
+          description: 'Try adjusting your time range or filters to see results.' %>
     <% end %>
-  </div>
+  <% end %>
 </div>
 
 <%= render 'rails_pulse/components/panel', { title: 'Query Locations' } do %>
