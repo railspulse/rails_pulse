@@ -10,16 +10,16 @@
   <% if title %>
     <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs">
       <%= title %>
+      <button
+        type="button"
+        class="collapsible-toggle"
+        data-rails-pulse--collapsible-target="toggle"
+        data-action="click->rails-pulse--collapsible#toggle"
+      >
+        show more
+      </button>
     </h2>
   <% end %>
-  <button
-    type="button"
-    class="collapsible-toggle"
-    data-rails-pulse--collapsible-target="toggle"
-    data-action="click->rails-pulse--collapsible#toggle"
-  >
-    show more
-  </button>
   <div class="prose max-i-none" data-rails-pulse--collapsible-target="content">
     <pre class="mbs-0" style="white-space: normal; margin-block-end: 0; margin-block-start: 0;"><code><%= html_escape(value) %></code></pre>
   </div>
