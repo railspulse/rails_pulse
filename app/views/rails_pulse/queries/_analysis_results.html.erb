@@ -56,9 +56,11 @@
 <% if query.issues.present? && query.issues.any? %>
   <div class="panel panel--danger mb-4">
     <h3 class="text-lg bold mb-3">Issues Detected</h3>
+    <ul>
       <% query.issues.each do |issue| %>
-        <p><%= issue['description'] %></p>
+        <li><%= issue['description'] %></li>
       <% end %>
+    </ul>
   </div>
 <% end %>
 
@@ -66,15 +68,14 @@
 <% if query.suggestions.present? && query.suggestions.any? %>
   <div class="panel panel--info mb-4">
     <h3 class="text-lg bold mb-3">Optimization Suggestions</h3>
-    <dl class="descriptive-list mbs-4">
+    <ul>
       <% query.suggestions.each do |suggestion| %>
-        <dt>
-          <span class="badge badge--info text-xs mr-2"><%= suggestion['type']&.upcase %></span>
+        <li>
           <%= suggestion['action'] %>
-        </dt>
-        <dd><%= suggestion['benefit'] if suggestion['benefit'].present? %></dd>
+          <%= suggestion['benefit'] if suggestion['benefit'].present? %>
+        </li>
       <% end %>
-    </dl>
+    </ul>
   </div>
 <% end %>
 
