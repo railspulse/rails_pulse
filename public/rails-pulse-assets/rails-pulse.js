@@ -159643,9 +159643,10 @@
           data: seriesData
           // Keep current data to preserve tooltips
         };
-        if (restoredOption.itemStyle) {
-          delete restoredOption.itemStyle.color;
+        if (!restoredOption.itemStyle) {
+          restoredOption.itemStyle = {};
         }
+        restoredOption.itemStyle.color = "#ffc91f";
         this.chart.setOption({
           series: [restoredOption]
         }, false);

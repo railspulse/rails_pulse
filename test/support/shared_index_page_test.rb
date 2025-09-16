@@ -247,36 +247,8 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     sleep 0.5 # Allow DOM to stabilize
     sorted_rows = all("table tbody tr").map(&:text)
 
-    # Find the index controller and simulate column click
-    index_element = find('[data-controller="rails-pulse--index"]')
-    assert index_element, "Should find element with rails-pulse--index controller"
-
-    # Use JavaScript to simulate column selection
-    page.execute_script("
-      if (window.Stimulus && window.RailsCharts && window.RailsCharts.charts) {
-        var controller = window.Stimulus.getControllerForElementAndIdentifier(arguments[0], 'rails-pulse--index');
-        if (controller && window.RailsCharts.charts[controller.chartIdValue]) {
-          var chart = window.RailsCharts.charts[controller.chartIdValue];
-          var option = chart.getOption();
-          var seriesData = option.series[0].data;
-          var xAxisData = option.xAxis[0].data;
-
-          for (var i = 0; i < seriesData.length; i++) {
-            var value = typeof seriesData[i] === 'object' ? seriesData[i].value : seriesData[i];
-            if (value && value > 0) {
-              var params = {
-                dataIndex: i,
-                seriesIndex: 0,
-                value: seriesData[i],
-                name: xAxisData[i]
-              };
-              controller.handleColumnClick(params);
-              break;
-            }
-          }
-        }
-      }
-    ", index_element)
+    # Simulate column selection using shared helper
+    simulate_column_selection
 
     # Wait for the server request to complete
     sleep 1
@@ -346,5 +318,38 @@ class SharedIndexPageTest < ApplicationSystemTestCase
 
     assert(new_is_ascending || new_is_descending,
            "Rows should still be sorted after toggling: #{new_first_value} vs #{new_second_value}")
+  end
+
+  def simulate_column_selection
+    # Find the index controller and simulate column click
+    index_element = find('[data-controller="rails-pulse--index"]')
+    assert index_element, "Should find element with rails-pulse--index controller"
+
+    # Use JavaScript to simulate column selection
+    page.execute_script("
+      if (window.Stimulus && window.RailsCharts && window.RailsCharts.charts) {
+        var controller = window.Stimulus.getControllerForElementAndIdentifier(arguments[0], 'rails-pulse--index');
+        if (controller && window.RailsCharts.charts[controller.chartIdValue]) {
+          var chart = window.RailsCharts.charts[controller.chartIdValue];
+          var option = chart.getOption();
+          var seriesData = option.series[0].data;
+          var xAxisData = option.xAxis[0].data;
+
+          for (var i = 0; i < seriesData.length; i++) {
+            var value = typeof seriesData[i] === 'object' ? seriesData[i].value : seriesData[i];
+            if (value && value > 0) {
+              var params = {
+                dataIndex: i,
+                seriesIndex: 0,
+                value: seriesData[i],
+                name: xAxisData[i]
+              };
+              controller.handleColumnClick(params);
+              break;
+            }
+          }
+        }
+      }
+    ", index_element)
   end
 end

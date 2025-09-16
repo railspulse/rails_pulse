@@ -51,13 +51,16 @@
               chart_start: 0,
               chart_end: @chart_data.length - 1,
               xaxis_formatter: @xaxis_formatter,
-              tooltip_formatter: @tooltip_formatter
+              tooltip_formatter: @tooltip_formatter,
+              zoom_start: @zoom_start,
+              zoom_end: @zoom_end,
+              chart_data: @chart_data
             )
           ) %>
         </div>
       <% end %>
 
-      <%= turbo_frame_tag :index_table do %>
+      <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
         <%= render 'rails_pulse/queries/show_table' %>
       <% end %>
     <% else %>

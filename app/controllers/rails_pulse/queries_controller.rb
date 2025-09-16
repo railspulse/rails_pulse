@@ -75,7 +75,18 @@ module RailsPulse
 
     def build_table_results
       if show_action?
+        # Only show operations that belong to time periods where we have query summaries
+        # This ensures the table data is consistent with the chart data
         @ransack_query.result
+          .joins(<<~SQL)
+            INNER JOIN rails_pulse_summaries ON
+              rails_pulse_summaries.summarizable_id = rails_pulse_operations.query_id AND
+              rails_pulse_summaries.summarizable_type = 'RailsPulse::Query' AND
+              rails_pulse_summaries.period_type = '#{period_type}' AND
+              rails_pulse_operations.occurred_at >= rails_pulse_summaries.period_start AND
+              rails_pulse_operations.occurred_at < rails_pulse_summaries.period_end
+          SQL
+          .distinct
       else
         Queries::Tables::Index.new(
           ransack_query: @ransack_query,

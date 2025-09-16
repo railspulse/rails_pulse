@@ -410,10 +410,11 @@ export default class extends Controller {
         data: seriesData // Keep current data to preserve tooltips
       };
 
-      // Explicitly remove any color function that might be lingering
-      if (restoredOption.itemStyle) {
-        delete restoredOption.itemStyle.color;
+      // Explicitly set color back to default yellow theme color
+      if (!restoredOption.itemStyle) {
+        restoredOption.itemStyle = {};
       }
+      restoredOption.itemStyle.color = '#ffc91f'; // Default yellow from railspulse theme
 
       this.chart.setOption({
         series: [restoredOption]
