@@ -610,7 +610,7 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
       request = RailsPulse::Request.create!(
         route: analytics_route,
         duration: rand(300.0..1200.0), # Complex queries are slower
-        status: [200, 200, 200, 500].sample, # Occasional errors
+        status: [ 200, 200, 200, 500 ].sample, # Occasional errors
         is_error: rand < 0.1, # 10% error rate
         request_uuid: SecureRandom.uuid,
         occurred_at: rand(historical_start_time..historical_end_time)

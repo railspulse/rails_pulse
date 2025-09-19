@@ -53,6 +53,10 @@ development:
   <% else %>
   database: rails_pulse_development
   <% end %>
+  rails_pulse:
+    <<: *default
+    database: storage/development_rails_pulse.sqlite3
+    migrations_paths: db/rails_pulse_migrate
 
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".

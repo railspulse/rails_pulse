@@ -31,6 +31,8 @@ RailsPulse::Schema = lambda do |connection|
     t.text :metadata, comment: "JSON object containing query complexity metrics"
     t.text :query_stats, comment: "JSON object with query characteristics analysis"
     t.text :backtrace_analysis, comment: "JSON object with call chain and N+1 detection"
+    t.text :index_recommendations, comment: "JSON array of database index recommendations"
+    t.text :n_plus_one_analysis, comment: "JSON object with enhanced N+1 query detection results"
     t.text :suggestions, comment: "JSON array of optimization recommendations"
     t.timestamps
   end

@@ -6,6 +6,7 @@ AllCops:
   SuggestExtensions: false
   Exclude:
     - 'test/dummy/db/schema.rb'
+    - 'lib/generators/rails_pulse/templates/migrations/*.rb'
 
 # Overwrite or add rules to create your own house style
 #

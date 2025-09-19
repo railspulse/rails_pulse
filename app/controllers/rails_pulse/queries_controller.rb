@@ -38,7 +38,7 @@ module RailsPulse
             render turbo_stream: turbo_stream.replace(
               "query_analysis",
               partial: "rails_pulse/queries/analysis_error",
-              locals: { error_message: "Analysis failed: #{e.message}" }
+              locals: { error_message: "Analysis failed: #{e.message}", query: @query }
             )
           }
           format.html {
