@@ -162,7 +162,7 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
       { "severity" => "critical", "description" => "Another critical issue" }
     ]
 
-    query = create(:query, issues: issues.to_json)
+    query = create(:query, issues: issues, analyzed_at: Time.current)
     grouped = query.issues_by_severity
 
     assert_equal 2, grouped["critical"].length
@@ -176,7 +176,7 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
       { "severity" => "critical", "description" => "Another critical issue" }
     ]
 
-    query = create(:query, issues: issues.to_json)
+    query = create(:query, issues: issues, analyzed_at: Time.current)
     assert_equal 2, query.critical_issues_count
   end
 
@@ -187,7 +187,7 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
       { "severity" => "warning", "description" => "Another warning issue" }
     ]
 
-    query = create(:query, issues: issues.to_json)
+    query = create(:query, issues: issues, analyzed_at: Time.current)
     assert_equal 2, query.warning_issues_count
   end
 

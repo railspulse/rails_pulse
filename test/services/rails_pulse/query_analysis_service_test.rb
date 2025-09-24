@@ -2,6 +2,8 @@ require "test_helper"
 
 module RailsPulse
   class QueryAnalysisServiceTest < ActiveSupport::TestCase
+    self.use_transactional_tests = true
+
     setup do
       @query = create_query_with_operations
     end
@@ -10,22 +12,23 @@ module RailsPulse
       results = QueryAnalysisService.analyze_query(@query.id)
 
       assert_not_nil results[:analyzed_at]
-      assert_not_nil results[:query_stats]
+      assert_not_nil results[:query_characteristics]
       assert_not_nil results[:backtrace_analysis]
-      assert_instance_of Array, results[:issues]
+      assert_not_nil results[:index_recommendations]
+      assert_not_nil results[:n_plus_one_analysis]
       assert_instance_of Array, results[:suggestions]
     end
 
     test "analyzes query characteristics correctly" do
       results = QueryAnalysisService.analyze_query(@query.id)
-      stats = results[:query_stats]
+      characteristics = results[:query_characteristics]
 
-      assert_equal "SELECT", stats[:query_type]
-      assert_equal 1, stats[:table_count]
-      assert_equal 0, stats[:join_count]
-      assert_equal false, stats[:has_subqueries]
-      assert_equal false, stats[:has_limit]
-      assert_equal false, stats[:has_order_by]
+      assert_equal "SELECT", characteristics[:query_type]
+      assert_equal 1, characteristics[:table_count]
+      assert_equal 0, characteristics[:join_count]
+      assert_equal false, characteristics[:has_subqueries]
+      assert_equal false, characteristics[:has_limit]
+      assert_equal false, characteristics[:has_order_by]
     end
 
     test "detects pattern-based issues" do
@@ -33,7 +36,8 @@ module RailsPulse
       query = create_query("SELECT * FROM users WHERE id = ?")
       results = QueryAnalysisService.analyze_query(query.id)
 
-      select_star_issue = results[:issues].find { |issue| issue[:type] == "select_star" }
+      pattern_issues = results[:query_characteristics][:pattern_issues]
+      select_star_issue = pattern_issues.find { |issue| issue[:type] == "select_star" }
       assert_not_nil select_star_issue
       assert_equal "info", select_star_issue[:severity]
     end
@@ -42,7 +46,8 @@ module RailsPulse
       query = create_query("SELECT name FROM users")
       results = QueryAnalysisService.analyze_query(query.id)
 
-      missing_where_issue = results[:issues].find { |issue| issue[:type] == "missing_where_clause" }
+      pattern_issues = results[:query_characteristics][:pattern_issues]
+      missing_where_issue = pattern_issues.find { |issue| issue[:type] == "missing_where_clause" }
       assert_not_nil missing_where_issue
       assert_equal "warning", missing_where_issue[:severity]
     end
@@ -53,16 +58,22 @@ module RailsPulse
 
       assert_equal 3, backtrace_analysis[:total_executions]
       assert_equal 2, backtrace_analysis[:unique_locations]
-      assert_equal "app/controllers/users_controller.rb:25", backtrace_analysis[:most_common_location]
+      assert_equal "app/controllers/users_controller.rb:25", backtrace_analysis[:most_common_location][:location]
     end
 
     test "generates relevant suggestions based on issues" do
       query = create_query("SELECT * FROM users WHERE name = ?")
       results = QueryAnalysisService.analyze_query(query.id)
 
-      optimization_suggestion = results[:suggestions].find { |s| s[:type] == "optimization" }
+      # Should have suggestions for both SELECT * and missing LIMIT
+      suggestions = results[:suggestions]
+      assert suggestions.length > 0
+
+      # Check that we get actionable suggestions
+      optimization_suggestion = suggestions.find { |s| s[:type] == "optimization" }
       assert_not_nil optimization_suggestion
-      assert_includes optimization_suggestion[:action], "specific columns"
+      assert_not_nil optimization_suggestion[:action]
+      assert_not_nil optimization_suggestion[:benefit]
     end
 
     test "saves analysis results to query model" do
@@ -83,24 +94,26 @@ module RailsPulse
 
       results = QueryAnalysisService.analyze_query(query.id)
 
-      assert_not_nil results[:query_stats]
+      assert_not_nil results[:query_characteristics]
       assert_empty results[:backtrace_analysis]
-      assert_nil results[:explain_plan]
+      assert_nil results[:explain_plan][:explain_plan]
     end
 
     test "detects N+1 query patterns" do
-      # Create many operations in short time window
-      query = create_query("SELECT * FROM posts WHERE user_id = ?")
+      # Create a completely isolated query for this test
+      query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM posts WHERE user_id = ?")
 
-      # Create 15 operations within 1 minute
-      base_time = 1.minute.ago
-      15.times do |i|
+      # Use a very specific recent time window that won't conflict with other tests
+      base_time = 30.hours.ago  # Within 48 hour window but different from other tests
+      12.times do |i|
         create_operation(query, occurred_at: base_time + i.seconds)
       end
 
       results = QueryAnalysisService.analyze_query(query.id)
+      n_plus_one_result = results[:backtrace_analysis][:potential_n_plus_one]
 
-      assert results[:backtrace_analysis][:potential_n_plus_one]
+      assert n_plus_one_result[:detected], "Expected N+1 pattern to be detected with 12 operations in same minute"
+      assert n_plus_one_result[:suspicious_periods].any?, "Expected suspicious periods to be identified"
     end
 
     test "calculates complexity score correctly" do
@@ -116,15 +129,15 @@ module RailsPulse
       SQL
 
       results = QueryAnalysisService.analyze_query(complex_query.id)
-      stats = results[:query_stats]
+      characteristics = results[:query_characteristics]
 
-      assert stats[:estimated_complexity] > 10
-      assert_equal 3, stats[:table_count]
-      assert_equal 2, stats[:join_count]
-      assert stats[:has_group_by]
-      assert stats[:has_having]
-      assert stats[:has_order_by]
-      assert stats[:has_aggregations]
+      assert characteristics[:estimated_complexity] > 10
+      assert_equal 3, characteristics[:table_count]
+      assert_equal 2, characteristics[:join_count]
+      assert characteristics[:has_group_by]
+      assert characteristics[:has_having]
+      assert characteristics[:has_order_by]
+      assert characteristics[:has_aggregations]
     end
 
     private

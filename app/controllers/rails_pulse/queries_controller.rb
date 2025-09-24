@@ -22,7 +22,7 @@ module RailsPulse
           format.turbo_stream {
             render turbo_stream: turbo_stream.replace(
               "query_analysis",
-              partial: "rails_pulse/queries/analysis_results",
+              partial: "rails_pulse/queries/analysis_section",
               locals: { query: @query.reload }
             )
           }
@@ -37,8 +37,8 @@ module RailsPulse
           format.turbo_stream {
             render turbo_stream: turbo_stream.replace(
               "query_analysis",
-              partial: "rails_pulse/queries/analysis_error",
-              locals: { error_message: "Analysis failed: #{e.message}", query: @query }
+              partial: "rails_pulse/queries/analysis_section",
+              locals: { query: @query, error_message: "Analysis failed: #{e.message}" }
             )
           }
           format.html {

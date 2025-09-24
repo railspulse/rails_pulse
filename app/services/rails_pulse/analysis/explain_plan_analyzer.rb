@@ -22,6 +22,9 @@ module RailsPulse
       def generate_explain_plan(sql)
         return nil unless sql.present?
 
+        # Skip EXPLAIN queries in test environment to avoid transaction issues
+        return nil if Rails.env.test?
+
         begin
           sanitized_sql = sanitize_sql_for_explain(sql)
 

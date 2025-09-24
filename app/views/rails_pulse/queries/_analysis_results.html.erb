@@ -38,11 +38,11 @@
         <dt>Execution Frequency</dt>
         <dd><%= query.backtrace_analysis['execution_frequency'] || 0 %>/hour</dd>
         <dt>Most Common Location</dt>
-        <dd><code><%= query.backtrace_analysis['most_common_location'] || 'N/A' %></code></dd>
+        <dd><code><%= query.backtrace_analysis['most_common_location']['location'] || 'N/A' %></code></dd>
         <dt>N+1 Pattern Detected</dt>
         <dd>
           <% if query.backtrace_analysis['potential_n_plus_one'] %>
-            <span class="badge badge--danger text-xs">Yes</span>
+            Yes
           <% else %>
             No
           <% end %>
@@ -71,7 +71,7 @@
     <ul>
       <% query.suggestions.each do |suggestion| %>
         <li>
-          <%= suggestion['action'] %>
+          <%= suggestion['action'] %>.
           <%= suggestion['benefit'] if suggestion['benefit'].present? %>
         </li>
       <% end %>
