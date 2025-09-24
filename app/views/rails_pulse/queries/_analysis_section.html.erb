@@ -1,0 +1,39 @@
+<%
+  analyze_actions = []
+  analyze_actions << {
+    url: analyze_query_path(query),
+    title: query.analyzed? ? "Re-analyze query" : "Analyze query performance",
+    icon: "refresh-cw",
+    data: {
+      turbo_method: "post",
+      turbo_frame: "query_analysis"
+    }
+  }
+%>
+
+<%= render 'rails_pulse/components/panel', {
+  title: 'Query Analysis',
+  actions: analyze_actions
+} do %>
+  <% if local_assigns[:error_message] %>
+    <%= render 'rails_pulse/queries/analysis_error', error_message: error_message, query: query %>
+  <% elsif query.analyzed? %>
+    <%= render 'rails_pulse/queries/analysis_results', query: query %>
+  <% else %>
+    <div class="flex items-center justify-center pbs-12 pbe-12 pis-6 pie-6 mb-8">
+      <div class="flex items-center gap">
+        <div class="shrink-0">
+          <img src="<%= asset_path('search.svg') %>" class="w-48 h-48" alt="No data available" />
+        </div>
+        <div class="text-subtle pis-8">
+          <p class="text-lg font-semibold mbe-2">Analyze Query Performance</p>
+          <% if query.has_recent_operations? %>
+            <p class="text-sm mbe-2"> Get detailed insights about this query's performance, potential issues, and optimization suggestions. </p>
+          <% else %>
+            <p class="text-sm mbe-2">No recent data available for analysis</p>
+          <% end %>
+        </div>
+      </div>
+    </div>
+  <% end %>
+<% end %>

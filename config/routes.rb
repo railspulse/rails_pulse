@@ -3,7 +3,11 @@ RailsPulse::Engine.routes.draw do
 
   resources :routes, only: %i[index show]
   resources :requests, only: %i[index show]
-  resources :queries, only: %i[index show]
+  resources :queries, only: %i[index show] do
+    member do
+      post :analyze
+    end
+  end
   resources :operations, only: %i[show]
   resources :caches, only: %i[show], as: :cache
   patch "pagination/limit", to: "application#set_pagination_limit"

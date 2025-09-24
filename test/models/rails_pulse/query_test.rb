@@ -70,4 +70,139 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
     assert_includes query.summaries, summary
     assert_equal query, summary.summarizable
   end
+
+  # Analysis-related tests
+  test "analyzed? returns false when analyzed_at is nil" do
+    query = create(:query)
+    refute query.analyzed?
+  end
+
+  test "analyzed? returns true when analyzed_at is present" do
+    query = create(:query, analyzed_at: 1.hour.ago)
+    assert query.analyzed?
+  end
+
+  test "has_recent_operations? returns true when recent operations exist" do
+    query = create(:query)
+    request = create(:request)
+    create(:operation, :without_query,
+      request: request,
+      query: query,
+      operation_type: "sql",
+      label: query.normalized_sql,
+      occurred_at: 1.hour.ago
+    )
+
+    assert query.has_recent_operations?
+  end
+
+  test "has_recent_operations? returns false when no recent operations exist" do
+    query = create(:query)
+    request = create(:request)
+    create(:operation, :without_query,
+      request: request,
+      query: query,
+      operation_type: "sql",
+      label: query.normalized_sql,
+      occurred_at: 3.days.ago
+    )
+
+    refute query.has_recent_operations?
+  end
+
+  test "needs_reanalysis? returns true when not analyzed" do
+    query = create(:query)
+    assert query.needs_reanalysis?
+  end
+
+  test "needs_reanalysis? returns false when recently analyzed with no new operations" do
+    query = create(:query, analyzed_at: 1.hour.ago)
+    refute query.needs_reanalysis?
+  end
+
+  test "needs_reanalysis? returns true when operations exist after analysis" do
+    query = create(:query, analyzed_at: 2.hours.ago)
+    request = create(:request)
+    create(:operation, :without_query,
+      request: request,
+      query: query,
+      operation_type: "sql",
+      label: query.normalized_sql,
+      occurred_at: 1.hour.ago
+    )
+
+    assert query.needs_reanalysis?
+  end
+
+  test "analysis_status returns correct status" do
+    # Not analyzed
+    query = create(:query)
+    assert_equal "not_analyzed", query.analysis_status
+
+    # Current analysis
+    query.update!(analyzed_at: 1.hour.ago)
+    assert_equal "current", query.analysis_status
+
+    # Needs update
+    request = create(:request)
+    create(:operation, :without_query,
+      request: request,
+      query: query,
+      operation_type: "sql",
+      label: query.normalized_sql,
+      occurred_at: 30.minutes.ago
+    )
+    assert_equal "needs_update", query.analysis_status
+  end
+
+  test "issues_by_severity groups issues correctly" do
+    issues = [
+      { "severity" => "critical", "description" => "Critical issue" },
+      { "severity" => "warning", "description" => "Warning issue" },
+      { "severity" => "critical", "description" => "Another critical issue" }
+    ]
+
+    query = create(:query, issues: issues, analyzed_at: Time.current)
+    grouped = query.issues_by_severity
+
+    assert_equal 2, grouped["critical"].length
+    assert_equal 1, grouped["warning"].length
+  end
+
+  test "critical_issues_count returns correct count" do
+    issues = [
+      { "severity" => "critical", "description" => "Critical issue" },
+      { "severity" => "warning", "description" => "Warning issue" },
+      { "severity" => "critical", "description" => "Another critical issue" }
+    ]
+
+    query = create(:query, issues: issues, analyzed_at: Time.current)
+    assert_equal 2, query.critical_issues_count
+  end
+
+  test "warning_issues_count returns correct count" do
+    issues = [
+      { "severity" => "critical", "description" => "Critical issue" },
+      { "severity" => "warning", "description" => "Warning issue" },
+      { "severity" => "warning", "description" => "Another warning issue" }
+    ]
+
+    query = create(:query, issues: issues, analyzed_at: Time.current)
+    assert_equal 2, query.warning_issues_count
+  end
+
+  test "serializes JSON columns correctly" do
+    query_stats = { "query_type" => "SELECT", "table_count" => 2 }
+    issues = [ { "severity" => "warning", "description" => "Test issue" } ]
+
+    query = create(:query)
+    query.update!(
+      query_stats: query_stats,
+      issues: issues
+    )
+
+    query.reload
+    assert_equal query_stats, query.query_stats
+    assert_equal issues, query.issues
+  end
 end

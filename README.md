@@ -107,10 +107,10 @@ end
 Schedule background jobs:
 
 ```ruby
-# Schedule to run 5 minutes past every hour
+# Schedule to run 5 minutes past every hour. cron: 5 * * * *
 RailsPulse::SummaryJob.perform_later
 
-# Schedule to run daily
+# Schedule to run daily. cron: 0 1 * * *
 RailsPulse::CleanupJob.perform_later
 ```
 

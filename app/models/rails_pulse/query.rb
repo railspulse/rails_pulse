@@ -9,6 +9,13 @@ module RailsPulse
     # Validations
     validates :normalized_sql, presence: true, uniqueness: true
 
+    # JSON serialization for analysis columns
+    serialize :issues, type: Array, coder: JSON
+    serialize :metadata, type: Hash, coder: JSON
+    serialize :query_stats, type: Hash, coder: JSON
+    serialize :backtrace_analysis, type: Hash, coder: JSON
+    serialize :suggestions, type: Array, coder: JSON
+
     def self.ransackable_attributes(auth_object = nil)
       %w[id normalized_sql average_query_time_ms execution_count total_time_consumed performance_status occurred_at]
     end
@@ -50,6 +57,45 @@ module RailsPulse
 
     ransacker :occurred_at do
       Arel.sql("MAX(rails_pulse_operations.occurred_at)")
+    end
+
+    # Analysis helper methods
+    def analyzed?
+      analyzed_at.present?
+    end
+
+    def has_recent_operations?
+      operations.where("occurred_at > ?", 48.hours.ago).exists?
+    end
+
+    def needs_reanalysis?
+      return true unless analyzed?
+
+      # Check if there are new operations since analysis
+      last_operation_time = operations.maximum(:occurred_at)
+      return false unless last_operation_time
+
+      last_operation_time > analyzed_at
+    end
+
+    def analysis_status
+      return "not_analyzed" unless analyzed?
+      return "needs_update" if needs_reanalysis?
+      "current"
+    end
+
+    def issues_by_severity
+      return {} unless analyzed? && issues.present?
+
+      issues.group_by { |issue| issue["severity"] || "unknown" }
+    end
+
+    def critical_issues_count
+      issues_by_severity["critical"]&.count || 0
+    end
+
+    def warning_issues_count
+      issues_by_severity["warning"]&.count || 0
     end
 
     def to_s

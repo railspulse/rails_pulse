@@ -8,10 +8,6 @@
   </div>
 <% end %>
 
-<div class="mb-4">
-  <%= render 'rails_pulse/components/code_panel', { value: @query.normalized_sql } %>
-</div>
-
 <div
   data-controller="rails-pulse--index"
   data-rails-pulse--index-chart-id-value="query_responses_chart"
@@ -70,6 +66,14 @@
     <% end %>
   <% end %>
 </div>
+
+<div class="mb-4">
+  <%= render 'rails_pulse/components/code_panel', { title: 'Normalized Query', value: @query.normalized_sql } %>
+</div>
+
+<%= turbo_frame_tag "query_analysis", class: "mb-4" do %>
+  <%= render 'rails_pulse/queries/analysis_section', query: @query %>
+<% end %>
 
 <%= render 'rails_pulse/components/panel', { title: 'Query Locations' } do %>
   <table class="table">

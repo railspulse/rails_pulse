@@ -122,23 +122,44 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
     RailsPulse::Route.create!(route_data)
   end
 
-  # Define realistic SQL queries
+  # Define realistic SQL queries - mix of good and problematic queries for analysis
   queries_data = [
-    "SELECT * FROM users WHERE id = ?",
-    "SELECT users.*, COUNT(posts.id) as post_count FROM users LEFT JOIN posts ON users.id = posts.user_id GROUP BY users.id",
+    # Good queries
+    "SELECT id, name, email FROM users WHERE id = ?",
     "SELECT * FROM posts WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
-    "SELECT posts.*, users.name FROM posts JOIN users ON posts.user_id = users.id WHERE posts.published = ?",
+    "SELECT posts.title, posts.content, users.name FROM posts JOIN users ON posts.user_id = users.id WHERE posts.published = ?",
     "SELECT COUNT(*) FROM comments WHERE post_id = ?",
-    "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC",
+    "SELECT * FROM comments WHERE post_id = ? ORDER BY created_at DESC LIMIT ?",
     "INSERT INTO posts (user_id, title, content, published, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)",
     "UPDATE posts SET title = ?, content = ?, updated_at = ? WHERE id = ?",
     "DELETE FROM posts WHERE id = ?",
-    "SELECT * FROM users WHERE email = ?",
-    "SELECT posts.* FROM posts WHERE title LIKE ? OR content LIKE ?",
-    "SELECT users.*, COUNT(DISTINCT posts.id) as post_count, COUNT(DISTINCT comments.id) as comment_count FROM users LEFT JOIN posts ON users.id = posts.user_id LEFT JOIN comments ON users.id = comments.user_id GROUP BY users.id",
-    "SELECT * FROM posts WHERE created_at > ? ORDER BY created_at DESC",
-    "SELECT COUNT(*) FROM posts WHERE published = ? AND created_at > ?",
-    "SELECT comments.*, posts.title, users.name FROM comments JOIN posts ON comments.post_id = posts.id JOIN users ON comments.user_id = users.id WHERE comments.created_at > ?"
+    "SELECT id, name FROM users WHERE email = ?",
+
+    # Problematic queries for analysis (will trigger issues and suggestions)
+    "SELECT * FROM users WHERE id = ?",  # SELECT * issue
+    "SELECT name FROM users",  # Missing WHERE clause
+    "SELECT posts.* FROM posts WHERE title LIKE ? OR content LIKE ?",  # Missing LIMIT on search
+    "SELECT * FROM posts WHERE created_at > ?",  # SELECT * + Missing LIMIT
+    "SELECT users.* FROM users LEFT JOIN posts ON users.id = posts.user_id LEFT JOIN comments ON posts.id = comments.post_id WHERE users.active = ? AND posts.published = ? AND comments.approved = ? OR users.created_at > ? AND posts.created_at > ? AND comments.created_at > ?",  # Complex WHERE clause
+
+    # Very complex queries that will trigger multiple issues
+    "SELECT * FROM users LEFT JOIN posts ON users.id = posts.user_id LEFT JOIN comments ON posts.id = comments.post_id LEFT JOIN tags ON posts.id = tags.post_id LEFT JOIN categories ON posts.category_id = categories.id WHERE users.active = ? AND posts.published = ? AND comments.approved = ? AND tags.name LIKE ? AND categories.visible = ? AND users.email LIKE ? AND posts.title LIKE ? OR comments.content LIKE ? AND users.created_at BETWEEN ? AND ? AND posts.updated_at > ? ORDER BY users.created_at, posts.created_at, comments.created_at",  # SELECT *, many JOINs, complex WHERE, no LIMIT
+
+    "SELECT users.*, posts.*, comments.*, COUNT(DISTINCT posts.id) as post_count, COUNT(DISTINCT comments.id) as comment_count, AVG(posts.view_count) as avg_views, MAX(comments.created_at) as latest_comment FROM users LEFT JOIN posts ON users.id = posts.user_id LEFT JOIN comments ON users.id = comments.user_id LEFT JOIN user_preferences ON users.id = user_preferences.user_id LEFT JOIN subscriptions ON users.id = subscriptions.user_id WHERE (users.active = ? OR users.premium = ?) AND (posts.published = ? OR posts.featured = ?) AND (comments.approved = ? OR comments.flagged = ?) AND users.created_at BETWEEN ? AND ? GROUP BY users.id HAVING COUNT(posts.id) > ? AND AVG(posts.view_count) > ?",  # Very complex with subqueries, aggregations, HAVING
+
+    "SELECT * FROM (SELECT users.id, users.name, users.email, COUNT(posts.id) as post_count FROM users LEFT JOIN posts ON users.id = posts.user_id WHERE users.active = ? GROUP BY users.id) as user_posts JOIN (SELECT user_id, COUNT(*) as comment_count FROM comments WHERE approved = ? GROUP BY user_id) as user_comments ON user_posts.id = user_comments.user_id WHERE user_posts.post_count > ? AND user_comments.comment_count > ?",  # Subqueries, SELECT *
+
+    "SELECT DISTINCT users.*, posts.*, comments.* FROM users, posts, comments WHERE users.id = posts.user_id AND posts.id = comments.post_id AND users.created_at > ? AND posts.created_at > ? AND comments.created_at > ?",  # Old-style JOINs, SELECT *, DISTINCT without LIMIT
+
+    # Aggregation heavy queries
+    "SELECT users.*, COUNT(DISTINCT posts.id) as post_count, COUNT(DISTINCT comments.id) as comment_count, SUM(posts.view_count) as total_views, AVG(posts.view_count) as avg_views, MIN(posts.created_at) as first_post, MAX(posts.created_at) as latest_post FROM users LEFT JOIN posts ON users.id = posts.user_id LEFT JOIN comments ON users.id = comments.user_id GROUP BY users.id",  # Missing WHERE, many aggregations
+
+    # Search queries without proper indexing considerations
+    "SELECT * FROM posts WHERE title LIKE ? AND content LIKE ? AND LOWER(title) LIKE ? AND UPPER(content) LIKE ?",  # Function calls in WHERE, SELECT *, no LIMIT
+
+    # Update/Delete without proper constraints
+    "UPDATE posts SET view_count = view_count + 1 WHERE published = ?",  # Potentially updates many rows
+    "DELETE FROM comments WHERE created_at < ?"  # Potentially deletes many rows
   ]
 
   created_queries = queries_data.map do |sql|
@@ -242,8 +263,25 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
         duration # Controller time is total time
       end
 
-      # Assign query for SQL operations
-      query = operation_type == "sql" ? created_queries.sample : nil
+      # Assign query for SQL operations - bias towards complex queries for more interesting analysis
+      query = if operation_type == "sql"
+        # 70% chance to use a complex/problematic query, 30% chance for any query
+        if rand < 0.7
+          complex_queries = created_queries.select do |q|
+            sql = q.normalized_sql
+            sql.include?("SELECT *") ||
+            (sql.match?(/^SELECT.*FROM/i) && !sql.include?("WHERE")) ||
+            sql.scan(/\bJOIN\b/i).length > 2 ||
+            sql.include?("(SELECT") ||
+            sql.scan(/\bAND\b|\bOR\b/i).length > 3
+          end
+          complex_queries.any? ? complex_queries.sample : created_queries.sample
+        else
+          created_queries.sample
+        end
+      else
+        nil
+      end
 
       operation_label = case operation_type
       when "sql"
@@ -259,36 +297,62 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
       when "sql"
         # Map specific queries to specific file locations
         case query&.normalized_sql
-        when /SELECT \* FROM users WHERE id = \?/
+        # Good queries
+        when /SELECT id, name, email FROM users WHERE id = \?/
           "app/models/user.rb:15"
-        when /SELECT users\.\*, COUNT\(posts\.id\) as post_count FROM users LEFT JOIN posts/
-          "app/controllers/home_controller.rb:28"
         when /SELECT \* FROM posts WHERE user_id = \? ORDER BY created_at DESC LIMIT \?/
           "app/models/user.rb:23"
-        when /SELECT posts\.\*, users\.name FROM posts JOIN users/
-          "app/controllers/home_controller.rb:45"
+        when /SELECT posts\.title, posts\.content, users\.name FROM posts JOIN users/
+          "app/controllers/home_controller.rb:28"
         when /SELECT COUNT\(\*\) FROM comments WHERE post_id = \?/
           "app/models/post.rb:18"
-        when /SELECT \* FROM comments WHERE post_id = \? ORDER BY created_at DESC/
-          "app/controllers/home_controller.rb:67"
+        when /SELECT \* FROM comments WHERE post_id = \? ORDER BY created_at DESC LIMIT \?/
+          "app/controllers/home_controller.rb:45"
         when /INSERT INTO posts/
           "app/models/post.rb:8"
         when /UPDATE posts SET title = \?/
           "app/models/post.rb:35"
         when /DELETE FROM posts WHERE id = \?/
           "app/models/post.rb:42"
-        when /SELECT \* FROM users WHERE email = \?/
+        when /SELECT id, name FROM users WHERE email = \?/
           "app/models/user.rb:31"
+
+        # Problematic queries
+        when /SELECT \* FROM users WHERE id = \?/
+          "app/models/user.rb:18"
+        when /SELECT name FROM users$/
+          "app/controllers/admin_controller.rb:67"
         when /SELECT posts\.\* FROM posts WHERE title LIKE \? OR content LIKE \?/
+          "app/controllers/search_controller.rb:12"
+        when /SELECT \* FROM posts WHERE created_at > \?$/
           "app/controllers/home_controller.rb:89"
-        when /SELECT users\.\*, COUNT\(DISTINCT posts\.id\) as post_count, COUNT\(DISTINCT comments\.id\)/
-          "app/controllers/home_controller.rb:12"
-        when /SELECT \* FROM posts WHERE created_at > \? ORDER BY created_at DESC/
-          "app/models/post.rb:26"
-        when /SELECT COUNT\(\*\) FROM posts WHERE published = \? AND created_at > \?/
-          "app/controllers/home_controller.rb:34"
-        when /SELECT comments\.\*, posts\.title, users\.name FROM comments JOIN posts/
-          "app/controllers/home_controller.rb:78"
+
+        # Very complex queries
+        when /SELECT users\.\* FROM users LEFT JOIN posts.*LEFT JOIN comments.*WHERE.*AND.*OR/
+          "app/controllers/analytics_controller.rb:45"
+        when /SELECT \* FROM users LEFT JOIN posts.*LEFT JOIN comments.*LEFT JOIN tags.*LEFT JOIN categories/
+          "app/controllers/reports_controller.rb:23"
+        when /SELECT users\.\*, posts\.\*, comments\.\*, COUNT\(DISTINCT posts\.id\)/
+          "app/controllers/dashboard_controller.rb:78"
+        when /SELECT \* FROM \(SELECT users\.id.*COUNT\(posts\.id\) as post_count/
+          "app/controllers/analytics_controller.rb:156"
+        when /SELECT DISTINCT users\.\*, posts\.\*, comments\.\* FROM users, posts, comments/
+          "app/controllers/legacy_controller.rb:34"
+
+        # Aggregation heavy queries
+        when /SELECT users\.\*, COUNT\(DISTINCT posts\.id\) as post_count.*SUM\(posts\.view_count\)/
+          "app/controllers/metrics_controller.rb:89"
+
+        # Search queries with issues
+        when /SELECT \* FROM posts WHERE title LIKE \? AND content LIKE \? AND LOWER\(title\)/
+          "app/controllers/advanced_search_controller.rb:45"
+
+        # Problematic update/delete queries
+        when /UPDATE posts SET view_count = view_count \+ 1 WHERE published = \?/
+          "app/models/post.rb:67"
+        when /DELETE FROM comments WHERE created_at < \?/
+          "app/jobs/cleanup_job.rb:23"
+
         else
           "app/models/application_record.rb:12"
         end
@@ -512,4 +576,125 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
 
   puts "Summary generation completed!"
   puts "Generated summaries: #{RailsPulse::Summary.count}"
+
+  # Generate realistic query analysis for some complex queries
+  puts "\nGenerating query analysis data for complex queries..."
+
+  # First, ensure complex queries have operations for analysis
+  puts "Ensuring complex queries have operations..."
+
+  complex_queries_without_ops = created_queries.select do |query|
+    sql = query.normalized_sql
+    # Identify complex queries that should have operations
+    is_complex = sql.include?("SELECT *") ||
+                 (sql.match?(/^SELECT.*FROM/i) && !sql.include?("WHERE")) ||
+                 sql.scan(/\bJOIN\b/i).length > 2 ||
+                 sql.include?("(SELECT") ||
+                 sql.scan(/\bAND\b|\bOR\b/i).length > 3 ||
+                 sql.include?("GROUP BY") ||
+                 sql.include?("HAVING")
+
+    is_complex && !query.operations.exists?
+  end
+
+  puts "  Found #{complex_queries_without_ops.count} complex queries without operations"
+
+  # Create operations for these complex queries
+  analytics_route = created_routes.find { |r| r.path.include?("complex") } || created_routes.first
+
+  complex_queries_without_ops.each do |query|
+    # Create 2-4 operations for each complex query
+    operation_count = rand(2..4)
+
+    operation_count.times do
+      request = RailsPulse::Request.create!(
+        route: analytics_route,
+        duration: rand(300.0..1200.0), # Complex queries are slower
+        status: [ 200, 200, 200, 500 ].sample, # Occasional errors
+        is_error: rand < 0.1, # 10% error rate
+        request_uuid: SecureRandom.uuid,
+        occurred_at: rand(historical_start_time..historical_end_time)
+      )
+
+      RailsPulse::Operation.create!(
+        request: request,
+        query: query,
+        operation_type: "sql",
+        label: query.normalized_sql,
+        duration: rand(100.0..400.0),
+        codebase_location: [
+          "app/controllers/analytics_controller.rb:#{rand(20..80)}",
+          "app/controllers/reports_controller.rb:#{rand(15..60)}",
+          "app/controllers/dashboard_controller.rb:#{rand(25..90)}"
+        ].sample,
+        start_time: rand(0..50),
+        occurred_at: request.occurred_at
+      )
+    end
+    print "."
+  end
+
+  puts "\n  Created operations for #{complex_queries_without_ops.count} complex queries"
+
+  # Select queries that now have operations for analysis
+  complex_queries_for_analysis = RailsPulse::Query.joins(:operations).distinct.limit(20)
+
+  puts "Analyzing #{complex_queries_for_analysis.count} complex queries..."
+
+  analyzed_successfully = 0
+
+  complex_queries_for_analysis.each do |query|
+    begin
+      # Only analyze queries that have operations (remove time restriction for seed data)
+      if query.operations.exists?
+        puts "  Analyzing query #{query.id}: #{query.normalized_sql[0..80]}..."
+        RailsPulse::QueryAnalysisService.analyze_query(query.id)
+        analyzed_successfully += 1
+        print "."
+      else
+        puts "  Skipping query #{query.id}: no operations"
+      end
+    rescue => e
+      puts "  Failed to analyze query #{query.id}: #{e.message}"
+      puts "  Error backtrace: #{e.backtrace.first(3).join('; ')}"
+    end
+  end
+
+  puts "\n  Successfully analyzed: #{analyzed_successfully}"
+
+  analyzed_count = RailsPulse::Query.where.not(analyzed_at: nil).count
+  puts "\n\nQuery analysis completed!"
+  puts "Analyzed queries: #{analyzed_count}"
+  puts "Total issues detected: #{RailsPulse::Query.where.not(issues: [ nil, "[]" ]).count}"
+  puts "Queries with suggestions: #{RailsPulse::Query.where.not(suggestions: [ nil, "[]" ]).count}"
+
+  # Display some example analysis results
+  if analyzed_count > 0
+    puts "\nExample analysis results:"
+    RailsPulse::Query.where.not(analyzed_at: nil).limit(3).each do |analyzed_query|
+      puts "\nQuery: #{analyzed_query.normalized_sql[0..100]}..."
+      if analyzed_query.issues.any?
+        puts "  Issues (#{analyzed_query.issues.count}):"
+        analyzed_query.issues.first(2).each do |issue|
+          puts "    - #{issue['severity'].upcase}: #{issue['description']}"
+        end
+      end
+      if analyzed_query.suggestions.any?
+        puts "  Suggestions (#{analyzed_query.suggestions.count}):"
+        analyzed_query.suggestions.first(2).each do |suggestion|
+          puts "    - #{suggestion['type'].upcase}: #{suggestion['action']}"
+        end
+      end
+    end
+  end
+
+  # Generate summaries for the complex queries we just created operations for
+  puts "\nGenerating summaries for newly created complex query operations..."
+  puts "This ensures complex queries appear on the index page."
+
+  RailsPulse::BackfillSummariesJob.perform_now(historical_start_time, historical_end_time, [ "day" ])
+  RailsPulse::BackfillSummariesJob.perform_now(hourly_start_time, hourly_end_time, [ "hour" ])
+
+  puts "Final summary count: #{RailsPulse::Summary.count}"
+  puts "Queries with summaries: #{RailsPulse::Query.joins(:summaries).distinct.count}"
 end
