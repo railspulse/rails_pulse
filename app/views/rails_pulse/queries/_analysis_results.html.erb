@@ -1,0 +1,87 @@
+<div class="row">
+  <div>
+    <!-- Query Characteristics -->
+    <% if query.query_stats.present? %>
+      <h5>Query Characteristics</h5>
+      <dl class="descriptive-list mbs-4">
+        <dt>Last Analyzed</dt>
+        <dd><%= time_ago_in_words(query.analyzed_at) %></dd>
+        <dt>Query Type</dt>
+        <dd><%= query.query_stats['query_type'] %></dd>
+        <dt>Tables</dt>
+        <dd><%= query.query_stats['table_count'] || 0 %></dd>
+        <dt>Joins</dt>
+        <dd><%= query.query_stats['join_count'] || 0 %></dd>
+        <dt>Complexity Score</dt>
+        <dd><%= query.query_stats['estimated_complexity'] || 0 %></dd>
+        <dt>Has LIMIT</dt>
+        <dd><%= query.query_stats['has_limit'] ? 'Yes' : 'No' %></dd>
+        <dt>Has ORDER BY</dt>
+        <dd><%= query.query_stats['has_order_by'] ? 'Yes' : 'No' %></dd>
+        <dt>Has GROUP BY</dt>
+        <dd><%= query.query_stats['has_group_by'] ? 'Yes' : 'No' %></dd>
+        <dt>Has Subqueries</dt>
+        <dd><%= query.query_stats['has_subqueries'] ? 'Yes' : 'No' %></dd>
+      </dl>
+    <% end %>
+  </div>
+
+  <div>
+    <!-- Execution Analysis -->
+    <% if query.backtrace_analysis.present? %>
+      <h5>Execution Analysis</h5>
+      <dl class="descriptive-list mbs-4">
+        <dt>Total Executions</dt>
+        <dd><%= query.backtrace_analysis['total_executions'] || 0 %></dd>
+        <dt>Unique Locations</dt>
+        <dd><%= query.backtrace_analysis['unique_locations'] || 0 %></dd>
+        <dt>Execution Frequency</dt>
+        <dd><%= query.backtrace_analysis['execution_frequency'] || 0 %>/hour</dd>
+        <dt>Most Common Location</dt>
+        <dd><code><%= query.backtrace_analysis['most_common_location']['location'] || 'N/A' %></code></dd>
+        <dt>N+1 Pattern Detected</dt>
+        <dd>
+          <% if query.backtrace_analysis['potential_n_plus_one'] %>
+            Yes
+          <% else %>
+            No
+          <% end %>
+        </dd>
+      </dl>
+    <% end %>
+  </div>
+</div>
+
+<!-- Issues Summary -->
+<% if query.issues.present? && query.issues.any? %>
+  <div class="panel panel--danger mb-4">
+    <h3 class="text-lg bold mb-3">Issues Detected</h3>
+    <ul>
+      <% query.issues.each do |issue| %>
+        <li><%= issue['description'] %></li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
+
+<!-- Suggestions -->
+<% if query.suggestions.present? && query.suggestions.any? %>
+  <div class="panel panel--info mb-4">
+    <h3 class="text-lg bold mb-3">Optimization Suggestions</h3>
+    <ul>
+      <% query.suggestions.each do |suggestion| %>
+        <li>
+          <%= suggestion['action'] %>.
+          <%= suggestion['benefit'] if suggestion['benefit'].present? %>
+        </li>
+      <% end %>
+    </ul>
+  </div>
+<% end %>
+
+<!-- EXPLAIN Plan -->
+<% if query.explain_plan.present? %>
+  <%= render 'rails_pulse/components/panel', title: 'Execution Plan' do %>
+    <pre class="text-sm"><%= query.explain_plan %></pre>
+  <% end %>
+<% end %>

@@ -1,20 +1,39 @@
 namespace :db do
   namespace :schema do
-    desc "Load Rails Pulse schema"
+    desc "Load Rails Pulse schema (for separate database setup only)"
     task load_rails_pulse: :environment do
       schema_file = Rails.root.join("db/rails_pulse_schema.rb")
-      if schema_file.exist?
-        load schema_file
-        puts "Rails Pulse schema loaded successfully"
+
+      # Only load schema if using separate database setup
+      if separate_database_setup?
+        if schema_file.exist?
+          load schema_file
+          puts "Rails Pulse schema loaded successfully"
+        else
+          puts "Rails Pulse schema file not found. Run: rails generate rails_pulse:install --database=separate"
+        end
       else
-        puts "Rails Pulse schema file not found. Run: rails generate rails_pulse:install"
+        puts "Single database setup detected. Rails Pulse tables managed via regular migrations."
       end
     end
   end
 
-  # Hook into common database tasks to load schema
-  task prepare: "schema:load_rails_pulse"
-  task setup: "schema:load_rails_pulse"
+  # Hook into common database tasks only for separate database setup
+  task prepare: :environment do
+    Rake::Task["db:schema:load_rails_pulse"].invoke if separate_database_setup?
+  end
+
+  task setup: :environment do
+    Rake::Task["db:schema:load_rails_pulse"].invoke if separate_database_setup?
+  end
+end
+
+# Helper function to detect database setup type
+def separate_database_setup?
+  # Check if there's a rails_pulse_migrate directory (indicates separate database)
+  Rails.root.join("db/rails_pulse_migrate").exist? ||
+  # Check if database.yml has rails_pulse configuration
+  (Rails.application.config.database_configuration.dig(Rails.env, "rails_pulse").present?)
 end
 
 namespace :rails_pulse do

@@ -2,7 +2,7 @@ module RailsPulse
   class QueriesController < ApplicationController
     include ChartTableConcern
 
-    before_action :set_query, only: :show
+    before_action :set_query, only: [ :show, :analyze ]
 
     def index
       setup_metric_cards
@@ -12,6 +12,40 @@ module RailsPulse
     def show
       setup_metric_cards
       setup_chart_and_table_data
+    end
+
+    def analyze
+      begin
+        @analysis_results = QueryAnalysisService.analyze_query(@query.id)
+
+        respond_to do |format|
+          format.turbo_stream {
+            render turbo_stream: turbo_stream.replace(
+              "query_analysis",
+              partial: "rails_pulse/queries/analysis_section",
+              locals: { query: @query.reload }
+            )
+          }
+          format.html {
+            redirect_to query_path(@query), notice: "Query analysis completed successfully."
+          }
+        end
+      rescue => e
+        Rails.logger.error("[QueryAnalysis] Analysis failed for query #{@query.id}: #{e.message}")
+
+        respond_to do |format|
+          format.turbo_stream {
+            render turbo_stream: turbo_stream.replace(
+              "query_analysis",
+              partial: "rails_pulse/queries/analysis_section",
+              locals: { query: @query, error_message: "Analysis failed: #{e.message}" }
+            )
+          }
+          format.html {
+            redirect_to query_path(@query), alert: "Query analysis failed: #{e.message}"
+          }
+        end
+      end
     end
 
     private

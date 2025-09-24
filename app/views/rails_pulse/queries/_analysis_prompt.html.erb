@@ -1,0 +1,27 @@
+<div class="center py-4">
+  <h3 class="text-lg mb-2">Analyze Query Performance</h3>
+  <p class="mb-4">
+    Get detailed insights about this query's performance, potential issues, and optimization suggestions.
+  </p>
+
+  <% if query.has_recent_operations? %>
+    <%= button_to analyze_query_path(query), method: :post,
+        data: { turbo_frame: "query_analysis" },
+        class: "btn btn--primary" do %>
+      Analyze Query
+    <% end %>
+
+    <p class="text-sm mt-2">
+      Analysis will examine recent executions and provide performance insights.
+    </p>
+  <% else %>
+    <div class="badge badge--warning p-3 mt-3">
+      <div>
+        <h4 class="text-sm bold">No Recent Data Available</h4>
+        <p class="text-sm mt-1">
+          This query hasn't been executed recently. Analysis requires recent execution data to provide meaningful insights.
+        </p>
+      </div>
+    </div>
+  <% end %>
+</div>
