@@ -7,6 +7,58 @@ require "dotenv/load" if File.exist?(".env")
 APP_RAKEFILE = File.expand_path("test/dummy/Rakefile", __dir__)
 load "rails/tasks/engine.rake"
 
+desc "Setup database for testing"
+task :test_setup do
+  database = ENV['DB'] || 'sqlite3'
+
+  puts "\n" + "=" * 50
+  puts "🛠️  Rails Pulse Test Setup"
+  puts "=" * 50
+  puts "Database: #{database.upcase}"
+  puts "=" * 50
+  puts
+
+  begin
+    # Remove schema.rb to ensure clean migration
+    schema_file = "test/dummy/db/schema.rb"
+    if File.exist?(schema_file)
+      puts "🧹 Removing existing schema.rb file..."
+      File.delete(schema_file)
+    end
+
+    case database.downcase
+    when 'sqlite3', 'sqlite'
+      puts "📦 Setting up SQLite database..."
+      sh "RAILS_ENV=test bin/rails db:drop db:create db:migrate"
+
+    when 'mysql2', 'mysql'
+      puts "🐬 Setting up MySQL database..."
+      sh "DB=mysql2 RAILS_ENV=test rails db:drop db:create db:migrate"
+
+    when 'postgresql', 'postgres'
+      puts "🐘 Setting up PostgreSQL database..."
+      sh "DB=postgresql RAILS_ENV=test rails db:drop db:create db:migrate"
+
+    else
+      puts "⚠️  Unknown database: #{database}"
+      puts "Supported databases: sqlite3, mysql2, postgresql"
+      exit 1
+    end
+
+    puts "\n✅ Database setup complete!"
+    puts "Ready to run: rake test"
+
+  rescue => e
+    puts "\n❌ Database setup failed!"
+    puts "Error: #{e.message}"
+    puts "\nTroubleshooting:"
+    puts "• Ensure #{database} is installed and running"
+    puts "• Check database credentials in test/dummy/config/database.yml"
+    puts "• Verify RAILS_ENV=test environment is configured"
+    exit 1
+  end
+end
+
 desc "Run test suite"
 task :test do
   database = ENV['DB'] || 'sqlite3'
@@ -36,6 +88,46 @@ task :test do
   sh "rails test test/controllers test/helpers test/instrumentation test/models test/services"
 end
 
+desc "Setup database for specific Rails version and database"
+task :test_setup_for_version, [:database, :rails_version] do |t, args|
+  database = args[:database] || ENV['DB'] || 'sqlite3'
+  rails_version = args[:rails_version] || 'rails-8-0'
+
+  puts "\n" + "=" * 50
+  puts "🛠️  Rails Pulse Test Setup"
+  puts "=" * 50
+  puts "Database: #{database.upcase}"
+  puts "Rails: #{rails_version.upcase.gsub('-', ' ')}"
+  puts "=" * 50
+  puts
+
+  begin
+    # Remove schema.rb to ensure clean migration
+    schema_file = "test/dummy/db/schema.rb"
+    if File.exist?(schema_file)
+      puts "🧹 Removing existing schema.rb file..."
+      File.delete(schema_file)
+    end
+
+    if rails_version == "rails-8-0" && database == "sqlite3"
+      # Use current default setup
+      puts "📦 Setting up #{database.upcase} database with Rails 8.0..."
+      sh "RAILS_ENV=test bin/rails db:drop db:create db:migrate"
+    else
+      # Use appraisal with specific database and Rails version
+      puts "📦 Setting up #{database.upcase} database with #{rails_version.upcase.gsub('-', ' ')}..."
+      sh "DB=#{database} bundle exec appraisal #{rails_version} rails db:drop db:create db:migrate RAILS_ENV=test"
+    end
+
+    puts "\n✅ Database setup complete for #{database.upcase} + #{rails_version.upcase.gsub('-', ' ')}!"
+
+  rescue => e
+    puts "\n❌ Database setup failed!"
+    puts "Error: #{e.message}"
+    exit 1
+  end
+end
+
 desc "Test all database and Rails version combinations"
 task :test_matrix do
   databases = %w[sqlite3 postgresql mysql2]
@@ -59,6 +151,11 @@ task :test_matrix do
       puts "-" * 50
 
       begin
+        # First setup the database for this specific combination
+        Rake::Task[:test_setup_for_version].reenable
+        Rake::Task[:test_setup_for_version].invoke(database, rails_version)
+
+        # Then run the tests
         if rails_version == "rails-8-0" && database == "sqlite3"
           # Current default setup
           sh "bundle exec rake test"
