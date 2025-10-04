@@ -1,0 +1,29 @@
+api_users:
+  method: "GET"
+  path: "/api/users"
+  created_at: <%= 2.days.ago %>
+  updated_at: <%= 2.days.ago %>
+
+api_posts:
+  method: "POST"
+  path: "/api/posts"
+  created_at: <%= 2.days.ago %>
+  updated_at: <%= 2.days.ago %>
+
+api_test:
+  method: "GET"
+  path: "/api/test"
+  created_at: <%= 1.day.ago %>
+  updated_at: <%= 1.day.ago %>
+
+api_other:
+  method: "POST"
+  path: "/api/other"
+  created_at: <%= 1.day.ago %>
+  updated_at: <%= 1.day.ago %>
+
+api_cleanup:
+  method: "DELETE"
+  path: "/api/cleanup"
+  created_at: <%= 6.hours.ago %>
+  updated_at: <%= 6.hours.ago %>

@@ -1,0 +1,14 @@
+select_users:
+  normalized_sql: "SELECT * FROM users WHERE id = ?"
+  created_at: <%= 2.days.ago %>
+  updated_at: <%= 2.days.ago %>
+
+select_posts:
+  normalized_sql: "SELECT * FROM posts WHERE id = ?"
+  created_at: <%= 1.day.ago %>
+  updated_at: <%= 1.day.ago %>
+
+select_test:
+  normalized_sql: "SELECT * FROM test WHERE id = ?"
+  created_at: <%= 6.hours.ago %>
+  updated_at: <%= 6.hours.ago %>

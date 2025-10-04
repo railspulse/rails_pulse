@@ -1,8 +1,0 @@
-select_users:
-  normalized_sql: "SELECT * FROM users WHERE id = ?"
-
-select_posts:
-  normalized_sql: "SELECT * FROM posts WHERE id = ?"
-
-select_test:
-  normalized_sql: "SELECT * FROM test WHERE id = ?"

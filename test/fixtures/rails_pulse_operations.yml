@@ -1,0 +1,43 @@
+sql_operation_1:
+  request: users_request_1 (RailsPulse::Request)
+  query: select_users (RailsPulse::Query)
+  operation_type: "sql"
+  label: "SELECT * FROM users WHERE id = ?"
+  duration: 45.0
+  codebase_location: "app/models/user.rb:25"
+  start_time: 10.0
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>
+
+controller_operation_1:
+  request: users_request_1 (RailsPulse::Request)
+  operation_type: "controller"
+  label: "UsersController#index"
+  duration: 25.0
+  start_time: 5.0
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>
+
+template_operation_1:
+  request: users_request_2 (RailsPulse::Request)
+  operation_type: "template"
+  label: "render users/index.html.erb"
+  duration: 25.0
+  start_time: 75.0
+  occurred_at: <%= Time.current - 2.hours %>
+  created_at: <%= Time.current - 2.hours %>
+  updated_at: <%= Time.current - 2.hours %>
+
+sql_operation_2:
+  request: posts_request (RailsPulse::Request)
+  query: select_posts (RailsPulse::Query)
+  operation_type: "sql"
+  label: "SELECT * FROM posts WHERE id = ?"
+  duration: 35.0
+  codebase_location: "app/models/post.rb:15"
+  start_time: 8.0
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>
