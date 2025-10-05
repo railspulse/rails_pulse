@@ -25,8 +25,29 @@ class ActiveSupport::TestCase
   # Use Rails' built-in transactional cleanup
   self.use_transactional_tests = true
 
+  # Configure fixture paths for Rails engine
+  self.fixture_paths = [ File.join(File.dirname(__FILE__), "fixtures") ]
+
   # Load all fixtures for faster test execution
   fixtures :all
+
+  # Dynamically configure fixture class names for all Rails engine models
+  Dir[File.join(File.dirname(__FILE__), "fixtures", "rails_pulse_*.yml")].each do |fixture_file|
+    table_name = File.basename(fixture_file, ".yml")
+
+    # Convert rails_pulse_routes -> RailsPulse::Route
+    # Handle both single words and compound words correctly
+    class_name = table_name.sub(/^rails_pulse_/, "").classify
+    namespaced_class = "RailsPulse::#{class_name}"
+
+    begin
+      model_class = namespaced_class.constantize
+      set_fixture_class table_name.to_sym => model_class
+    rescue NameError => e
+      # Skip if model class doesn't exist yet (useful during development)
+      Rails.logger&.warn "Could not find model class #{namespaced_class} for fixture #{table_name}"
+    end
+  end
 
   # Configure Shoulda Matchers
   Shoulda::Matchers.configure do |config|

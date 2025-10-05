@@ -29,17 +29,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
   end
 
   test "should be valid with required attributes" do
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    request = RailsPulse::Request.create!(route: route, duration: 150.5, status: 200, request_uuid: "test-uuid", controller_action: "UsersController#index", occurred_at: 1.hour.ago)
-    operation = RailsPulse::Operation.create!(
-      request: request,
-      operation_type: "sql",
-      label: "SELECT * FROM users WHERE id = ?",
-      duration: 45.0,
-      start_time: 10.0,
-      codebase_location: "app/models/user.rb:25",
-      occurred_at: 1.hour.ago
-    )
+    operation = rails_pulse_operations(:sql_operation_1)
 
     assert_predicate operation, :valid?
   end
@@ -63,11 +53,8 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
   end
 
   test "should have by_type scope" do
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    request = RailsPulse::Request.create!(route: route, duration: 150.5, status: 200, request_uuid: "test-uuid", controller_action: "UsersController#index", occurred_at: 1.hour.ago)
-
-    sql_operation = RailsPulse::Operation.create!(request: request, operation_type: "sql", label: "SELECT * FROM users", duration: 45.0, start_time: 10.0, occurred_at: 1.hour.ago)
-    controller_operation = RailsPulse::Operation.create!(request: request, operation_type: "controller", label: "UsersController#index", duration: 25.0, start_time: 5.0, occurred_at: 1.hour.ago)
+    sql_operation = rails_pulse_operations(:sql_operation_1)
+    controller_operation = rails_pulse_operations(:controller_operation_1)
 
     sql_operations = RailsPulse::Operation.by_type("sql")
 
@@ -76,16 +63,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
   end
 
   test "should associate query for sql operations" do
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    request = RailsPulse::Request.create!(route: route, duration: 150.5, status: 200, request_uuid: "test-uuid", controller_action: "UsersController#index", occurred_at: 1.hour.ago)
-    operation = RailsPulse::Operation.create!(
-      request: request,
-      operation_type: "sql",
-      label: "SELECT * FROM users WHERE id = ?",
-      duration: 45.0,
-      start_time: 10.0,
-      occurred_at: 1.hour.ago
-    )
+    operation = rails_pulse_operations(:sql_operation_1)
 
     assert_not_nil operation.query
     assert_instance_of RailsPulse::Query, operation.query
@@ -93,32 +71,73 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
   end
 
   test "should not associate query for non-sql operations" do
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    request = RailsPulse::Request.create!(route: route, duration: 150.5, status: 200, request_uuid: "test-uuid", controller_action: "UsersController#index", occurred_at: 1.hour.ago)
-    operation = RailsPulse::Operation.create!(
-      request: request,
-      operation_type: "template",
-      label: "render users/index.html.erb",
-      duration: 25.0,
-      start_time: 75.0,
-      occurred_at: 1.hour.ago
-    )
+    operation = rails_pulse_operations(:template_operation_1)
 
     assert_nil operation.query
   end
 
   test "should return id as string representation" do
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    request = RailsPulse::Request.create!(route: route, duration: 150.5, status: 200, request_uuid: "test-uuid", controller_action: "UsersController#index", occurred_at: 1.hour.ago)
-    operation = RailsPulse::Operation.create!(
-      request: request,
-      operation_type: "sql",
-      label: "SELECT * FROM users WHERE id = ?",
-      duration: 45.0,
-      start_time: 10.0,
-      occurred_at: 1.hour.ago
-    )
+    operation = rails_pulse_operations(:sql_operation_1)
 
     assert_equal operation.id, operation.to_s
+  end
+
+  test "should load fixture data correctly" do
+    # Test that we can access fixture operations
+    sql_op = rails_pulse_operations(:sql_operation_1)
+    controller_op = rails_pulse_operations(:controller_operation_1)
+    template_op = rails_pulse_operations(:template_operation_1)
+    sql_op_2 = rails_pulse_operations(:sql_operation_2)
+
+    # Verify we loaded 4 operations from fixtures
+    assert_not_nil sql_op
+    assert_not_nil controller_op
+    assert_not_nil template_op
+    assert_not_nil sql_op_2
+
+    # Verify operation types match
+    assert_equal "sql", sql_op.operation_type
+    assert_equal "controller", controller_op.operation_type
+    assert_equal "template", template_op.operation_type
+    assert_equal "sql", sql_op_2.operation_type
+
+    # Verify labels match
+    assert_equal "SELECT * FROM users WHERE id = ?", sql_op.label
+    assert_equal "UsersController#index", controller_op.label
+    assert_equal "render users/index.html.erb", template_op.label
+    assert_equal "SELECT * FROM posts WHERE id = ?", sql_op_2.label
+
+    # Verify durations match
+    assert_in_delta(45.0, sql_op.duration)
+    assert_in_delta(25.0, controller_op.duration)
+    assert_in_delta(25.0, template_op.duration)
+    assert_in_delta(35.0, sql_op_2.duration)
+
+    # Verify associations work (sql operations should have queries)
+    assert_not_nil sql_op.query
+    assert_nil controller_op.query
+    assert_nil template_op.query
+    assert_not_nil sql_op_2.query
+
+    # Verify query associations point to correct fixture queries
+    assert_equal "SELECT * FROM users WHERE id = ?", sql_op.query.normalized_sql
+    assert_equal "SELECT * FROM posts WHERE id = ?", sql_op_2.query.normalized_sql
+
+    # Verify we have exactly 4 operations total
+    assert_equal 4, RailsPulse::Operation.count
+
+    # Test that we can access other fixture types
+    route = rails_pulse_routes(:api_users)
+    request = rails_pulse_requests(:users_request_1)
+    query = rails_pulse_queries(:select_users)
+
+    assert_not_nil route
+    assert_not_nil request
+    assert_not_nil query
+
+    # Verify associations between fixtures work
+    assert_equal route, request.route
+    assert_equal query, sql_op.query
+    assert_equal request, sql_op.request
   end
 end

@@ -1,5 +1,9 @@
 # Abstract base class - doesn't run tests itself
+require_relative "shared_test_data"
+
 class SharedIndexPageTest < ApplicationSystemTestCase
+  include SharedTestData
+
   # Don't run tests for this base class
   def self.runnable_methods
     return [] if name == "SharedIndexPageTest"
@@ -8,12 +12,13 @@ class SharedIndexPageTest < ApplicationSystemTestCase
 
   def setup
     super
+    load_shared_test_data
     create_comprehensive_test_data
   end
 
   def create_comprehensive_test_data
-    # Override in subclasses
-    raise NotImplementedError, "Subclass must implement create_comprehensive_test_data"
+    # Override in subclasses for any additional test-specific data
+    # Base shared data is already loaded via load_shared_test_data
   end
 
   # Override these methods in subclasses

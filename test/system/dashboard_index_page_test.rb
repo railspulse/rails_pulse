@@ -1,9 +1,11 @@
 require "test_helper"
 
 class DashboardIndexPageTest < ApplicationSystemTestCase
+  include SharedTestData
+
   def setup
     super
-    create_comprehensive_test_data
+    load_shared_test_data
     create_summary_data_for_dashboard
   end
 
@@ -172,79 +174,6 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
   end
 
 
-  def create_comprehensive_test_data
-    # Create routes
-    route1 = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    route2 = RailsPulse::Route.create!(method: "POST", path: "/api/posts")
-    route3 = RailsPulse::Route.create!(method: "GET", path: "/api/test")
-
-    # Create queries
-    query1 = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
-    query2 = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM posts WHERE id = ?")
-
-    # Create requests with varying performance
-    request1 = RailsPulse::Request.create!(
-      route: route1,
-      duration: 150.5,
-      status: 200,
-      is_error: false,
-      request_uuid: "test-uuid-1",
-      controller_action: "UsersController#index",
-      occurred_at: 1.hour.ago
-    )
-
-    request2 = RailsPulse::Request.create!(
-      route: route1,
-      duration: 250.0,
-      status: 200,
-      is_error: false,
-      request_uuid: "test-uuid-2",
-      controller_action: "UsersController#show",
-      occurred_at: 2.hours.ago
-    )
-
-    request3 = RailsPulse::Request.create!(
-      route: route2,
-      duration: 180.0,
-      status: 201,
-      is_error: false,
-      request_uuid: "test-uuid-3",
-      controller_action: "PostsController#create",
-      occurred_at: 1.hour.ago
-    )
-
-    # Create operations
-    RailsPulse::Operation.create!(
-      request: request1,
-      query: query1,
-      operation_type: "sql",
-      label: "SELECT * FROM users WHERE id = ?",
-      duration: 45.0,
-      start_time: 10.0,
-      codebase_location: "app/models/user.rb:25",
-      occurred_at: 1.hour.ago
-    )
-
-    RailsPulse::Operation.create!(
-      request: request1,
-      operation_type: "controller",
-      label: "UsersController#index",
-      duration: 25.0,
-      start_time: 5.0,
-      occurred_at: 1.hour.ago
-    )
-
-    RailsPulse::Operation.create!(
-      request: request3,
-      query: query2,
-      operation_type: "sql",
-      label: "SELECT * FROM posts WHERE id = ?",
-      duration: 35.0,
-      start_time: 8.0,
-      codebase_location: "app/models/post.rb:15",
-      occurred_at: 1.hour.ago
-    )
-  end
 
   def create_summary_data_for_dashboard
     # Create summary data for recent time periods using the test data
@@ -268,6 +197,7 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     # For now, just verify the chart container exists
     # In a real implementation, you might check JavaScript-rendered chart data
     chart_element = find(chart_selector)
-    assert chart_element.present?, "#{data_type} chart should be present"
+
+    assert_predicate chart_element, :present?, "#{data_type} chart should be present"
   end
 end

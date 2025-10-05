@@ -89,7 +89,7 @@ task :test do
 end
 
 desc "Setup database for specific Rails version and database"
-task :test_setup_for_version, [:database, :rails_version] do |t, args|
+task :test_setup_for_version, [ :database, :rails_version ] do |t, args|
   database = args[:database] || ENV['DB'] || 'sqlite3'
   rails_version = args[:rails_version] || 'rails-8-0'
 

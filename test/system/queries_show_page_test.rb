@@ -7,7 +7,7 @@ class QueriesShowPageTest < SharedIndexPageTest
   end
 
   def target_query
-    @target_query ||= @slow_queries&.first
+    @target_query ||= @complex_query
   end
 
   def page_type
@@ -26,33 +26,35 @@ class QueriesShowPageTest < SharedIndexPageTest
   end
 
   def all_test_data
-    # Only operations for the target query
-    @target_query_operations || []
+    # Only operations for the target query from shared data
+    target_query.operations.to_a
   end
 
   def default_scope_data
-    @target_query_operations || []
+    target_query.operations.to_a
   end
 
   def last_week_data
-    (@target_query_operations || []) + (@last_week_operations || [])
+    target_query.operations.to_a
   end
 
   def last_month_data
-    (@target_query_operations || []) + (@last_week_operations || []) + (@last_month_operations || [])
+    target_query.operations.to_a
   end
 
   def slow_performance_data
+    # Operations with slow duration (≥ 100ms)
     (all_test_data).select { |operation| operation.duration >= 100 }
   end
 
   def critical_performance_data
+    # Operations with critical duration (≥ 1000ms)
     (all_test_data).select { |operation| operation.duration >= 1000 }
   end
 
   def zoomed_data
     # Operations in the zoom time range (recent activity)
-    (@target_query_operations || []).select { |operation| operation.occurred_at >= 2.5.hours.ago }
+    target_query.operations.where("occurred_at >= ?", 2.5.hours.ago).to_a
   end
 
   def metric_card_selectors
@@ -176,56 +178,40 @@ class QueriesShowPageTest < SharedIndexPageTest
     assert_no_selector "table tbody tr"
   end
 
-  private
+  # Query show specific test
+  def test_query_details_are_displayed
+    visit_rails_pulse_path page_path
 
-  def query_test_column_sorting(column_config)
-    column_name = column_config[:name]
-    column_index = column_config[:index]
-    value_extractor = column_config[:value_extractor] || ->(text) { text.gsub(/[^\d.]/, "").to_f }
+    # Verify query-specific information is displayed
+    assert_text target_query.normalized_sql
 
-    first(:link, column_name).click
+    # Verify operations table shows only operations for this query
+    within("turbo-frame#index_table") do
+      assert_selector "table tbody tr", minimum: 1
 
-    assert_selector "table tbody tr", wait: 3
-
-    # Verify sort order by comparing first two rows (skip for SQLite if insufficient data)
-    rows = all("tbody tr")
-    if rows.length < 2 && ENV["DB"] == "sqlite"
-      # SQLite test data might have insufficient rows for sorting comparison
-      assert_operator rows.length, :>, 0, "Should have at least one row for #{column_name} sorting"
-      return
+      # Verify all visible operations are for this query
+      within "table tbody" do
+        # Since this is a show page for a specific query, we don't need to verify query info in table
+        # Instead verify that we have operation data displayed
+        assert_selector "tr", minimum: 1
+      end
     end
-
-    first_row_value = page.find("tbody tr:first-child td:nth-child(#{column_index})").text
-    second_row_value = page.find("tbody tr:nth-child(2) td:nth-child(#{column_index})").text
-
-    first_value = value_extractor.call(first_row_value)
-    second_value = value_extractor.call(second_row_value)
-
-    # The sorting could be ascending or descending, just verify it's actually sorted
-    is_ascending = first_value <= second_value
-    is_descending = first_value >= second_value
-
-    assert(is_ascending || is_descending,
-           "Rows should be sorted by #{column_name}: #{first_value} vs #{second_value}")
-
-    # Test sorting by clicking the same column again (should toggle sort direction)
-    first(:link, column_name).click
-
-    assert_selector "table tbody tr", wait: 3
-
-    # Get new values after re-sorting
-    new_first_value = value_extractor.call(page.find("tbody tr:first-child td:nth-child(#{column_index})").text)
-    new_second_value = value_extractor.call(page.find("tbody tr:nth-child(2) td:nth-child(#{column_index})").text)
-
-    # Verify the sort direction changed or at least table is still sorted
-    new_is_ascending = new_first_value <= new_second_value
-    new_is_descending = new_first_value >= new_second_value
-
-    assert(new_is_ascending || new_is_descending,
-           "Rows should still be sorted after toggling: #{new_first_value} vs #{new_second_value}")
   end
 
-  public
+  # Test operation-specific sortable columns
+  def test_operation_sortable_columns_work
+    visit_rails_pulse_path page_path
+
+    # Wait for table to load
+    within("turbo-frame#index_table") do
+      assert_selector "table tbody tr", wait: 5
+    end
+
+    # The queries show table only has Occurred At and Duration columns, so test those
+    # The shared tests will handle the basic sortable columns (Duration, Occurred At)
+    # This test verifies we can access the table without errors
+    assert true, "Operation sortable columns accessible"
+  end
 
   # Override table validation for query show page since it has different column layout
   def validate_table_data(page_type:, expected_data: nil, filter_applied: nil)
@@ -354,175 +340,95 @@ class QueriesShowPageTest < SharedIndexPageTest
     assert_operator re_sorted_rows.length, :>, 0, "Table should have data after column selection and re-sorting"
   end
 
-  # Query show specific test
-  def test_query_details_are_displayed
-    visit_rails_pulse_path page_path
-
-    # Verify query-specific information is displayed
-    assert_text target_query.normalized_sql
-
-    # Verify operations table shows only operations for this query
-    within("turbo-frame#index_table") do
-      assert_selector "table tbody tr", minimum: 1
-
-      # Verify all visible operations are for this query
-      within "table tbody" do
-        # Since this is a show page for a specific query, we don't need to verify query info in table
-        # Instead verify that we have operation data displayed
-        assert_selector "tr", minimum: 1
-      end
-    end
-  end
-
-  # Test operation-specific sortable columns
-  def test_operation_sortable_columns_work
-    visit_rails_pulse_path page_path
-
-    # Wait for table to load
-    within("turbo-frame#index_table") do
-      assert_selector "table tbody tr", wait: 5
-    end
-
-    # The queries show table only has Occurred At and Duration columns, so test those
-    # The shared tests will handle the basic sortable columns (Duration, Occurred At)
-    # This test verifies we can access the table without errors
-    assert true, "Operation sortable columns accessible"
-  end
-
   private
 
+  def query_test_column_sorting(column_config)
+    column_name = column_config[:name]
+    column_index = column_config[:index]
+    value_extractor = column_config[:value_extractor] || ->(text) { text.gsub(/[^\d.]/, "").to_f }
+
+    first(:link, column_name).click
+
+    assert_selector "table tbody tr", wait: 3
+
+    # Verify sort order by comparing first two rows (skip for SQLite if insufficient data)
+    rows = all("tbody tr")
+    if rows.length < 2 && ENV["DB"] == "sqlite"
+      # SQLite test data might have insufficient rows for sorting comparison
+      assert_operator rows.length, :>, 0, "Should have at least one row for #{column_name} sorting"
+      return
+    end
+
+    first_row_value = page.find("tbody tr:first-child td:nth-child(#{column_index})").text
+    second_row_value = page.find("tbody tr:nth-child(2) td:nth-child(#{column_index})").text
+
+    first_value = value_extractor.call(first_row_value)
+    second_value = value_extractor.call(second_row_value)
+
+    # The sorting could be ascending or descending, just verify it's actually sorted
+    is_ascending = first_value <= second_value
+    is_descending = first_value >= second_value
+
+    assert(is_ascending || is_descending,
+           "Rows should be sorted by #{column_name}: #{first_value} vs #{second_value}")
+
+    # Test sorting by clicking the same column again (should toggle sort direction)
+    first(:link, column_name).click
+
+    assert_selector "table tbody tr", wait: 3
+
+    # Get new values after re-sorting
+    new_first_value = value_extractor.call(page.find("tbody tr:first-child td:nth-child(#{column_index})").text)
+    new_second_value = value_extractor.call(page.find("tbody tr:nth-child(2) td:nth-child(#{column_index})").text)
+
+    # Verify the sort direction changed or at least table is still sorted
+    new_is_ascending = new_first_value <= new_second_value
+    new_is_descending = new_first_value >= new_second_value
+
+    assert(new_is_ascending || new_is_descending,
+           "Rows should still be sorted after toggling: #{new_first_value} vs #{new_second_value}")
+  end
+
   def create_comprehensive_test_data
-    # Create queries with predictable performance characteristics
-    create_performance_categorized_queries
-
-    # Create operations with specific performance patterns for our target query
-    create_performance_categorized_operations_for_target_query
-
-    # Create Summary data needed for query show page
+    # Create additional operations with varying performance for testing filters
+    create_additional_query_operations
     create_summary_data_for_query_show
   end
 
-  def create_performance_categorized_queries
-    # Query thresholds: fast < 100ms, slow 100-499ms, very_slow 500-999ms, critical ≥ 1000ms
-    @fast_queries = [
-      create(:query, :select_query, normalized_sql: "SELECT id FROM users WHERE id = ?"),
-      create(:query, :select_query, normalized_sql: "SELECT name FROM categories WHERE active = ?"),
-      create(:query, :select_query, normalized_sql: "SELECT COUNT(*) FROM sessions WHERE user_id = ?")
-    ]
+  def create_additional_query_operations
+    # Add some additional operations with different performance characteristics
+    # to test the performance filters
 
-    @slow_queries = [
-      create(:query, :complex_query, normalized_sql: "SELECT u.*, p.* FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.active = ?"),
-      create(:query, :select_query, normalized_sql: "SELECT * FROM orders o JOIN users u ON o.user_id = u.id WHERE o.status = ?")
-    ]
-
-    @very_slow_queries = [
-      create(:query, :complex_query, normalized_sql: "SELECT COUNT(*) FROM posts p JOIN comments c ON p.id = c.post_id GROUP BY p.category_id HAVING COUNT(*) > ?"),
-      create(:query, :complex_query, normalized_sql: "SELECT AVG(rating) FROM reviews r JOIN products p ON r.product_id = p.id WHERE p.category IN (?)")
-    ]
-
-    @critical_queries = [
-      create(:query, :complex_query, normalized_sql: "SELECT * FROM audit_logs WHERE created_at BETWEEN ? AND ? ORDER BY created_at")
-    ]
-  end
-
-  def create_performance_categorized_operations_for_target_query
-    # Focus on creating varied operations for our target query
-    @target_query_operations = []
-
-    # Create operations with varied performance for the target query
-    # Recent operations (will appear in zoomed view)
-    12.times do |i|
-      duration = [ 150, 200, 250, 300, 400 ].sample + rand(50)
-      operation = create(:operation,
-        query: target_query,
-        duration: duration,
-        occurred_at: 2.hours.ago + (i * 5).minutes,
-        operation_type: "sql",
-        label: target_query.normalized_sql,
-        request: create(:request,
-          route: create(:route, path: "/test/query/#{target_query.id}/#{i}", method: "GET"),
-          duration: duration + rand(100),
-          occurred_at: 2.hours.ago + (i * 5).minutes
-        )
-      )
-      @target_query_operations << operation
-    end
-
-    # Add a few critical operations (≥ 1000ms)
+    # Add some slow operations (≥ 100ms)
     3.times do |i|
-      duration = [ 1100, 1500, 2000 ].sample + rand(500)
-      operation = create(:operation,
+      RailsPulse::Operation.create!(
         query: target_query,
-        duration: duration,
-        occurred_at: 2.hours.ago + (i * 8).minutes,
+        duration: 150 + (i * 25),
+        occurred_at: 2.hours.ago + (i * 15).minutes,
         operation_type: "sql",
         label: target_query.normalized_sql,
-        request: create(:request,
-          route: create(:route, path: "/test/critical/#{target_query.id}/#{i}", method: "GET"),
-          duration: duration + rand(200),
-          occurred_at: 2.hours.ago + (i * 8).minutes
-        )
+        request: @users_request_1
       )
-      @target_query_operations << operation
     end
 
-    # Last week operations
-    @last_week_operations = []
-    8.times do |i|
-      duration = [ 120, 180, 220, 280 ].sample + rand(50)
-      operation = create(:operation,
-        query: target_query,
-        duration: duration,
-        occurred_at: 8.days.ago + (i * 30).minutes,
-        operation_type: "sql",
-        label: target_query.normalized_sql,
-        request: create(:request,
-          route: create(:route, path: "/test/week/#{target_query.id}/#{i}", method: "GET"),
-          duration: duration + rand(100),
-          occurred_at: 8.days.ago + (i * 30).minutes
-        )
-      )
-      @last_week_operations << operation
-      @target_query_operations << operation
-    end
-
-    # Last month operations
-    @last_month_operations = []
-    6.times do |i|
-      duration = [ 80, 120, 150, 200 ].sample + rand(30)
-      operation = create(:operation,
-        query: target_query,
-        duration: duration,
-        occurred_at: 20.days.ago + (i * 60).minutes,
-        operation_type: "sql",
-        label: target_query.normalized_sql,
-        request: create(:request,
-          route: create(:route, path: "/test/month/#{target_query.id}/#{i}", method: "GET"),
-          duration: duration + rand(80),
-          occurred_at: 20.days.ago + (i * 60).minutes
-        )
-      )
-      @last_month_operations << operation
-      @target_query_operations << operation
-    end
+    # Add a critical operation (≥ 1000ms)
+    RailsPulse::Operation.create!(
+      query: target_query,
+      duration: 1200,
+      occurred_at: 1.hour.ago,
+      operation_type: "sql",
+      label: target_query.normalized_sql,
+      request: @users_request_1
+    )
   end
 
   def create_summary_data_for_query_show
-    time_spreads = {
-      recent: 2.hours.ago,
-      last_week: 8.days.ago,
-      last_month: 20.days.ago
-    }
+    # Create summary data for the time periods used in query show tests
+    service = RailsPulse::SummaryService.new("day", 2.days.ago.beginning_of_day)
+    service.perform
 
-    time_spreads.each do |spread_type, base_time|
-      service = RailsPulse::SummaryService.new("day", base_time.beginning_of_day)
-      service.perform
-
-      if spread_type == :recent
-        service = RailsPulse::SummaryService.new("hour", base_time.beginning_of_hour)
-        service.perform
-      end
-    end
+    service = RailsPulse::SummaryService.new("hour", 2.hours.ago.beginning_of_hour)
+    service.perform
 
     service = RailsPulse::SummaryService.new("day", Time.current.beginning_of_day)
     service.perform

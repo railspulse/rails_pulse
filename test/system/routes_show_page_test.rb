@@ -7,7 +7,7 @@ class RoutesShowPageTest < SharedIndexPageTest
   end
 
   def target_route
-    @target_route ||= @slow_routes&.first
+    @target_route ||= @api_users_route
   end
 
   def page_type
@@ -26,20 +26,20 @@ class RoutesShowPageTest < SharedIndexPageTest
   end
 
   def all_test_data
-    # Only requests for the target route
-    @target_route_requests || []
+    # Only requests for the target route from shared data
+    target_route.requests.to_a
   end
 
   def default_scope_data
-    @target_route_requests || []
+    target_route.requests.to_a
   end
 
   def last_week_data
-    (@target_route_requests || []) + (@last_week_requests || [])
+    target_route.requests.to_a
   end
 
   def last_month_data
-    (@target_route_requests || []) + (@last_week_requests || []) + (@last_month_requests || [])
+    target_route.requests.to_a
   end
 
   def slow_performance_data
@@ -52,7 +52,7 @@ class RoutesShowPageTest < SharedIndexPageTest
 
   def zoomed_data
     # Requests in the zoom time range (recent activity)
-    (@target_route_requests || []).select { |request| request.occurred_at >= 2.5.hours.ago }
+    target_route.requests.where("occurred_at >= ?", 2.5.hours.ago).to_a
   end
 
   def metric_card_selectors
@@ -210,117 +210,47 @@ class RoutesShowPageTest < SharedIndexPageTest
   private
 
   def create_comprehensive_test_data
-    # Create routes with predictable performance characteristics
-    create_performance_categorized_routes
-
-    # Create requests with specific performance patterns for our target route
-    create_performance_categorized_requests_for_target_route
-
-    # Create Summary data needed for route show page
+    # Create additional requests with varying performance for testing filters
+    create_additional_route_requests
     create_summary_data_for_route_show
   end
 
-  def create_performance_categorized_routes
-    # Create routes for each performance threshold with distinctive paths
-    @fast_routes = [
-      create(:route, :fast_endpoint, path: "/api/health", method: "GET"),
-      create(:route, :fast_endpoint, path: "/api/status", method: "GET"),
-      create(:route, :fast_endpoint, path: "/api/ping", method: "POST")
-    ]
+  def create_additional_route_requests
+    # Add some additional requests with different performance characteristics
+    # to test the performance filters
 
-    @slow_routes = [
-      create(:route, :slow_endpoint, path: "/api/users", method: "GET"),
-      create(:route, :slow_endpoint, path: "/api/orders", method: "POST")
-    ]
-
-    @very_slow_routes = [
-      create(:route, :very_slow_endpoint, path: "/api/reports", method: "GET"),
-      create(:route, :very_slow_endpoint, path: "/admin/analytics", method: "GET")
-    ]
-
-    @critical_routes = [
-      create(:route, :critical_endpoint, path: "/admin/heavy_import", method: "POST")
-    ]
-  end
-
-  def create_performance_categorized_requests_for_target_route
-    # Focus on creating varied requests for our target route
-    @target_route_requests = []
-
-    # Create requests with varied performance for the target route
-    # Recent requests (will appear in zoomed view)
-    12.times do |i|
-      duration = [ 600, 700, 800, 900, 1000 ].sample + rand(100)
-      request = create(:request,
+    # Add some slow requests (≥ 500ms)
+    2.times do |i|
+      RailsPulse::Request.create!(
         route: target_route,
-        duration: duration,
-        occurred_at: 2.hours.ago + (i * 5).minutes,
-        status: [ 200, 200, 200, 500 ].sample,
-        is_error: duration > 900 ? [ true, false ].sample : false
+        duration: 600 + (i * 100),
+        status: 200,
+        is_error: false,
+        request_uuid: "slow-#{i}",
+        controller_action: "UsersController#index",
+        occurred_at: 2.hours.ago + (i * 10).minutes
       )
-      @target_route_requests << request
     end
 
-    # Add a few critical requests (≥ 3000ms)
-    3.times do |i|
-      duration = [ 3100, 3500, 4000 ].sample + rand(500)
-      request = create(:request,
-        route: target_route,
-        duration: duration,
-        occurred_at: 2.hours.ago + (i * 8).minutes,
-        status: [ 200, 500 ].sample,
-        is_error: true
-      )
-      @target_route_requests << request
-    end
-
-    # Last week requests
-    @last_week_requests = []
-    10.times do |i|
-      duration = [ 500, 600, 700, 800 ].sample + rand(100)
-      request = create(:request,
-        route: target_route,
-        duration: duration,
-        occurred_at: 8.days.ago + (i * 30).minutes,
-        status: [ 200, 200, 500 ].sample,
-        is_error: [ true, false ].sample
-      )
-      @last_week_requests << request
-      @target_route_requests << request
-    end
-
-    # Last month requests
-    @last_month_requests = []
-    8.times do |i|
-      duration = [ 400, 500, 600 ].sample + rand(100)
-      request = create(:request,
-        route: target_route,
-        duration: duration,
-        occurred_at: 20.days.ago + (i * 60).minutes,
-        status: [ 200, 200, 200, 500 ].sample,
-        is_error: false
-      )
-      @last_month_requests << request
-      @target_route_requests << request
-    end
+    # Add a critical request (≥ 3000ms)
+    RailsPulse::Request.create!(
+      route: target_route,
+      duration: 3500,
+      status: 500,
+      is_error: true,
+      request_uuid: "critical-1",
+      controller_action: "UsersController#heavy_operation",
+      occurred_at: 1.hour.ago
+    )
   end
 
   def create_summary_data_for_route_show
-    time_spreads = {
-      recent: 2.hours.ago,
-      last_week: 8.days.ago,
-      last_month: 20.days.ago
-    }
+    # Create summary data for the time periods used in tests
+    service = RailsPulse::SummaryService.new("day", 2.days.ago.beginning_of_day)
+    service.perform
 
-    time_spreads.each do |spread_type, base_time|
-      service = RailsPulse::SummaryService.new("day", base_time.beginning_of_day)
-      service.perform
-
-      if spread_type == :recent
-        service = RailsPulse::SummaryService.new("hour", base_time.beginning_of_hour)
-        service.perform
-      end
-    end
+    service = RailsPulse::SummaryService.new("hour", 2.hours.ago.beginning_of_hour)
+    service.perform
 
     service = RailsPulse::SummaryService.new("day", Time.current.beginning_of_day)
     service.perform

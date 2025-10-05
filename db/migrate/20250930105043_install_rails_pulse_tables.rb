@@ -18,7 +18,7 @@ class InstallRailsPulseTables < ActiveRecord::Migration[7.2]
         t.string :path, null: false
         t.timestamps
       end
-      add_index :rails_pulse_routes, [:method, :path], unique: true
+      add_index :rails_pulse_routes, [ :method, :path ], unique: true
 
       create_table :rails_pulse_queries do |t|
         t.string :normalized_sql, limit: 1000, null: false
@@ -85,7 +85,7 @@ class InstallRailsPulseTables < ActiveRecord::Migration[7.2]
         t.integer :status_5xx, default: 0
         t.timestamps
       end
-      add_index :rails_pulse_summaries, [:summarizable_type, :summarizable_id, :period_type, :period_start],
+      add_index :rails_pulse_summaries, [ :summarizable_type, :summarizable_id, :period_type, :period_start ],
                 unique: true, name: "idx_pulse_summaries_unique"
     end
   end

@@ -98,8 +98,8 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
     average = RailsPulse::Route.average_response_time
 
     assert_not_nil average
-    assert average > 0
-    assert_equal 200.25, average  # (150.5 + 250.0) / 2
+    assert_operator average, :>, 0
+    assert_in_delta(200.25, average)  # (150.5 + 250.0) / 2
   end
 
   test "should handle restrict_with_exception on dependent destroy" do

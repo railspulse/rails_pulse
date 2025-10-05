@@ -1,5 +1,5 @@
 users_request_1:
-  route: api_users (RailsPulse::Route)
+  route: api_users
   duration: 150.5
   status: 200
   is_error: false
@@ -10,7 +10,7 @@ users_request_1:
   updated_at: <%= Time.current - 1.hour %>
 
 users_request_2:
-  route: api_users (RailsPulse::Route)
+  route: api_users
   duration: 250.0
   status: 200
   is_error: false
@@ -21,7 +21,7 @@ users_request_2:
   updated_at: <%= Time.current - 2.hours %>
 
 posts_request:
-  route: api_posts (RailsPulse::Route)
+  route: api_posts
   duration: 180.0
   status: 201
   is_error: false
@@ -32,7 +32,7 @@ posts_request:
   updated_at: <%= Time.current - 1.hour %>
 
 error_request:
-  route: api_other (RailsPulse::Route)
+  route: api_other
   duration: 300.0
   status: 500
   is_error: true
