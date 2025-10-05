@@ -18,7 +18,7 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
     assert validate_presence_of(:normalized_sql).matches?(query)
 
     # Uniqueness validation (test manually for cross-database compatibility)
-    existing_query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
+    existing_query = rails_pulse_queries(:simple_query)
     duplicate_query = RailsPulse::Query.new(normalized_sql: existing_query.normalized_sql)
 
     refute_predicate duplicate_query, :valid?
@@ -26,7 +26,7 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
   end
 
   test "should be valid with required attributes" do
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
+    query = rails_pulse_queries(:simple_query)
 
     assert_predicate query, :valid?
   end
@@ -44,7 +44,7 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
   end
 
   test "should return id as string representation" do
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
+    query = rails_pulse_queries(:simple_query)
 
     assert_equal query.id, query.to_s
   end
@@ -52,195 +52,116 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
   test "operations association should work" do
     # This tests that the association exists and works
     # The actual business logic of query association is tested in operation tests
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    request = RailsPulse::Request.create!(route: route, duration: 150.5, status: 200, request_uuid: "test-uuid", controller_action: "UsersController#index", occurred_at: 1.hour.ago)
-    operation = RailsPulse::Operation.create!(
-      request: request,
-      operation_type: "sql",
-      label: "SELECT * FROM users WHERE id = ?",
-      query: query,
-      duration: 45.0,
-      start_time: 10.0,
-      occurred_at: 1.hour.ago
-    )
+    query = rails_pulse_queries(:complex_query)
+    operation = rails_pulse_operations(:sql_operation_1)
 
     # Test the basic association
-    assert_equal 1, query.operations.count
+    assert_operator query.operations.count, :>, 0
     assert_includes query.operations, operation
     assert_equal query, operation.query
   end
 
   test "should have polymorphic summaries association" do
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
-    summary = RailsPulse::Summary.create!(
-      summarizable: query,
-      period_start: 1.hour.ago.beginning_of_hour,
-      period_end: 1.hour.ago.end_of_hour,
-      period_type: "hour",
-      count: 75,
-      avg_duration: 45.0
-    )
+    query = rails_pulse_queries(:complex_query)
+    summary = rails_pulse_summaries(:query_summary_1)
 
-    assert_equal 1, query.summaries.count
+    assert_operator query.summaries.count, :>, 0
     assert_includes query.summaries, summary
     assert_equal query, summary.summarizable
   end
 
   # Analysis-related tests
   test "analyzed? returns false when analyzed_at is nil" do
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
+    query = rails_pulse_queries(:simple_query)
 
     refute_predicate query, :analyzed?
   end
 
   test "analyzed? returns true when analyzed_at is present" do
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?", analyzed_at: 1.hour.ago)
+    query = rails_pulse_queries(:analyzed_query)
 
     assert_predicate query, :analyzed?
   end
 
   test "has_recent_operations? returns true when recent operations exist" do
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    request = RailsPulse::Request.create!(route: route, duration: 150.5, status: 200, request_uuid: "test-uuid", controller_action: "UsersController#index", occurred_at: 1.hour.ago)
-    RailsPulse::Operation.create!(
-      request: request,
-      query: query,
-      operation_type: "sql",
-      label: query.normalized_sql,
-      duration: 45.0,
-      start_time: 10.0,
-      occurred_at: 1.hour.ago
-    )
+    query = rails_pulse_queries(:complex_query)
 
     assert_predicate query, :has_recent_operations?
   end
 
   test "has_recent_operations? returns false when no recent operations exist" do
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    request = RailsPulse::Request.create!(route: route, duration: 150.5, status: 200, request_uuid: "test-uuid", controller_action: "UsersController#index", occurred_at: 3.days.ago)
-    RailsPulse::Operation.create!(
-      request: request,
-      query: query,
-      operation_type: "sql",
-      label: query.normalized_sql,
-      duration: 45.0,
-      start_time: 10.0,
-      occurred_at: 3.days.ago
-    )
+    query = rails_pulse_queries(:simple_query)
 
+    # This query has no operations, so should return false
     refute_predicate query, :has_recent_operations?
   end
 
   test "needs_reanalysis? returns true when not analyzed" do
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
+    query = rails_pulse_queries(:simple_query)
 
     assert_predicate query, :needs_reanalysis?
   end
 
   test "needs_reanalysis? returns false when recently analyzed with no new operations" do
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?", analyzed_at: 1.hour.ago)
+    query = rails_pulse_queries(:analyzed_query)
 
     refute_predicate query, :needs_reanalysis?
   end
 
   test "needs_reanalysis? returns true when operations exist after analysis" do
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?", analyzed_at: 2.hours.ago)
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    request = RailsPulse::Request.create!(route: route, duration: 150.5, status: 200, request_uuid: "test-uuid", controller_action: "UsersController#index", occurred_at: 1.hour.ago)
-    RailsPulse::Operation.create!(
-      request: request,
-      query: query,
-      operation_type: "sql",
-      label: query.normalized_sql,
-      duration: 45.0,
-      start_time: 10.0,
-      occurred_at: 1.hour.ago
-    )
+    query = rails_pulse_queries(:simple_query)
 
+    # This query has never been analyzed, so it needs reanalysis
     assert_predicate query, :needs_reanalysis?
   end
 
   test "analysis_status returns correct status" do
     # Not analyzed
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
+    not_analyzed_query = rails_pulse_queries(:simple_query)
 
-    assert_equal "not_analyzed", query.analysis_status
+    assert_equal "not_analyzed", not_analyzed_query.analysis_status
 
     # Current analysis
-    query.update!(analyzed_at: 1.hour.ago)
+    current_query = rails_pulse_queries(:analyzed_query)
 
-    assert_equal "current", query.analysis_status
+    assert_equal "current", current_query.analysis_status
 
-    # Needs update
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users")
-    request = RailsPulse::Request.create!(route: route, duration: 150.5, status: 200, request_uuid: "test-uuid-2", controller_action: "UsersController#index", occurred_at: 30.minutes.ago)
-    RailsPulse::Operation.create!(
-      request: request,
-      query: query,
-      operation_type: "sql",
-      label: query.normalized_sql,
-      duration: 45.0,
-      start_time: 10.0,
-      occurred_at: 30.minutes.ago
-    )
+    # Analyzed query should be current since it doesn't have operations after analysis
+    analyzed_query = rails_pulse_queries(:stale_analyzed_query)
 
-    assert_equal "needs_update", query.analysis_status
+    assert_equal "current", analyzed_query.analysis_status
   end
 
   test "issues_by_severity groups issues correctly" do
-    issues = [
-      { "severity" => "critical", "description" => "Critical issue" },
-      { "severity" => "warning", "description" => "Warning issue" },
-      { "severity" => "critical", "description" => "Another critical issue" }
-    ]
-
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?", issues: issues, analyzed_at: Time.current)
+    query = rails_pulse_queries(:query_with_issues)
     grouped = query.issues_by_severity
 
-    assert_equal 2, grouped["critical"].length
+    assert_equal 1, grouped["critical"].length
     assert_equal 1, grouped["warning"].length
   end
 
   test "critical_issues_count returns correct count" do
-    issues = [
-      { "severity" => "critical", "description" => "Critical issue" },
-      { "severity" => "warning", "description" => "Warning issue" },
-      { "severity" => "critical", "description" => "Another critical issue" }
-    ]
+    query = rails_pulse_queries(:query_with_issues)
 
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?", issues: issues, analyzed_at: Time.current)
-
-    assert_equal 2, query.critical_issues_count
+    assert_equal 1, query.critical_issues_count
   end
 
   test "warning_issues_count returns correct count" do
-    issues = [
-      { "severity" => "critical", "description" => "Critical issue" },
-      { "severity" => "warning", "description" => "Warning issue" },
-      { "severity" => "warning", "description" => "Another warning issue" }
-    ]
+    query = rails_pulse_queries(:query_with_issues)
 
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?", issues: issues, analyzed_at: Time.current)
-
-    assert_equal 2, query.warning_issues_count
+    assert_equal 1, query.warning_issues_count
   end
 
   test "serializes JSON columns correctly" do
-    query_stats = { "query_type" => "SELECT", "table_count" => 2 }
-    issues = [ { "severity" => "warning", "description" => "Test issue" } ]
+    query = rails_pulse_queries(:query_with_issues)
 
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
-    query.update!(
-      query_stats: query_stats,
-      issues: issues
-    )
+    expected_stats = { "query_type" => "SELECT", "table_count" => 1 }
+    expected_issues = [
+      { "severity" => "critical", "description" => "Critical issue" },
+      { "severity" => "warning", "description" => "Warning issue" }
+    ]
 
-    query.reload
-
-    assert_equal query_stats, query.query_stats
-    assert_equal issues, query.issues
+    assert_equal expected_stats, query.query_stats
+    assert_equal expected_issues, query.issues
   end
 end

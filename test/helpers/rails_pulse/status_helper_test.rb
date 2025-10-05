@@ -5,21 +5,9 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
   include RailsPulse::StatusHelper
 
   def setup
-    # Clean database
-    RailsPulse::Operation.delete_all
-    RailsPulse::Request.delete_all
-    RailsPulse::Route.delete_all
-
-    # Create shared request for all operations in this test
-    @test_route = RailsPulse::Route.create!(path: "/test", method: "GET")
-    @test_request = RailsPulse::Request.create!(
-      route: @test_route,
-      duration: 100,
-      status: 200,
-      is_error: false,
-      request_uuid: SecureRandom.uuid,
-      occurred_at: Time.current
-    )
+    # Use existing fixture data
+    @test_route = rails_pulse_routes(:api_users)
+    @test_request = rails_pulse_requests(:users_request_1)
     super
   end
 
@@ -27,7 +15,7 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
 
   def create_test_operation(operation_type, duration)
     RailsPulse::Operation.create!(
-      request_id: @test_request.id,
+      request: @test_request,
       operation_type: operation_type,
       label: "Test #{operation_type}",
       duration: duration,

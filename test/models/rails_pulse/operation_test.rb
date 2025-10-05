@@ -67,7 +67,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
 
     assert_not_nil operation.query
     assert_instance_of RailsPulse::Query, operation.query
-    assert_equal "SELECT * FROM users WHERE id = ?", operation.query.normalized_sql
+    assert_equal "SELECT * FROM posts WHERE id = ?", operation.query.normalized_sql
   end
 
   test "should not associate query for non-sql operations" do
@@ -102,7 +102,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     assert_equal "sql", sql_op_2.operation_type
 
     # Verify labels match
-    assert_equal "SELECT * FROM users WHERE id = ?", sql_op.label
+    assert_equal "SELECT * FROM posts WHERE id = ?", sql_op.label
     assert_equal "UsersController#index", controller_op.label
     assert_equal "render users/index.html.erb", template_op.label
     assert_equal "SELECT * FROM posts WHERE id = ?", sql_op_2.label
@@ -120,7 +120,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     assert_not_nil sql_op_2.query
 
     # Verify query associations point to correct fixture queries
-    assert_equal "SELECT * FROM users WHERE id = ?", sql_op.query.normalized_sql
+    assert_equal "SELECT * FROM posts WHERE id = ?", sql_op.query.normalized_sql
     assert_equal "SELECT * FROM posts WHERE id = ?", sql_op_2.query.normalized_sql
 
     # Verify we have exactly 4 operations total
@@ -129,7 +129,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     # Test that we can access other fixture types
     route = rails_pulse_routes(:api_users)
     request = rails_pulse_requests(:users_request_1)
-    query = rails_pulse_queries(:select_users)
+    query = rails_pulse_queries(:complex_query)
 
     assert_not_nil route
     assert_not_nil request

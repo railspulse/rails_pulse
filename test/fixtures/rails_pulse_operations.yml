@@ -1,10 +1,10 @@
 sql_operation_1:
   request: users_request_1
-  query: select_users
+  query: complex_query
   operation_type: "sql"
-  label: "SELECT * FROM users WHERE id = ?"
+  label: "SELECT * FROM posts WHERE id = ?"
   duration: 45.0
-  codebase_location: "app/models/user.rb:25"
+  codebase_location: "app/models/post.rb:25"
   start_time: 10.0
   occurred_at: <%= Time.current - 1.hour %>
   created_at: <%= Time.current - 1.hour %>
@@ -32,7 +32,7 @@ template_operation_1:
 
 sql_operation_2:
   request: posts_request
-  query: select_posts
+  query: complex_query
   operation_type: "sql"
   label: "SELECT * FROM posts WHERE id = ?"
   duration: 35.0

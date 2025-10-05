@@ -1,0 +1,29 @@
+route_summary_1:
+  summarizable: api_users (RailsPulse::Route)
+  period_start: <%= 1.hour.ago.beginning_of_hour %>
+  period_end: <%= 1.hour.ago.end_of_hour %>
+  period_type: "hour"
+  count: 150
+  avg_duration: 180.5
+  created_at: <%= 1.hour.ago %>
+  updated_at: <%= 1.hour.ago %>
+
+route_summary_2:
+  summarizable: api_posts (RailsPulse::Route)
+  period_start: <%= 2.hours.ago.beginning_of_hour %>
+  period_end: <%= 2.hours.ago.end_of_hour %>
+  period_type: "hour"
+  count: 75
+  avg_duration: 220.0
+  created_at: <%= 2.hours.ago %>
+  updated_at: <%= 2.hours.ago %>
+
+query_summary_1:
+  summarizable: complex_query (RailsPulse::Query)
+  period_start: <%= 1.day.ago.beginning_of_day %>
+  period_end: <%= 1.day.ago.end_of_day %>
+  period_type: "day"
+  count: 500
+  avg_duration: 45.2
+  created_at: <%= 1.day.ago %>
+  updated_at: <%= 1.day.ago %>

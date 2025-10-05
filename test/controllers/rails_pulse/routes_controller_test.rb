@@ -104,21 +104,16 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
   private
 
   def setup_basic_test_data
-    # Create a route with some requests
-    @route = RailsPulse::Route.create!(path: "/api/test", method: "GET")
-    RailsPulse::Request.create!(route: @route, duration: 100, occurred_at: 2.hours.ago, is_error: false, status: 200, request_uuid: "test-uuid-1", controller_action: "TestController#action")
-    RailsPulse::Request.create!(route: @route, duration: 150, occurred_at: 3.hours.ago, is_error: false, status: 200, request_uuid: "test-uuid-2", controller_action: "TestController#action")
+    # Use existing fixture data
+    @route = rails_pulse_routes(:api_test)
+    @route2 = rails_pulse_routes(:api_other)
 
-    # Create another route
-    @route2 = RailsPulse::Route.create!(path: "/api/other", method: "POST")
-    RailsPulse::Request.create!(route: @route2, duration: 200, occurred_at: 4.hours.ago, is_error: true, status: 500, request_uuid: "test-uuid-3", controller_action: "OtherController#action")
-
-    # Generate summary data
-    service = RailsPulse::SummaryService.new("hour", 1.day.ago.beginning_of_hour)
+    # Generate summary data for the current hour (where fixtures exist)
+    service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
     service.perform
   end
 
-  def rails_pulse_engine
+  def rails_pulse
     RailsPulse::Engine.routes.url_helpers
   end
 end

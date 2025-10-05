@@ -81,29 +81,8 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
   private
 
   def create_test_query_with_operations
-    query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM users WHERE id = ?")
-
-    route = RailsPulse::Route.create!(method: "GET", path: "/users")
-    request = RailsPulse::Request.create!(
-      route: route,
-      duration: 100.0,
-      status: 200,
-      is_error: false,
-      request_uuid: SecureRandom.uuid,
-      occurred_at: 1.hour.ago
-    )
-
-    RailsPulse::Operation.create!(
-      request: request,
-      query: query,
-      operation_type: "sql",
-      label: query.normalized_sql,
-      duration: 50.0,
-      start_time: 0.0,
-      occurred_at: 1.hour.ago
-    )
-
-    query
+    # Use existing fixture data
+    rails_pulse_queries(:complex_query)
   end
 
   def rails_pulse_engine
