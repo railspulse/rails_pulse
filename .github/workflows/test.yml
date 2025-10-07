@@ -63,10 +63,16 @@ jobs:
 
     - name: Setup database
       run: |
-        # Map Rails version to appraisal version
+        # Map Rails version to appraisal version and gemfile
         case "${{ matrix.rails }}" in
-          "7.2") RAILS_VERSION="rails-7-2" ;;
-          "8.0") RAILS_VERSION="rails-8-0" ;;
+          "7.2")
+            RAILS_VERSION="rails-7-2"
+            GEMFILE=gemfiles/rails_7_2.gemfile
+            ;;
+          "8.0")
+            RAILS_VERSION="rails-8-0"
+            GEMFILE=gemfiles/rails_8_0.gemfile
+            ;;
         esac
 
         if [[ "${{ matrix.database }}" == "postgresql" ]]; then
@@ -76,24 +82,30 @@ jobs:
           echo "Setting up SQLite database..."
         fi
 
-        # Use our new test_setup_for_version task
-        bundle exec rake "test_setup_for_version[${{ matrix.database }},$RAILS_VERSION]"
+        # Use our new test_setup_for_version task with correct gemfile
+        BUNDLE_GEMFILE=$GEMFILE bundle exec rake "test_setup_for_version[${{ matrix.database }},$RAILS_VERSION]"
 
     - name: Run tests
       run: |
-        # Map Rails version to appraisal version
+        # Map Rails version to appraisal version and gemfile
         case "${{ matrix.rails }}" in
-          "7.2") RAILS_VERSION="rails-7-2" ;;
-          "8.0") RAILS_VERSION="rails-8-0" ;;
+          "7.2")
+            RAILS_VERSION="rails-7-2"
+            GEMFILE=gemfiles/rails_7_2.gemfile
+            ;;
+          "8.0")
+            RAILS_VERSION="rails-8-0"
+            GEMFILE=gemfiles/rails_8_0.gemfile
+            ;;
         esac
 
-        # Run tests with the specific Rails version and database
+        # Run tests with the specific Rails version and database using correct gemfile
         if [[ "${{ matrix.database }}" == "sqlite3" && "$RAILS_VERSION" == "rails-8-0" ]]; then
           # Default combination
-          bundle exec rake test
+          BUNDLE_GEMFILE=$GEMFILE bundle exec rake test
         else
           # Use appraisal for other combinations
-          DB=${{ matrix.database }} bundle exec appraisal $RAILS_VERSION rake test
+          DB=${{ matrix.database }} BUNDLE_GEMFILE=$GEMFILE bundle exec appraisal $RAILS_VERSION rake test
         fi
 
   lint:
