@@ -15,7 +15,7 @@ class RoutesShowPageTest < SharedIndexPageTest
   end
 
   def chart_selector
-    "#route_repsonses_chart"
+    "#route_responses_chart"
   end
 
   def performance_filter_options
@@ -203,7 +203,7 @@ class RoutesShowPageTest < SharedIndexPageTest
     assert_selector "img[src*='search.svg']"
 
     # Should not show chart or table
-    assert_no_selector "#route_repsonses_chart"
+    assert_no_selector "#route_responses_chart"
     assert_no_selector "table tbody tr"
   end
 
@@ -232,16 +232,19 @@ class RoutesShowPageTest < SharedIndexPageTest
       )
     end
 
-    # Add a critical request (≥ 3000ms)
-    RailsPulse::Request.create!(
-      route: target_route,
-      duration: 3500,
-      status: 500,
-      is_error: true,
-      request_uuid: "critical-1",
-      controller_action: "UsersController#heavy_operation",
-      occurred_at: 1.hour.ago
-    )
+    # Add multiple critical requests (≥ 3000ms) to ensure day-level summary avg >= 3000ms
+    # Create them all in the same day to ensure the average stays high
+    5.times do |i|
+      RailsPulse::Request.create!(
+        route: target_route,
+        duration: 3500 + (i * 100),  # 3500ms, 3600ms, 3700ms, 3800ms, 3900ms
+        status: 500,
+        is_error: true,
+        request_uuid: "critical-#{i}",
+        controller_action: "UsersController#heavy_operation",
+        occurred_at: 1.hour.ago + (i * 5).minutes
+      )
+    end
   end
 
   def create_summary_data_for_route_show

@@ -123,8 +123,8 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     assert_equal "SELECT * FROM posts WHERE id = ?", sql_op.query.normalized_sql
     assert_equal "SELECT * FROM posts WHERE id = ?", sql_op_2.query.normalized_sql
 
-    # Verify we have exactly 4 operations total
-    assert_equal 4, RailsPulse::Operation.count
+    # Verify we have exactly 6 operations total (4 original + 2 added for queries)
+    assert_equal 6, RailsPulse::Operation.count
 
     # Test that we can access other fixture types
     route = rails_pulse_routes(:api_users)

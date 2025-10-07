@@ -1,8 +1,12 @@
 # Abstract base class - doesn't run tests itself
 require_relative "shared_test_data"
+require_relative "chart_validation_helpers"
+require_relative "table_validation_helpers"
 
 class SharedIndexPageTest < ApplicationSystemTestCase
   include SharedTestData
+  include ChartValidationHelpers
+  include TableValidationHelpers
 
   # Don't run tests for this base class
   def self.runnable_methods
@@ -79,7 +83,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
   end
 
   # Shared test methods
-  def test_index_page_loads_and_displays_data
+  test "index page loads and displays data" do
     visit_rails_pulse_path page_path
 
     # Verify basic page structure
@@ -104,7 +108,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_chart_data(chart_selector, expected_data: expected_data, filter_applied: "Last Month")
   end
 
-  def test_metric_cards_display_data_correctly
+  test "metric cards display data correctly" do
     visit_rails_pulse_path page_path
 
     # Wait for page to load
@@ -121,7 +125,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     end
   end
 
-  def test_time_range_filter_updates_chart_and_table_data
+  test "time range filter updates chart and table data" do
     visit_rails_pulse_path page_path
 
     # Capture initial data
@@ -147,7 +151,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: page_type, filter_applied: "Last Month")
   end
 
-  def test_performance_duration_filter_works_correctly
+  test "performance duration filter works correctly" do
     visit_rails_pulse_path page_path
 
     # Test "Slow" filter
@@ -168,7 +172,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: page_type, filter_applied: "Critical")
   end
 
-  def test_combined_filters_work_together
+  test "combined filters work together" do
     visit_rails_pulse_path page_path
 
     # Test combined filtering: slow from last week
@@ -189,7 +193,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: page_type, filter_applied: "Slow")
   end
 
-  def test_table_column_sorting_works_correctly
+  test "table column sorting works correctly" do
     visit_rails_pulse_path page_path
 
     # Wait for table to load
@@ -200,7 +204,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     end
   end
 
-  def test_zoom_range_parameters_filter_table_data_while_chart_shows_all_data
+  test "zoom range parameters filter table data while chart shows all data" do
     visit_rails_pulse_path page_path
 
     # Wait for page to load with default data
@@ -234,7 +238,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: page_type, expected_data: zoomed_table_data, filter_applied: "Recent Zoom")
   end
 
-  def test_column_selection_filters_table_and_persists_sorting
+  test "column selection filters table and persists sorting" do
     visit_rails_pulse_path page_path
 
     # Wait for page to fully load and ensure we have data

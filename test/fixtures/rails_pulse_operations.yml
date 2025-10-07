@@ -41,3 +41,27 @@ sql_operation_2:
   occurred_at: <%= Time.current - 1.hour %>
   created_at: <%= Time.current - 1.hour %>
   updated_at: <%= Time.current - 1.hour %>
+
+sql_operation_3:
+  request: users_request_1
+  query: simple_query
+  operation_type: "sql"
+  label: "SELECT * FROM users WHERE id = ?"
+  duration: 120.0
+  codebase_location: "app/models/user.rb:10"
+  start_time: 15.0
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>
+
+sql_operation_4:
+  request: error_request
+  query: analyzed_query
+  operation_type: "sql"
+  label: "SELECT * FROM orders WHERE id = ?"
+  duration: 502.0
+  codebase_location: "app/models/order.rb:5"
+  start_time: 20.0
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>

@@ -90,7 +90,7 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
   end
 
   test "has_recent_operations? returns false when no recent operations exist" do
-    query = rails_pulse_queries(:simple_query)
+    query = rails_pulse_queries(:stale_analyzed_query)
 
     # This query has no operations, so should return false
     refute_predicate query, :has_recent_operations?

@@ -63,19 +63,19 @@ module TableValidationHelpers
     table_rows.each_with_index do |row, index|
       cells = row.all("td")
 
-      assert_operator cells.length, :>=, 3, "Query row #{index + 1} should have at least 3 columns (SQL, executions, avg time)"
+      assert_operator cells.length, :>=, 3, "Query row #{index + 1} should have at least 3 columns (SQL, avg time, executions)"
 
       # Validate SQL query (first column)
       validate_sql_cell(cells[0], index + 1, filter_applied)
 
-      # Validate executions count (second column)
-      executions_text = cells[1].text.strip
+      # Validate average duration (second column)
+      validate_duration_cell(cells[1], index + 1, filter_applied, page_type: :queries)
+
+      # Validate executions count (third column)
+      executions_text = cells[2].text.strip
       executions_value = executions_text.to_i
 
       assert_operator executions_value, :>, 0, "Executions should be positive in row #{index + 1}, got: #{executions_value}"
-
-      # Validate average duration (third column)
-      validate_duration_cell(cells[2], index + 1, filter_applied, page_type: :queries)
 
       # Additional columns can be validated if needed (total time, status, last seen)
     end

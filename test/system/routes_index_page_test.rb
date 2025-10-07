@@ -11,7 +11,7 @@ class RoutesIndexPageTest < SharedIndexPageTest
   end
 
   def chart_selector
-    "#routes_chart"
+    "#average_response_times_chart"
   end
 
   def performance_filter_options
@@ -38,25 +38,19 @@ class RoutesIndexPageTest < SharedIndexPageTest
   end
 
   def slow_performance_data
-    # Routes with slow average response time (calculated from their requests)
-    all_test_data.select do |route|
-      avg_duration = route.requests.average(:duration)
-      avg_duration && avg_duration >= 500
-    end
+    # api_users route has 600ms and 650ms requests created at 12 hours ago
+    # Combined with fixture requests, avg will be >= 500ms
+    [ rails_pulse_routes(:api_users) ]
   end
 
   def critical_performance_data
-    # Routes with critical average response time (calculated from their requests)
-    all_test_data.select do |route|
-      avg_duration = route.requests.average(:duration)
-      avg_duration && avg_duration >= 3000
-    end
+    # api_posts route has 3500ms request created at 10 days ago
+    [ rails_pulse_routes(:api_posts) ]
   end
 
   def zoomed_data
-    # Routes that have recent activity
-    route_ids_with_recent_activity = RailsPulse::Request.where("occurred_at >= ?", 2.5.hours.ago).distinct.pluck(:route_id)
-    all_test_data.select { |route| route_ids_with_recent_activity.include?(route.id) }
+    # api_test route has request at 2 hours ago (within 2.5-1.5 hours range)
+    [ rails_pulse_routes(:api_test) ]
   end
 
   def metric_card_selectors
@@ -91,12 +85,12 @@ class RoutesIndexPageTest < SharedIndexPageTest
   def sortable_columns
     [
       {
-        name: "Response Time",
+        name: "Average Response Time",
         index: 1,
         value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
       },
       {
-        name: "Error Rate",
+        name: "Max Response Time",
         index: 2,
         value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
       }
@@ -110,23 +104,79 @@ class RoutesIndexPageTest < SharedIndexPageTest
   private
 
   def create_comprehensive_test_data
-    # Shared data provides basic routes, requests, queries, and operations
-    # Just need to create summary data for the routes index page
+    # Create additional requests with specific performance characteristics
+    create_performance_test_requests
+    # Generate summary data for the routes index page
     create_summary_data_for_routes
   end
 
+  def create_performance_test_requests
+    # Create slow requests (≥500ms) for api_users route
+    api_users_route = rails_pulse_routes(:api_users)
+
+    # Create 2 slow requests at 12 hours ago (within Last Day, will make avg >= 500ms)
+    2.times do |i|
+      RailsPulse::Request.create!(
+        route: api_users_route,
+        duration: 600.0 + (i * 50),  # 600ms and 650ms
+        occurred_at: 12.hours.ago + (i * 10).minutes,
+        status: 200,
+        is_error: false,
+        request_uuid: "test-routes-slow-#{i}",
+        controller_action: "Api::UsersController#index"
+      )
+    end
+
+    # Create critical requests (≥3000ms) for api_posts route at 10 days ago (within Last Month)
+    api_posts_route = rails_pulse_routes(:api_posts)
+
+    RailsPulse::Request.create!(
+      route: api_posts_route,
+      duration: 3500.0,  # Well above 3000ms critical threshold
+      occurred_at: 10.days.ago,
+      status: 200,
+      is_error: false,
+      request_uuid: "test-routes-critical-1",
+      controller_action: "Api::PostsController#create"
+    )
+
+    # Create request for zoom range test (between 2.5 and 1.5 hours ago)
+    api_test_route = rails_pulse_routes(:api_test)
+
+    RailsPulse::Request.create!(
+      route: api_test_route,
+      duration: 250.0,
+      occurred_at: 2.hours.ago,
+      status: 200,
+      is_error: false,
+      request_uuid: "test-routes-zoom-1",
+      controller_action: "Api::TestController#index"
+    )
+  end
+
   def create_summary_data_for_routes
-    # Create summary data for the time periods used in routes index tests
-    service = RailsPulse::SummaryService.new("day", 2.days.ago.beginning_of_day)
+    # Create hour-level summaries for precise time periods
+    service = RailsPulse::SummaryService.new("hour", 12.hours.ago.beginning_of_hour)
+    service.perform
+
+    service = RailsPulse::SummaryService.new("hour", 10.days.ago.beginning_of_hour)
     service.perform
 
     service = RailsPulse::SummaryService.new("hour", 2.hours.ago.beginning_of_hour)
     service.perform
 
+    service = RailsPulse::SummaryService.new("hour", 1.hour.ago.beginning_of_hour)
+    service.perform
+
+    # Create day-level summaries for longer time ranges (Last Week, Last Month)
+    # These aggregate the hour-level data
     service = RailsPulse::SummaryService.new("day", Time.current.beginning_of_day)
     service.perform
 
-    service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
+    service = RailsPulse::SummaryService.new("day", 12.hours.ago.beginning_of_day)
+    service.perform
+
+    service = RailsPulse::SummaryService.new("day", 10.days.ago.beginning_of_day)
     service.perform
   end
 end

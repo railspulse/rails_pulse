@@ -85,7 +85,7 @@ task :test do
   puts "=" * 50
   puts
 
-  sh "rails test test/controllers test/helpers test/instrumentation test/models test/services"
+  sh "rails test test/controllers test/helpers test/instrumentation test/jobs test/models test/services test/system"
 end
 
 desc "Setup database for specific Rails version and database"

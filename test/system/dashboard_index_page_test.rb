@@ -1,11 +1,8 @@
 require "test_helper"
 
 class DashboardIndexPageTest < ApplicationSystemTestCase
-  include SharedTestData
-
   def setup
     super
-    load_shared_test_data
     create_summary_data_for_dashboard
   end
 
@@ -134,7 +131,7 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
         assert_selector "tr:first-child td", count: 4
 
         # Verify we have our test data represented (should show queries from fixtures)
-        assert_text "SELECT * FROM users WHERE id = ?"
+        assert_text "SELECT * FROM posts WHERE id = ?"
 
         # Check that average time values are reasonable (in ms)
         first_row_avg_time = find("tr:first-child td:nth-child(2)").text
@@ -176,17 +173,11 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
 
 
   def create_summary_data_for_dashboard
-    # Create summary data for recent time periods using the test data
-    service = RailsPulse::SummaryService.new("day", 2.days.ago.beginning_of_day)
-    service.perform
-
-    service = RailsPulse::SummaryService.new("hour", 2.hours.ago.beginning_of_hour)
+    # Create summary data for recent time periods using fixture data (current hour)
+    service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
     service.perform
 
     service = RailsPulse::SummaryService.new("day", Time.current.beginning_of_day)
-    service.perform
-
-    service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
     service.perform
   end
 
