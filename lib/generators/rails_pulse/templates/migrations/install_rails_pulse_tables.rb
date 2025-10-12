@@ -1,5 +1,5 @@
 # Generated from Rails Pulse schema - automatically loads current schema definition
-class InstallRailsPulseTables<%= Time.current.strftime("%Y%m%d%H%M%S") %> < ActiveRecord::Migration[7.2]
+class InstallRailsPulseTables < ActiveRecord::Migration[<%= Rails::VERSION::MAJOR %>.<%= Rails::VERSION::MINOR %>]
   def change
     # Load and execute the Rails Pulse schema directly
     # This ensures the migration is always in sync with the schema file
