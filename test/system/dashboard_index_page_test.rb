@@ -173,11 +173,29 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
 
 
   def create_summary_data_for_dashboard
-    # Create summary data for recent time periods using fixture data (current hour)
+    # Create summary data for recent time periods using fixture data
+    # Need to create summaries for multiple days within "this week" (1.week.ago to now)
+    # to ensure the dashboard panels have data to display
+
+    # Create hour-level summaries
     service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
     service.perform
 
+    service = RailsPulse::SummaryService.new("hour", 1.hour.ago.beginning_of_hour)
+    service.perform
+
+    service = RailsPulse::SummaryService.new("hour", 2.hours.ago.beginning_of_hour)
+    service.perform
+
+    # Create day-level summaries for multiple days this week
+    # Dashboard looks for data between 1.week.ago.beginning_of_week and Time.current.end_of_week
     service = RailsPulse::SummaryService.new("day", Time.current.beginning_of_day)
+    service.perform
+
+    service = RailsPulse::SummaryService.new("day", 1.day.ago.beginning_of_day)
+    service.perform
+
+    service = RailsPulse::SummaryService.new("day", 2.days.ago.beginning_of_day)
     service.perform
   end
 

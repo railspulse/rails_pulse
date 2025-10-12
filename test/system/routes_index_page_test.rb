@@ -114,11 +114,13 @@ class RoutesIndexPageTest < SharedIndexPageTest
     # Create slow requests (≥500ms) for api_users route
     api_users_route = rails_pulse_routes(:api_users)
 
-    # Create 2 slow requests at 12 hours ago (within Last Day, will make avg >= 500ms)
-    2.times do |i|
+    # Fixtures have users_request_1 (150.5ms @ 1 hour ago) and users_request_2 (250ms @ 2 hours ago)
+    # We need to ensure the daily average is >= 500ms for the "slow" filter
+    # Create multiple slow requests to bring the average up
+    4.times do |i|
       RailsPulse::Request.create!(
         route: api_users_route,
-        duration: 600.0 + (i * 50),  # 600ms and 650ms
+        duration: 700.0 + (i * 50),  # 700ms, 750ms, 800ms, 850ms
         occurred_at: 12.hours.ago + (i * 10).minutes,
         status: 200,
         is_error: false,

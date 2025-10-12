@@ -53,19 +53,23 @@ class QueriesIndexPageTest < SharedIndexPageTest
   def create_summary_data_for_queries
     test_request = rails_pulse_requests(:users_request_1)
 
-    # Create slow operation (≥100ms) for simple_query at 12 hours ago
+    # Create slow operations (≥100ms) for simple_query at 12 hours ago
+    # Fixtures have sql_operation_3 (120ms @ 1 hour ago)
+    # Add more operations to ensure average stays >= 100ms
     slow_query = rails_pulse_queries(:simple_query)
     operation_time = 12.hours.ago
 
-    RailsPulse::Operation.create!(
-      query: slow_query,
-      request: test_request,
-      operation_type: "sql",
-      label: slow_query.normalized_sql,
-      duration: 500.0,  # Well above 100ms threshold
-      start_time: 10.0,
-      occurred_at: operation_time
-    )
+    2.times do |i|
+      RailsPulse::Operation.create!(
+        query: slow_query,
+        request: test_request,
+        operation_type: "sql",
+        label: slow_query.normalized_sql,
+        duration: 500.0 + (i * 50),  # 500ms, 550ms
+        start_time: 10.0,
+        occurred_at: operation_time + (i * 10).minutes
+      )
+    end
 
     # Create critical operation (≥1000ms) for complex_query at 10 days ago (within Last Month)
     critical_query = rails_pulse_queries(:complex_query)
@@ -110,6 +114,9 @@ class QueriesIndexPageTest < SharedIndexPageTest
     service.perform
 
     service = RailsPulse::SummaryService.new("day", Time.current.beginning_of_day)
+    service.perform
+
+    service = RailsPulse::SummaryService.new("day", operation_time.beginning_of_day)
     service.perform
 
     service = RailsPulse::SummaryService.new("day", critical_operation_time.beginning_of_day)
