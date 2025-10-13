@@ -3,13 +3,14 @@ require "test_helper"
 class RailsPulse::OperationsControllerTest < ActionDispatch::IntegrationTest
   def setup
     ENV["TEST_TYPE"] = "functional"
-    setup_clean_database
-    stub_all_external_dependencies
+
+
     super
   end
 
   test "controller has show action" do
     controller = RailsPulse::OperationsController.new
+
     assert_respond_to controller, :show
   end
 
@@ -40,15 +41,17 @@ class RailsPulse::OperationsControllerTest < ActionDispatch::IntegrationTest
 
     # 25 should be at 40th percentile (between 20 and 30)
     percentile = controller.send(:calculate_percentile, 25, sorted_array)
-    assert_equal 40.0, percentile
+
+    assert_in_delta(40.0, percentile)
 
     # 35 should be at 60th percentile
     percentile = controller.send(:calculate_percentile, 35, sorted_array)
-    assert_equal 60.0, percentile
+
+    assert_in_delta(60.0, percentile)
   end
 
   test "controller inherits from ApplicationController" do
-    assert RailsPulse::OperationsController < RailsPulse::ApplicationController
+    assert_operator RailsPulse::OperationsController, :<, RailsPulse::ApplicationController
   end
 
   private

@@ -132,7 +132,8 @@ module RailsPulse
           To convert to single database setup:
           1. Run: rails generate rails_pulse:convert_to_migrations
           2. Run: rails db:migrate
-          3. Delete: db/rails_pulse_schema.rb
+
+          The schema file db/rails_pulse_schema.rb will remain as your single source of truth.
 
         MESSAGE
       end

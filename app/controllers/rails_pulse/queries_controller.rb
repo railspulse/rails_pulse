@@ -55,7 +55,7 @@ module RailsPulse
     end
 
     def table_model
-      show_action? ? Operation : Summary
+      Summary
     end
 
     def chart_class
@@ -76,7 +76,10 @@ module RailsPulse
       base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
 
       if show_action?
-        base_params.merge(summarizable_id_eq: @query.id)
+        base_params.merge(
+          summarizable_id_eq: @query.id,
+          summarizable_type_eq: "RailsPulse::Query"
+        )
       else
         base_params
       end
@@ -84,13 +87,14 @@ module RailsPulse
 
     def build_table_ransack_params(ransack_params)
       if show_action?
-        # For Operation model on show page
+        # For Summary model on show page
         params = ransack_params.merge(
-          occurred_at_gteq: Time.at(@table_start_time),
-          occurred_at_lt: Time.at(@table_end_time),
-          query_id_eq: @query.id
+          period_start_gteq: Time.at(@table_start_time),
+          period_start_lt: Time.at(@table_end_time),
+          summarizable_id_eq: @query.id,
+          summarizable_type_eq: "RailsPulse::Query"
         )
-        params[:duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+        params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
         params
       else
         # For Summary model on index page
@@ -104,23 +108,13 @@ module RailsPulse
     end
 
     def default_table_sort
-      show_action? ? "occurred_at desc" : "period_start desc"
+      "period_start desc"
     end
 
     def build_table_results
       if show_action?
-        # Only show operations that belong to time periods where we have query summaries
-        # This ensures the table data is consistent with the chart data
-        @ransack_query.result
-          .joins(<<~SQL)
-            INNER JOIN rails_pulse_summaries ON
-              rails_pulse_summaries.summarizable_id = rails_pulse_operations.query_id AND
-              rails_pulse_summaries.summarizable_type = 'RailsPulse::Query' AND
-              rails_pulse_summaries.period_type = '#{period_type}' AND
-              rails_pulse_operations.occurred_at >= rails_pulse_summaries.period_start AND
-              rails_pulse_operations.occurred_at < rails_pulse_summaries.period_end
-          SQL
-          .distinct
+        # For Summary model on show page - ransack params already include query ID and type filters
+        @ransack_query.result.where(period_type: period_type)
       else
         Queries::Tables::Index.new(
           ransack_query: @ransack_query,

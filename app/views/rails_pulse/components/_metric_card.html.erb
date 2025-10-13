@@ -4,7 +4,7 @@
   context = data[:context]
   title = data[:title]
   summary = data[:summary]
-  line_chart_data = data[:line_chart_data]
+  chart_data = data[:chart_data]
   trend_icon = data[:trend_icon]
   trend_amount = data[:trend_amount]
   trend_text = data[:trend_text]
@@ -38,7 +38,7 @@
               }
             )
           %>
-          <%= bar_chart line_chart_data, height: "100%", options: chart_options %>
+          <%= bar_chart chart_data, height: "100%", options: chart_options %>
         </div>
       </div>
     </div>

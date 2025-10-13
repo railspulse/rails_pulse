@@ -1,5 +1,13 @@
 # Abstract base class - doesn't run tests itself
+require_relative "shared_test_data"
+require_relative "chart_validation_helpers"
+require_relative "table_validation_helpers"
+
 class SharedIndexPageTest < ApplicationSystemTestCase
+  include SharedTestData
+  include ChartValidationHelpers
+  include TableValidationHelpers
+
   # Don't run tests for this base class
   def self.runnable_methods
     return [] if name == "SharedIndexPageTest"
@@ -8,12 +16,13 @@ class SharedIndexPageTest < ApplicationSystemTestCase
 
   def setup
     super
+    load_shared_test_data
     create_comprehensive_test_data
   end
 
   def create_comprehensive_test_data
-    # Override in subclasses
-    raise NotImplementedError, "Subclass must implement create_comprehensive_test_data"
+    # Override in subclasses for any additional test-specific data
+    # Base shared data is already loaded via load_shared_test_data
   end
 
   # Override these methods in subclasses
@@ -74,7 +83,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
   end
 
   # Shared test methods
-  def test_index_page_loads_and_displays_data
+  test "index page loads and displays data" do
     visit_rails_pulse_path page_path
 
     # Verify basic page structure
@@ -99,7 +108,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_chart_data(chart_selector, expected_data: expected_data, filter_applied: "Last Month")
   end
 
-  def test_metric_cards_display_data_correctly
+  test "metric cards display data correctly" do
     visit_rails_pulse_path page_path
 
     # Wait for page to load
@@ -109,13 +118,14 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     metric_card_selectors.each do |selector, expected_pattern|
       within(selector) do
         card_text = text.upcase
+
         assert_match expected_pattern[:title_regex], card_text, expected_pattern[:title_message]
         assert_match expected_pattern[:value_regex], text, expected_pattern[:value_message]
       end
     end
   end
 
-  def test_time_range_filter_updates_chart_and_table_data
+  test "time range filter updates chart and table data" do
     visit_rails_pulse_path page_path
 
     # Capture initial data
@@ -141,7 +151,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: page_type, filter_applied: "Last Month")
   end
 
-  def test_performance_duration_filter_works_correctly
+  test "performance duration filter works correctly" do
     visit_rails_pulse_path page_path
 
     # Test "Slow" filter
@@ -162,7 +172,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: page_type, filter_applied: "Critical")
   end
 
-  def test_combined_filters_work_together
+  test "combined filters work together" do
     visit_rails_pulse_path page_path
 
     # Test combined filtering: slow from last week
@@ -183,7 +193,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: page_type, filter_applied: "Slow")
   end
 
-  def test_table_column_sorting_works_correctly
+  test "table column sorting works correctly" do
     visit_rails_pulse_path page_path
 
     # Wait for table to load
@@ -194,7 +204,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     end
   end
 
-  def test_zoom_range_parameters_filter_table_data_while_chart_shows_all_data
+  test "zoom range parameters filter table data while chart shows all data" do
     visit_rails_pulse_path page_path
 
     # Wait for page to load with default data
@@ -228,7 +238,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_table_data(page_type: page_type, expected_data: zoomed_table_data, filter_applied: "Recent Zoom")
   end
 
-  def test_column_selection_filters_table_and_persists_sorting
+  test "column selection filters table and persists sorting" do
     visit_rails_pulse_path page_path
 
     # Wait for page to fully load and ensure we have data
@@ -259,7 +269,8 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     # Verify sort order is maintained (if we have overlapping data)
     if current_sorted_rows.length == sorted_rows.length && (current_sorted_rows & sorted_rows).length > 0
       common_items = current_sorted_rows & sorted_rows
-      assert common_items.length > 0, "Should have some common items to verify sort persistence"
+
+      assert_operator common_items.length, :>, 0, "Should have some common items to verify sort persistence"
     end
 
     # Verify chart has data
@@ -272,12 +283,14 @@ class SharedIndexPageTest < ApplicationSystemTestCase
       }
       return 0;
     ")
-    assert chart_columns > 1, "Should have multiple chart columns"
+
+    assert_operator chart_columns, :>, 1, "Should have multiple chart columns"
 
     # Verify URL parameters
     current_url = page.current_url
-    assert current_url.include?("selected_column_time"), "URL should contain selected_column_time parameter after column selection"
-    assert current_url.include?("q%5Bs%5D"), "Sort parameter should be preserved during column selection"
+
+    assert_includes current_url, "selected_column_time", "URL should contain selected_column_time parameter after column selection"
+    assert_includes current_url, "q%5Bs%5D", "Sort parameter should be preserved during column selection"
   end
 
   private
@@ -287,7 +300,8 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     column_index = column_config[:index]
     value_extractor = column_config[:value_extractor] || ->(text) { text.gsub(/[^\d.]/, "").to_f }
 
-    within("table thead") { click_link column_name }
+    within("table thead") { first(:link, column_name).click }
+
     assert_selector "table tbody tr", wait: 3
 
     # Verify sort order by comparing first two rows
@@ -305,7 +319,8 @@ class SharedIndexPageTest < ApplicationSystemTestCase
            "Rows should be sorted by #{column_name}: #{first_value} vs #{second_value}")
 
     # Test sorting by clicking the same column again (should toggle sort direction)
-    within("table thead") { click_link column_name }
+    within("table thead") { first(:link, column_name).click }
+
     assert_selector "table tbody tr", wait: 3
 
     # Get new values after re-sorting
@@ -323,6 +338,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
   def simulate_column_selection
     # Find the index controller and simulate column click
     index_element = find('[data-controller="rails-pulse--index"]')
+
     assert index_element, "Should find element with rails-pulse--index controller"
 
     # Use JavaScript to simulate column selection

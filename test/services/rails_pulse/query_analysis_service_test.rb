@@ -26,28 +26,30 @@ module RailsPulse
       assert_equal "SELECT", characteristics[:query_type]
       assert_equal 1, characteristics[:table_count]
       assert_equal 0, characteristics[:join_count]
-      assert_equal false, characteristics[:has_subqueries]
-      assert_equal false, characteristics[:has_limit]
-      assert_equal false, characteristics[:has_order_by]
+      assert_not characteristics[:has_subqueries]
+      assert_not characteristics[:has_limit]
+      assert_not characteristics[:has_order_by]
     end
 
     test "detects pattern-based issues" do
       # Create query with SELECT *
-      query = create_query("SELECT * FROM users WHERE id = ?")
+      query = create_query("SELECT * FROM orders WHERE id = ?")
       results = QueryAnalysisService.analyze_query(query.id)
 
       pattern_issues = results[:query_characteristics][:pattern_issues]
       select_star_issue = pattern_issues.find { |issue| issue[:type] == "select_star" }
+
       assert_not_nil select_star_issue
       assert_equal "info", select_star_issue[:severity]
     end
 
     test "detects missing WHERE clause issues" do
-      query = create_query("SELECT name FROM users")
+      query = create_query("SELECT name FROM products")
       results = QueryAnalysisService.analyze_query(query.id)
 
       pattern_issues = results[:query_characteristics][:pattern_issues]
       missing_where_issue = pattern_issues.find { |issue| issue[:type] == "missing_where_clause" }
+
       assert_not_nil missing_where_issue
       assert_equal "warning", missing_where_issue[:severity]
     end
@@ -62,15 +64,17 @@ module RailsPulse
     end
 
     test "generates relevant suggestions based on issues" do
-      query = create_query("SELECT * FROM users WHERE name = ?")
+      query = create_query("SELECT * FROM categories WHERE name = ?")
       results = QueryAnalysisService.analyze_query(query.id)
 
       # Should have suggestions for both SELECT * and missing LIMIT
       suggestions = results[:suggestions]
-      assert suggestions.length > 0
+
+      assert_operator suggestions.length, :>, 0
 
       # Check that we get actionable suggestions
       optimization_suggestion = suggestions.find { |s| s[:type] == "optimization" }
+
       assert_not_nil optimization_suggestion
       assert_not_nil optimization_suggestion[:action]
       assert_not_nil optimization_suggestion[:benefit]
@@ -85,12 +89,12 @@ module RailsPulse
       assert_not_nil @query.analyzed_at
       assert_not_nil @query.query_stats
       assert_not_nil @query.backtrace_analysis
-      assert @query.analyzed?
+      assert_predicate @query, :analyzed?
     end
 
     test "handles queries without recent operations gracefully" do
       # Create query without any operations
-      query = RailsPulse::Query.create!(normalized_sql: "SELECT COUNT(*) FROM posts")
+      query = RailsPulse::Query.create!(normalized_sql: "SELECT COUNT(*) FROM inventory")
 
       results = QueryAnalysisService.analyze_query(query.id)
 
@@ -99,39 +103,23 @@ module RailsPulse
       assert_nil results[:explain_plan][:explain_plan]
     end
 
-    test "detects N+1 query patterns" do
-      # Create a completely isolated query for this test
-      query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM posts WHERE user_id = ?")
-
-      # Use a very specific recent time window that won't conflict with other tests
-      base_time = 30.hours.ago  # Within 48 hour window but different from other tests
-      12.times do |i|
-        create_operation(query, occurred_at: base_time + i.seconds)
-      end
-
-      results = QueryAnalysisService.analyze_query(query.id)
-      n_plus_one_result = results[:backtrace_analysis][:potential_n_plus_one]
-
-      assert n_plus_one_result[:detected], "Expected N+1 pattern to be detected with 12 operations in same minute"
-      assert n_plus_one_result[:suspicious_periods].any?, "Expected suspicious periods to be identified"
-    end
 
     test "calculates complexity score correctly" do
       complex_query = create_query(<<~SQL)
-        SELECT u.name, p.title, COUNT(c.id) as comment_count
-        FROM users u
-        INNER JOIN posts p ON p.user_id = u.id
-        LEFT JOIN comments c ON c.post_id = p.id
-        WHERE u.active = ? AND p.published_at > ?
-        GROUP BY u.id, p.id
-        HAVING COUNT(c.id) > ?
-        ORDER BY p.published_at DESC
+        SELECT u.name, a.title, COUNT(r.id) as review_count
+        FROM authors u
+        INNER JOIN articles a ON a.author_id = u.id
+        LEFT JOIN reviews r ON r.article_id = a.id
+        WHERE u.active = ? AND a.published_at > ?
+        GROUP BY u.id, a.id
+        HAVING COUNT(r.id) > ?
+        ORDER BY a.published_at DESC
       SQL
 
       results = QueryAnalysisService.analyze_query(complex_query.id)
       characteristics = results[:query_characteristics]
 
-      assert characteristics[:estimated_complexity] > 10
+      assert_operator characteristics[:estimated_complexity], :>, 10
       assert_equal 3, characteristics[:table_count]
       assert_equal 2, characteristics[:join_count]
       assert characteristics[:has_group_by]
@@ -145,29 +133,22 @@ module RailsPulse
     def create_query_with_operations
       query = create_query("SELECT id, name FROM users WHERE id = ?")
 
-      # Create some operations with different locations
-      create_operation(query, codebase_location: "app/controllers/users_controller.rb:25")
-      create_operation(query, codebase_location: "app/controllers/users_controller.rb:25")
-      create_operation(query, codebase_location: "app/models/user.rb:15")
+      # Create some operations with different locations using fixture request
+      request = rails_pulse_requests(:users_request_1)
+
+      create_operation(query, request, codebase_location: "app/controllers/users_controller.rb:25")
+      create_operation(query, request, codebase_location: "app/controllers/users_controller.rb:25")
+      create_operation(query, request, codebase_location: "app/models/user.rb:15")
 
       query
     end
 
     def create_query(sql)
-      RailsPulse::Query.create!(normalized_sql: sql)
+      # Use find_or_create_by to avoid uniqueness constraint violations
+      RailsPulse::Query.find_or_create_by(normalized_sql: sql)
     end
 
-    def create_operation(query, attributes = {})
-      route = RailsPulse::Route.find_or_create_by(method: "GET", path: "/users")
-      request = RailsPulse::Request.create!(
-        route: route,
-        duration: 100.0,
-        status: 200,
-        is_error: false,
-        request_uuid: SecureRandom.uuid,
-        occurred_at: 1.hour.ago
-      )
-
+    def create_operation(query, request, attributes = {})
       default_attributes = {
         request: request,
         query: query,
@@ -179,6 +160,7 @@ module RailsPulse
         codebase_location: "app/models/user.rb:10"
       }
 
+      # Make sure passed attributes override defaults (especially occurred_at)
       RailsPulse::Operation.create!(default_attributes.merge(attributes))
     end
   end

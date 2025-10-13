@@ -36,9 +36,10 @@ module RailsPulse
     # Ransack configuration
     def self.ransackable_attributes(auth_object = nil)
       %w[
-        period_start period_end avg_duration max_duration count error_count
+        period_start period_end avg_duration min_duration max_duration count error_count
         requests_per_minute error_rate_percentage route_path_cont
         execution_count total_time_consumed normalized_sql
+        summarizable_id summarizable_type
       ]
     end
 
@@ -46,17 +47,16 @@ module RailsPulse
       %w[route query]
     end
 
-    # Custom ransackers for calculated fields (designed to work with GROUP BY queries)
-    ransacker :count do
-      Arel.sql("SUM(rails_pulse_summaries.count)")  # Use SUM for proper grouping
-    end
+    # Note: Basic fields like count, avg_duration, min_duration, max_duration
+    # are handled automatically by Ransack using actual database columns
 
+    # Custom ransackers for calculated fields only
     ransacker :requests_per_minute do
-      Arel.sql("SUM(rails_pulse_summaries.count) / 60.0")  # Use SUM for consistency
+      Arel.sql("rails_pulse_summaries.count / 60.0")
     end
 
     ransacker :error_rate_percentage do
-      Arel.sql("(SUM(rails_pulse_summaries.error_count) * 100.0) / SUM(rails_pulse_summaries.count)")  # Use SUM for both
+      Arel.sql("(rails_pulse_summaries.error_count * 100.0) / rails_pulse_summaries.count")
     end
 
 

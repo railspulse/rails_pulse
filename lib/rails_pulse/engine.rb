@@ -66,6 +66,27 @@ module RailsPulse
       # Instead, we explicitly use time_zone: "UTC" in all groupdate calls
     end
 
+    initializer "rails_pulse.disable_turbo" do
+      # Disable Turbo navigation globally for Rails Pulse to avoid CSP issues with charts
+      # This ensures all navigation within Rails Pulse uses full page refreshes
+      ActiveSupport.on_load(:action_view) do
+        ActionView::Helpers::UrlHelper.module_eval do
+          alias_method :original_link_to, :link_to
+
+          def link_to(*args, &block)
+            # Only modify links within Rails Pulse namespace
+            if respond_to?(:controller) && controller.class.name.start_with?("RailsPulse::")
+              options = args.extract_options!
+              options[:data] ||= {}
+              options[:data][:turbo] = false unless options[:data].key?(:turbo)
+              args << options
+            end
+            original_link_to(*args, &block)
+          end
+        end
+      end
+    end
+
     # CSP helper methods
     def self.csp_sources
       {

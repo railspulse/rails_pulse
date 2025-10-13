@@ -1,11 +1,12 @@
 # Rails Pulse Database Setup & Migrations
 
-Rails Pulse uses a **hybrid approach** for database management, combining the simplicity of schema-based installation with the flexibility of migrations for upgrades.
+Rails Pulse uses a **single source of truth approach** for database management, following the solid_queue pattern. This combines the simplicity of schema-based installation with the flexibility of migrations for upgrades.
 
 ## Overview
 
-- **Initial Installation**: Uses schema file for quick setup
-- **Future Changes**: Uses regular Rails migrations
+- **Single Source of Truth**: One master schema file in the gem
+- **Initial Installation**: Schema file copied and loaded via migration
+- **Future Changes**: Individual migrations in dedicated directory
 - **Two Setup Options**: Single database (recommended) or separate database
 
 ## Installation Options
@@ -24,14 +25,16 @@ rails generate rails_pulse:install --database=single
 
 This will:
 1. Copy `config/initializers/rails_pulse.rb` (configuration)
-2. Create an installation migration in `db/migrate/`
-3. The migration contains all Rails Pulse tables and indexes
+2. Copy `db/rails_pulse_schema.rb` (single source of truth)
+3. Create an installation migration in `db/migrate/` that loads the schema
+4. Create `db/rails_pulse_migrate/` directory for future migrations
 
 **Next steps:**
 ```bash
-rails db:migrate           # Create Rails Pulse tables
-rm db/rails_pulse_schema.rb # Clean up (no longer needed)
+rails db:migrate    # Create Rails Pulse tables via schema loading
 ```
+
+The schema file `db/rails_pulse_schema.rb` remains as your single source of truth and should not be deleted.
 
 ### Option 2: Separate Database Setup
 
@@ -59,7 +62,7 @@ development:
 
 2. Create the database:
 ```bash
-rails db:prepare  # Creates database and loads schema
+rails db:prepare  # Creates database and loads schema automatically
 ```
 
 ## Upgrading Rails Pulse
@@ -101,10 +104,9 @@ rails generate rails_pulse:convert_to_migrations
 
 # Apply the migration
 rails db:migrate
-
-# Clean up
-rm db/rails_pulse_schema.rb
 ```
+
+The schema file remains as your single source of truth and should not be deleted.
 
 ### From Separate to Single Database
 
@@ -132,8 +134,8 @@ rails db:migrate
 
 ### Schema file conflicts
 
-If you have both migrations and schema file:
-- **Single database**: Delete `db/rails_pulse_schema.rb`
+The schema file `db/rails_pulse_schema.rb` should always be kept as your single source of truth:
+- **Single database**: Keep schema file, migrations load from it
 - **Separate database**: Keep schema file, use `db/rails_pulse_migrate/` for migrations
 
 ## Advanced Configuration
@@ -170,21 +172,37 @@ production:
 ```
 
 
-## DRY Architecture
+## Architecture: Single Source of Truth
 
-### Single Source of Truth
+### How It Works
+
+Rails Pulse follows the **solid_queue pattern** for database management:
+
+1. **Master Schema**: One canonical schema file in the gem at `lib/generators/rails_pulse/templates/db/rails_pulse_schema.rb`
+2. **Installation**: Generator copies the schema to your app's `db/rails_pulse_schema.rb`
+3. **Migration Loading**: Installation migration loads and executes the schema file at runtime
+4. **Future Updates**: Individual migrations in `db/rails_pulse_migrate/` for incremental changes
+
+### Migration Class Names
+
+The installation migration follows Rails conventions:
+- Class name: `InstallRailsPulseTables` (without timestamp)
+- Filename includes timestamp: `YYYYMMDDHHMMSS_install_rails_pulse_tables.rb`
+- Rails uses the filename timestamp to track migration status
+- The generator creates a new timestamped file each time it runs
+
+### Migration Approach
 
 The installation migration doesn't duplicate table definitions. Instead, it:
 - **Loads the schema file at runtime**: `load schema_file`
 - **Executes the schema dynamically**: `RailsPulse::Schema.call(connection)`
-- **Ensures automatic synchronization**: No need to manually keep two files in sync
-
-This eliminates the maintenance burden of keeping migration templates and schema files synchronized.
+- **Ensures automatic synchronization**: Always reflects the current schema
 
 ### Benefits
 
-1. **No Duplication**: Schema definition exists only in `db/rails_pulse_schema.rb`
-2. **Always Current**: Migration automatically gets latest schema changes
+1. **Single Source of Truth**: Schema definition exists in one place
+2. **No Sync Issues**: Migration always loads the current schema
 3. **Maintainer Friendly**: Gem developers only update one file
-4. **Error Prevention**: Impossible for migration and schema to be out of sync
+4. **Clean Installation**: New users get all tables at once, not 20+ migrations
+5. **Future-Proof**: Can add incremental migrations for schema evolution
 

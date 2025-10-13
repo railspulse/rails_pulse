@@ -48,16 +48,27 @@ module RailsPulse
             sparkline_data[label] = { value: total }
           end
 
-          # Calculate average requests per minute over 2-week period
-          total_minutes = 2.weeks / 1.minute
-          average_requests_per_minute = total_request_count / total_minutes
+          # Calculate appropriate rate display based on frequency
+          total_minutes = 2.weeks / 1.minute.to_f
+          requests_per_minute = total_request_count.to_f / total_minutes
+
+          # Choose appropriate time unit for display
+          if requests_per_minute >= 1
+            summary = "#{requests_per_minute.round(2)} / min"
+          elsif requests_per_minute * 60 >= 1
+            requests_per_hour = requests_per_minute * 60
+            summary = "#{requests_per_hour.round(2)} / hour"
+          else
+            requests_per_day = requests_per_minute * 60 * 24
+            summary = "#{requests_per_day.round(2)} / day"
+          end
 
           {
             id: "request_count_totals",
             context: "routes",
             title: "Request Count Total",
-            summary: "#{average_requests_per_minute.round(2)} / min",
-            line_chart_data: sparkline_data,
+            summary: summary,
+            chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: "Compared to last week"

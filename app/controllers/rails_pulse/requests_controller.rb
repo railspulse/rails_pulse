@@ -5,13 +5,7 @@ module RailsPulse
     before_action :set_request, only: :show
 
     def index
-      unless turbo_frame_request?
-        @average_response_times_metric_card = RailsPulse::Routes::Cards::AverageResponseTimes.new(route: nil).to_metric_card
-        @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: nil).to_metric_card
-        @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: nil).to_metric_card
-        @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: nil).to_metric_card
-      end
-
+      setup_metric_cards
       setup_chart_and_table_data
     end
 
@@ -21,12 +15,22 @@ module RailsPulse
 
     private
 
+    def setup_metric_cards
+      return if  turbo_frame_request?
+
+      @average_response_times_metric_card = RailsPulse::Routes::Cards::AverageResponseTimes.new(route: nil).to_metric_card
+      @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: nil).to_metric_card
+      @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: nil).to_metric_card
+      @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: nil).to_metric_card
+    end
+
+
     def chart_model
-      Summary
+      RailsPulse::Summary
     end
 
     def table_model
-      Request
+      RailsPulse::Request
     end
 
     def chart_class
@@ -64,27 +68,36 @@ module RailsPulse
     end
 
     def build_table_results
-      # Only show requests that belong to time periods where we have overall request summaries
-      # This ensures the table data is consistent with the chart data
-      @ransack_query.result
-        .joins(:route)
-        .joins(<<~SQL)
-          INNER JOIN rails_pulse_summaries ON
-            rails_pulse_summaries.summarizable_id = 0 AND
-            rails_pulse_summaries.summarizable_type = 'RailsPulse::Request' AND
-            rails_pulse_summaries.period_type = '#{period_type}' AND
-            rails_pulse_requests.occurred_at >= rails_pulse_summaries.period_start AND
-            rails_pulse_requests.occurred_at < rails_pulse_summaries.period_end
-        SQL
-        .select(
-          "rails_pulse_requests.id",
-          "rails_pulse_requests.occurred_at",
-          "rails_pulse_requests.duration",
-          "rails_pulse_requests.status",
-          "rails_pulse_requests.route_id",
-          "rails_pulse_routes.path"
-        )
-        .distinct
+      base_query = @ransack_query.result.includes(:route)
+
+      # If sorting by route_path, we need to join the routes table
+      if @ransack_query.sorts.any? { |sort| sort.name == "route_path" }
+        base_query = base_query.joins(:route)
+      end
+
+      base_query
+    end
+
+
+    def setup_table_data(ransack_params)
+      table_ransack_params = build_table_ransack_params(ransack_params)
+      @ransack_query = table_model.ransack(table_ransack_params)
+
+      # Only apply default sort if not using Requests::Tables::Index (which handles its own sorting)
+      # For requests, we always use the Tables::Index on the index action
+      unless action_name == "index"
+        @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?
+      end
+
+      table_results = build_table_results
+      handle_pagination
+
+      @pagy, @table_data = pagy(table_results, limit: session_pagination_limit)
+    end
+
+    def handle_pagination
+      method = pagination_method
+      send(method, params[:limit]) if params[:limit].present?
     end
 
     def set_request

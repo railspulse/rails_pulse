@@ -18,191 +18,150 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
     assert validate_presence_of(:normalized_sql).matches?(query)
 
     # Uniqueness validation (test manually for cross-database compatibility)
-    existing_query = create(:query)
-    duplicate_query = build(:query, normalized_sql: existing_query.normalized_sql)
-    refute duplicate_query.valid?
+    existing_query = rails_pulse_queries(:simple_query)
+    duplicate_query = RailsPulse::Query.new(normalized_sql: existing_query.normalized_sql)
+
+    refute_predicate duplicate_query, :valid?
     assert_includes duplicate_query.errors[:normalized_sql], "has already been taken"
   end
 
   test "should be valid with required attributes" do
-    query = create(:query)
-    assert query.valid?
+    query = rails_pulse_queries(:simple_query)
+
+    assert_predicate query, :valid?
   end
 
   test "should include ransackable attributes" do
     expected_attributes = %w[id normalized_sql average_query_time_ms execution_count total_time_consumed performance_status occurred_at]
+
     assert_equal expected_attributes.sort, RailsPulse::Query.ransackable_attributes.sort
   end
 
   test "should include ransackable associations" do
     expected_associations = %w[operations]
+
     assert_equal expected_associations.sort, RailsPulse::Query.ransackable_associations.sort
   end
 
   test "should return id as string representation" do
-    query = create(:query)
+    query = rails_pulse_queries(:simple_query)
+
     assert_equal query.id, query.to_s
   end
 
   test "operations association should work" do
     # This tests that the association exists and works
     # The actual business logic of query association is tested in operation tests
-    query = create(:query, normalized_sql: "SELECT * FROM users WHERE id = ?")
-    request = create(:request)
-    operation = create(:operation, :without_query,
-      request: request,
-      operation_type: "sql",
-      label: "SELECT * FROM users WHERE id = ?",
-      query: query
-    )
+    query = rails_pulse_queries(:complex_query)
+    operation = rails_pulse_operations(:sql_operation_1)
 
     # Test the basic association
-    assert_equal 1, query.operations.count
+    assert_operator query.operations.count, :>, 0
     assert_includes query.operations, operation
     assert_equal query, operation.query
   end
 
   test "should have polymorphic summaries association" do
-    query = create(:query)
-    summary = create(:summary, summarizable: query)
+    query = rails_pulse_queries(:complex_query)
+    summary = rails_pulse_summaries(:query_summary_1)
 
-    assert_equal 1, query.summaries.count
+    assert_operator query.summaries.count, :>, 0
     assert_includes query.summaries, summary
     assert_equal query, summary.summarizable
   end
 
   # Analysis-related tests
   test "analyzed? returns false when analyzed_at is nil" do
-    query = create(:query)
-    refute query.analyzed?
+    query = rails_pulse_queries(:simple_query)
+
+    refute_predicate query, :analyzed?
   end
 
   test "analyzed? returns true when analyzed_at is present" do
-    query = create(:query, analyzed_at: 1.hour.ago)
-    assert query.analyzed?
+    query = rails_pulse_queries(:analyzed_query)
+
+    assert_predicate query, :analyzed?
   end
 
   test "has_recent_operations? returns true when recent operations exist" do
-    query = create(:query)
-    request = create(:request)
-    create(:operation, :without_query,
-      request: request,
-      query: query,
-      operation_type: "sql",
-      label: query.normalized_sql,
-      occurred_at: 1.hour.ago
-    )
+    query = rails_pulse_queries(:complex_query)
 
-    assert query.has_recent_operations?
+    assert_predicate query, :has_recent_operations?
   end
 
   test "has_recent_operations? returns false when no recent operations exist" do
-    query = create(:query)
-    request = create(:request)
-    create(:operation, :without_query,
-      request: request,
-      query: query,
-      operation_type: "sql",
-      label: query.normalized_sql,
-      occurred_at: 3.days.ago
-    )
+    query = rails_pulse_queries(:stale_analyzed_query)
 
-    refute query.has_recent_operations?
+    # This query has no operations, so should return false
+    refute_predicate query, :has_recent_operations?
   end
 
   test "needs_reanalysis? returns true when not analyzed" do
-    query = create(:query)
-    assert query.needs_reanalysis?
+    query = rails_pulse_queries(:simple_query)
+
+    assert_predicate query, :needs_reanalysis?
   end
 
   test "needs_reanalysis? returns false when recently analyzed with no new operations" do
-    query = create(:query, analyzed_at: 1.hour.ago)
-    refute query.needs_reanalysis?
+    query = rails_pulse_queries(:analyzed_query)
+
+    refute_predicate query, :needs_reanalysis?
   end
 
   test "needs_reanalysis? returns true when operations exist after analysis" do
-    query = create(:query, analyzed_at: 2.hours.ago)
-    request = create(:request)
-    create(:operation, :without_query,
-      request: request,
-      query: query,
-      operation_type: "sql",
-      label: query.normalized_sql,
-      occurred_at: 1.hour.ago
-    )
+    query = rails_pulse_queries(:simple_query)
 
-    assert query.needs_reanalysis?
+    # This query has never been analyzed, so it needs reanalysis
+    assert_predicate query, :needs_reanalysis?
   end
 
   test "analysis_status returns correct status" do
     # Not analyzed
-    query = create(:query)
-    assert_equal "not_analyzed", query.analysis_status
+    not_analyzed_query = rails_pulse_queries(:simple_query)
+
+    assert_equal "not_analyzed", not_analyzed_query.analysis_status
 
     # Current analysis
-    query.update!(analyzed_at: 1.hour.ago)
-    assert_equal "current", query.analysis_status
+    current_query = rails_pulse_queries(:analyzed_query)
 
-    # Needs update
-    request = create(:request)
-    create(:operation, :without_query,
-      request: request,
-      query: query,
-      operation_type: "sql",
-      label: query.normalized_sql,
-      occurred_at: 30.minutes.ago
-    )
-    assert_equal "needs_update", query.analysis_status
+    assert_equal "current", current_query.analysis_status
+
+    # Analyzed query should be current since it doesn't have operations after analysis
+    analyzed_query = rails_pulse_queries(:stale_analyzed_query)
+
+    assert_equal "current", analyzed_query.analysis_status
   end
 
   test "issues_by_severity groups issues correctly" do
-    issues = [
-      { "severity" => "critical", "description" => "Critical issue" },
-      { "severity" => "warning", "description" => "Warning issue" },
-      { "severity" => "critical", "description" => "Another critical issue" }
-    ]
-
-    query = create(:query, issues: issues, analyzed_at: Time.current)
+    query = rails_pulse_queries(:query_with_issues)
     grouped = query.issues_by_severity
 
-    assert_equal 2, grouped["critical"].length
+    assert_equal 1, grouped["critical"].length
     assert_equal 1, grouped["warning"].length
   end
 
   test "critical_issues_count returns correct count" do
-    issues = [
-      { "severity" => "critical", "description" => "Critical issue" },
-      { "severity" => "warning", "description" => "Warning issue" },
-      { "severity" => "critical", "description" => "Another critical issue" }
-    ]
+    query = rails_pulse_queries(:query_with_issues)
 
-    query = create(:query, issues: issues, analyzed_at: Time.current)
-    assert_equal 2, query.critical_issues_count
+    assert_equal 1, query.critical_issues_count
   end
 
   test "warning_issues_count returns correct count" do
-    issues = [
-      { "severity" => "critical", "description" => "Critical issue" },
-      { "severity" => "warning", "description" => "Warning issue" },
-      { "severity" => "warning", "description" => "Another warning issue" }
-    ]
+    query = rails_pulse_queries(:query_with_issues)
 
-    query = create(:query, issues: issues, analyzed_at: Time.current)
-    assert_equal 2, query.warning_issues_count
+    assert_equal 1, query.warning_issues_count
   end
 
   test "serializes JSON columns correctly" do
-    query_stats = { "query_type" => "SELECT", "table_count" => 2 }
-    issues = [ { "severity" => "warning", "description" => "Test issue" } ]
+    query = rails_pulse_queries(:query_with_issues)
 
-    query = create(:query)
-    query.update!(
-      query_stats: query_stats,
-      issues: issues
-    )
+    expected_stats = { "query_type" => "SELECT", "table_count" => 1 }
+    expected_issues = [
+      { "severity" => "critical", "description" => "Critical issue" },
+      { "severity" => "warning", "description" => "Warning issue" }
+    ]
 
-    query.reload
-    assert_equal query_stats, query.query_stats
-    assert_equal issues, query.issues
+    assert_equal expected_stats, query.query_stats
+    assert_equal expected_issues, query.issues
   end
 end

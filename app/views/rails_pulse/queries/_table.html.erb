@@ -1,9 +1,7 @@
 <% columns = [
   { field: :normalized_sql, label: 'Query', class: 'w-auto' },
-  { field: :execution_count_sort, label: 'Executions', class: 'w-24' },
-  { field: :avg_duration_sort, label: 'Avg Time', class: 'w-24' },
-  { field: :total_time_consumed_sort, label: 'Total Time', class: 'w-28' },
-  { field: :performance_status, label: 'Status', class: 'w-16', sortable: false }
+  { field: :avg_duration_sort, label: 'Average Query Time', class: 'w-44' },
+  { field: :execution_count_sort, label: 'Executions', class: 'w-24' }
 ] %>
 
 <table class="table mbs-4" data-controller="rails-pulse--table-sort">
@@ -17,10 +15,8 @@
             <%= link_to html_escape(truncate_sql(summary.normalized_sql)), query_path(summary.query_id), data: { turbo_frame: '_top', } %>
           </div>
         </td>
-        <td class="whitespace-nowrap"><%= number_with_delimiter summary.execution_count %></td>
         <td class="whitespace-nowrap"><%= summary.avg_duration.to_i %> ms</td>
-        <td class="whitespace-nowrap"><%= number_with_delimiter summary.total_time_consumed.to_i %> ms</td>
-        <td class="whitespace-nowrap text-center"><%= query_status_indicator(summary.avg_duration) %></td>
+        <td class="whitespace-nowrap"><%= number_with_delimiter summary.execution_count %></td>
       </tr>
     <% end %>
   </tbody>

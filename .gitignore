@@ -15,6 +15,8 @@
 /test/dummy/rails_pulse_test*
 /test/dummy/db/schema.rb
 test/dummy/rails_pulse_development
+test/dummy/rails_pulse_development-shm
+test/dummy/rails_pulse_development-wal
 
 # Environment variables
 .env

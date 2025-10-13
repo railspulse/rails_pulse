@@ -39,6 +39,7 @@ module ControllerTestHelpers
 
     if expected_keys.any?
       json = JSON.parse(response.body)
+
       expected_keys.each do |key|
         assert json.key?(key.to_s), "Expected JSON response to include key '#{key}'"
       end
@@ -94,6 +95,7 @@ module ControllerTestHelpers
     assert_successful_response
     if expected_total
       assigns_pagy = assigns(:pagy)
+
       assert_not_nil assigns_pagy, "Expected @pagy to be assigned"
       assert_equal expected_total, assigns_pagy.count if assigns_pagy.respond_to?(:count)
     end

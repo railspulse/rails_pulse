@@ -25,7 +25,7 @@ module RailsPulse
 
       return crumbs if path_segments.empty?
 
-      current_path = "/rails_pulse"
+      current_path = main_app.rails_pulse_path.chomp("/")
 
       path_segments.each_with_index do |segment, index|
         current_path += "/#{segment}"

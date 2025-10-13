@@ -50,6 +50,10 @@ development:
   <<: *default
   <% if adapter == 'sqlite3' %>
   database: storage/development.sqlite3
+  <% elsif adapter == 'postgresql' %>
+  database: <%= ENV.fetch('POSTGRES_DATABASE', 'rails_pulse_development') %>
+  <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
+  database: <%= ENV.fetch('MYSQL_DATABASE', 'rails_pulse_development') %>
   <% else %>
   database: rails_pulse_development
   <% end %>
@@ -65,6 +69,10 @@ test:
   <<: *default
   <% if adapter == 'sqlite3' %>
   database: storage/test.sqlite3
+  <% elsif adapter == 'postgresql' %>
+  database: <%= ENV.fetch('POSTGRES_TEST_DATABASE', 'rails_pulse_test') %>
+  <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
+  database: <%= ENV.fetch('MYSQL_TEST_DATABASE', 'rails_pulse_test') %>
   <% else %>
   database: rails_pulse_test
   <% end %>
@@ -73,6 +81,10 @@ production:
   <<: *default
   <% if adapter == 'sqlite3' %>
   database: storage/production.sqlite3
+  <% elsif adapter == 'postgresql' %>
+  database: <%= ENV.fetch('POSTGRES_PRODUCTION_DATABASE', 'rails_pulse_production') %>
+  <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
+  database: <%= ENV.fetch('MYSQL_PRODUCTION_DATABASE', 'rails_pulse_production') %>
   <% else %>
   database: rails_pulse_production
   <% end %>

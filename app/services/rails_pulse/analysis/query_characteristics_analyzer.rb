@@ -38,9 +38,17 @@ module RailsPulse
 
       def count_tables
         tables = []
-        tables.concat(sql.scan(/FROM\s+(\w+)/i).flatten)
-        tables.concat(sql.scan(/JOIN\s+(\w+)/i).flatten)
-        tables.uniq.length
+
+        # Match FROM clause with various table name formats
+        # Handles: table_name, schema.table, "quoted_table", `backtick_table`
+        tables.concat(sql.scan(/FROM\s+(?:`([^`]+)`|"([^"]+)"|'([^']+)'|(\w+(?:\.\w+)?))/i).flatten.compact)
+
+        # Match JOIN clauses (INNER JOIN, LEFT JOIN, etc.)
+        tables.concat(sql.scan(/(?:INNER\s+|LEFT\s+|RIGHT\s+|FULL\s+|CROSS\s+)?JOIN\s+(?:`([^`]+)`|"([^"]+)"|'([^']+)'|(\w+(?:\.\w+)?))/i).flatten.compact)
+
+        # Remove schema prefixes for uniqueness check (schema.table -> table)
+        normalized_tables = tables.map { |table| table.split(".").last }
+        normalized_tables.uniq.length
       end
 
       def count_joins

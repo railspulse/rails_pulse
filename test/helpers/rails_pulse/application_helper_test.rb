@@ -5,6 +5,7 @@ class RailsPulse::ApplicationHelperTest < ActionView::TestCase
 
   test "rails_pulse_icon renders a rails-pulse-icon element with defaults" do
     html = rails_pulse_icon("alert")
+
     assert_match(/<rails-pulse-icon/, html)
     assert_includes html, "data-controller=\"rails-pulse--icon\""
     assert_includes html, "rails-pulse--icon-name-value=\"alert\""
@@ -14,6 +15,7 @@ class RailsPulse::ApplicationHelperTest < ActionView::TestCase
 
   test "rails_pulse_icon applies custom width, height and class" do
     html = rails_pulse_icon("alert", width: 32, height: 32, class: "my-class")
+
     assert_includes html, "rails-pulse--icon-width-value=\"32\""
     assert_includes html, "rails-pulse--icon-height-value=\"32\""
     assert_includes html, "class=\"my-class\""
@@ -21,6 +23,7 @@ class RailsPulse::ApplicationHelperTest < ActionView::TestCase
 
   test "rails_pulse_icon passes through extra attributes" do
     html = rails_pulse_icon("alert", id: "icon-1", "data-test": "value")
+
     assert_includes html, "id=\"icon-1\""
     assert_includes html, "data-test=\"value\""
   end
@@ -28,15 +31,18 @@ class RailsPulse::ApplicationHelperTest < ActionView::TestCase
   test "lucide_icon is an alias for rails_pulse_icon" do
     html1 = rails_pulse_icon("alert")
     html2 = lucide_icon("alert")
+
     assert_equal html1, html2
   end
 
   test "rails_pulse returns a RailsPulseHelper with route delegation" do
     helper = rails_pulse
+
     assert_kind_of RailsPulse::ApplicationHelper::RailsPulseHelper, helper
 
     # The helper should respond to asset_path
     path = helper.asset_path("style.css")
+
     assert_equal "/rails-pulse-assets/style.css", path
 
     # It should respond to known routes in engine routes

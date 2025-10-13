@@ -47,6 +47,7 @@ module RailsPulse
 
       examples.each do |input, expected|
         result = RailsPulse::SqlQueryNormalizer.normalize(input)
+
         assert_equal expected, result, "Failed for input: #{input}"
       end
     end
@@ -72,6 +73,7 @@ module RailsPulse
 
       examples.each do |input, expected|
         result = RailsPulse::SqlQueryNormalizer.normalize(input)
+
         assert_equal expected, result, "Failed for input: #{input}"
       end
     end
@@ -87,6 +89,7 @@ module RailsPulse
 
       examples.each do |input, expected|
         result = RailsPulse::SqlQueryNormalizer.normalize(input)
+
         assert_equal expected, result, "Failed for input: #{input}"
       end
     end
@@ -108,6 +111,7 @@ module RailsPulse
 
       examples.each do |input, expected|
         result = RailsPulse::SqlQueryNormalizer.normalize(input)
+
         assert_equal expected, result, "Failed for input: #{input}"
       end
     end
@@ -174,6 +178,7 @@ module RailsPulse
 
       examples.each do |input, expected|
         result = RailsPulse::SqlQueryNormalizer.normalize(input)
+
         assert_equal expected, result, "Failed for input: #{input}"
       end
     end
@@ -195,6 +200,7 @@ module RailsPulse
 
       examples.each do |input, expected|
         result = RailsPulse::SqlQueryNormalizer.normalize(input)
+
         assert_equal expected, result, "Failed for input: #{input}"
       end
     end
@@ -205,11 +211,13 @@ module RailsPulse
 
       # Test class method
       result = RailsPulse::SqlQueryNormalizer.normalize(query)
+
       assert_equal expected, result
 
       # Test instance method
       normalizer = RailsPulse::SqlQueryNormalizer.new(query)
       result = normalizer.normalize
+
       assert_equal expected, result
     end
 
@@ -220,6 +228,7 @@ module RailsPulse
       # Multiple calls should return same result
       3.times do
         result = RailsPulse::SqlQueryNormalizer.normalize(query)
+
         assert_equal expected, result
       end
 

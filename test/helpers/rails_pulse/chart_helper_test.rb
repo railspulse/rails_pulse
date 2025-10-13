@@ -5,9 +5,10 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
 
   test "base_chart_options sets defaults with units and zoom" do
     opts = base_chart_options(units: "ms", zoom: true)
+
     assert_equal "{value} ms", opts[:yAxis][:axisLabel][:formatter]
     assert_equal "60", opts[:grid][:bottom]
-    assert_equal false, opts[:animation]
+    assert opts[:animation]
   end
 
   test "bar_chart_options deep merges series and applies formatters" do
@@ -38,12 +39,14 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
 
   test "sparkline_chart_options hides axes and grid" do
     opts = sparkline_chart_options
+
     assert_equal "bar", opts[:series][:type]
     refute opts[:yAxis][:show]
   end
 
   test "area_chart_options sets symbol and line style" do
     opts = area_chart_options
+
     assert_equal "roundRect", opts[:series][:symbol]
     assert_equal 8, opts[:series][:symbolSize]
   end
@@ -61,12 +64,14 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
 
     assert_kind_of Array, opts[:dataZoom]
     slider = opts[:dataZoom].first
+
     assert_equal 0, slider[:startValue]
     assert_equal 2, slider[:endValue]
   end
 
   test "line_chart_options sets dataZoom when zoom true and chart_data empty" do
     opts = line_chart_options(zoom: true, chart_data: {})
+
     assert_equal "slider", opts[:dataZoom].first[:type]
   end
 end

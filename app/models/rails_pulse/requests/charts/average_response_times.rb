@@ -13,11 +13,11 @@ module RailsPulse
 
         def to_rails_chart
           summaries = @ransack_query.result(distinct: false).where(
-            summarizable_type: "RailsPulse::Route",
+            summarizable_type: "RailsPulse::Request",
+            summarizable_id: 0,  # Overall request summaries
             period_type: @period_type
           )
 
-          summaries = summaries.where(summarizable_id: @route.id) if @route
           summaries = summaries
             .group(:period_start)
             .having("AVG(avg_duration) > ?", @start_duration || 0)

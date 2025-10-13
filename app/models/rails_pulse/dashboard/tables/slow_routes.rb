@@ -33,7 +33,7 @@ module RailsPulse
             {
               route_path: record.path,
               route_id: record.route_id,
-              route_link: "/rails_pulse/routes/#{record.route_id}",
+              route_link: RailsPulse::Engine.routes.url_helpers.route_path(record.route_id),
               average_time: record.avg_duration.to_f.round(0),
               request_count: record.request_count,
               last_request: time_ago_in_words(record.last_seen)

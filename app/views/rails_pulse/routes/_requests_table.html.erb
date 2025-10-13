@@ -1,0 +1,39 @@
+<% columns = [
+  { field: :occurred_at, label: 'Timestamp', class: 'w-auto' },
+  { field: :duration, label: 'Response Time', class: 'w-36' },
+  { field: :status, label: 'Status', class: 'w-20' }
+] %>
+
+<table class="table mbs-4" data-controller="rails-pulse--table-sort">
+  <%= render "rails_pulse/components/table_head", columns: columns %>
+
+  <tbody>
+    <% @table_data.each do |request| %>
+      <tr>
+        <td class="whitespace-nowrap">
+          <%= link_to human_readable_occurred_at(request.occurred_at), request_path(request), data: { turbo_frame: '_top' } %>
+        </td>
+        <td class="whitespace-nowrap">
+          <% performance_class = case request.duration
+            when 0..100 then "text-green-600"
+            when 100..300 then "text-yellow-600"
+            when 300..1000 then "text-orange-600"
+            else "text-red-600"
+            end %>
+          <span class="<%= performance_class %> font-medium">
+            <%= request.duration.round(2) %> ms
+          </span>
+        </td>
+        <td class="whitespace-nowrap">
+          <% if request.is_error? %>
+            <span class="text-red-600">Error (<%= request.status %>)</span>
+          <% else %>
+            <span class="text-green-600"><%= request.status %></span>
+          <% end %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= render "rails_pulse/components/table_pagination" %>

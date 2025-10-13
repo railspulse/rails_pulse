@@ -42,6 +42,7 @@ module ModelTestHelpers
   # Ransacker testing helpers
   def assert_ransacker_search(model_class, ransacker_name, search_value, expected_count)
     search = model_class.ransack("#{ransacker_name}_cont" => search_value)
+
     assert_equal expected_count, search.result.count,
       "Expected #{expected_count} results for #{ransacker_name} search '#{search_value}'"
   end
@@ -54,6 +55,7 @@ module ModelTestHelpers
     else
       # Fallback to manual validation testing
       model = model_class.new
+
       assert_not model.valid?, "#{model_class} should require validations"
     end
   end
@@ -64,6 +66,7 @@ module ModelTestHelpers
       # assert_that(model_class.new).belongs_to(association_name)
     else
       model = model_class.new
+
       assert_respond_to model, association_name
     end
   end

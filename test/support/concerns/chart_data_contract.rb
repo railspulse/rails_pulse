@@ -25,10 +25,9 @@ module ChartDataContract
 
     def assert_chart_numeric_values(data)
       data.values.each do |value|
-        assert value.is_a?(Numeric),
+        assert_kind_of Numeric, value,
           "Chart values must be numeric, got #{value.class}: #{value}"
-        assert value >= 0,
-          "Chart values should be non-negative, got: #{value}"
+        assert_operator value, :>=, 0, "Chart values should be non-negative, got: #{value}"
       end
     end
 
@@ -40,12 +39,12 @@ module ChartDataContract
 
       # Allow for some flexibility in date coverage
       # (some days might legitimately have no data)
-      assert data.keys.count <= expected_date_count,
-        "Chart data has more dates (#{data.keys.count}) than expected range (#{expected_date_count})"
+      assert_operator data.keys.count, :<=, expected_date_count, "Chart data has more dates (#{data.keys.count}) than expected range (#{expected_date_count})"
 
       # Verify date keys are within expected range
       data.keys.each do |date_key|
         parsed_date = parse_chart_date_key(date_key)
+
         assert parsed_date >= start_date && parsed_date <= end_date,
           "Chart date '#{date_key}' (#{parsed_date}) is outside expected range #{start_date} to #{end_date}"
       end

@@ -18,6 +18,10 @@ module RailsPulse
         copy_file "db/rails_pulse_schema.rb", "db/rails_pulse_schema.rb"
       end
 
+      def create_migration_directory
+        create_file "db/rails_pulse_migrate/.keep"
+      end
+
       def copy_initializer
         copy_file "rails_pulse.rb", "config/initializers/rails_pulse.rb"
       end
@@ -45,10 +49,9 @@ module RailsPulse
       end
 
       def create_separate_database_setup
-        create_file "db/rails_pulse_migrate/.keep"
-
         say "Setting up separate database configuration...", :green
 
+        # Migration directory already created by create_migration_directory
         # Could add database.yml configuration here if needed
         # For now, users will configure manually
       end
@@ -80,6 +83,7 @@ module RailsPulse
           2. Run: rails db:prepare (creates database and loads schema)
           3. Restart your Rails server
 
+          The schema file db/rails_pulse_schema.rb is your single source of truth.
           Future schema changes will come as regular migrations in db/rails_pulse_migrate/
 
         MESSAGE
@@ -92,12 +96,12 @@ module RailsPulse
 
           Next steps:
           1. Run: rails db:migrate (creates Rails Pulse tables in your main database)
-          2. Delete: db/rails_pulse_schema.rb (no longer needed)
-          3. Restart your Rails server
+          2. Restart your Rails server
 
+          The schema file db/rails_pulse_schema.rb is your single source of truth.
           Future schema changes will come as regular migrations in db/migrate/
 
-          Note: The installation migration was created from db/rails_pulse_schema.rb
+          Note: The installation migration loads from db/rails_pulse_schema.rb
           and includes all current Rails Pulse tables and columns.
 
         MESSAGE

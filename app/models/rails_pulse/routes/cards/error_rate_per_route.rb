@@ -59,7 +59,7 @@ module RailsPulse
             context: "routes",
             title: "Error Rate Per Route",
             summary: "#{overall_error_rate}%",
-            line_chart_data: sparkline_data,
+            chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: "Compared to last week"

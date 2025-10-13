@@ -18,6 +18,7 @@ end
 
 # Omakase Ruby styling [https://github.com/rails/rubocop-rails-omakase/]
 gem "rubocop-rails-omakase", require: false
+gem "rubocop-minitest", require: false
 
 gem "css-zero"
 gem "groupdate", ">= 6.5.1"

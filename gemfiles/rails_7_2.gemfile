@@ -7,6 +7,7 @@ gem "sqlite3"
 gem "pg"
 gem "dotenv-rails", groups: [ :development, :test ]
 gem "rubocop-rails-omakase", require: false
+gem "rubocop-minitest", require: false
 gem "css-zero"
 gem "groupdate", ">= 6.5.1"
 gem "importmap-rails"
@@ -16,7 +17,6 @@ gem "turbo-rails"
 gem "pagy"
 gem "request_store"
 gem "rails", "~> 7.2.0"
-gem "mysql2"
 
 group :mysql do
   gem "mysql2"

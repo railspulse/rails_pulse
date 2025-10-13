@@ -1,9 +1,9 @@
 # Generated from Rails Pulse schema - automatically loads current schema definition
-class InstallRailsPulseTables < ActiveRecord::Migration[8.0]
+class InstallRailsPulseTables < ActiveRecord::Migration["#{Rails::VERSION::MAJOR}.#{Rails::VERSION::MINOR}".to_f]
   def change
     # Load and execute the Rails Pulse schema directly
     # This ensures the migration is always in sync with the schema file
-    schema_file = File.join(::Rails.root.to_s, "db/rails_pulse_schema.rb")
+    schema_file = File.join(File.dirname(__FILE__), "..", "rails_pulse_schema.rb")
 
     if File.exist?(schema_file)
       say "Loading Rails Pulse schema from db/rails_pulse_schema.rb"
@@ -15,6 +15,7 @@ class InstallRailsPulseTables < ActiveRecord::Migration[8.0]
       RailsPulse::Schema.call(connection)
 
       say "Rails Pulse tables created successfully"
+      say "The schema file db/rails_pulse_schema.rb remains as your single source of truth"
     else
       raise "Rails Pulse schema file not found at db/rails_pulse_schema.rb"
     end

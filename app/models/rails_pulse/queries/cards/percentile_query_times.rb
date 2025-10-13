@@ -53,7 +53,7 @@ module RailsPulse
             context: "queries",
             title: "95th Percentile Query Time",
             summary: "#{p95_query_time} ms",
-            line_chart_data: sparkline_data,
+            chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: "Compared to last week"

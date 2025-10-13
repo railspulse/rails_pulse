@@ -87,14 +87,21 @@ bundle install
 Generate the installation files:
 
 ```bash
+# Install with single database setup (default - recommended)
 rails generate rails_pulse:install
+
+# Or install with separate database setup
+rails generate rails_pulse:install --database=separate
 ```
 
-Load the database schema:
-
+**For single database setup (default):**
 ```bash
-rails db:prepare
+rails db:migrate    # Creates Rails Pulse tables in your main database
 ```
+
+**For separate database setup:**
+1. Configure `config/database.yml` with your Rails Pulse database settings
+2. Run: `rails db:prepare` to create and load the schema
 
 Add the Rails Pulse route to your application:
 
@@ -121,6 +128,10 @@ Rails Pulse automatically starts collecting performance data once installed. Acc
 ```
 http://localhost:3000/rails_pulse
 ```
+
+**Database Setup:**
+- **Single Database (default)**: Rails Pulse tables are created in your main database - no additional configuration needed
+- **Separate Database**: See the [Separate Database Support](#separate-database-support) section for setup instructions
 
 ### Basic Configuration
 
@@ -287,20 +298,36 @@ RailsPulse::CleanupJob.perform_later
 
 ## Separate Database Support
 
-Rails Pulse supports storing performance monitoring data in a **separate database**. By default, Rails Pulse stores data in your main application database alongside your existing tables.
+Rails Pulse offers two database setup options to fit your application's needs:
 
-Use a separate database when you want:
+### Option 1: Single Database (Default - Recommended)
 
+Stores Rails Pulse data in your main application database alongside your existing tables. This is the simplest setup and works great for most applications.
+
+**Advantages:**
+- Zero additional configuration required
+- Simpler backup and deployment strategies
+- Works with any database (SQLite, PostgreSQL, MySQL)
+
+**Installation:**
+```bash
+rails generate rails_pulse:install
+rails db:migrate
+```
+
+### Option 2: Separate Database
+
+Stores Rails Pulse data in a dedicated database, completely isolated from your main application.
+
+**Use a separate database when you want:**
 - **Isolating monitoring data** from your main application database
 - **Using different database engines** optimized for time-series data
 - **Scaling monitoring independently** from your application
 - **Simplified backup strategies** with separate retention policies
 
-**For shared database setup (default)**, no database configuration is needed - simply run `rails db:prepare` after installation.
-
 ### Configuration
 
-To use a separate database, configure the `connects_to` option in your Rails Pulse initializer:
+To use a separate database, install with the `--database=separate` flag, then configure the `connects_to` option in your Rails Pulse initializer:
 
 ```ruby
 RailsPulse.configure do |config|
@@ -356,17 +383,30 @@ production:
     pool: 5
 ```
 
-### Schema Loading
+### Installation Steps
 
-After installation, load the Rails Pulse database schema:
+**For separate database setup:**
 
-```bash
-rails db:prepare
-```
+1. **Generate installation files:**
+   ```bash
+   rails generate rails_pulse:install --database=separate
+   ```
 
-This command works for both:
-- Shared database setup (default): Loads tables into your main application database
-- Separate database setup: Automatically loads tables into your configured Rails Pulse database
+2. **Configure `config/database.yml`** (see examples above)
+
+3. **Create and load the schema:**
+   ```bash
+   rails db:prepare
+   ```
+   This automatically creates the database and loads the Rails Pulse schema.
+
+**Schema Management:**
+
+The schema file `db/rails_pulse_schema.rb` serves as your single source of truth for the database structure. It:
+- Defines all Rails Pulse tables in one place
+- Is loaded by the installation migration
+- Should not be deleted or modified
+- Future updates will provide migrations in `db/rails_pulse_migrate/`
 
 ## Testing
 

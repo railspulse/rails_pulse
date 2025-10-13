@@ -192,6 +192,8 @@ export default class extends Controller {
   updatePaginationLimit() {
       // Update or set the limit param in the browser so if the user refreshes the page,
       // the limit will be preserved.
+      if (!this.hasPaginationLimitTarget) return;
+
       const url = new URL(window.location.href);
       const currentParams = new URLSearchParams(url.search);
       const limit = this.paginationLimitTarget.value;
@@ -244,7 +246,9 @@ export default class extends Controller {
     currentParams.set('zoom_end_time', endTimestamp);
 
     // Set the limit param based on the value in the pagination selector
-    currentParams.set('limit', this.paginationLimitTarget.value);
+    if (this.hasPaginationLimitTarget) {
+      currentParams.set('limit', this.paginationLimitTarget.value);
+    }
 
     // Update the URL's search parameters
     url.search = currentParams.toString();
@@ -443,7 +447,9 @@ export default class extends Controller {
     currentParams.set('selected_column_time', selectedTimestamp);
 
     // Preserve pagination limit
-    currentParams.set('limit', this.paginationLimitTarget.value);
+    if (this.hasPaginationLimitTarget) {
+      currentParams.set('limit', this.paginationLimitTarget.value);
+    }
 
     url.search = currentParams.toString();
 
@@ -463,7 +469,9 @@ export default class extends Controller {
     currentParams.delete('selected_column_time');
 
     // Preserve pagination limit
-    currentParams.set('limit', this.paginationLimitTarget.value);
+    if (this.hasPaginationLimitTarget) {
+      currentParams.set('limit', this.paginationLimitTarget.value);
+    }
 
     url.search = currentParams.toString();
 

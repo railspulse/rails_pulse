@@ -8,8 +8,6 @@
         <dd><%= link_to @request.route.path_and_method, route_path(@request.route) %></dd>
         <dt>Timestamp</dt>
         <dd><%= human_readable_occurred_at(@request.occurred_at) %></dd>
-        <dt>Request UUID</dt>
-        <dd><code><%= @request.request_uuid %></code></dd>
         <dt>Duration</dt>
         <dd><%= @request.duration.round(2) %> ms</dd>
         <dt>Status</dt>

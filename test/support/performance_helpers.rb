@@ -72,12 +72,13 @@ module PerformanceHelpers
   def assert_performance_threshold(actual_duration, expected_threshold, comparison: :under)
     case comparison
     when :under
-      assert actual_duration < expected_threshold,
-        "Expected duration #{actual_duration}ms to be under threshold #{expected_threshold}ms"
+
+      assert_operator actual_duration, :<, expected_threshold, "Expected duration #{actual_duration}ms to be under threshold #{expected_threshold}ms"
     when :over
-      assert actual_duration > expected_threshold,
-        "Expected duration #{actual_duration}ms to be over threshold #{expected_threshold}ms"
+
+      assert_operator actual_duration, :>, expected_threshold, "Expected duration #{actual_duration}ms to be over threshold #{expected_threshold}ms"
     when :at
+
       assert_equal expected_threshold, actual_duration,
         "Expected duration #{actual_duration}ms to equal threshold #{expected_threshold}ms"
     end
@@ -144,6 +145,7 @@ module PerformanceHelpers
   # Metrics calculation test helpers
   def assert_average_duration(requests, expected_average, tolerance: 5)
     actual_average = requests.sum(&:duration) / requests.count.to_f
+
     assert_in_delta expected_average, actual_average, tolerance,
       "Expected average duration to be around #{expected_average}ms, got #{actual_average}ms"
   end
@@ -159,8 +161,7 @@ module PerformanceHelpers
     end
 
     if max_duration
-      assert actual_percentile <= max_duration,
-        "Expected #{percentile}th percentile (#{actual_percentile}ms) to be under #{max_duration}ms"
+      assert_operator actual_percentile, :<=, max_duration, "Expected #{percentile}th percentile (#{actual_percentile}ms) to be under #{max_duration}ms"
     end
 
     actual_percentile

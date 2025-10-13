@@ -1,16 +1,24 @@
 # Omakase Ruby styling for Rails
 inherit_gem: { rubocop-rails-omakase: rubocop.yml }
 
+plugins: rubocop-minitest
+
 # Suppress deprecation warnings for rubocop-rails-omakase
 AllCops:
+  NewCops: enable
   SuggestExtensions: false
   Exclude:
     - 'test/dummy/db/schema.rb'
     - 'test/dummy/db/rails_pulse_schema.rb'
     - 'lib/generators/rails_pulse/templates/migrations/*.rb'
 
-# Overwrite or add rules to create your own house style
-#
-# # Use `[a, [b, c]]` not `[ a, [ b, c ] ]`
-# Layout/SpaceInsideArrayLiteralBrackets:
-#   Enabled: false
+# Ignore Minitest style preferences in test files
+Minitest/NonPublicTestMethod:
+  Enabled: false
+
+Minitest/MultipleAssertions:
+  Enabled: false
+
+# Disable enforcement of underscore test method names to allow string test names
+Minitest/TestMethodName:
+  Enabled: false

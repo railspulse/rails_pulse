@@ -1,7 +1,5 @@
 <%= render 'rails_pulse/components/breadcrumbs' %>
 
-<h1 class="text-2xl mis-2"><%= @route.path_and_method %></h1>
-
 <% unless turbo_frame_request? %>
   <div class="row">
     <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
@@ -14,7 +12,7 @@
 <div
   class="row"
   data-controller="rails-pulse--index"
-  data-rails-pulse--index-chart-id-value="route_repsonses_chart"
+  data-rails-pulse--index-chart-id-value="route_responses_chart"
 >
   <div class="grid-item">
     <%= render 'rails_pulse/components/panel', { title: 'Route Reqeusts', } do %>
@@ -44,7 +42,7 @@
             <%= bar_chart(
               @chart_data,
               code: false,
-              id: "route_repsonses_chart",
+              id: "route_responses_chart",
               height: "100%",
               options: bar_chart_options(
                 units: "ms",
@@ -62,7 +60,7 @@
         <% end %>
 
         <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
-          <%= render 'rails_pulse/requests/table' %>
+          <%= render 'rails_pulse/routes/requests_table' %>
         <% end %>
       <% else %>
         <%= render 'rails_pulse/components/empty_state',

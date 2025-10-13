@@ -12,8 +12,9 @@ class CspComplianceTest < ApplicationSystemTestCase
 
     # Verify no CSP violations are reported
     violation_count = find("#violation-count")
+
     assert_equal "0", violation_count.text
-    assert violation_count[:class].include?("badge--success")
+    assert_includes violation_count[:class], "badge--success"
   end
 
   test "icon controller functions under CSP" do
@@ -24,11 +25,13 @@ class CspComplianceTest < ApplicationSystemTestCase
 
     # Check that valid icons load
     menu_icon = find('[data-rails-pulse--icon-name-value="menu"]')
-    assert menu_icon.present?
+
+    assert_predicate menu_icon, :present?
 
     # Check that missing icon shows error but doesn't break CSP
     missing_icon = find('[data-rails-pulse--icon-name-value="nonexistent"]')
-    assert missing_icon.present?
+
+    assert_predicate missing_icon, :present?
   end
 
   test "popover controller functions under CSP" do
@@ -67,6 +70,7 @@ class CspComplianceTest < ApplicationSystemTestCase
 
     # Verify no CSP violations from AJAX
     violation_count = find("#violation-count")
+
     assert_equal "0", violation_count.text
   end
 
@@ -78,18 +82,22 @@ class CspComplianceTest < ApplicationSystemTestCase
 
     # Verify CSS loading status
     css_status = find("#css-status")
+
     assert_text "Loaded"
 
     # Verify JS loading status
     js_status = find("#js-status")
+
     assert_text "Loaded"
 
     # Verify icons loading status
     icons_status = find("#icons-status")
+
     assert_text "Loaded"
 
     # Verify Stimulus status
     stimulus_status = find("#stimulus-status")
+
     assert_text "Active"
   end
 

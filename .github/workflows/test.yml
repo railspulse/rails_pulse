@@ -15,7 +15,7 @@ jobs:
       fail-fast: false
       matrix:
         database: ["sqlite3", "postgresql"]
-        rails: ["7.2.0", "8.0.0"]
+        rails: ["7.2", "8.0"]
 
     services:
       postgres:
@@ -35,11 +35,7 @@ jobs:
     env:
       RAILS_ENV: test
       DB: ${{ matrix.database }}
-      RAILS_VERSION: ${{ matrix.rails }}
-      FORCE_DB_CONFIG: true
       CI: true
-      # Force in-memory database for SQLite in CI
-      MEMORY_DATABASE: ${{ matrix.database == 'sqlite3' && 'true' || 'false' }}
       # PostgreSQL configuration for CI
       POSTGRES_USERNAME: postgres
       POSTGRES_PASSWORD: postgres
@@ -52,39 +48,65 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '3.3'
+        ruby-version: '3.4'
         bundler-cache: false
 
     - name: Install dependencies
       run: |
         # Map Rails version to gemfile
         case "${{ matrix.rails }}" in
-          "7.2.0") GEMFILE=gemfiles/rails_7_2.gemfile ;;
-          "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
+          "7.2") GEMFILE=gemfiles/rails_7_2.gemfile ;;
+          "8.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
         esac
 
         BUNDLE_GEMFILE=$GEMFILE bundle install
 
     - name: Setup database
       run: |
+        # Map Rails version to appraisal version and gemfile
+        case "${{ matrix.rails }}" in
+          "7.2")
+            RAILS_VERSION="rails-7-2"
+            GEMFILE=gemfiles/rails_7_2.gemfile
+            ;;
+          "8.0")
+            RAILS_VERSION="rails-8-0"
+            GEMFILE=gemfiles/rails_8_0.gemfile
+            ;;
+        esac
+
         if [[ "${{ matrix.database }}" == "postgresql" ]]; then
-          echo "PostgreSQL test database ready"
+          echo "Setting up PostgreSQL database..."
           pg_isready -h localhost -p 5432 || exit 1
         else
-          echo "Using SQLite (no setup required)"
+          echo "Setting up SQLite database..."
         fi
 
-        echo "Rails Pulse tables will be created automatically by test helper"
+        # Use our new test_setup_for_version task with correct gemfile
+        BUNDLE_GEMFILE=$GEMFILE bundle exec rake "test_setup_for_version[${{ matrix.database }},$RAILS_VERSION]"
 
     - name: Run tests
       run: |
-        # Set the appropriate gemfile for the Rails version
+        # Map Rails version to appraisal version and gemfile
         case "${{ matrix.rails }}" in
-          "7.2.0") GEMFILE=gemfiles/rails_7_2.gemfile ;;
-          "8.0.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
+          "7.2")
+            RAILS_VERSION="rails-7-2"
+            GEMFILE=gemfiles/rails_7_2.gemfile
+            ;;
+          "8.0")
+            RAILS_VERSION="rails-8-0"
+            GEMFILE=gemfiles/rails_8_0.gemfile
+            ;;
         esac
 
-        BUNDLE_GEMFILE=$GEMFILE bundle exec rails test:all
+        # Run tests with the specific Rails version and database using correct gemfile
+        if [[ "${{ matrix.database }}" == "sqlite3" && "$RAILS_VERSION" == "rails-8-0" ]]; then
+          # Default combination
+          BUNDLE_GEMFILE=$GEMFILE bundle exec rake test
+        else
+          # Use appraisal for other combinations
+          DB=${{ matrix.database }} BUNDLE_GEMFILE=$GEMFILE bundle exec appraisal $RAILS_VERSION rake test
+        fi
 
   lint:
     runs-on: ubuntu-latest
@@ -94,7 +116,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '3.3'
+        ruby-version: '3.4'
         bundler-cache: true
 
     - name: Run RuboCop
@@ -108,7 +130,7 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: '3.3'
+        ruby-version: '3.4'
         bundler-cache: true
 
     - name: Set up Node.js

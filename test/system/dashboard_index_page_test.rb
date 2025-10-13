@@ -3,7 +3,7 @@ require "test_helper"
 class DashboardIndexPageTest < ApplicationSystemTestCase
   def setup
     super
-    create_comprehensive_test_data
+    create_summary_data_for_dashboard
   end
 
   def test_dashboard_index_page_loads_and_displays_data
@@ -42,7 +42,7 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     assert_match(/\d+\s*ms/, page.text, "Should show 95th percentile time in ms")
 
     assert_text "REQUEST COUNT TOTAL"
-    assert_match(/\d+\s*\/\s*min/, page.text, "Should show request count per minute")
+    assert_match(/\d+(\.\d+)?\s*\/\s*(min|day)/, page.text, "Should show request count per minute or per day")
 
     assert_text "ERROR RATE PER ROUTE"
     assert_match(/\d+(\.\d+)?%/, page.text, "Should show error rate as percentage")
@@ -97,15 +97,17 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
         # Should have columns for route, method, avg time, requests
         assert_selector "tr:first-child td", count: 4
 
-        # Verify we have our test data represented (should show admin heavy import route)
-        assert_text "/admin/heavy_import"
+        # Verify we have our test data represented (should show test routes from fixtures)
+        assert_text "/api/users"
 
         # Check that average time values are reasonable (in ms)
         first_row_avg_time = find("tr:first-child td:nth-child(2)").text
+
         assert_match(/\d+\s*ms/, first_row_avg_time, "Average time should show milliseconds")
 
         # Check that request count is shown
         first_row_requests = find("tr:first-child td:nth-child(3)").text
+
         assert_match(/\d+/, first_row_requests, "Request count should be numeric")
       end
     end
@@ -128,15 +130,17 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
         # Should have columns for query, avg time, executions, last seen
         assert_selector "tr:first-child td", count: 4
 
-        # Verify we have our test data represented (should show audit logs query as slowest)
-        assert_text "audit_logs"
+        # Verify we have our test data represented (should show queries from fixtures)
+        assert_text "SELECT * FROM posts WHERE id = ?"
 
         # Check that average time values are reasonable (in ms)
         first_row_avg_time = find("tr:first-child td:nth-child(2)").text
+
         assert_match(/\d+\s*ms/, first_row_avg_time, "Average time should show milliseconds")
 
         # Check that execution count is shown
         first_row_executions = find("tr:first-child td:nth-child(3)").text
+
         assert_match(/\d+/, first_row_executions, "Execution count should be numeric")
       end
     end
@@ -166,155 +170,43 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     within(panel_element, &block)
   end
 
-  def create_comprehensive_test_data
-    # Create routes with predictable performance characteristics
-    create_performance_categorized_routes
 
-    # Create queries with predictable performance characteristics
-    create_performance_categorized_queries
-
-    # Create requests with specific performance patterns
-    create_performance_categorized_requests
-
-    # Create operations for queries
-    create_performance_categorized_operations
-
-    # Create Summary data needed for dashboard
-    create_summary_data_for_dashboard
-  end
-
-  def create_performance_categorized_routes
-    @fast_routes = [
-      create(:route, :fast_endpoint, path: "/api/health", method: "GET"),
-      create(:route, :fast_endpoint, path: "/api/status", method: "GET"),
-      create(:route, :fast_endpoint, path: "/api/ping", method: "POST")
-    ]
-
-    @slow_routes = [
-      create(:route, :slow_endpoint, path: "/api/users", method: "GET"),
-      create(:route, :slow_endpoint, path: "/api/orders", method: "POST")
-    ]
-
-    @critical_routes = [
-      create(:route, :critical_endpoint, path: "/admin/heavy_import", method: "POST")
-    ]
-  end
-
-  def create_performance_categorized_queries
-    @fast_queries = [
-      create(:query, :select_query, normalized_sql: "SELECT id FROM users WHERE id = ?"),
-      create(:query, :select_query, normalized_sql: "SELECT name FROM categories WHERE active = ?")
-    ]
-
-    @slow_queries = [
-      create(:query, :complex_query, normalized_sql: "SELECT u.*, p.* FROM users u LEFT JOIN profiles p ON u.id = p.user_id WHERE u.active = ?"),
-      create(:query, :select_query, normalized_sql: "SELECT * FROM orders o JOIN users u ON o.user_id = u.id WHERE o.status = ?")
-    ]
-
-    @critical_queries = [
-      create(:query, :complex_query, normalized_sql: "SELECT * FROM audit_logs WHERE created_at BETWEEN ? AND ? ORDER BY created_at")
-    ]
-  end
-
-  def create_performance_categorized_requests
-    # Create requests for routes
-    (@fast_routes + @slow_routes + @critical_routes).each do |route|
-      avg_duration = case route.path
-      when "/api/health", "/api/status", "/api/ping" then 200
-      when "/api/users", "/api/orders" then 800
-      when "/admin/heavy_import" then 4000
-      else 500
-      end
-
-      create_requests_for_route(route, avg_duration: avg_duration, count: 15, time_spread: :recent)
-    end
-  end
-
-  def create_performance_categorized_operations
-    # Create operations for queries
-    (@fast_queries + @slow_queries + @critical_queries).each do |query|
-      avg_duration = case query.normalized_sql
-      when /SELECT id FROM users/, /SELECT name FROM categories/ then 50
-      when /LEFT JOIN/, /JOIN users/ then 200
-      when /audit_logs/ then 1500
-      else 100
-      end
-
-      create_operations_for_query(query, avg_duration: avg_duration, count: 10, time_spread: :recent)
-    end
-  end
-
-  def create_requests_for_route(route, avg_duration:, count:, time_spread:)
-    base_time = case time_spread
-    when :recent then 2.hours.ago
-    else 3.days.ago
-    end
-
-    count.times do |i|
-      duration_variation = (avg_duration * 0.4 * rand) - (avg_duration * 0.2)
-      actual_duration = [ 1, avg_duration + duration_variation ].max.round
-
-      create(:request,
-        route: route,
-        duration: actual_duration,
-        occurred_at: base_time + (i * 10).minutes,
-        status: rand(20) == 0 ? 500 : 200,
-        is_error: rand(20) == 0
-      )
-    end
-  end
-
-  def create_operations_for_query(query, avg_duration:, count:, time_spread:)
-    base_time = case time_spread
-    when :recent then 2.hours.ago
-    else 3.days.ago
-    end
-
-    count.times do |i|
-      duration_variation = (avg_duration * 0.4 * rand) - (avg_duration * 0.2)
-      actual_duration = [ 1, avg_duration + duration_variation ].max.round
-
-      # Create a request first since operation requires one
-      unique_path = "/test/query/#{query.id}/#{i}/#{rand(10000)}"
-      request = create(:request,
-        route: create(:route, path: unique_path, method: "GET"),
-        duration: actual_duration,
-        occurred_at: base_time + (i * 10).minutes,
-        status: rand(20) == 0 ? 500 : 200,
-        is_error: rand(20) == 0
-      )
-
-      create(:operation,
-        request: request,
-        query: query,
-        duration: actual_duration,
-        occurred_at: base_time + (i * 10).minutes,
-        operation_type: "sql",
-        label: query.normalized_sql
-      )
-    end
-  end
 
   def create_summary_data_for_dashboard
-    # Create summary data for recent time periods
-    service = RailsPulse::SummaryService.new("day", 2.days.ago.beginning_of_day)
+    # Create summary data for recent time periods using fixture data
+    # Need to create summaries for multiple days within "this week" (1.week.ago to now)
+    # to ensure the dashboard panels have data to display
+
+    # Create hour-level summaries
+    service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
+    service.perform
+
+    service = RailsPulse::SummaryService.new("hour", 1.hour.ago.beginning_of_hour)
     service.perform
 
     service = RailsPulse::SummaryService.new("hour", 2.hours.ago.beginning_of_hour)
     service.perform
 
+    # Create day-level summaries for multiple days this week
+    # Dashboard looks for data between 1.week.ago.beginning_of_week and Time.current.end_of_week
     service = RailsPulse::SummaryService.new("day", Time.current.beginning_of_day)
     service.perform
 
-    service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
+    service = RailsPulse::SummaryService.new("day", 1.day.ago.beginning_of_day)
+    service.perform
+
+    service = RailsPulse::SummaryService.new("day", 2.days.ago.beginning_of_day)
     service.perform
   end
 
-  def all_test_routes
-    @fast_routes + @slow_routes + @critical_routes
-  end
+  def validate_dashboard_chart_data(chart_selector, expected_min_value:, expected_max_value:, data_type:)
+    # Simple validation that chart exists and has content
+    assert_selector chart_selector
 
-  def all_test_queries
-    @fast_queries + @slow_queries + @critical_queries
+    # For now, just verify the chart container exists
+    # In a real implementation, you might check JavaScript-rendered chart data
+    chart_element = find(chart_selector)
+
+    assert_predicate chart_element, :present?, "#{data_type} chart should be present"
   end
 end

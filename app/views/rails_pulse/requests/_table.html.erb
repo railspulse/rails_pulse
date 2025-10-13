@@ -1,28 +1,39 @@
-<%
-  columns = []
-  columns << { field: :route_path, label: 'Route', class: 'w-auto' } if @route.blank?
-
-  columns += [
-    { field: :occurred_at, label: 'Timestamp', class: 'w-36' },
-    { field: :duration, label: 'Response Time', class: 'w-24' },
-    { field: :status, label: 'HTTP Status', class: 'w-20' },
-    { field: :status_indicator, label: 'Status', class: 'w-16' }
-  ]
-%>
+<% columns = [
+  { field: :occurred_at, label: 'Timestamp', class: 'w-36' },
+  { field: :route_path, label: 'Route', class: 'w-auto' },
+  { field: :duration, label: 'Response Time', class: 'w-36' },
+  { field: :status, label: 'Status', class: 'w-20' }
+] %>
 
 <table class="table mbs-4" data-controller="rails-pulse--table-sort">
   <%= render "rails_pulse/components/table_head", columns: columns %>
 
   <tbody>
-    <% @table_data.each do |route_request| %>
+    <% @table_data.each do |request| %>
+      <%
+        # Determine performance class based on request duration
+        performance_class = case request.duration
+        when 0..100 then "text-green-600"
+        when 100..300 then "text-yellow-600"
+        when 300..1000 then "text-orange-600"
+        else "text-red-600"
+        end
+      %>
       <tr>
-        <% if @route.blank? %>
-          <td class="whitespace-nowrap"><%= link_to route_request.route.path_and_method, request_path(route_request), data: { turbo_frame: '_top' } %></td>
-        <% end %>
-        <td class="whitespace-nowrap"><%= link_to human_readable_occurred_at(route_request.occurred_at), request_path(route_request), data: { turbo_frame: '_top' } %></td>
-        <td class="whitespace-nowrap"><%= route_request.duration.round(2) %> ms</td>
-        <td class="whitespace-nowrap"><%= route_request.status %></td>
-        <td class="whitespace-nowrap text-center"><%= request_status_indicator(route_request.duration) %></td>
+        <td class="whitespace-nowrap">
+          <%= link_to human_readable_occurred_at(request.occurred_at), request_path(request), data: { turbo_frame: '_top' } %>
+        </td>
+        <td class="whitespace-nowrap">
+          <%= link_to "#{request.route.path} #{request.route.method}", route_path(request.route), data: { turbo_frame: '_top' } %>
+        </td>
+        <td class="whitespace-nowrap">
+          <span class="<%= performance_class %> font-medium">
+            <%= request.duration.round(2) %> ms
+          </span>
+        </td>
+        <td class="whitespace-nowrap">
+          <span class="text-green-600"><%= request.status %></span>
+        </td>
       </tr>
     <% end %>
   </tbody>

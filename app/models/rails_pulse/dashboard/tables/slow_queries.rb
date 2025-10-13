@@ -32,7 +32,7 @@ module RailsPulse
             {
               query_text: truncate_query(record.normalized_sql),
               query_id: record.query_id,
-              query_link: "/rails_pulse/queries/#{record.query_id}",
+              query_link: RailsPulse::Engine.routes.url_helpers.query_path(record.query_id),
               average_time: record.avg_duration.to_f.round(0),
               request_count: record.request_count,
               last_request: time_ago_in_words(record.last_seen)

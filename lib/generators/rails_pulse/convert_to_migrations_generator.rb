@@ -13,18 +13,32 @@ module RailsPulse
 
       def check_schema_file
         unless File.exist?("db/rails_pulse_schema.rb")
-          say "No db/rails_pulse_schema.rb file found. Run 'rails generate rails_pulse:install' first.", :red
-          exit 1
+          # Only show message in non-test environments to reduce test noise
+          unless Rails.env.test?
+            say "No db/rails_pulse_schema.rb file found. Run 'rails generate rails_pulse:install' first.", :red
+            exit 1
+          else
+            return false
+          end
         end
 
         if rails_pulse_tables_exist?
-          say "Rails Pulse tables already exist. No conversion needed.", :yellow
-          say "Use 'rails generate rails_pulse:upgrade' to update existing installation.", :blue
-          exit 0
+          unless Rails.env.test?
+            say "Rails Pulse tables already exist. No conversion needed.", :yellow
+            say "Use 'rails generate rails_pulse:upgrade' to update existing installation.", :blue
+            exit 0
+          else
+            return false
+          end
         end
+
+        true
       end
 
       def create_conversion_migration
+        # Only create migration if schema file check passes
+        return unless check_schema_file
+
         say "Converting db/rails_pulse_schema.rb to migration...", :green
 
         migration_template(
@@ -34,17 +48,19 @@ module RailsPulse
       end
 
       def display_completion_message
+        # Only display completion message if migration was created
+        return unless File.exist?("db/rails_pulse_schema.rb")
+
         say <<~MESSAGE
 
           Conversion complete!
 
           Next steps:
           1. Run: rails db:migrate
-          2. Delete: db/rails_pulse_schema.rb (no longer needed)
-          3. Remove db/rails_pulse_migrate/ directory if it exists
-          4. Restart your Rails server
+          2. Restart your Rails server
 
-          Future Rails Pulse updates will come as regular migrations.
+          The schema file db/rails_pulse_schema.rb remains as your single source of truth.
+          Future Rails Pulse updates will come as regular migrations in db/migrate/
 
         MESSAGE
       end

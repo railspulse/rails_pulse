@@ -1,0 +1,67 @@
+sql_operation_1:
+  request: users_request_1
+  query: complex_query
+  operation_type: "sql"
+  label: "SELECT * FROM posts WHERE id = ?"
+  duration: 45.0
+  codebase_location: "app/models/post.rb:25"
+  start_time: 10.0
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>
+
+controller_operation_1:
+  request: users_request_1
+  operation_type: "controller"
+  label: "UsersController#index"
+  duration: 25.0
+  start_time: 5.0
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>
+
+template_operation_1:
+  request: users_request_2
+  operation_type: "template"
+  label: "render users/index.html.erb"
+  duration: 25.0
+  start_time: 75.0
+  occurred_at: <%= Time.current - 2.hours %>
+  created_at: <%= Time.current - 2.hours %>
+  updated_at: <%= Time.current - 2.hours %>
+
+sql_operation_2:
+  request: posts_request
+  query: complex_query
+  operation_type: "sql"
+  label: "SELECT * FROM posts WHERE id = ?"
+  duration: 35.0
+  codebase_location: "app/models/post.rb:15"
+  start_time: 8.0
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>
+
+sql_operation_3:
+  request: users_request_1
+  query: simple_query
+  operation_type: "sql"
+  label: "SELECT * FROM users WHERE id = ?"
+  duration: 120.0
+  codebase_location: "app/models/user.rb:10"
+  start_time: 15.0
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>
+
+sql_operation_4:
+  request: error_request
+  query: analyzed_query
+  operation_type: "sql"
+  label: "SELECT * FROM orders WHERE id = ?"
+  duration: 502.0
+  codebase_location: "app/models/order.rb:5"
+  start_time: 20.0
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>

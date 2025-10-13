@@ -1,109 +1,192 @@
 require "bundler/setup"
+require "bundler/gem_tasks"
 
 # Load environment variables from .env file
 require "dotenv/load" if File.exist?(".env")
 
 APP_RAKEFILE = File.expand_path("test/dummy/Rakefile", __dir__)
 load "rails/tasks/engine.rake"
-load "rails/tasks/statistics.rake"
 
-require "bundler/gem_tasks"
+desc "Setup database for testing"
+task :test_setup do
+  database = ENV['DB'] || 'sqlite3'
 
-# Test tasks
-namespace :test do
-  desc "Run unit tests (models, helpers, services, instrumentation)"
-  task :unit do
-    sh "rails test test/models test/helpers test/services test/support test/instrumentation"
-  end
+  puts "\n" + "=" * 50
+  puts "🛠️  Rails Pulse Test Setup"
+  puts "=" * 50
+  puts "Database: #{database.upcase}"
+  puts "=" * 50
+  puts
 
-  desc "Run functional tests (controllers)"
-  task :functional do
-    sh "rails test test/controllers"
-  end
-
-  desc "Run integration tests"
-  task :integration do
-    sh "rails test test/integration test/system"
-  end
-
-  desc "Run all tests"
-  task :all do
-    sh "rails test"
-  end
-
-  desc "Run tests across all database and Rails version combinations (local only - CI uses sqlite3 + postgresql)"
-  task :matrix do
-    databases = [ "sqlite3", "postgresql", "mysql2" ]
-    rails_versions = [ "rails-7-2", "rails-8-0" ]
-
-    failed_combinations = []
-
-    databases.each do |database|
-      rails_versions.each do |rails_version|
-        puts "\n" + "=" * 80
-        puts "🧪 Local Testing: #{database.upcase} + #{rails_version.upcase}"
-        puts "(CI only tests SQLite3 + PostgreSQL for reliability)"
-        puts "=" * 80
-
-        begin
-          gemfile = "gemfiles/#{rails_version.gsub('-', '_')}.gemfile"
-
-          # Set environment variables
-          env_vars = {
-            "DB" => database,
-            "BUNDLE_GEMFILE" => gemfile,
-            "FORCE_DB_CONFIG" => "true"
-          }
-
-          # Add database-specific environment variables
-          case database
-          when "postgresql"
-            env_vars.merge!({
-              "POSTGRES_USERNAME" => ENV.fetch("POSTGRES_USERNAME", "postgres"),
-              "POSTGRES_PASSWORD" => ENV.fetch("POSTGRES_PASSWORD", ""),
-              "POSTGRES_HOST" => ENV.fetch("POSTGRES_HOST", "localhost"),
-              "POSTGRES_PORT" => ENV.fetch("POSTGRES_PORT", "5432")
-            })
-          when "mysql2"
-            env_vars.merge!({
-              "MYSQL_USERNAME" => ENV.fetch("MYSQL_USERNAME", "root"),
-              "MYSQL_PASSWORD" => ENV.fetch("MYSQL_PASSWORD", "password"),
-              "MYSQL_HOST" => ENV.fetch("MYSQL_HOST", "localhost"),
-              "MYSQL_PORT" => ENV.fetch("MYSQL_PORT", "3306")
-            })
-          end
-
-          # Build environment string
-          env_string = env_vars.map { |k, v| "#{k}=#{v}" }.join(" ")
-
-          # Run the test command
-          sh "#{env_string} bundle exec rails test:all"
-
-          puts "✅ PASSED: #{database} + #{rails_version}"
-
-        rescue => e
-          puts "❌ FAILED: #{database} + #{rails_version}"
-          puts "Error: #{e.message}"
-          failed_combinations << "#{database} + #{rails_version}"
-        end
-      end
+  begin
+    # Remove schema.rb to ensure clean migration
+    schema_file = "test/dummy/db/schema.rb"
+    if File.exist?(schema_file)
+      puts "🧹 Removing existing schema.rb file..."
+      File.delete(schema_file)
     end
 
-    puts "\n" + "=" * 80
-    puts "🏁 Local Test Matrix Results"
-    puts "(CI automatically tests SQLite3 + PostgreSQL only)"
-    puts "=" * 80
+    case database.downcase
+    when 'sqlite3', 'sqlite'
+      puts "📦 Setting up SQLite database..."
+      sh "RAILS_ENV=test bin/rails db:drop db:create db:migrate"
 
-    if failed_combinations.empty?
-      puts "✅ All combinations passed!"
+    when 'mysql2', 'mysql'
+      puts "🐬 Setting up MySQL database..."
+      sh "DB=mysql2 RAILS_ENV=test rails db:drop db:create db:migrate"
+
+    when 'postgresql', 'postgres'
+      puts "🐘 Setting up PostgreSQL database..."
+      sh "DB=postgresql RAILS_ENV=test rails db:drop db:create db:migrate"
+
     else
-      puts "❌ Failed combinations:"
-      failed_combinations.each { |combo| puts "  - #{combo}" }
+      puts "⚠️  Unknown database: #{database}"
+      puts "Supported databases: sqlite3, mysql2, postgresql"
       exit 1
     end
+
+    puts "\n✅ Database setup complete!"
+    puts "Ready to run: rake test"
+
+  rescue => e
+    puts "\n❌ Database setup failed!"
+    puts "Error: #{e.message}"
+    puts "\nTroubleshooting:"
+    puts "• Ensure #{database} is installed and running"
+    puts "• Check database credentials in test/dummy/config/database.yml"
+    puts "• Verify RAILS_ENV=test environment is configured"
+    exit 1
   end
 end
 
-# Override default test task
-desc "Run all tests"
-task test: "test:all"
+desc "Run test suite"
+task :test do
+  database = ENV['DB'] || 'sqlite3'
+
+  # Get Rails version from Gemfile.lock or fallback
+  rails_version = begin
+    require 'rails'
+    Rails.version
+  rescue LoadError
+    # Try to get from Gemfile.lock
+    gemfile_lock = File.read('Gemfile.lock') rescue nil
+    if gemfile_lock && gemfile_lock.match(/rails \(([^)]+)\)/)
+      $1
+    else
+      'unknown'
+    end
+  end
+
+  puts "\n" + "=" * 50
+  puts "💛 Rails Pulse Test Suite"
+  puts "=" * 50
+  puts "Database: #{database.upcase}"
+  puts "Rails: #{rails_version}"
+  puts "=" * 50
+  puts
+
+  sh "rails test test/controllers test/helpers test/instrumentation test/jobs test/models test/services test/system"
+end
+
+desc "Setup database for specific Rails version and database"
+task :test_setup_for_version, [ :database, :rails_version ] do |t, args|
+  database = args[:database] || ENV['DB'] || 'sqlite3'
+  rails_version = args[:rails_version] || 'rails-8-0'
+
+  puts "\n" + "=" * 50
+  puts "🛠️  Rails Pulse Test Setup"
+  puts "=" * 50
+  puts "Database: #{database.upcase}"
+  puts "Rails: #{rails_version.upcase.gsub('-', ' ')}"
+  puts "=" * 50
+  puts
+
+  begin
+    # Remove schema.rb to ensure clean migration
+    schema_file = "test/dummy/db/schema.rb"
+    if File.exist?(schema_file)
+      puts "🧹 Removing existing schema.rb file..."
+      File.delete(schema_file)
+    end
+
+    if rails_version == "rails-8-0" && database == "sqlite3"
+      # Use current default setup
+      puts "📦 Setting up #{database.upcase} database with Rails 8.0..."
+      sh "RAILS_ENV=test bin/rails db:drop db:create db:migrate"
+    else
+      # Use appraisal with specific database and Rails version
+      puts "📦 Setting up #{database.upcase} database with #{rails_version.upcase.gsub('-', ' ')}..."
+      sh "DB=#{database} bundle exec appraisal #{rails_version} rails db:drop db:create db:migrate RAILS_ENV=test"
+    end
+
+    puts "\n✅ Database setup complete for #{database.upcase} + #{rails_version.upcase.gsub('-', ' ')}!"
+
+  rescue => e
+    puts "\n❌ Database setup failed!"
+    puts "Error: #{e.message}"
+    exit 1
+  end
+end
+
+desc "Test all database and Rails version combinations"
+task :test_matrix do
+  databases = %w[sqlite3 postgresql mysql2]
+  rails_versions = %w[rails-7-2 rails-8-0]
+
+  failed_combinations = []
+  total_combinations = databases.size * rails_versions.size
+  current = 0
+
+  puts "\n" + "=" * 60
+  puts "🚀 Rails Pulse Full Test Matrix"
+  puts "=" * 60
+  puts "Testing #{total_combinations} combinations..."
+  puts "=" * 60
+
+  databases.each do |database|
+    rails_versions.each do |rails_version|
+      current += 1
+
+      puts "\n[#{current}/#{total_combinations}] Testing: #{database.upcase} + #{rails_version.upcase.gsub('-', ' ')}"
+      puts "-" * 50
+
+      begin
+        # First setup the database for this specific combination
+        Rake::Task[:test_setup_for_version].reenable
+        Rake::Task[:test_setup_for_version].invoke(database, rails_version)
+
+        # Then run the tests
+        if rails_version == "rails-8-0" && database == "sqlite3"
+          # Current default setup
+          sh "bundle exec rake test"
+        else
+          # Use appraisal with specific database
+          sh "DB=#{database} bundle exec appraisal #{rails_version} rake test"
+        end
+
+        puts "✅ PASSED: #{database} + #{rails_version}"
+
+      rescue => e
+        puts "❌ FAILED: #{database} + #{rails_version}"
+        puts "   Error: #{e.message}"
+        failed_combinations << "#{database} + #{rails_version}"
+      end
+    end
+  end
+
+  puts "\n" + "=" * 60
+  puts "🏁 Test Matrix Results"
+  puts "=" * 60
+
+  if failed_combinations.empty?
+    puts "🎉 All #{total_combinations} combinations passed!"
+  else
+    puts "✅ Passed: #{total_combinations - failed_combinations.size}/#{total_combinations}"
+    puts "❌ Failed combinations:"
+    failed_combinations.each { |combo| puts "   • #{combo}" }
+    exit 1
+  end
+end
+
+
+task default: :test

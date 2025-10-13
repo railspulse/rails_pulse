@@ -7,17 +7,16 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
   def setup
     ENV["TEST_TYPE"] = "functional"
-    setup_clean_database
-    stub_all_external_dependencies
     super
   end
 
   test "controller includes ChartTableConcern" do
-    assert RailsPulse::RoutesController.included_modules.include?(ChartTableConcern)
+    assert_includes RailsPulse::RoutesController.included_modules, ChartTableConcern
   end
 
   test "controller has index and show actions" do
     controller = RailsPulse::RoutesController.new
+
     assert_respond_to controller, :index
     assert_respond_to controller, :show
   end
@@ -37,17 +36,20 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     # For index action - uses Summary model
     controller.stubs(:action_name).returns("index")
+
     assert_equal RailsPulse::Summary, controller.send(:chart_model)
     assert_equal RailsPulse::Summary, controller.send(:table_model)
 
     # For show action - chart always uses Summary, table uses Request
     controller.stubs(:action_name).returns("show")
+
     assert_equal RailsPulse::Summary, controller.send(:chart_model)
     assert_equal RailsPulse::Request, controller.send(:table_model)
   end
 
   test "uses correct chart class" do
     controller = RailsPulse::RoutesController.new
+
     assert_equal RailsPulse::Routes::Charts::AverageResponseTimes, controller.send(:chart_class)
   end
 
@@ -56,10 +58,12 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     # For index action
     controller.stubs(:action_name).returns("index")
+
     assert_equal "avg_duration desc", controller.send(:default_table_sort)
 
     # For show action
     controller.stubs(:action_name).returns("show")
+
     assert_equal "occurred_at desc", controller.send(:default_table_sort)
   end
 
@@ -94,27 +98,22 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
 
   test "controller inherits from ApplicationController" do
-    assert RailsPulse::RoutesController < RailsPulse::ApplicationController
+    assert_operator RailsPulse::RoutesController, :<, RailsPulse::ApplicationController
   end
 
   private
 
   def setup_basic_test_data
-    # Create a route with some requests
-    @route = FactoryBot.create(:route, path: "/api/test", method: "GET")
-    FactoryBot.create(:request, route: @route, duration: 100, occurred_at: 2.hours.ago, is_error: false)
-    FactoryBot.create(:request, route: @route, duration: 150, occurred_at: 3.hours.ago, is_error: false)
+    # Use existing fixture data
+    @route = rails_pulse_routes(:api_test)
+    @route2 = rails_pulse_routes(:api_other)
 
-    # Create another route
-    @route2 = FactoryBot.create(:route, path: "/api/other", method: "POST")
-    FactoryBot.create(:request, route: @route2, duration: 200, occurred_at: 4.hours.ago, is_error: true)
-
-    # Generate summary data
-    service = RailsPulse::SummaryService.new("hour", 1.day.ago.beginning_of_hour)
+    # Generate summary data for the current hour (where fixtures exist)
+    service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
     service.perform
   end
 
-  def rails_pulse_engine
+  def rails_pulse
     RailsPulse::Engine.routes.url_helpers
   end
 end

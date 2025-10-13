@@ -128,10 +128,8 @@ class BaseChartTest < ActiveSupport::TestCase
   # Assert that chart data follows expected patterns
   def assert_chart_performance_bounds(data, min_value: 0, max_value: Float::INFINITY)
     data.values.each do |value|
-      assert value >= min_value,
-        "Chart value #{value} is below minimum bound #{min_value}"
-      assert value <= max_value,
-        "Chart value #{value} is above maximum bound #{max_value}"
+      assert_operator value, :>=, min_value, "Chart value #{value} is below minimum bound #{min_value}"
+      assert_operator value, :<=, max_value, "Chart value #{value} is above maximum bound #{max_value}"
     end
   end
 
@@ -144,13 +142,13 @@ class BaseChartTest < ActiveSupport::TestCase
     when :increasing
       differences = values.each_cons(2).map { |a, b| b - a }
       positive_changes = differences.count { |diff| diff > 0 }
-      assert positive_changes > differences.length / 2,
-        "Expected increasing trend but got values: #{values}"
+
+      assert_operator positive_changes, :>, differences.length / 2, "Expected increasing trend but got values: #{values}"
     when :decreasing
       differences = values.each_cons(2).map { |a, b| b - a }
       negative_changes = differences.count { |diff| diff < 0 }
-      assert negative_changes > differences.length / 2,
-        "Expected decreasing trend but got values: #{values}"
+
+      assert_operator negative_changes, :>, differences.length / 2, "Expected decreasing trend but got values: #{values}"
     when :stable
       # Check if values are within acceptable variance
       mean = values.sum.to_f / values.length
@@ -159,8 +157,8 @@ class BaseChartTest < ActiveSupport::TestCase
 
       # Values should be within 2 standard deviations for stable trend
       outliers = values.count { |v| (v - mean).abs > 2 * standard_deviation }
-      assert outliers <= values.length * 0.1,
-        "Expected stable trend but found #{outliers} outliers in values: #{values}"
+
+      assert_operator outliers, :<=, values.length * 0.1, "Expected stable trend but found #{outliers} outliers in values: #{values}"
     end
   end
 
@@ -181,8 +179,7 @@ class BaseChartTest < ActiveSupport::TestCase
 
     execution_time_ms = ((end_time - start_time) * 1000).round(2)
 
-    assert execution_time_ms <= max_time_ms,
-      "Chart generation took #{execution_time_ms}ms, expected <= #{max_time_ms}ms"
+    assert_operator execution_time_ms, :<=, max_time_ms, "Chart generation took #{execution_time_ms}ms, expected <= #{max_time_ms}ms"
 
     data
   end

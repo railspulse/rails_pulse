@@ -27,7 +27,7 @@ module RailsPulse
           top: "10%",
           containLabel: true
         },
-        animation: false
+        animation: true
       }
     end
 

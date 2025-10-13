@@ -2,7 +2,7 @@
   <h4 class="text-xl mbs-1 font-bold"><%= summary %></h4>
 </div>
 <div class="chart-container chart-container--slim">
-  <%= bar_chart line_chart_data, height: "100%", options: sparkline_chart_options %>
+  <%= bar_chart chart_data, height: "100%", options: sparkline_chart_options %>
 </div>
 <div>
   <span class="badge badge--<%= trend_direction == "down" ? "positive" : "negative" %>-inverse p-0">

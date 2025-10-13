@@ -61,10 +61,12 @@ class RailsPulse::ChartFormattersTest < ActiveSupport::TestCase
   test "formatters handle edge cases" do
     # Test with 0 hours
     formatter = RailsPulse::ChartFormatters.period_as_time_or_date(0)
+
     assert_includes formatter, "getHours()"
 
     # Test with very large number
     formatter = RailsPulse::ChartFormatters.period_as_time_or_date(1000)
+
     assert_includes formatter, "toLocaleDateString"
   end
 end

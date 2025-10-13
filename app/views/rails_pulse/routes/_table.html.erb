@@ -1,11 +1,8 @@
 <% columns = [
   { field: :route_path, label: 'Route', class: 'w-auto' },
-  { field: :avg_duration_sort, label: 'Average Response Time', class: 'w-36' },
-  { field: :max_duration_sort, label: 'Max Response Time', class: 'w-32' },
-  { field: :count_sort, label: 'Requests', class: 'w-24' },
-  { field: :requests_per_minute, label: 'Requests Per Minute', class: 'w-28' },
-  { field: :error_rate_percentage, label: 'Error Rate (%)', class: 'w-20' },
-  { field: :status_indicator, label: 'Status', class: 'w-16', sortable: false }
+  { field: :avg_duration_sort, label: 'Average Response Time', class: 'w-48' },
+  { field: :max_duration_sort, label: 'Max Response Time', class: 'w-44' },
+  { field: :count_sort, label: 'Requests', class: 'w-24' }
 ] %>
 
 <table class="table mbs-4" data-controller="rails-pulse--table-sort">
@@ -18,9 +15,6 @@
         <td class="whitespace-nowrap"><%= summary.avg_duration.to_i %> ms</td>
         <td class="whitespace-nowrap"><%= summary.max_duration.to_i %> ms</td>
         <td class="whitespace-nowrap"><%= number_with_delimiter summary.count %></td>
-        <td class="whitespace-nowrap"><%= summary.count < 1 ? '< 1' : (summary.count / 60.0).round(2) %></td>
-        <td class="whitespace-nowrap"><%= ((summary.error_count.to_f / summary.count) * 100).round(2) %>%</td>
-        <td class="whitespace-nowrap text-center"><%= route_status_indicator(summary.avg_duration >= 500 ? 1 : 0) %></td>
       </tr>
     <% end %>
   </tbody>

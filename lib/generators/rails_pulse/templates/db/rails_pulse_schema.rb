@@ -3,8 +3,17 @@
 # Load with: rails db:schema:load:rails_pulse or db:prepare
 
 RailsPulse::Schema = lambda do |connection|
-  # Skip if tables already exist to prevent conflicts
-  return if connection.table_exists?(:rails_pulse_routes)
+  # Skip if all tables already exist to prevent conflicts
+  required_tables = [ :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_summaries ]
+
+  if ENV["CI"] == "true"
+    existing_tables = required_tables.select { |table| connection.table_exists?(table) }
+    missing_tables = required_tables - existing_tables
+    puts "[RailsPulse::Schema] Existing tables: #{existing_tables.join(', ')}" if existing_tables.any?
+    puts "[RailsPulse::Schema] Missing tables: #{missing_tables.join(', ')}" if missing_tables.any?
+  end
+
+  return if required_tables.all? { |table| connection.table_exists?(table) }
 
   connection.create_table :rails_pulse_routes do |t|
     t.string :method, null: false, comment: "HTTP method (e.g., GET, POST)"
@@ -16,6 +25,15 @@ RailsPulse::Schema = lambda do |connection|
 
   connection.create_table :rails_pulse_queries do |t|
     t.string :normalized_sql, limit: 1000, null: false, comment: "Normalized SQL query string (e.g., SELECT * FROM users WHERE id = ?)"
+    t.datetime :analyzed_at, comment: "When query analysis was last performed"
+    t.text :explain_plan, comment: "EXPLAIN output from actual SQL execution"
+    t.text :issues, comment: "JSON array of detected performance issues"
+    t.text :metadata, comment: "JSON object containing query complexity metrics"
+    t.text :query_stats, comment: "JSON object with query characteristics analysis"
+    t.text :backtrace_analysis, comment: "JSON object with call chain and N+1 detection"
+    t.text :index_recommendations, comment: "JSON array of database index recommendations"
+    t.text :n_plus_one_analysis, comment: "JSON object with enhanced N+1 query detection results"
+    t.text :suggestions, comment: "JSON array of optimization recommendations"
     t.timestamps
   end
 
@@ -53,6 +71,58 @@ RailsPulse::Schema = lambda do |connection|
   connection.add_index :rails_pulse_operations, [ :query_id, :occurred_at ], name: "index_rails_pulse_operations_on_query_and_time"
   connection.add_index :rails_pulse_operations, [ :query_id, :duration, :occurred_at ], name: "index_rails_pulse_operations_query_performance"
   connection.add_index :rails_pulse_operations, [ :occurred_at, :duration, :operation_type ], name: "index_rails_pulse_operations_on_time_duration_type"
+
+  connection.create_table :rails_pulse_summaries do |t|
+    # Time fields
+    t.datetime :period_start, null: false, comment: "Start of the aggregation period"
+    t.datetime :period_end, null: false, comment: "End of the aggregation period"
+    t.string :period_type, null: false, comment: "Aggregation period type: hour, day, week, month"
+
+    # Polymorphic association to handle both routes and queries
+    t.references :summarizable, polymorphic: true, null: false, index: true, comment: "Link to Route or Query"
+    # This creates summarizable_type (e.g., 'RailsPulse::Route', 'RailsPulse::Query')
+    # and summarizable_id (route_id or query_id)
+
+    # Universal metrics
+    t.integer :count, default: 0, null: false, comment: "Total number of requests/operations"
+    t.float :avg_duration, comment: "Average duration in milliseconds"
+    t.float :min_duration, comment: "Minimum duration in milliseconds"
+    t.float :max_duration, comment: "Maximum duration in milliseconds"
+    t.float :p50_duration, comment: "50th percentile duration"
+    t.float :p95_duration, comment: "95th percentile duration"
+    t.float :p99_duration, comment: "99th percentile duration"
+    t.float :total_duration, comment: "Total duration in milliseconds"
+    t.float :stddev_duration, comment: "Standard deviation of duration"
+
+    # Request/Route specific metrics
+    t.integer :error_count, default: 0, comment: "Number of error responses (5xx)"
+    t.integer :success_count, default: 0, comment: "Number of successful responses"
+    t.integer :status_2xx, default: 0, comment: "Number of 2xx responses"
+    t.integer :status_3xx, default: 0, comment: "Number of 3xx responses"
+    t.integer :status_4xx, default: 0, comment: "Number of 4xx responses"
+    t.integer :status_5xx, default: 0, comment: "Number of 5xx responses"
+
+    t.timestamps
+  end
+
+  # Unique constraint and indexes for summaries
+  connection.add_index :rails_pulse_summaries, [ :summarizable_type, :summarizable_id, :period_type, :period_start ],
+          unique: true,
+          name: "idx_pulse_summaries_unique"
+  connection.add_index :rails_pulse_summaries, [ :period_type, :period_start ], name: "index_rails_pulse_summaries_on_period"
+  connection.add_index :rails_pulse_summaries, :created_at, name: "index_rails_pulse_summaries_on_created_at"
+
+  # Add indexes to existing tables for efficient aggregation
+  connection.add_index :rails_pulse_requests, [ :created_at, :route_id ], name: "idx_requests_for_aggregation"
+  connection.add_index :rails_pulse_requests, :created_at, name: "idx_requests_created_at"
+
+  connection.add_index :rails_pulse_operations, [ :created_at, :query_id ], name: "idx_operations_for_aggregation"
+  connection.add_index :rails_pulse_operations, :created_at, name: "idx_operations_created_at"
+
+  if ENV["CI"] == "true"
+    created_tables = required_tables.select { |table| connection.table_exists?(table) }
+    puts "[RailsPulse::Schema] Successfully created tables: #{created_tables.join(', ')}"
+  end
 end
 
 if defined?(RailsPulse::ApplicationRecord)
