@@ -17,6 +17,7 @@ module TimeRangeConcern
 
     ransack_params = params[:q] || {}
 
+    # Priority 1: Page-specific filters (chart zoom or dropdown)
     if ransack_params[:occurred_at_gteq].present?
       # Custom time range from chart zoom where there is no association
       start_time = parse_time_param(ransack_params[:occurred_at_gteq])
@@ -31,7 +32,13 @@ module TimeRangeConcern
         when :last_month then 1.month.ago
         else 1.day.ago # Default fallback
         end
+    # Priority 2: Global filters (from localStorage via params)
+    elsif params[:global_start_time].present? || params[:global_end_time].present?
+      start_time = parse_time_param(params[:global_start_time]) if params[:global_start_time].present?
+      end_time = parse_time_param(params[:global_end_time]) if params[:global_end_time].present?
+      selected_time_range = :custom
     end
+    # Priority 3: Default time range (already set above)
 
     time_diff = (end_time.to_i - start_time.to_i) / 3600.0
 

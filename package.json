@@ -49,6 +49,7 @@
   "dependencies": {
     "@floating-ui/dom": "^1.7.2",
     "@hotwired/turbo": "^8.0.13",
-    "echarts": "^5.6.0"
+    "echarts": "^5.6.0",
+    "flatpickr": "^4.6.13"
   }
 }
