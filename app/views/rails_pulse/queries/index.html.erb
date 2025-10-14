@@ -13,13 +13,9 @@
   data-rails-pulse--index-chart-id-value="average_query_times_chart"
 >
   <%= render 'rails_pulse/components/panel', { title: 'Average Query Time', } do %>
-    <%= search_form_for @ransack_query, url: queries_path, class: "flex items-center justify-between gap mb-4" do |form| %>
+    <%= search_form_for @ransack_query, url: queries_path, class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
       <div class="flex items-center grow gap">
-        <%= form.select :period_start_range,
-          RailsPulse::QueriesController::TIME_RANGE_OPTIONS,
-          { selected: @selected_time_range },
-          { class: "input" }
-        %>
+        <%= time_range_selector(form, time_range_options: RailsPulse::QueriesController::TIME_RANGE_OPTIONS, selected_time_range: @selected_time_range) %>
         <%= form.select :avg_duration,
           duration_options(:query),
           { selected: @selected_response_range },

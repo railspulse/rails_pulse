@@ -16,13 +16,9 @@
 >
   <div class="grid-item">
     <%= render 'rails_pulse/components/panel', { title: 'Route Reqeusts', } do %>
-      <%= search_form_for @ransack_query, url: route_path(@route), class: "flex items-center justify-between gap mb-4" do |form| %>
+      <%= search_form_for @ransack_query, url: route_path(@route), class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
         <div class="flex items-center grow gap">
-          <%= form.select :period_start_range,
-            RailsPulse::RoutesController::TIME_RANGE_OPTIONS,
-            { selected: @selected_time_range },
-            { class: "input" }
-          %>
+          <%= time_range_selector(form, time_range_options: RailsPulse::RoutesController::TIME_RANGE_OPTIONS, selected_time_range: @selected_time_range) %>
           <%= form.select :avg_duration,
             duration_options(:route),
             { selected: @selected_response_range },

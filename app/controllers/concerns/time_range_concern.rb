@@ -6,7 +6,8 @@ module TimeRangeConcern
     const_set(:TIME_RANGE_OPTIONS, [
       [ "Last 24 hours", :last_day ],
       [ "Last Week", :last_week ],
-      [ "Last Month", :last_month ]
+      [ "Last Month", :last_month ],
+      [ "Custom Range...", :custom ]
     ].freeze)
   end
 
@@ -17,12 +18,21 @@ module TimeRangeConcern
 
     ransack_params = params[:q] || {}
 
-    # Priority 1: Page-specific filters (chart zoom or dropdown)
-    if ransack_params[:occurred_at_gteq].present?
-      # Custom time range from chart zoom where there is no association
+    # Priority 1: Page-specific custom datetime range from picker
+    if ransack_params[:custom_date_range].present? && ransack_params[:custom_date_range].include?(" to ")
+      # Custom datetime range from custom range picker
+      dates = ransack_params[:custom_date_range].split(" to ")
+      start_time = parse_time_param(dates[0].strip)
+      end_time = parse_time_param(dates[1].strip)
+      selected_time_range = :custom
+    # Priority 2: Page-specific filters (chart zoom)
+    elsif ransack_params[:occurred_at_gteq].present? && ransack_params[:occurred_at_lt].present?
+      # Custom time range from chart zoom
       start_time = parse_time_param(ransack_params[:occurred_at_gteq])
       end_time = parse_time_param(ransack_params[:occurred_at_lt])
-    elsif ransack_params[:period_start_range]
+      selected_time_range = :custom
+    # Priority 3: Page-specific preset from dropdown
+    elsif ransack_params[:period_start_range].present? && ransack_params[:period_start_range].to_sym != :custom
       # Predefined time range from dropdown
       selected_time_range = ransack_params[:period_start_range]
       start_time =
@@ -32,13 +42,13 @@ module TimeRangeConcern
         when :last_month then 1.month.ago
         else 1.day.ago # Default fallback
         end
-    # Priority 2: Global filters (from session)
+    # Priority 4: Global filters (from session)
     elsif session_global_filters["start_time"].present? || session_global_filters["end_time"].present?
       start_time = parse_time_param(session_global_filters["start_time"]) if session_global_filters["start_time"].present?
       end_time = parse_time_param(session_global_filters["end_time"]) if session_global_filters["end_time"].present?
       selected_time_range = :custom
     end
-    # Priority 3: Default time range (already set above)
+    # Priority 5: Default time range (already set above)
 
     time_diff = (end_time.to_i - start_time.to_i) / 3600.0
 
