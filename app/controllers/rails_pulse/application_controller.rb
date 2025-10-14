@@ -14,13 +14,25 @@ module RailsPulse
     end
 
     def set_global_filters
-      if params[:start_time].present? && params[:end_time].present?
-        session[:global_filters] = {
-          "start_time" => params[:start_time],
-          "end_time" => params[:end_time]
-        }
-      elsif params[:clear] == "true"
+      if params[:clear] == "true"
         session.delete(:global_filters)
+      else
+        filters = session[:global_filters] || {}
+
+        # Update time filters if provided
+        if params[:start_time].present? && params[:end_time].present?
+          filters["start_time"] = params[:start_time]
+          filters["end_time"] = params[:end_time]
+        end
+
+        # Update performance threshold if provided (or remove if empty)
+        if params[:performance_threshold].present?
+          filters["performance_threshold"] = params[:performance_threshold]
+        else
+          filters.delete("performance_threshold")
+        end
+
+        session[:global_filters] = filters
       end
 
       # Redirect back to the referring page or root
@@ -89,6 +101,22 @@ module RailsPulse
 
     def session_global_filters
       session[:global_filters] || {}
+    end
+
+    # Get the minimum duration based on global performance threshold
+    # Returns nil if no threshold is set (show all)
+    # context: :route, :request, or :query
+    def global_performance_threshold_duration(context)
+      threshold = session_global_filters["performance_threshold"]
+      return nil unless threshold.present?
+
+      config_key = "#{context}_thresholds".to_sym
+      thresholds = RailsPulse.configuration.public_send(config_key)
+
+      thresholds[threshold.to_sym]
+    rescue StandardError => e
+      Rails.logger.warn "Failed to get performance threshold: #{e.message}"
+      nil
     end
   end
 end

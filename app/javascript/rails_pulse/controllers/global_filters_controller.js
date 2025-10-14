@@ -62,35 +62,30 @@ export default class extends Controller {
     }
 
     const dateRangeValue = this.dateRangeTarget.value
-
-    // Validate date range
-    if (!dateRangeValue || !dateRangeValue.includes(' to ')) {
-      event.preventDefault()
-      alert("Please select a date range")
-      return
-    }
-
-    // Parse the date range and add hidden inputs
-    const [startTime, endTime] = dateRangeValue.split(' to ').map(d => d.trim())
-
-    // Create hidden inputs for start_time and end_time
     const form = event.target
 
-    // Remove any existing hidden inputs
-    form.querySelectorAll('input[name="start_time"], input[name="end_time"]').forEach(el => el.remove())
+    // Parse date range if provided
+    if (dateRangeValue && dateRangeValue.includes(' to ')) {
+      const [startTime, endTime] = dateRangeValue.split(' to ').map(d => d.trim())
 
-    // Add new hidden inputs
-    const startInput = document.createElement('input')
-    startInput.type = 'hidden'
-    startInput.name = 'start_time'
-    startInput.value = startTime
-    form.appendChild(startInput)
+      // Remove any existing hidden inputs
+      form.querySelectorAll('input[name="start_time"], input[name="end_time"]').forEach(el => el.remove())
 
-    const endInput = document.createElement('input')
-    endInput.type = 'hidden'
-    endInput.name = 'end_time'
-    endInput.value = endTime
-    form.appendChild(endInput)
+      // Add new hidden inputs
+      const startInput = document.createElement('input')
+      startInput.type = 'hidden'
+      startInput.name = 'start_time'
+      startInput.value = startTime
+      form.appendChild(startInput)
+
+      const endInput = document.createElement('input')
+      endInput.type = 'hidden'
+      endInput.name = 'end_time'
+      endInput.value = endTime
+      form.appendChild(endInput)
+    }
+
+    // No validation needed - user can apply just date range, just threshold, or both
   }
 
   // Update visual indicator based on activeValue
