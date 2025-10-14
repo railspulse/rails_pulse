@@ -11,6 +11,7 @@ RailsPulse::Engine.routes.draw do
   resources :operations, only: %i[show]
   resources :caches, only: %i[show], as: :cache
   patch "pagination/limit", to: "application#set_pagination_limit"
+  patch "settings/global_filters", to: "application#set_global_filters"
 
   # CSP compliance testing
   get "csp_test", to: "csp_test#show", as: :csp_test

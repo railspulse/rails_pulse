@@ -54,51 +54,7 @@
       </div>
 
       <div class="flex items-center gap" style="--column-gap: 0.5rem">
-        <div data-controller="rails-pulse--global-filters">
-          <%= link_to '#', "aria-label": "Global filters", role: "button", data: { action: "rails-pulse--global-filters#open", "rails-pulse--global-filters-target": "indicator" } do %>
-            <%= rails_pulse_icon 'filter', width: '20' %>
-          <% end %>
-
-          <dialog class="dialog" data-rails-pulse--global-filters-target="dialog" data-action="click->rails-pulse--global-filters#closeOnClickOutside">
-            <div class="dialog__content">
-              <button type="button" class="btn btn--icon dialog__close" data-action="rails-pulse--global-filters#close">
-                <%= rails_pulse_icon 'x', width: '20' %>
-              </button>
-
-              <h2 class="text-lg font-semibold mb-4">Global Filters</h2>
-              <p class="text-sm text-subtle mb-4">Set default time filters that persist across all pages. These can be overridden by page-specific filters.</p>
-
-              <form data-action="submit->rails-pulse--global-filters#apply">
-                <div class="flex flex-col gap mb-4">
-                  <div class="flex flex-col gap" style="--row-gap: 0.5rem">
-                    <label for="global_date_range" class="text-sm font-medium">Date Range</label>
-                    <input
-                      type="text"
-                      name="global_date_range"
-                      id="global_date_range"
-                      placeholder="Pick date range"
-                      class="input"
-                      data-controller="rails-pulse--datepicker"
-                      data-datepicker-mode-value="range"
-                      data-datepicker-show-months-value="2"
-                      data-datepicker-type-value="datetime"
-                      data-rails-pulse--global-filters-target="dateRange"
-                    />
-                  </div>
-                </div>
-
-                <div class="flex items-center justify-end gap">
-                  <button type="button" class="btn btn--borderless" data-action="rails-pulse--global-filters#clear">
-                    Clear
-                  </button>
-                  <button type="submit" class="btn">
-                    Apply Filters
-                  </button>
-                </div>
-              </form>
-            </div>
-          </dialog>
-        </div>
+        <%= render 'layouts/rails_pulse/global_filters' %>
 
         <div data-controller="rails-pulse--color-scheme">
           <%= link_to '#', "aria-label": "Toggle color scheme", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
@@ -113,6 +69,5 @@
         <%= yield %>
       </div>
     </main>
-
   </body>
 </html>

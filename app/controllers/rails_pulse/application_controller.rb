@@ -1,6 +1,7 @@
 module RailsPulse
   class ApplicationController < ActionController::Base
     before_action :authenticate_rails_pulse_user!
+    helper_method :session_global_filters
 
     def set_pagination_limit(limit = nil)
       limit = limit || params[:limit]
@@ -10,6 +11,20 @@ module RailsPulse
       if (request.xhr? && !turbo_frame_request?) || (request.patch? && action_name == "set_pagination_limit")
         render json: { status: "ok" }
       end
+    end
+
+    def set_global_filters
+      if params[:start_time].present? && params[:end_time].present?
+        session[:global_filters] = {
+          "start_time" => params[:start_time],
+          "end_time" => params[:end_time]
+        }
+      elsif params[:clear] == "true"
+        session.delete(:global_filters)
+      end
+
+      # Redirect back to the referring page or root
+      redirect_back(fallback_location: root_path)
     end
 
     private
@@ -70,6 +85,10 @@ module RailsPulse
       # Validate pagination limit: minimum 5, maximum 50 for performance
       validated_limit = limit.to_i.clamp(5, 50)
       session[:pagination_limit] = validated_limit if limit.present?
+    end
+
+    def session_global_filters
+      session[:global_filters] || {}
     end
   end
 end

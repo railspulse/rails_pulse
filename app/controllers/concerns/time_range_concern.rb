@@ -32,10 +32,10 @@ module TimeRangeConcern
         when :last_month then 1.month.ago
         else 1.day.ago # Default fallback
         end
-    # Priority 2: Global filters (from localStorage via params)
-    elsif params[:global_start_time].present? || params[:global_end_time].present?
-      start_time = parse_time_param(params[:global_start_time]) if params[:global_start_time].present?
-      end_time = parse_time_param(params[:global_end_time]) if params[:global_end_time].present?
+    # Priority 2: Global filters (from session)
+    elsif session_global_filters["start_time"].present? || session_global_filters["end_time"].present?
+      start_time = parse_time_param(session_global_filters["start_time"]) if session_global_filters["start_time"].present?
+      end_time = parse_time_param(session_global_filters["end_time"]) if session_global_filters["end_time"].present?
       selected_time_range = :custom
     end
     # Priority 3: Default time range (already set above)
