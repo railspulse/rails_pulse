@@ -30,21 +30,22 @@ export default class extends Controller {
 
   // Open the flatpickr calendar
   openDatePicker() {
-    // Wait a bit for the DOM to update
+    // Wait a bit for the DOM to update and flatpickr to initialize
     setTimeout(() => {
-      const dateInput = this.pickerWrapperTarget.querySelector('input[type="text"]')
-      if (!dateInput) return
+      // Find the original hidden input that has the datepicker controller
+      const hiddenInput = this.pickerWrapperTarget.querySelector('input[name*="custom_date_range"]')
+      if (!hiddenInput) return
 
-      // Get the datepicker controller
+      // Get the datepicker controller from the hidden input
       const datepickerController = this.application.getControllerForElementAndIdentifier(
-        dateInput,
+        hiddenInput,
         'rails-pulse--datepicker'
       )
 
       if (datepickerController && datepickerController.flatpickr) {
         datepickerController.flatpickr.open()
       }
-    }, 100)
+    }, 50)
   }
 
   // Show select, hide picker

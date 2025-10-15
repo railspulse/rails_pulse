@@ -13,7 +13,7 @@ module RailsPulse
       show_custom_picker = selected_time_range.to_sym == :custom
       custom_date_value = params.dig(:q, :custom_date_range) || (show_custom_picker && has_global_date_range ? global_date_range : "")
 
-      content_tag(:div, class: "time-range-selector", style: "width: 700px") do
+      content_tag(:div, class: "time-range-selector") do
         concat time_range_select_wrapper(form, time_range_options, selected_time_range)
         concat time_range_picker_wrapper(form, custom_date_value)
       end
@@ -22,7 +22,7 @@ module RailsPulse
     private
 
     def time_range_select_wrapper(form, time_range_options, selected_time_range)
-      content_tag(:div, data: { rails_pulse__custom_range_target: "selectWrapper" }) do
+      content_tag(:div, data: { rails_pulse__custom_range_target: "selectWrapper" }, style: "min-width: 150px;") do
         form.select :period_start_range,
           time_range_options,
           { selected: selected_time_range },
@@ -38,7 +38,7 @@ module RailsPulse
     def time_range_picker_wrapper(form, custom_date_value)
       content_tag(:div,
         data: { rails_pulse__custom_range_target: "pickerWrapper" },
-        style: "display: none; position: relative;"
+        style: "display: none; position: relative; min-width: 400px;"
       ) do
         concat time_range_picker_input(form, custom_date_value)
         concat time_range_close_button

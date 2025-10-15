@@ -17,7 +17,7 @@
     <%= search_form_for @ransack_query, url: routes_path, class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
       <div class="flex items-center grow gap">
         <%= time_range_selector(form, time_range_options: RailsPulse::RoutesController::TIME_RANGE_OPTIONS, selected_time_range: @selected_time_range) %>
-        <%= form.search_field :route_path_cont, placeholder: "Filter by route", autocomplete: "off", class: "input", style: "max-inline-size: 250px" %>
+        <%= form.search_field :route_path_cont, placeholder: "Filter by route", autocomplete: "off", class: "input" %>
         <%= form.select :avg_duration,
           duration_options(:route),
           { selected: @selected_response_range },
