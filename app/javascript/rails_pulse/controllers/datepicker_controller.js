@@ -8,7 +8,7 @@ export default class extends Controller {
     mode: { type: String, default: "single" },
     showMonths: { type: Number, default: 1 },
     dateFormat: { type: String, default: "F d, Y" },
-    dateTimeFormat: { type: String, default: "F d, Y H:i" }
+    dateTimeFormat: { type: String, default: "M d, Y h:i K" }
   }
 
   connect() {

@@ -18,21 +18,8 @@ module TimeRangeConcern
 
     ransack_params = params[:q] || {}
 
-    # Priority 1: Page-specific custom datetime range from picker
-    if ransack_params[:custom_date_range].present? && ransack_params[:custom_date_range].include?(" to ")
-      # Custom datetime range from custom range picker
-      dates = ransack_params[:custom_date_range].split(" to ")
-      start_time = parse_time_param(dates[0].strip)
-      end_time = parse_time_param(dates[1].strip)
-      selected_time_range = :custom
-    # Priority 2: Page-specific filters (chart zoom)
-    elsif ransack_params[:occurred_at_gteq].present? && ransack_params[:occurred_at_lt].present?
-      # Custom time range from chart zoom
-      start_time = parse_time_param(ransack_params[:occurred_at_gteq])
-      end_time = parse_time_param(ransack_params[:occurred_at_lt])
-      selected_time_range = :custom
-    # Priority 3: Page-specific preset from dropdown
-    elsif ransack_params[:period_start_range].present? && ransack_params[:period_start_range].to_sym != :custom
+    # Priority 1: Page-specific preset from dropdown (check this first!)
+    if ransack_params[:period_start_range].present? && ransack_params[:period_start_range].to_sym != :custom
       # Predefined time range from dropdown
       selected_time_range = ransack_params[:period_start_range]
       start_time =
@@ -42,6 +29,19 @@ module TimeRangeConcern
         when :last_month then 1.month.ago
         else 1.day.ago # Default fallback
         end
+    # Priority 2: Page-specific custom datetime range from picker (only if period_start_range is :custom)
+    elsif ransack_params[:period_start_range].present? && ransack_params[:period_start_range].to_sym == :custom && ransack_params[:custom_date_range].present? && ransack_params[:custom_date_range].include?(" to ")
+      # Custom datetime range from custom range picker
+      dates = ransack_params[:custom_date_range].split(" to ")
+      start_time = parse_time_param(dates[0].strip)
+      end_time = parse_time_param(dates[1].strip)
+      selected_time_range = :custom
+    # Priority 3: Page-specific filters (chart zoom)
+    elsif ransack_params[:occurred_at_gteq].present? && ransack_params[:occurred_at_lt].present?
+      # Custom time range from chart zoom
+      start_time = parse_time_param(ransack_params[:occurred_at_gteq])
+      end_time = parse_time_param(ransack_params[:occurred_at_lt])
+      selected_time_range = :custom
     # Priority 4: Global filters (from session)
     elsif session_global_filters["start_time"].present? || session_global_filters["end_time"].present?
       start_time = parse_time_param(session_global_filters["start_time"]) if session_global_filters["start_time"].present?
@@ -60,7 +60,7 @@ module TimeRangeConcern
       end_time = end_time.end_of_day
     end
 
-    [ start_time, end_time, selected_time_range, time_diff ]
+    [ start_time.to_i, end_time.to_i, selected_time_range, time_diff ]
   end
 
   private
@@ -70,7 +70,9 @@ module TimeRangeConcern
     when Time, DateTime
       param.in_time_zone
     when String
-      Time.zone.parse(param)
+      # Parse as server local time (not UTC, not Time.zone)
+      # This ensures flatpickr datetime strings are interpreted in server's timezone
+      Time.parse(param).localtime
     else
       # Assume it's an integer timestamp
       Time.zone.at(param.to_i)

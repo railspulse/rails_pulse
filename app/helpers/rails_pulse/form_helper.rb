@@ -38,7 +38,7 @@ module RailsPulse
     def time_range_picker_wrapper(form, custom_date_value)
       content_tag(:div,
         data: { rails_pulse__custom_range_target: "pickerWrapper" },
-        style: "display: none; position: relative; min-width: 400px;"
+        style: "display: none; position: relative; min-width: 360px;"
       ) do
         concat time_range_picker_input(form, custom_date_value)
         concat time_range_close_button
