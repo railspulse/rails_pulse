@@ -52,20 +52,19 @@ class CustomDateRangeTest < ApplicationSystemTestCase
       var hiddenInput = document.querySelector('input[name="q[custom_date_range]"]');
       if (hiddenInput && hiddenInput._flatpickr) {
         hiddenInput._flatpickr.setDate(['#{start_date}', '#{end_date}'], true);
+        // Close the flatpickr to ensure all change events have fired
+        hiddenInput._flatpickr.close();
       }
     JS
 
-    # Give flatpickr more time to update both inputs and trigger change events
-    sleep 1.5
+    # Wait for flatpickr to close and all change events to complete
+    assert_no_selector ".flatpickr-calendar.open", wait: 3
 
     # Verify the hidden input has a value before submitting
     hidden_input_value = find('input[name="q[custom_date_range]"]', visible: :all).value
 
     assert_predicate hidden_input_value, :present?, "Hidden input should have a value before form submission"
     assert_includes hidden_input_value, " to ", "Hidden input should contain date range with ' to ' separator"
-
-    # Give extra time for CI environment to ensure form is fully ready
-    sleep 0.5
 
     # Submit the form
     click_button "Search"
@@ -118,8 +117,8 @@ class CustomDateRangeTest < ApplicationSystemTestCase
       "URL should have last_week preset. Got: #{page.current_url}"
 
     # URL should NOT have custom_date_range with a value
-    refute_match /custom_date_range[=%\]][^&]+/, page.current_url,
-      "URL should NOT have custom_date_range with a value. Got: #{page.current_url}"
+    refute_match(/custom_date_range[=%\]][^&]+/, page.current_url,
+      "URL should NOT have custom_date_range with a value. Got: #{page.current_url}")
 
     # Dropdown should be visible (not custom picker)
     assert_dropdown_visible
