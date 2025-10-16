@@ -66,6 +66,9 @@ class CustomDateRangeTest < ApplicationSystemTestCase
     assert_predicate hidden_input_value, :present?, "Hidden input should have a value before form submission"
     assert_includes hidden_input_value, " to ", "Hidden input should contain date range with ' to ' separator"
 
+    # Add extra delay for CI to ensure all event handlers and DOM mutations complete
+    sleep 1
+
     # Submit the form
     click_button "Search"
 
