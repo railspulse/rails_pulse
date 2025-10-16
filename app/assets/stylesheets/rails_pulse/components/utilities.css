@@ -34,3 +34,29 @@
 .max-w-md { max-width: 28rem; }
 .max-w-lg { max-width: 32rem; }
 .max-w-xl { max-width: 36rem; }
+
+/* Global filters active indicator */
+.global-filters-active {
+  position: relative;
+}
+
+.global-filters-active::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background-color: var(--color-primary);
+  border-radius: 50%;
+  border: 2px solid var(--color-bg);
+}
+
+/* Flatpickr z-index fix - ensure calendar appears above dialogs */
+.flatpickr-calendar,
+.flatpickr-calendar.open,
+.flatpickr-calendar.inline,
+.flatpickr-calendar.static,
+.flatpickr-calendar.static.open {
+  z-index: 999999 !important;
+}

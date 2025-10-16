@@ -27,7 +27,7 @@ async function buildCSS() {
       'vendor/css-zero/reset.css',
       // CSS Zero Variables (9 component files)
       'vendor/css-zero/colors.css',
-      'vendor/css-zero/sizes.css', 
+      'vendor/css-zero/sizes.css',
       'vendor/css-zero/borders.css',
       'vendor/css-zero/effects.css',
       'vendor/css-zero/typography.css',
@@ -35,6 +35,8 @@ async function buildCSS() {
       'vendor/css-zero/transforms.css',
       'vendor/css-zero/transitions.css',
       'vendor/css-zero/filters.css',
+      // Flatpickr CSS
+      'vendor/flatpickr.css',
       // Rails Pulse Components
       ...glob.sync(path.join(ASSETS_DIR, 'rails_pulse/components/*.css')).sort(),
       // Rails Pulse Application CSS

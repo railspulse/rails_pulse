@@ -1,5 +1,5 @@
 // Rails Pulse Icons Bundle - Auto-generated
-// Contains 33 SVG icons for Rails Pulse
+// Contains 34 SVG icons for Rails Pulse
 
 (function() {
   'use strict';
@@ -17,7 +17,8 @@
   "chevrons-right": "<path d=\"m6 17 5-5-5-5\" /><path d=\"m13 17 5-5-5-5\" />",
   "loader-circle": "<path d=\"M12 2v4\" /><path d=\"m16.2 7.8 2.9-2.9\" /><path d=\"M18 12h4\" /><path d=\"m16.2 16.2 2.9 2.9\" /><path d=\"M12 18v4\" /><path d=\"m4.9 19.1 2.9-2.9\" /><path d=\"M2 12h4\" /><path d=\"m4.9 4.9 2.9 2.9\" />",
   "search": "<path d=\"m21 21-4.34-4.34\" /><circle cx=\"11\" cy=\"11\" r=\"8\" />",
-  "filter": "<path d=\"M2 5h20\" /><path d=\"M6 12h12\" /><path d=\"M9 19h6\" />",
+  "list-filter": "<path d=\"M2 5h20\" /><path d=\"M6 12h12\" /><path d=\"M9 19h6\" />",
+  "list-filter-plus": "<path d=\"M12 5H2\" /><path d=\"M6 12h12\" /><path d=\"M9 19h6\" /><path d=\"M16 5h6\" /><path d=\"M19 8V2\" />",
   "x": "<path d=\"M18 6 6 18\" /><path d=\"m6 6 12 12\" />",
   "x-circle": "<circle cx=\"12\" cy=\"12\" r=\"10\" /><path d=\"m15 9-6 6\" /><path d=\"m9 9 6 6\" />",
   "check": "<path d=\"M20 6 9 17l-5-5\" />",

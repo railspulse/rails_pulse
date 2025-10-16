@@ -14,14 +14,10 @@
   data-rails-pulse--index-chart-id-value="average_response_times_chart"
 >
   <%= render 'rails_pulse/components/panel', { title: 'Average Response Time', card_classes: 'b-full' } do %>
-    <%= search_form_for @ransack_query, url: routes_path, class: "flex items-center justify-between gap mb-4" do |form| %>
+    <%= search_form_for @ransack_query, url: routes_path, class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
       <div class="flex items-center grow gap">
-        <%= form.search_field :route_path_cont, placeholder: "Filter by route", autocomplete: "off", class: "input", style: "max-inline-size: 250px" %>
-        <%= form.select :period_start_range,
-          RailsPulse::RoutesController::TIME_RANGE_OPTIONS,
-          { selected: @selected_time_range },
-          { class: "input" }
-        %>
+        <%= time_range_selector(form, time_range_options: RailsPulse::RoutesController::TIME_RANGE_OPTIONS, selected_time_range: @selected_time_range) %>
+        <%= form.search_field :route_path_cont, placeholder: "Filter by route", autocomplete: "off", class: "input" %>
         <%= form.select :avg_duration,
           duration_options(:route),
           { selected: @selected_response_range },

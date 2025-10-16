@@ -23,7 +23,8 @@ const REQUIRED_ICONS = [
   'chevrons-right',
   'loader-circle',
   'search',
-  'filter',
+  'list-filter',
+  'list-filter-plus',
   'x',
   'x-circle',
   'check',
@@ -82,8 +83,9 @@ function extractSVGContent(iconName) {
       const iconContent = fs.readFileSync(lucideIconPath, 'utf8');
 
       // Parse the JavaScript array format from Lucide
-      // New format: const Menu = [["path", { d: "M4 5h16" }], ...]
-      const match = iconContent.match(/const\s+\w+\s*=\s*(\[[\s\S]*?\]);/);
+      // Old format: const Menu = ["svg", defaultAttributes, [["line", { x1: "4", x2: "20", y1: "12", y2: "12" }]]]
+      // New format: const ListFilter = [["path", { d: "M2 5h20" }], ["path", { d: "M6 12h12" }]]
+      const match = iconContent.match(/const\s+\w+\s*=\s*(\[[\s\S]+?\]);[\s\S]*export/);
       if (!match) {
         throw new Error(`Could not parse icon array from ${iconName}.js`);
       }
@@ -93,7 +95,11 @@ function extractSVGContent(iconName) {
         const iconArray = eval(match[1]);
 
         if (Array.isArray(iconArray)) {
-          return convertArrayToSVG(iconArray);
+          // New format (v0.545+): icon data is directly the elements array
+          // Check if first element is ["svg", ...] (old format) or ["path"/"circle"/etc, ...] (new format)
+          const isOldFormat = iconArray.length >= 3 && iconArray[0] === 'svg';
+          const elements = isOldFormat ? iconArray[2] : iconArray;
+          return convertArrayToSVG(elements);
         }
       } catch (evalError) {
         console.warn(`⚠️  Could not evaluate icon array for ${iconName}:`, evalError.message);

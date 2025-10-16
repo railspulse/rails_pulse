@@ -20,7 +20,7 @@
     "cssnano": "^6.0.3",
     "esbuild": "^0.19.12",
     "glob": "^10.3.10",
-    "lucide": "^0.309.0",
+    "lucide": "^0.545.0",
     "postcss": "^8.4.32",
     "rimraf": "^5.0.5"
   },
@@ -49,6 +49,7 @@
   "dependencies": {
     "@floating-ui/dom": "^1.7.2",
     "@hotwired/turbo": "^8.0.13",
-    "echarts": "^5.6.0"
+    "echarts": "^5.6.0",
+    "flatpickr": "^4.6.13"
   }
 }
