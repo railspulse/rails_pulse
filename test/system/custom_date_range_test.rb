@@ -56,13 +56,16 @@ class CustomDateRangeTest < ApplicationSystemTestCase
     JS
 
     # Give flatpickr more time to update both inputs and trigger change events
-    sleep 1
+    sleep 1.5
 
     # Verify the hidden input has a value before submitting
     hidden_input_value = find('input[name="q[custom_date_range]"]', visible: :all).value
 
     assert_predicate hidden_input_value, :present?, "Hidden input should have a value before form submission"
     assert_includes hidden_input_value, " to ", "Hidden input should contain date range with ' to ' separator"
+
+    # Give extra time for CI environment to ensure form is fully ready
+    sleep 0.5
 
     # Submit the form
     click_button "Search"

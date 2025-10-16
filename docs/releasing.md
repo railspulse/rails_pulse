@@ -48,6 +48,19 @@ module RailsPulse
 end
 ```
 
+Then update all Gemfile.lock files to reflect the new version:
+
+```bash
+# Update Rails 7.2 gemfile.lock
+BUNDLE_GEMFILE=gemfiles/rails_7_2.gemfile bundle install
+
+# Update Rails 8.0 gemfile.lock
+BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile bundle install
+
+# Verify version updated in all lock files
+grep "rails_pulse" gemfiles/*.gemfile.lock
+```
+
 ### 5. Update Release Documentation
 
 - Document new features, bug fixes, and breaking changes
@@ -61,8 +74,10 @@ end
 Commit the version change directly to main (branch protection rules are bypassed for maintainers):
 
 ```bash
-# Add the version file
+# Add the version file and updated Gemfile.lock files
 git add lib/rails_pulse/version.rb
+git add gemfiles/rails_7_2.gemfile.lock
+git add gemfiles/rails_8_0.gemfile.lock
 
 # Commit with clear message
 git commit -m "Bump version to v0.2.0"
