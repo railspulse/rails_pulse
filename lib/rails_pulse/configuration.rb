@@ -16,7 +16,8 @@ module RailsPulse
                   :connects_to,
                   :authentication_enabled,
                   :authentication_method,
-                  :authentication_redirect_path
+                  :authentication_redirect_path,
+                  :tags
 
     def initialize
       @enabled = true
@@ -41,6 +42,7 @@ module RailsPulse
       @authentication_enabled = Rails.env.production?
       @authentication_method = nil
       @authentication_redirect_path = "/"
+      @tags = [ "ignored", "critical", "experimental" ]
 
       validate_configuration!
     end
@@ -64,6 +66,7 @@ module RailsPulse
       validate_patterns!
       validate_database_settings!
       validate_authentication_settings!
+      validate_tags!
     end
 
     # Revalidate configuration after changes
@@ -132,6 +135,18 @@ module RailsPulse
 
       if @authentication_method && ![ Proc, Symbol, String, NilClass ].include?(@authentication_method.class)
         raise ArgumentError, "authentication_method must be a Proc, Symbol, String, or nil, got #{@authentication_method.class}"
+      end
+    end
+
+    def validate_tags!
+      unless @tags.is_a?(Array)
+        raise ArgumentError, "tags must be an array, got #{@tags.class}"
+      end
+
+      @tags.each do |tag|
+        unless tag.is_a?(String)
+          raise ArgumentError, "tags must be strings, got #{tag.class}"
+        end
       end
     end
 

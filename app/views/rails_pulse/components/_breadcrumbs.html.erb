@@ -1,12 +1,20 @@
-<nav class="breadcrumb mis-2" aria-label="Breadcrumb">
-  <% breadcrumbs.each_with_index do |crumb, index| %>
-    <% if crumb[:current] %>
-      <span class="text-primary" aria-disabled="true" aria-current="page" role="link"><%= crumb[:title] %></span>
-    <% else %>
-      <%= link_to crumb[:title], crumb[:path] %>
+<div class="breadcrumb-container">
+  <nav class="breadcrumb mis-2" aria-label="Breadcrumb">
+    <% breadcrumbs.each_with_index do |crumb, index| %>
+      <% if crumb[:current] %>
+        <span class="text-primary" aria-disabled="true" aria-current="page" role="link"><%= crumb[:title] %></span>
+      <% else %>
+        <%= link_to crumb[:title], crumb[:path] %>
+      <% end %>
+      <% unless index == breadcrumbs.length - 1 %>
+        <%= rails_pulse_icon 'chevron-right', width: 14, height: 14, class: "breadcrumb-separator mbe-1" %>
+      <% end %>
     <% end %>
-    <% unless index == breadcrumbs.length - 1 %>
-      <%= rails_pulse_icon 'chevron-right', width: 14, height: 14, class: "breadcrumb-separator mbe-1" %>
-    <% end %>
+  </nav>
+
+  <% if defined?(taggable) && taggable.present? %>
+    <div class="breadcrumb-tags">
+      <%= render 'rails_pulse/tags/tag_manager', taggable: taggable %>
+    </div>
   <% end %>
-</nav>
+</div>

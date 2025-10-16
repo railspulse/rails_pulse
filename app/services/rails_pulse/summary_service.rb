@@ -27,8 +27,8 @@ module RailsPulse
     private
 
     def aggregate_requests
-      # Create a single summary for ALL requests in this period
-      requests = Request.where(occurred_at: start_time...end_time)
+      # Create a single summary for ALL requests in this period (excluding ignored)
+      requests = Request.where(occurred_at: start_time...end_time).not_ignored
 
       return if requests.empty?
 
@@ -70,10 +70,13 @@ module RailsPulse
     private
 
     def aggregate_routes
-      # Use ActiveRecord for cross-database compatibility
+      # Use ActiveRecord for cross-database compatibility (excluding ignored routes and requests)
       route_groups = Request
         .where(occurred_at: start_time...end_time)
         .where.not(route_id: nil)
+        .not_ignored
+        .joins(:route)
+        .merge(Route.not_ignored)
         .group(:route_id)
 
       # Calculate basic aggregates
@@ -93,6 +96,7 @@ module RailsPulse
         durations = Request
           .where(occurred_at: start_time...end_time)
           .where(route_id: route_id)
+          .not_ignored
           .pluck(:duration, :status)
 
         sorted_durations = durations.map(&:first).compact.sort
@@ -129,9 +133,12 @@ module RailsPulse
     end
 
     def aggregate_queries
+      # Exclude operations linked to ignored queries
       query_groups = Operation
         .where(occurred_at: start_time...end_time)
         .where.not(query_id: nil)
+        .joins(:query)
+        .merge(Query.not_ignored)
         .group(:query_id)
 
       basic_stats = query_groups.pluck(
@@ -146,7 +153,7 @@ module RailsPulse
       basic_stats.each do |stats|
         query_id = stats[0]
 
-        # Calculate percentiles separately
+        # Calculate percentiles separately (no need to filter ignored here, already filtered above)
         durations = Operation
           .where(occurred_at: start_time...end_time)
           .where(query_id: query_id)

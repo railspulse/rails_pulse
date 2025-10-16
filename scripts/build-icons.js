@@ -51,6 +51,11 @@ const REQUIRED_ICONS = [
 const ICON_MAPPINGS = {
   'loader-circle': 'loader',
   'triangle-alert': 'alert-triangle',
+  'alert-circle': 'circle-alert',
+  'alert-triangle': 'triangle-alert',
+  'x-circle': 'circle-x',
+  'filter': 'list-filter',
+  'message-circle-question': 'message-circle-question-mark',
   'trending-#{trend_direction}': null // This is dynamic ERB, skip it
 };
 
@@ -77,7 +82,7 @@ function extractSVGContent(iconName) {
       const iconContent = fs.readFileSync(lucideIconPath, 'utf8');
 
       // Parse the JavaScript array format from Lucide
-      // Example: const Menu = ["svg", defaultAttributes, [["line", { x1: "4", x2: "20", y1: "12", y2: "12" }]]]
+      // New format: const Menu = [["path", { d: "M4 5h16" }], ...]
       const match = iconContent.match(/const\s+\w+\s*=\s*(\[[\s\S]*?\]);/);
       if (!match) {
         throw new Error(`Could not parse icon array from ${iconName}.js`);
@@ -85,11 +90,10 @@ function extractSVGContent(iconName) {
 
       try {
         // Safely evaluate the array (it's just a static data structure)
-        const iconArray = eval(match[1].replace(/defaultAttributes/g, '{}'));
+        const iconArray = eval(match[1]);
 
-        if (Array.isArray(iconArray) && iconArray.length >= 3) {
-          const elements = iconArray[2];
-          return convertArrayToSVG(elements);
+        if (Array.isArray(iconArray)) {
+          return convertArrayToSVG(iconArray);
         }
       } catch (evalError) {
         console.warn(`⚠️  Could not evaluate icon array for ${iconName}:`, evalError.message);

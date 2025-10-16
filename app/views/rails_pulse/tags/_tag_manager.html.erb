@@ -1,0 +1,84 @@
+<%
+  taggable_type = taggable.class.name.demodulize.underscore
+  available_tags = RailsPulse.configuration.tags
+  current_tags = taggable.tag_list
+  available_to_add = available_tags - current_tags
+%>
+
+<div
+  id="tag_manager_<%= taggable_type %>_<%= taggable.id %>"
+  class="tag-manager"
+  data-controller="rails-pulse--tags"
+>
+  <div class="tag-list">
+    <% current_tags.each do |tag| %>
+      <span class="tag <%= 'tag--ignored' if tag == 'ignored' %>">
+        <%= tag %>
+        <%= button_to remove_tag_path(taggable_type, taggable.id, tag: tag),
+              method: :delete,
+              class: "tag-remove",
+              data: {
+                turbo_frame: "_top",
+                rails_pulse__tags_target: "removeButton"
+              } do %>
+          <span aria-hidden="true">&times;</span>
+        <% end %>
+      </span>
+    <% end %>
+
+    <% if available_to_add.any? %>
+      <div class="tag-add-container" data-rails-pulse--tags-target="container">
+        <button
+          type="button"
+          class="btn btn--sm tag-add-button"
+          data-action="click->rails-pulse--tags#toggleDropdown"
+          data-rails-pulse--tags-target="addButton"
+        >
+          + tag
+        </button>
+
+        <div
+          class="tag-dropdown"
+          data-rails-pulse--tags-target="dropdown"
+          style="display: none;"
+        >
+          <% available_to_add.each do |tag| %>
+            <%= button_to add_tag_path(taggable_type, taggable.id, tag: tag),
+                  method: :post,
+                  class: "tag-dropdown-item",
+                  data: {
+                    turbo_frame: "_top",
+                    action: "click->rails-pulse--tags#selectTag",
+                    tag: tag
+                  } do %>
+              <%= tag %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<% if taggable.has_tag?('ignored') %>
+  <dialog
+    data-controller="rails-pulse--dialog"
+    data-rails-pulse--dialog-target="menu"
+    data-action="click->rails-pulse--dialog#closeOnClickOutside"
+    data-rails-pulse--tags-target="ignoredDialog"
+    class="dialog"
+  >
+    <div class="dialog-content">
+      <h3>Record Tagged as Ignored</h3>
+      <p>This <%= taggable_type %> is tagged as "ignored" and will be excluded from summary aggregations.</p>
+      <p>Historical summaries are not affected. Only new data collection going forward will exclude this record.</p>
+      <button
+        type="button"
+        class="btn"
+        data-action="click->rails-pulse--dialog#close"
+      >
+        OK
+      </button>
+    </div>
+  </dialog>
+<% end %>
