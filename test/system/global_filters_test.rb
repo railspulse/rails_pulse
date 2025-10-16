@@ -66,6 +66,7 @@ class GlobalFiltersTest < ApplicationSystemTestCase
 
     # Default "Last 24 hours" should be selected
     dropdown_value = find("select[name='q[period_start_range]']").value
+
     assert_equal "last_day", dropdown_value, "Dropdown should show default 'Last 24 hours' after clearing"
 
     # === STEP 4: Test page-specific filters work independently ===
@@ -87,6 +88,7 @@ class GlobalFiltersTest < ApplicationSystemTestCase
     assert_dropdown_visible # Dropdown shown (not custom picker)
 
     current_selection = find("select[name='q[period_start_range]']").value
+
     assert_equal "last_day", current_selection, "Page-specific preset should override global filter"
 
     # But global filter icon should still show as active
@@ -122,10 +124,12 @@ class GlobalFiltersTest < ApplicationSystemTestCase
 
     # Verify we're back to default state across all pages
     visit_rails_pulse_path "/routes"
+
     assert_dropdown_visible
     assert_global_filters_inactive
 
     visit_rails_pulse_path "/queries"
+
     assert_dropdown_visible
     assert_global_filters_inactive
   end

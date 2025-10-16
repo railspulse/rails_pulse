@@ -60,8 +60,9 @@ class CustomDateRangeTest < ApplicationSystemTestCase
 
     # Verify the hidden input has a value before submitting
     hidden_input_value = find('input[name="q[custom_date_range]"]', visible: :all).value
+
     assert_predicate hidden_input_value, :present?, "Hidden input should have a value before form submission"
-    assert hidden_input_value.include?(" to "), "Hidden input should contain date range with ' to ' separator"
+    assert_includes hidden_input_value, " to ", "Hidden input should contain date range with ' to ' separator"
 
     # Submit the form
     click_button "Search"
@@ -99,6 +100,7 @@ class CustomDateRangeTest < ApplicationSystemTestCase
 
     # Dropdown should reset to default value (Last 24 hours)
     dropdown_value = find("select[name='q[period_start_range]']").value
+
     assert_equal "last_day", dropdown_value, "Dropdown should reset to 'Last 24 hours' default"
 
     # === STEP 7: Test switching to a preset range ===
@@ -113,7 +115,7 @@ class CustomDateRangeTest < ApplicationSystemTestCase
       "URL should have last_week preset. Got: #{page.current_url}"
 
     # URL should NOT have custom_date_range with a value
-    refute page.current_url.match?(/custom_date_range[=%\]][^&]+/),
+    refute_match /custom_date_range[=%\]][^&]+/, page.current_url,
       "URL should NOT have custom_date_range with a value. Got: #{page.current_url}"
 
     # Dropdown should be visible (not custom picker)
@@ -121,6 +123,7 @@ class CustomDateRangeTest < ApplicationSystemTestCase
 
     # Dropdown should show "Last Week"
     dropdown_value_final = find("select[name='q[period_start_range]']").value
+
     assert_equal "last_week", dropdown_value_final, "Dropdown should show last_week"
 
     # === STEP 8: Test UI updates with different date ranges ===
@@ -129,6 +132,7 @@ class CustomDateRangeTest < ApplicationSystemTestCase
 
     # Select "Custom Range..." to show the picker
     select "Custom Range...", from: "q[period_start_range]"
+
     assert_custom_picker_visible
 
     # Set older date range to verify the UI updates
@@ -149,11 +153,13 @@ class CustomDateRangeTest < ApplicationSystemTestCase
     # Verify the visible input shows the updated date range
     # The flatpickr alt input should display the formatted dates
     date_display = find('input[placeholder*="Pick date range"]').value
+
     assert_predicate date_display, :present?, "Date picker should show selected dates"
 
     # Verify the hidden input has the correct value format
     hidden_value = find('input[name="q[custom_date_range]"]', visible: :all).value
-    assert hidden_value.include?(" to "), "Hidden input should contain date range in 'start to end' format"
+
+    assert_includes hidden_value, " to ", "Hidden input should contain date range in 'start to end' format"
 
     # Custom picker should still be visible
     assert_custom_picker_visible
