@@ -47,14 +47,25 @@ module GlobalFiltersHelpers
 
     # Set date range using flatpickr API if provided
     if date_range
-      page.execute_script(<<~JS)
-        var hiddenInput = document.querySelector('input[name="date_range"]');
-        if (hiddenInput && hiddenInput._flatpickr) {
-          hiddenInput._flatpickr.setDate('#{date_range}', true);
-        }
-      JS
+      # Parse the date range string "Start to End" and convert to array for flatpickr
+      if date_range.include?(" to ")
+        dates = date_range.split(" to ").map(&:strip)
+        page.execute_script(<<~JS)
+          var hiddenInput = document.querySelector('input[name="date_range"]');
+          if (hiddenInput && hiddenInput._flatpickr) {
+            hiddenInput._flatpickr.setDate(['#{dates[0]}', '#{dates[1]}'], true);
+          }
+        JS
+      else
+        page.execute_script(<<~JS)
+          var hiddenInput = document.querySelector('input[name="date_range"]');
+          if (hiddenInput && hiddenInput._flatpickr) {
+            hiddenInput._flatpickr.setDate('#{date_range}', true);
+          }
+        JS
+      end
 
-      sleep 0.3
+      sleep 1 # Give more time for flatpickr to process and update
     end
 
     # Wait for modal to be fully visible

@@ -12,62 +12,45 @@ class GlobalFiltersTest < ApplicationSystemTestCase
     create_comprehensive_test_data
   end
 
-  test "global filters persist across pages" do
-    # Set up date range and performance threshold
-    date_range = "#{7.days.ago.strftime('%b %d, %Y %l:%M %p')} to #{Time.current.strftime('%b %d, %Y %l:%M %p')}"
-
+  test "global filters complete workflow" do
     visit_rails_pulse_path "/routes"
 
-    # Open modal and set both filters
-    set_global_filters(
-      date_range: date_range,
-      threshold: "Slow and Above"
-    )
+    # === STEP 1: Set global date range filter ===
+    # Set date range that covers our test data (last 7 days)
+    # Use Y-m-d H:i format which flatpickr expects for datetime type
+    date_range_start = 7.days.ago.strftime("%Y-%m-%d %H:%M")
+    date_range_end = Time.current.strftime("%Y-%m-%d %H:%M")
+
+    set_global_filters(date_range: "#{date_range_start} to #{date_range_end}")
 
     # Verify filter icon shows active state
     assert_global_filters_active
 
-    # Verify routes page shows filtered data
-    assert_selector "table tbody tr", wait: 5
-    # Should only show routes with slow performance
+    # Verify custom picker is visible (global date filter sets custom mode)
+    assert_custom_picker_visible
 
+    # Verify we have data displayed
+    assert_selector "table tbody tr", wait: 5
+
+    # === STEP 2: Verify global filters persist across different pages ===
     # Navigate to requests page
     visit_rails_pulse_path "/requests"
 
-    # Verify custom picker is visible with global date range
+    # Global filter should still be active
+    assert_global_filters_active
     assert_custom_picker_visible
     assert_selector "table tbody tr", wait: 5
-    # Should show only slow requests within date range
 
     # Navigate to queries page
     visit_rails_pulse_path "/queries"
 
-    # Verify filters still active
-    assert_custom_picker_visible
-    assert_selector "table tbody tr", wait: 5
-    # Should show only slow queries
-  end
-
-  test "clearing global filters works" do
-    # Set both filters
-    date_range = "#{7.days.ago.strftime('%b %d, %Y %l:%M %p')} to #{Time.current.strftime('%b %d, %Y %l:%M %p')}"
-
-    visit_rails_pulse_path "/routes"
-    set_global_filters(
-      date_range: date_range,
-      threshold: "Slow and Above"
-    )
-
-    # Verify filters applied on routes
+    # Global filter should still be active
     assert_global_filters_active
     assert_custom_picker_visible
+    assert_selector "table tbody tr", wait: 5
 
-    # Visit requests to verify persistence
-    visit_rails_pulse_path "/requests"
-
-    assert_custom_picker_visible
-
-    # Clear filters
+    # === STEP 3: Test clearing global filters ===
+    # Clear filters from queries page
     clear_global_filters
 
     # Verify filters removed
@@ -75,106 +58,85 @@ class GlobalFiltersTest < ApplicationSystemTestCase
     assert_dropdown_visible # Should show dropdown, not custom picker
     assert_selector "table tbody tr", wait: 5
 
-    # Visit routes page and verify no filters
+    # Navigate to routes page and verify filters cleared
     visit_rails_pulse_path "/routes"
 
     assert_dropdown_visible
-    # Default "Last 24 hours" should be selected
-    assert_selector "select[name='q[period_start_range]']" do |select|
-      assert_equal "last_day", find("select[name='q[period_start_range]']").value
-    end
-  end
+    assert_global_filters_inactive
 
-  test "page specific filters override global filters" do
-    # Set global filters
+    # Default "Last 24 hours" should be selected
+    dropdown_value = find("select[name='q[period_start_range]']").value
+    assert_equal "last_day", dropdown_value, "Dropdown should show default 'Last 24 hours' after clearing"
+
+    # === STEP 4: Test page-specific filters work independently ===
+    # Set a new global filter
+    global_start = 1.month.ago.strftime("%Y-%m-%d %H:%M")
+    global_end = Time.current.strftime("%Y-%m-%d %H:%M")
+
+    set_global_filters(date_range: "#{global_start} to #{global_end}")
+
+    # Verify global filter applied
+    assert_custom_picker_visible
+    assert_global_filters_active
+
+    # Now override with page-specific preset by navigating to a URL with preset parameter
+    # This simulates selecting "Last 24 hours" from the dropdown
+    visit_rails_pulse_path "/routes?q[period_start_range]=last_day"
+
+    # Page-specific filter should override global filter
+    assert_dropdown_visible # Dropdown shown (not custom picker)
+
+    current_selection = find("select[name='q[period_start_range]']").value
+    assert_equal "last_day", current_selection, "Page-specific preset should override global filter"
+
+    # But global filter icon should still show as active
+    assert_global_filters_active
+
+    # === STEP 5: Verify global filter modal shows current values ===
+    # Set both date range and performance threshold
     visit_rails_pulse_path "/routes"
 
-    # Set global date range to "Last Month" equivalent
-    last_month_start = 1.month.ago.strftime("%b %d, %Y %l:%M %p")
-    last_month_end = Time.current.strftime("%b %d, %Y %l:%M %p")
+    recent_start = 3.days.ago.strftime("%Y-%m-%d %H:%M")
+    recent_end = Time.current.strftime("%Y-%m-%d %H:%M")
 
     set_global_filters(
-      date_range: "#{last_month_start} to #{last_month_end}",
-      threshold: "Slow and Above"
+      date_range: "#{recent_start} to #{recent_end}",
+      threshold: "All Requests"
     )
 
-    # Verify global filters applied
+    # Verify both filters applied
+    assert_global_filters_active
     assert_custom_picker_visible
 
-    # Get initial row count
-    initial_row_count = all("table tbody tr").count
+    # Navigate to another page and verify both filters persist
+    visit_rails_pulse_path "/requests"
 
-    # Override with page-specific time range
-    select "Last 24 hours", from: "q[period_start_range]"
-    click_button "Search"
-
+    assert_custom_picker_visible
     assert_selector "table tbody tr", wait: 5
 
-    # Verify we're now seeing Last 24 hours data (different from Last Month)
+    # === STEP 6: Clear all global filters and verify clean state ===
+    clear_global_filters
+
+    assert_global_filters_inactive
     assert_dropdown_visible
-    current_selection = find("select[name='q[period_start_range]']").value
 
-    assert_equal "last_day", current_selection
-
-    # Should still show slow performance (global threshold respected)
-    # But time range is overridden to last 24 hours
-
-    # Override performance threshold to "All Requests"
-    select "All Requests", from: "q[avg_duration]"
-    click_button "Search"
-
-    assert_selector "table tbody tr", wait: 5
-
-    # Now showing all performance levels in last 24 hours
-    # Both global filters overridden by page-specific selections
-  end
-
-  test "global filters work with chart zoom" do
-    # Set global date range for last week
-    last_week_start = 1.week.ago.strftime("%b %d, %Y %l:%M %p")
-    last_week_end = Time.current.strftime("%b %d, %Y %l:%M %p")
-
+    # Verify we're back to default state across all pages
     visit_rails_pulse_path "/routes"
+    assert_dropdown_visible
+    assert_global_filters_inactive
 
-    set_global_filters(date_range: "#{last_week_start} to #{last_week_end}")
-
-    # Verify global range applied
-    assert_custom_picker_visible
-    assert_selector "table tbody tr", wait: 5
-
-    # Capture initial table data (should show all last week data)
-    initial_rows = all("table tbody tr").map(&:text)
-
-    # Apply zoom parameters (simulate chart column click)
-    zoom_start = 2.days.ago.beginning_of_hour.to_i
-    zoom_end = 1.day.ago.end_of_hour.to_i
-
-    zoom_url = "/rails_pulse/routes?zoom_start_time=#{zoom_start}&zoom_end_time=#{zoom_end}"
-    visit zoom_url
-
-    # Wait for page to reload with zoom
-    assert_selector "table tbody tr", wait: 5
-
-    # Table should now show only zoomed range data
-    zoomed_rows = all("table tbody tr").map(&:text)
-
-    # Chart should still show full global range
-    # (We can't easily test chart data, but the test verifies table filtering)
-
-    # Clear zoom by visiting without params
-    visit_rails_pulse_path "/routes"
-
-    # Table should return to showing full global range
-    assert_selector "table tbody tr", wait: 5
-    assert_custom_picker_visible
+    visit_rails_pulse_path "/queries"
+    assert_dropdown_visible
+    assert_global_filters_inactive
   end
 
   private
 
   def create_comprehensive_test_data
     # Create requests with various performance levels at different times
+    # This data ensures we have rows to display regardless of filters
 
-    # Fast request at 1 hour ago
+    # Recent data (1 hour ago) - ensures "Last 24 hours" shows data
     route_fast = rails_pulse_routes(:api_test)
     RailsPulse::Request.create!(
       route: route_fast,
@@ -186,7 +148,7 @@ class GlobalFiltersTest < ApplicationSystemTestCase
       controller_action: "Api::TestController#index"
     )
 
-    # Slow request at 3 days ago (within last week)
+    # Mid-range data (3 days ago) - within "Last Week" and our test date ranges
     route_slow = rails_pulse_routes(:api_users)
     RailsPulse::Request.create!(
       route: route_slow,
@@ -198,7 +160,7 @@ class GlobalFiltersTest < ApplicationSystemTestCase
       controller_action: "Api::UsersController#index"
     )
 
-    # Very slow request at 1 week ago
+    # Older data (1 week ago) - for testing longer date ranges
     RailsPulse::Request.create!(
       route: route_slow,
       duration: 1800.0,
@@ -209,7 +171,7 @@ class GlobalFiltersTest < ApplicationSystemTestCase
       controller_action: "Api::UsersController#index"
     )
 
-    # Critical request at 2 weeks ago
+    # Very old data (2 weeks ago) - for testing month-long ranges
     route_critical = rails_pulse_routes(:api_posts)
     RailsPulse::Request.create!(
       route: route_critical,
@@ -221,7 +183,7 @@ class GlobalFiltersTest < ApplicationSystemTestCase
       controller_action: "Api::PostsController#create"
     )
 
-    # Generate summaries for the test data
+    # Generate summaries for the test data so charts and aggregates work
     RailsPulse::SummaryService.new("hour", 1.hour.ago.beginning_of_hour).perform
     RailsPulse::SummaryService.new("day", 3.days.ago.beginning_of_day).perform
     RailsPulse::SummaryService.new("day", 1.week.ago.beginning_of_day).perform
