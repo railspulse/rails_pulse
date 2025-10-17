@@ -20,7 +20,6 @@ import IconController from "./controllers/icon_controller";
 import ExpandableRowsController from "./controllers/expandable_rows_controller";
 import CollapsibleController from "./controllers/collapsible_controller";
 import TableSortController from "./controllers/table_sort_controller";
-import TagsController from "./controllers/tags_controller";
 import GlobalFiltersController from "./controllers/global_filters_controller";
 import CustomRangeController from "./controllers/custom_range_controller";
 
@@ -51,7 +50,6 @@ application.register("rails-pulse--icon", IconController);
 application.register("rails-pulse--expandable-rows", ExpandableRowsController);
 application.register("rails-pulse--collapsible", CollapsibleController);
 application.register("rails-pulse--table-sort", TableSortController);
-application.register("rails-pulse--tags", TagsController);
 application.register("rails-pulse--global-filters", GlobalFiltersController);
 application.register("rails-pulse--custom-range", CustomRangeController);
 

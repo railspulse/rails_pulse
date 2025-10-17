@@ -8,7 +8,6 @@
 <div
   id="tag_manager_<%= taggable_type %>_<%= taggable.id %>"
   class="tag-manager"
-  data-controller="rails-pulse--tags"
 >
   <div class="tag-list">
     <% current_tags.each do |tag| %>
@@ -18,8 +17,7 @@
               method: :delete,
               class: "tag-remove",
               data: {
-                turbo_frame: "_top",
-                rails_pulse__tags_target: "removeButton"
+                turbo_frame: "_top"
               } do %>
           <span aria-hidden="true">&times;</span>
         <% end %>
@@ -27,31 +25,47 @@
     <% end %>
 
     <% if available_to_add.any? %>
-      <div class="tag-add-container" data-rails-pulse--tags-target="container">
+      <div class="tag-add-container" data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-start">
         <button
           type="button"
+          id="tag_menu_button_<%= taggable_type %>_<%= taggable.id %>"
           class="btn btn--sm tag-add-button"
-          data-action="click->rails-pulse--tags#toggleDropdown"
-          data-rails-pulse--tags-target="addButton"
+          data-rails-pulse--popover-target="button"
+          data-action="rails-pulse--popover#toggle"
+          aria-haspopup="true"
+          aria-controls="tag_menu_<%= taggable_type %>_<%= taggable.id %>"
         >
           + tag
         </button>
 
         <div
-          class="tag-dropdown"
-          data-rails-pulse--tags-target="dropdown"
-          style="display: none;"
+          popover
+          class="popover"
+          style="--popover-size: 12rem;"
+          data-rails-pulse--popover-target="menu"
         >
-          <% available_to_add.each do |tag| %>
-            <%= button_to add_tag_path(taggable_type, taggable.id, tag: tag),
-                  method: :post,
-                  class: "tag-dropdown-item",
-                  data: {
-                    turbo_frame: "_top"
-                  } do %>
-              <%= tag %>
+          <div
+            id="tag_menu_<%= taggable_type %>_<%= taggable.id %>"
+            class="menu"
+            data-controller="rails-pulse--menu"
+            data-action="keydown.up->rails-pulse--menu#prev keydown.down->rails-pulse--menu#next"
+            role="menu"
+            aria-labelledby="tag_menu_button_<%= taggable_type %>_<%= taggable.id %>"
+          >
+            <% available_to_add.each do |tag| %>
+              <%= button_to add_tag_path(taggable_type, taggable.id, tag: tag),
+                    method: :post,
+                    class: "btn menu__item i-full",
+                    data: {
+                      turbo_frame: "_top",
+                      rails_pulse__menu_target: "item"
+                    },
+                    style: "cursor: pointer;",
+                    role: "menuitem" do %>
+                <%= tag %>
+              <% end %>
             <% end %>
-          <% end %>
+          </div>
         </div>
       </div>
     <% end %>

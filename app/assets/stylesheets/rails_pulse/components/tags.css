@@ -81,60 +81,6 @@
   white-space: nowrap;
 }
 
-/* Tag Dropdown */
-.tag-dropdown {
-  position: absolute;
-  top: 100%;
-  right: 0;
-  margin-top: 0.25rem;
-  background-color: var(--color-background);
-  border: 1px solid var(--color-border);
-  border-radius: 0.375rem;
-  box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
-  min-width: 10rem;
-  max-height: 300px;
-  overflow-y: auto;
-  z-index: 50;
-}
-
-.tag-dropdown-item {
-  all: unset;
-  display: block;
-  width: 100%;
-  padding: 0.5rem 0.75rem;
-  text-align: left;
-  font-size: 0.875rem;
-  cursor: pointer;
-  color: var(--color-text);
-  background: none;
-  border: none;
-  transition: background-color 0.15s ease;
-}
-
-.tag-dropdown-item:hover {
-  background-color: var(--color-background-secondary);
-}
-
-.tag-dropdown-item:active {
-  background-color: var(--color-background-tertiary, var(--color-background-secondary));
-}
-
-/* Dialog Overrides for Tag Dialog */
-.dialog-content h3 {
-  margin-top: 0;
-  margin-bottom: 0.5rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-}
-
-.dialog-content p {
-  margin-bottom: 0.75rem;
-}
-
-.dialog-content p:last-of-type {
-  margin-bottom: 1rem;
-}
-
 /* Responsive Design */
 @media (max-width: 768px) {
   .breadcrumb-container {
@@ -148,10 +94,5 @@
 
   .tag-manager {
     width: 100%;
-  }
-
-  .tag-dropdown {
-    right: auto;
-    left: 0;
   }
 }
