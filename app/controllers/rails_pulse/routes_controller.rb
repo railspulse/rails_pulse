@@ -1,6 +1,7 @@
 module RailsPulse
   class RoutesController < ApplicationController
     include ChartTableConcern
+    include TagFilterConcern
 
     before_action :set_route, only: :show
 
@@ -86,7 +87,7 @@ module RailsPulse
       if show_action?
         # Only show requests that belong to time periods where we have route summaries
         # This ensures the table data is consistent with the chart data
-        base_query = @ransack_query.result
+        base_query = apply_tag_filters(@ransack_query.result)
           .joins(<<~SQL)
             INNER JOIN rails_pulse_summaries ON
               rails_pulse_summaries.summarizable_id = rails_pulse_requests.route_id AND
@@ -108,7 +109,8 @@ module RailsPulse
           ransack_query: @ransack_query,
           period_type: period_type,
           start_time: @start_time,
-          params: params
+          params: params,
+          disabled_tags: session_disabled_tags
         ).to_table
       end
     end

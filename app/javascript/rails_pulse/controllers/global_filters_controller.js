@@ -85,7 +85,11 @@ export default class extends Controller {
       form.appendChild(endInput)
     }
 
-    // No validation needed - user can apply just date range, just threshold, or both
+    // Tag switches are already being submitted as enabled_tags[]
+    // The controller will convert these to disabled_tags
+    // No additional processing needed here
+
+    // No validation needed - user can apply any combination of filters
   }
 
   // Update visual indicator based on activeValue

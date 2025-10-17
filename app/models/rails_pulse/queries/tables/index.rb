@@ -2,12 +2,13 @@ module RailsPulse
   module Queries
     module Tables
       class Index
-        def initialize(ransack_query:, period_type: nil, start_time:, params:, query: nil)
+        def initialize(ransack_query:, period_type: nil, start_time:, params:, query: nil, disabled_tags: [])
           @ransack_query = ransack_query
           @period_type = period_type
           @start_time = start_time
           @params = params
           @query = query
+          @disabled_tags = disabled_tags
         end
 
         def to_table
@@ -20,6 +21,11 @@ module RailsPulse
               summarizable_type: "RailsPulse::Query",
               period_type: @period_type
             )
+
+          # Apply tag filters by excluding queries with disabled tags
+          @disabled_tags.each do |tag|
+            base_query = base_query.where.not("rails_pulse_queries.tags LIKE ?", "%#{tag}%")
+          end
 
           base_query = base_query.where(summarizable_id: @query.id) if @query
 

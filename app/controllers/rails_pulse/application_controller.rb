@@ -1,7 +1,7 @@
 module RailsPulse
   class ApplicationController < ActionController::Base
     before_action :authenticate_rails_pulse_user!
-    helper_method :session_global_filters
+    helper_method :session_global_filters, :session_disabled_tags
 
     def set_pagination_limit(limit = nil)
       limit = limit || params[:limit]
@@ -30,6 +30,17 @@ module RailsPulse
           filters["performance_threshold"] = params[:performance_threshold]
         else
           filters.delete("performance_threshold")
+        end
+
+        # Update tag visibility - convert enabled tags to disabled tags
+        all_tags = RailsPulse.configuration.tags
+        enabled_tags = params[:enabled_tags] || []
+        disabled_tags = all_tags - enabled_tags
+
+        if disabled_tags.any?
+          filters["disabled_tags"] = disabled_tags
+        else
+          filters.delete("disabled_tags")
         end
 
         session[:global_filters] = filters
@@ -101,6 +112,10 @@ module RailsPulse
 
     def session_global_filters
       session[:global_filters] || {}
+    end
+
+    def session_disabled_tags
+      session_global_filters["disabled_tags"] || []
     end
 
     # Get the minimum duration based on global performance threshold

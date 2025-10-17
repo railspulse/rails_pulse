@@ -1,7 +1,9 @@
 <% global_filters = session_global_filters %>
 <% has_global_filters = global_filters['start_time'].present? && global_filters['end_time'].present? %>
 <% has_performance_filter = global_filters['performance_threshold'].present? %>
-<% has_any_filters = has_global_filters || has_performance_filter %>
+<% disabled_tags = global_filters['disabled_tags'] || [] %>
+<% has_tag_filters = disabled_tags.any? %>
+<% has_any_filters = has_global_filters || has_performance_filter || has_tag_filters %>
 <% current_date_range = has_global_filters ? "#{global_filters['start_time']} to #{global_filters['end_time']}" : "" %>
 <% current_threshold = global_filters['performance_threshold'] %>
 
@@ -44,6 +46,29 @@
                 <option value="critical" <%= 'selected' if current_threshold == 'critical' %>>Critical Only</option>
               </select>
               <p class="text-xs text-subtle">Filter requests/queries by performance threshold</p>
+            </div>
+
+            <div class="flex flex-col gap" style="--row-gap: 0.5rem">
+              <label class="text-sm font-medium">Tag Visibility</label>
+              <p class="text-xs text-subtle">Hide routes, queries, and requests with these tags</p>
+              <div class="flex flex-col gap" style="--row-gap: 0.75rem">
+                <% RailsPulse.configuration.tags.each do |tag| %>
+                  <div class="flex items-center gap">
+                    <input
+                      type="checkbox"
+                      name="enabled_tags[]"
+                      id="tag_<%= tag %>"
+                      value="<%= tag %>"
+                      <%= 'checked="checked"' unless disabled_tags.include?(tag) %>
+                      class="switch"
+                      role="switch"
+                    />
+                    <label class="text-sm font-medium" for="tag_<%= tag %>">
+                      <%= tag.titleize %>
+                    </label>
+                  </div>
+                <% end %>
+              </div>
             </div>
           </div>
 

@@ -2772,6 +2772,47 @@ body {
 }
 
 
+/* app/assets/stylesheets/rails_pulse/components/switch.css */
+.switch {
+  -webkit-appearance: none;
+     -moz-appearance: none;
+          appearance: none;
+  background-color: var(--color-border);
+  border-color: transparent;
+  border-radius: var(--rounded-full);
+  border-width: var(--border-2);
+  block-size: var(--size-5);
+  inline-size: var(--size-9);
+  transition: background-color var(--time-150);
+
+  &:checked {
+    background-color: var(--color-primary);
+  }
+
+  &:checked::before {
+    margin-inline-start: var(--size-4);
+  }
+
+  &::before {
+    aspect-ratio: var(--aspect-square);
+    background-color: var(--color-text-reversed);
+    block-size: var(--size-full);
+    border-radius: var(--rounded-full);
+    content: "";
+    display: block;
+    transition: margin var(--time-150);
+  }
+
+  &:focus-visible {
+    outline: var(--border-2) solid var(--color-selected-dark);
+  }
+
+  &:disabled {
+    cursor: not-allowed; opacity: var(--opacity-50);
+  }
+}
+
+
 /* app/assets/stylesheets/rails_pulse/components/table.css */
 :where(.table) {
   caption-side: bottom;

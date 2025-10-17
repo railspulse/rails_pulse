@@ -1,6 +1,7 @@
 module RailsPulse
   class QueriesController < ApplicationController
     include ChartTableConcern
+    include TagFilterConcern
 
     before_action :set_query, only: [ :show, :analyze ]
 
@@ -114,13 +115,15 @@ module RailsPulse
     def build_table_results
       if show_action?
         # For Summary model on show page - ransack params already include query ID and type filters
+        # Summaries aren't taggable, so we don't apply tag filters here
         @ransack_query.result.where(period_type: period_type)
       else
         Queries::Tables::Index.new(
           ransack_query: @ransack_query,
           period_type: period_type,
           start_time: @start_time,
-          params: params
+          params: params,
+          disabled_tags: session_disabled_tags
         ).to_table
       end
     end

@@ -1,6 +1,7 @@
 module RailsPulse
   class RequestsController < ApplicationController
     include ChartTableConcern
+    include TagFilterConcern
 
     TIME_RANGE_OPTIONS = [
       [ "Recent", "recent" ],
@@ -94,7 +95,7 @@ module RailsPulse
     end
 
     def build_table_results
-      base_query = @ransack_query.result.includes(:route)
+      base_query = apply_tag_filters(@ransack_query.result.includes(:route))
 
       # If filtering or sorting by route_path, we need to join the routes table
       needs_join = @ransack_query.sorts.any? { |sort| sort.name == "route_path" } ||
