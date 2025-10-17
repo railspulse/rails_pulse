@@ -1,7 +1,8 @@
 <% columns = [
   { field: :normalized_sql, label: 'Query', class: 'w-auto' },
   { field: :avg_duration_sort, label: 'Average Query Time', class: 'w-44' },
-  { field: :execution_count_sort, label: 'Executions', class: 'w-24' }
+  { field: :execution_count_sort, label: 'Executions', class: 'w-24' },
+  { field: nil, label: 'Tags', class: 'w-32' }
 ] %>
 
 <table class="table mbs-4" data-controller="rails-pulse--table-sort">
@@ -17,6 +18,7 @@
         </td>
         <td class="whitespace-nowrap"><%= summary.avg_duration.to_i %> ms</td>
         <td class="whitespace-nowrap"><%= number_with_delimiter summary.execution_count %></td>
+        <td class="whitespace-nowrap"><%= display_tag_badges(summary.tags) %></td>
       </tr>
     <% end %>
   </tbody>

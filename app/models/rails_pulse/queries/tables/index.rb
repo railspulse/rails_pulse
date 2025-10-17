@@ -35,13 +35,15 @@ module RailsPulse
               "rails_pulse_summaries.summarizable_id",
               "rails_pulse_summaries.summarizable_type",
               "rails_pulse_queries.id",
-              "rails_pulse_queries.normalized_sql"
+              "rails_pulse_queries.normalized_sql",
+              "rails_pulse_queries.tags"
             )
             .select(
               "rails_pulse_summaries.summarizable_id",
               "rails_pulse_summaries.summarizable_type",
               "rails_pulse_queries.id as query_id",
               "rails_pulse_queries.normalized_sql",
+              "rails_pulse_queries.tags",
               "AVG(rails_pulse_summaries.avg_duration) as avg_duration",
               "MAX(rails_pulse_summaries.max_duration) as max_duration",
               "SUM(rails_pulse_summaries.count) as execution_count",

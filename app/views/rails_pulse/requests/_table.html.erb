@@ -2,7 +2,8 @@
   { field: :occurred_at, label: 'Timestamp', class: 'w-36' },
   { field: :route_path, label: 'Route', class: 'w-auto' },
   { field: :duration, label: 'Response Time', class: 'w-36' },
-  { field: :status, label: 'Status', class: 'w-20' }
+  { field: :status, label: 'Status', class: 'w-20' },
+  { field: nil, label: 'Tags', class: 'w-32' }
 ] %>
 
 <table class="table mbs-4" data-controller="rails-pulse--table-sort">
@@ -34,6 +35,7 @@
         <td class="whitespace-nowrap">
           <span class="text-green-600"><%= request.status %></span>
         </td>
+        <td class="whitespace-nowrap"><%= display_tag_badges(request) %></td>
       </tr>
     <% end %>
   </tbody>

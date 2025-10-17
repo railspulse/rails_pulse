@@ -8,6 +8,7 @@ module RailsPulse
     include StatusHelper
     include TableHelper
     include FormHelper
+    include TagsHelper
 
     # Replacement for lucide_icon helper that works with pre-compiled assets
     # Outputs a custom element that will be hydrated by Stimulus
