@@ -3,7 +3,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 1rem;
   gap: 1rem;
   flex-wrap: wrap;
 }
@@ -39,12 +38,6 @@
   font-size: 0.875rem;
   line-height: 1.25;
   white-space: nowrap;
-}
-
-.tag--ignored {
-  background-color: var(--color-error-background, #fee);
-  border-color: var(--color-error, #dc2626);
-  color: var(--color-error, #dc2626);
 }
 
 /* Tag Remove Button */

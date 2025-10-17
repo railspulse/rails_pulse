@@ -5,8 +5,9 @@ module ResponseRangeConcern
     ransack_params = params[:q] || {}
     thresholds = RailsPulse.configuration.public_send("#{type}_thresholds")
 
-    # Check both avg_duration (for Summary) and duration (for Request/Operation)
-    duration_param = ransack_params[:avg_duration] || ransack_params[:duration]
+    # Check all duration-related parameters
+    # avg_duration for Summary, duration for Request/Operation, duration_gteq for direct Ransack filtering
+    duration_param = ransack_params[:avg_duration] || ransack_params[:duration] || ransack_params[:duration_gteq]
 
     # Priority 1: Page-specific duration filter
     if duration_param.present?

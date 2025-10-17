@@ -8,7 +8,6 @@ module Taggable
     # Scopes with table name qualification to avoid ambiguity
     scope :with_tag, ->(tag) { where("#{table_name}.tags LIKE ?", "%#{tag}%") }
     scope :without_tag, ->(tag) { where.not("#{table_name}.tags LIKE ?", "%#{tag}%") }
-    scope :not_ignored, -> { where.not("#{table_name}.tags LIKE ?", "%ignored%") }
   end
 
   # Tag management methods
@@ -22,10 +21,6 @@ module Taggable
 
   def has_tag?(tag)
     tag_list.include?(tag.to_s)
-  end
-
-  def ignored?
-    has_tag?("ignored")
   end
 
   def add_tag(tag)

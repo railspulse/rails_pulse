@@ -12,12 +12,36 @@
 <%= render 'rails_pulse/components/panel', { title: 'Requests', } do %>
   <%= search_form_for @ransack_query, url: requests_path, class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
     <div class="flex items-center grow gap">
-      <%= time_range_selector(form, time_range_options: RailsPulse::RequestsController::TIME_RANGE_OPTIONS, selected_time_range: @selected_time_range) %>
-      <%= form.select :avg_duration,
-        duration_options(:request),
-        { selected: @selected_response_range },
+      <%= time_range_selector(form,
+        time_range_options: RailsPulse::RequestsController::TIME_RANGE_OPTIONS,
+        selected_time_range: @selected_time_range,
+        mode: :recent_custom
+      ) %>
+
+      <%= form.search_field :route_path_cont,
+        placeholder: "Filter by route",
+        autocomplete: "off",
+        class: "input"
+      %>
+
+      <%= form.select :status_category_eq,
+        [
+          ["All statuses", ""],
+          ["2xx Success", "2"],
+          ["3xx Redirect", "3"],
+          ["4xx Client Error", "4"],
+          ["5xx Server Error", "5"]
+        ],
+        {},
         { class: "input" }
       %>
+
+      <%= form.select :duration_gteq,
+        duration_options(:request),
+        { selected: @selected_response_range, prompt: "Min duration" },
+        { class: "input" }
+      %>
+
       <%= link_to "Reset", requests_path, class: "btn btn--borderless show@md" if params.has_key?(:q) %>
       <%= form.submit "Search", class: "btn show@sm" %>
     </div>

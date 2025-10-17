@@ -2,6 +2,11 @@ module RailsPulse
   class RequestsController < ApplicationController
     include ChartTableConcern
 
+    TIME_RANGE_OPTIONS = [
+      [ "Recent", "recent" ],
+      [ "Custom Range", "custom" ]
+    ].freeze
+
     before_action :set_request, only: :show
 
     def index
@@ -55,11 +60,32 @@ module RailsPulse
     end
 
     def build_table_ransack_params(ransack_params)
-      params = ransack_params.merge(
-        occurred_at_gteq: Time.at(@table_start_time),
-        occurred_at_lt: Time.at(@table_end_time)
-      )
-      params[:duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+      params = ransack_params.dup
+
+      # Handle time mode - check if recent mode is selected
+      time_mode = params[:period_start_range] || "recent"
+
+      if time_mode != "recent"
+        # Custom mode - apply time filters
+        params.merge!(
+          occurred_at_gteq: Time.at(@table_start_time),
+          occurred_at_lt: Time.at(@table_end_time)
+        )
+      end
+      # else: Recent mode - no time filters, just rely on sort + pagination
+
+      # Duration filter - convert symbol to numeric threshold or use @start_duration
+      if params[:duration_gteq].present?
+        # If it's a symbol like :slow, convert it to the numeric threshold
+        if params[:duration_gteq].to_s.in?(%w[slow very_slow critical])
+          params[:duration_gteq] = @start_duration
+        end
+        # else: it's already a number, keep it as is
+      elsif @start_duration && @start_duration > 0
+        # No duration_gteq param, use @start_duration from concern
+        params[:duration_gteq] = @start_duration
+      end
+
       params
     end
 
@@ -70,8 +96,11 @@ module RailsPulse
     def build_table_results
       base_query = @ransack_query.result.includes(:route)
 
-      # If sorting by route_path, we need to join the routes table
-      if @ransack_query.sorts.any? { |sort| sort.name == "route_path" }
+      # If filtering or sorting by route_path, we need to join the routes table
+      needs_join = @ransack_query.sorts.any? { |sort| sort.name == "route_path" } ||
+                   params.dig(:q, :route_path_cont).present?
+
+      if needs_join
         base_query = base_query.joins(:route)
       end
 

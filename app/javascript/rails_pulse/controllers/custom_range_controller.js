@@ -4,21 +4,47 @@ export default class extends Controller {
   static targets = ["selectWrapper", "pickerWrapper"]
 
   connect() {
-    // Show picker on load if custom is already selected
     const selectElement = this.selectWrapperTarget.querySelector('select')
-    if (selectElement && selectElement.value === "custom") {
-      this.showPicker()
-      // Initialize flatpickr with the existing value if present
-      this.initializeDatePicker()
+    if (!selectElement) return
+
+    // Check if we're in recent_custom mode
+    const mode = selectElement.dataset.mode
+
+    if (mode === 'recent_custom') {
+      // In recent_custom mode, "recent" shows no picker, "custom" shows picker
+      if (selectElement.value === "custom") {
+        this.showPicker()
+        this.initializeDatePicker()
+      }
+    } else {
+      // In preset mode, "custom" shows picker
+      if (selectElement.value === "custom") {
+        this.showPicker()
+        this.initializeDatePicker()
+      }
     }
   }
 
-  // When "Custom Range..." is selected from dropdown
+  // When time range is selected from dropdown
   handleChange(event) {
-    if (event.target.value === "custom") {
-      this.showPicker()
-      // Automatically open the datepicker calendar
-      this.openDatePicker()
+    const mode = event.target.dataset.mode
+
+    if (mode === 'recent_custom') {
+      // In recent_custom mode
+      if (event.target.value === "custom") {
+        this.showPicker()
+        this.openDatePicker()
+      } else {
+        // "recent" is selected - hide picker
+        this.pickerWrapperTarget.style.display = "none"
+        this.selectWrapperTarget.style.display = "block"
+      }
+    } else {
+      // In preset mode
+      if (event.target.value === "custom") {
+        this.showPicker()
+        this.openDatePicker()
+      }
     }
   }
 
@@ -53,10 +79,15 @@ export default class extends Controller {
     this.pickerWrapperTarget.style.display = "none"
     this.selectWrapperTarget.style.display = "block"
 
-    // Reset select to default value
+    // Reset select to default value based on mode
     const selectElement = this.selectWrapperTarget.querySelector('select')
     if (selectElement) {
-      selectElement.value = "last_day"
+      const mode = selectElement.dataset.mode
+      if (mode === 'recent_custom') {
+        selectElement.value = "recent"
+      } else {
+        selectElement.value = "last_day"
+      }
     }
   }
 

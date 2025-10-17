@@ -12,7 +12,7 @@
 >
   <div class="tag-list">
     <% current_tags.each do |tag| %>
-      <span class="tag <%= 'tag--ignored' if tag == 'ignored' %>">
+      <span class="tag">
         <%= tag %>
         <%= button_to remove_tag_path(taggable_type, taggable.id, tag: tag),
               method: :delete,
@@ -47,9 +47,7 @@
                   method: :post,
                   class: "tag-dropdown-item",
                   data: {
-                    turbo_frame: "_top",
-                    action: "click->rails-pulse--tags#selectTag",
-                    tag: tag
+                    turbo_frame: "_top"
                   } do %>
               <%= tag %>
             <% end %>
@@ -59,26 +57,3 @@
     <% end %>
   </div>
 </div>
-
-<% if taggable.has_tag?('ignored') %>
-  <dialog
-    data-controller="rails-pulse--dialog"
-    data-rails-pulse--dialog-target="menu"
-    data-action="click->rails-pulse--dialog#closeOnClickOutside"
-    data-rails-pulse--tags-target="ignoredDialog"
-    class="dialog"
-  >
-    <div class="dialog-content">
-      <h3>Record Tagged as Ignored</h3>
-      <p>This <%= taggable_type %> is tagged as "ignored" and will be excluded from summary aggregations.</p>
-      <p>Historical summaries are not affected. Only new data collection going forward will exclude this record.</p>
-      <button
-        type="button"
-        class="btn"
-        data-action="click->rails-pulse--dialog#close"
-      >
-        OK
-      </button>
-    </div>
-  </dialog>
-<% end %>
