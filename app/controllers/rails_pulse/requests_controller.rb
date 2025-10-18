@@ -3,6 +3,8 @@ module RailsPulse
     include ChartTableConcern
     include TagFilterConcern
 
+    # Override TIME_RANGE_OPTIONS from TimeRangeConcern with requests-specific options
+    remove_const(:TIME_RANGE_OPTIONS) if const_defined?(:TIME_RANGE_OPTIONS)
     TIME_RANGE_OPTIONS = [
       [ "Recent", "recent" ],
       [ "Custom Range", "custom" ]

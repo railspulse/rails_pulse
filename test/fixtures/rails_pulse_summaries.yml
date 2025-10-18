@@ -27,3 +27,34 @@ query_summary_1:
   avg_duration: 45.2
   created_at: <%= 1.day.ago %>
   updated_at: <%= 1.day.ago %>
+
+# Summaries for custom date range test data
+route_summary_recent:
+  summarizable: api_test (RailsPulse::Route)
+  period_start: <%= 1.day.ago.beginning_of_day %>
+  period_end: <%= 1.day.ago.end_of_day %>
+  period_type: "day"
+  count: 1
+  avg_duration: 200.0
+  created_at: <%= 1.day.ago %>
+  updated_at: <%= 1.day.ago %>
+
+route_summary_mid:
+  summarizable: api_test (RailsPulse::Route)
+  period_start: <%= 6.days.ago.beginning_of_day %>
+  period_end: <%= 6.days.ago.end_of_day %>
+  period_type: "day"
+  count: 1
+  avg_duration: 300.0
+  created_at: <%= 6.days.ago %>
+  updated_at: <%= 6.days.ago %>
+
+route_summary_old:
+  summarizable: api_test (RailsPulse::Route)
+  period_start: <%= 12.days.ago.beginning_of_day %>
+  period_end: <%= 12.days.ago.end_of_day %>
+  period_type: "day"
+  count: 1
+  avg_duration: 400.0
+  created_at: <%= 12.days.ago %>
+  updated_at: <%= 12.days.ago %>

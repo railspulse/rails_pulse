@@ -41,3 +41,103 @@ error_request:
   occurred_at: <%= Time.current - 3.hours %>
   created_at: <%= Time.current - 3.hours %>
   updated_at: <%= Time.current - 3.hours %>
+
+slow_request_1:
+  route: api_users
+  duration: 800.0
+  status: 200
+  is_error: false
+  request_uuid: "slow-req-1"
+  controller_action: "UsersController#index"
+  occurred_at: <%= Time.current - 2.hours %>
+  created_at: <%= Time.current - 2.hours %>
+  updated_at: <%= Time.current - 2.hours %>
+
+slow_request_2:
+  route: api_users
+  duration: 900.0
+  status: 200
+  is_error: false
+  request_uuid: "slow-req-2"
+  controller_action: "UsersController#index"
+  occurred_at: <%= Time.current - 1.5.hours %>
+  created_at: <%= Time.current - 1.5.hours %>
+  updated_at: <%= Time.current - 1.5.hours %>
+
+critical_request:
+  route: api_users
+  duration: 4500.0
+  status: 500
+  is_error: true
+  request_uuid: "critical-req-1"
+  controller_action: "UsersController#heavy_operation"
+  occurred_at: <%= Time.current - 1.hour %>
+  created_at: <%= Time.current - 1.hour %>
+  updated_at: <%= Time.current - 1.hour %>
+
+recent_request_1:
+  route: api_posts
+  duration: 200.0
+  status: 200
+  is_error: false
+  request_uuid: "recent-req-1"
+  controller_action: "PostsController#index"
+  occurred_at: <%= Time.current - 30.minutes %>
+  created_at: <%= Time.current - 30.minutes %>
+  updated_at: <%= Time.current - 30.minutes %>
+
+recent_request_2:
+  route: api_posts
+  duration: 250.0
+  status: 200
+  is_error: false
+  request_uuid: "recent-req-2"
+  controller_action: "PostsController#index"
+  occurred_at: <%= Time.current - 25.minutes %>
+  created_at: <%= Time.current - 25.minutes %>
+  updated_at: <%= Time.current - 25.minutes %>
+
+recent_request_3:
+  route: api_posts
+  duration: 300.0
+  status: 200
+  is_error: false
+  request_uuid: "recent-req-3"
+  controller_action: "PostsController#index"
+  occurred_at: <%= Time.current - 20.minutes %>
+  created_at: <%= Time.current - 20.minutes %>
+  updated_at: <%= Time.current - 20.minutes %>
+
+# Data for custom date range tests
+custom_range_recent:
+  route: api_test
+  duration: 200.0
+  status: 200
+  is_error: false
+  request_uuid: "test-custom-range-recent-1"
+  controller_action: "Api::TestController#index"
+  occurred_at: <%= 1.day.ago %>
+  created_at: <%= 1.day.ago %>
+  updated_at: <%= 1.day.ago %>
+
+custom_range_mid:
+  route: api_test
+  duration: 300.0
+  status: 200
+  is_error: false
+  request_uuid: "test-custom-range-mid-1"
+  controller_action: "Api::TestController#index"
+  occurred_at: <%= 6.days.ago %>
+  created_at: <%= 6.days.ago %>
+  updated_at: <%= 6.days.ago %>
+
+custom_range_old:
+  route: api_test
+  duration: 400.0
+  status: 200
+  is_error: false
+  request_uuid: "test-custom-range-old-1"
+  controller_action: "Api::TestController#index"
+  occurred_at: <%= 12.days.ago %>
+  created_at: <%= 12.days.ago %>
+  updated_at: <%= 12.days.ago %>

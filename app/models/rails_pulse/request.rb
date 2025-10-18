@@ -36,7 +36,8 @@ module RailsPulse
 
     ransacker :status_category do |parent|
       # Returns the first digit of the status code (2, 3, 4, or 5)
-      Arel.sql("CAST(#{parent.table[:status].name} / 100 AS INTEGER)")
+      # Use FLOOR instead of CAST for cross-database compatibility
+      Arel.sql("FLOOR(#{parent.table[:status].name} / 100)")
     end
 
     ransacker :status_indicator do |parent|

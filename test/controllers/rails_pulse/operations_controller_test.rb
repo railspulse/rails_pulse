@@ -3,8 +3,6 @@ require "test_helper"
 class RailsPulse::OperationsControllerTest < ActionDispatch::IntegrationTest
   def setup
     ENV["TEST_TYPE"] = "functional"
-
-
     super
   end
 
