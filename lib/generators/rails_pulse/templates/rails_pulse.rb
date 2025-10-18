@@ -75,7 +75,6 @@ RailsPulse.configure do |config|
   #                                                 TAGGING
   # ====================================================================================================
   # Define custom tags for categorizing routes, requests, and queries.
-  # The "ignored" tag is special - records with this tag are excluded from summary aggregation.
   # You can add any custom tags you want for filtering and organization.
   #
   # Tag names should be in present tense and describe the current state or category.
