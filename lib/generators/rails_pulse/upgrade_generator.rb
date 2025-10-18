@@ -41,7 +41,10 @@ module RailsPulse
         # Check for existing Rails Pulse tables
         tables_exist = rails_pulse_tables_exist?
 
-        if !tables_exist && File.exist?("db/rails_pulse_schema.rb")
+        root_path = respond_to?(:destination_root) ? destination_root : Rails.root
+        schema_path = File.join(root_path, "db/rails_pulse_schema.rb")
+
+        if !tables_exist && File.exist?(schema_path)
           :schema_only
         elsif !tables_exist
           :not_installed
@@ -53,10 +56,13 @@ module RailsPulse
       end
 
       def has_separate_database_config?
-        return false unless File.exist?("config/database.yml")
+        root_path = respond_to?(:destination_root) ? destination_root : Rails.root
+        config_path = File.join(root_path, "config/database.yml")
+
+        return false unless File.exist?(config_path)
 
         require 'yaml'
-        db_config = YAML.load_file("config/database.yml")
+        db_config = YAML.load_file(config_path)
 
         # Check if any environment has a rails_pulse database configuration
         db_config.values.any? { |env| env.is_a?(Hash) && env.key?("rails_pulse") }
@@ -78,7 +84,8 @@ module RailsPulse
 
       def get_rails_pulse_table_names
         # Load the schema file to get the table names dynamically
-        schema_file = File.join(Rails.root, "db/rails_pulse_schema.rb")
+        root_path = respond_to?(:destination_root) ? destination_root : Rails.root
+        schema_file = File.join(root_path, "db/rails_pulse_schema.rb")
 
         if File.exist?(schema_file)
           # Read the schema file and extract the required_tables array
@@ -244,7 +251,8 @@ module RailsPulse
       end
 
       def get_expected_schema_from_file
-        schema_file = File.join(Rails.root, "db/rails_pulse_schema.rb")
+        root_path = respond_to?(:destination_root) ? destination_root : Rails.root
+        schema_file = File.join(root_path, "db/rails_pulse_schema.rb")
         return {} unless File.exist?(schema_file)
 
         schema_content = File.read(schema_file)
@@ -302,20 +310,24 @@ module RailsPulse
       end
 
       def get_gem_migrations
-        gem_migrations_path = File.expand_path("../../db/rails_pulse_migrate", __dir__)
+        gem_migrations_path = File.expand_path("../../../db/rails_pulse_migrate", __dir__)
         return [] unless File.directory?(gem_migrations_path)
 
         Dir.glob("#{gem_migrations_path}/*.rb").map { |f| File.basename(f) }
       end
 
       def get_user_migrations(directory)
-        return [] unless File.directory?(directory)
+        # Use destination_root in tests, Rails.root in production
+        root_path = respond_to?(:destination_root) ? destination_root : Rails.root
+        full_directory = File.join(root_path, directory)
 
-        Dir.glob("#{directory}/*.rb").map { |f| File.basename(f) }
+        return [] unless File.directory?(full_directory)
+
+        Dir.glob("#{full_directory}/*.rb").map { |f| File.basename(f) }
       end
 
       def copy_gem_migration_to(migration_name, destination)
-        gem_migrations_path = File.expand_path("../../db/rails_pulse_migrate", __dir__)
+        gem_migrations_path = File.expand_path("../../../db/rails_pulse_migrate", __dir__)
         source_file = File.join(gem_migrations_path, migration_name)
         destination_file = File.join(destination, migration_name)
 

@@ -24,16 +24,18 @@ module RailsPulse
 
       def copy_gem_migrations
         gem_migrations_path = File.expand_path("../../../db/rails_pulse_migrate", __dir__)
-        destination = separate_database? ? "db/rails_pulse_migrate" : "db/migrate"
+        destination_dir = separate_database? ? "db/rails_pulse_migrate" : "db/migrate"
 
         if File.directory?(gem_migrations_path)
           Dir.glob("#{gem_migrations_path}/*.rb").each do |migration_file|
             migration_name = File.basename(migration_file)
-            destination_file = File.join(destination, migration_name)
+            destination_path = File.join(destination_dir, migration_name)
 
-            # Only copy if it doesn't already exist
-            unless File.exist?(destination_file)
-              copy_file migration_file, destination_file
+            # Only copy if it doesn't already exist in the destination
+            # Use File.join with destination_root to check the actual location
+            full_destination_path = File.join(destination_root, destination_path)
+            unless File.exist?(full_destination_path)
+              copy_file migration_file, destination_path
             end
           end
         end
