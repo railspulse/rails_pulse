@@ -37,14 +37,14 @@ class CustomDateRangeTest < ApplicationSystemTestCase
     # Wait for flatpickr to be fully initialized before interacting
     sleep 0.5
 
-    # Retry logic for opening the calendar (sometimes needs multiple clicks)
-    # Only click if calendar is not already open
-    # 3.times do
-    #   # Check if calendar is already open
-    #   break if page.has_selector?(".flatpickr-calendar.open", visible: true, wait: 0.5)
+        # Retry logic for opening the calendar (sometimes needs multiple clicks)
+        # Only click if calendar is not already open
+        # 3.times do
+        #   # Check if calendar is already open
+        #   break if page.has_selector?(".flatpickr-calendar.open", visible: true, wait: 0.5)
 
-    #   # Only click if calendar is not open
-    #   unless page.has_selector?(".flatpickr-calendar.open", visible: true, wait: 0)
+        #   # Only click if calendar is not open
+        #   unless page.has_selector?(".flatpickr-calendar.open", visible: true, wait: 0)
         picker_input.click
         sleep 0.3
     #   end
@@ -83,6 +83,7 @@ class CustomDateRangeTest < ApplicationSystemTestCase
 
     # Verify that period_start_range is set to 'custom'
     period_range_value = find('select[name="q[period_start_range]"]', visible: :all).value
+
     assert_equal "custom", period_range_value, "period_start_range should be 'custom' when using custom date picker"
 
     # Add extra delay for CI to ensure all event handlers and DOM mutations complete
@@ -100,6 +101,7 @@ class CustomDateRangeTest < ApplicationSystemTestCase
 
     # Verify the date range is still displayed in the picker
     displayed_dates = find('input[placeholder*="Pick date range"]').value
+
     assert_predicate displayed_dates, :present?, "Custom date picker should show selected date range"
 
     # Verify we have results (the fixture data should match our date range)

@@ -30,6 +30,7 @@ class RequestsIndexPageTest < ApplicationSystemTestCase
     # Test Average Response Time card
     within("#average_response_times") do
       card_text = text.upcase
+
       assert_match(/AVERAGE RESPONSE TIME/, card_text)
       assert_match(/\d+(\.\d+)?\s*ms/, text)
     end
@@ -37,6 +38,7 @@ class RequestsIndexPageTest < ApplicationSystemTestCase
     # Test 95th Percentile card
     within("#percentile_response_times") do
       card_text = text.upcase
+
       assert_match(/95TH PERCENTILE RESPONSE TIME/, card_text)
       assert_match(/\d+(\.\d+)?\s*ms/, text)
     end
@@ -44,6 +46,7 @@ class RequestsIndexPageTest < ApplicationSystemTestCase
     # Test Request Count card
     within("#request_count_totals") do
       card_text = text.upcase
+
       assert_match(/REQUEST COUNT TOTAL/, card_text)
       assert_match(/\d+(\.\d+)?\s*\/\s*(min|day)/, text)
     end
@@ -51,6 +54,7 @@ class RequestsIndexPageTest < ApplicationSystemTestCase
     # Test Error Rate card
     within("#error_rate_per_route") do
       card_text = text.upcase
+
       assert_match(/ERROR RATE PER ROUTE/, card_text)
       assert_match(/\d+(\.\d+)?%/, text)
     end
@@ -133,7 +137,7 @@ class RequestsIndexPageTest < ApplicationSystemTestCase
       status_select = find("select[name='q[status_category_eq]']")
 
       # Try to select 2xx option (could be labeled as "2xx", "2xx Success", etc.)
-      option_text = status_select.all('option').find { |opt| opt.text.include?('2xx') }&.text
+      option_text = status_select.all("option").find { |opt| opt.text.include?("2xx") }&.text
 
       if option_text
         select option_text, from: "q[status_category_eq]"
@@ -180,6 +184,7 @@ class RequestsIndexPageTest < ApplicationSystemTestCase
     end
 
     click_button "Search"
+
     assert_current_path "/rails_pulse/requests", ignore_query: true
   end
 

@@ -39,7 +39,7 @@ module RailsPulse
 
         # Handle "non_tagged" separately
         session[:show_non_tagged] = enabled_tags.include?("non_tagged")
-        enabled_tags = enabled_tags - ["non_tagged"]
+        enabled_tags = enabled_tags - [ "non_tagged" ]
 
         disabled_tags = all_tags - enabled_tags
 

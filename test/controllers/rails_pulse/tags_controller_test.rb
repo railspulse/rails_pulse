@@ -152,6 +152,7 @@ class RailsPulse::TagsControllerTest < ActionDispatch::IntegrationTest
     post rails_pulse_engine.add_tag_path("route", @test_route.id, tag: "critical")
 
     @test_route.reload
+
     assert_equal 3, @test_route.tag_list.count
     assert_includes @test_route.tag_list, "production"
     assert_includes @test_route.tag_list, "staging"
