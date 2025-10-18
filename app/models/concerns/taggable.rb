@@ -8,6 +8,7 @@ module Taggable
     # Scopes with table name qualification to avoid ambiguity
     scope :with_tag, ->(tag) { where("#{table_name}.tags LIKE ?", "%#{tag}%") }
     scope :without_tag, ->(tag) { where.not("#{table_name}.tags LIKE ?", "%#{tag}%") }
+    scope :with_tags, -> { where("#{table_name}.tags IS NOT NULL AND #{table_name}.tags != '[]'") }
   end
 
   # Tag management methods

@@ -1,6 +1,7 @@
 module RailsPulse
   class ApplicationController < ActionController::Base
     before_action :authenticate_rails_pulse_user!
+    before_action :set_show_non_tagged_default
     helper_method :session_global_filters, :session_disabled_tags
 
     def set_pagination_limit(limit = nil)
@@ -35,6 +36,11 @@ module RailsPulse
         # Update tag visibility - convert enabled tags to disabled tags
         all_tags = RailsPulse.configuration.tags
         enabled_tags = params[:enabled_tags] || []
+
+        # Handle "non_tagged" separately
+        session[:show_non_tagged] = enabled_tags.include?("non_tagged")
+        enabled_tags = enabled_tags - ["non_tagged"]
+
         disabled_tags = all_tags - enabled_tags
 
         if disabled_tags.any?
@@ -132,6 +138,11 @@ module RailsPulse
     rescue StandardError => e
       Rails.logger.warn "Failed to get performance threshold: #{e.message}"
       nil
+    end
+
+    # Set default value for show_non_tagged if not already set
+    def set_show_non_tagged_default
+      session[:show_non_tagged] = true if session[:show_non_tagged].nil?
     end
   end
 end

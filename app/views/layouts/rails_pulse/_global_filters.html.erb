@@ -50,21 +50,22 @@
 
             <div class="flex flex-col gap" style="--row-gap: 0.5rem">
               <label class="text-sm font-medium">Tag Visibility</label>
-              <p class="text-xs text-subtle">Hide routes, queries, and requests with these tags</p>
+              <p class="text-xs text-subtle">Toggle visibility of tagged data. Unchecked tags will be hidden from all views.</p>
               <div class="flex flex-col gap" style="--row-gap: 0.75rem">
-                <% RailsPulse.configuration.tags.each do |tag| %>
+                <% tags = RailsPulse.configuration.tags + ["non_tagged"] %>
+                <% tags.each do |tag| %>
                   <div class="flex items-center gap">
                     <input
                       type="checkbox"
                       name="enabled_tags[]"
                       id="tag_<%= tag %>"
                       value="<%= tag %>"
-                      <%= 'checked="checked"' unless disabled_tags.include?(tag) %>
+                      <%= 'checked="checked"' if tag == "non_tagged" ? session[:show_non_tagged] != false : !disabled_tags.include?(tag) %>
                       class="switch"
                       role="switch"
                     />
                     <label class="text-sm font-medium" for="tag_<%= tag %>">
-                      <%= tag.titleize %>
+                      <%= tag.humanize %>
                     </label>
                   </div>
                 <% end %>
