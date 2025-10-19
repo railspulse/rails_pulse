@@ -22,6 +22,7 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
   echo ""
   echo "Updates version number in:"
   echo "  - lib/rails_pulse/version.rb"
+  echo "  - Gemfile.lock"
   echo "  - gemfiles/rails_7_2.gemfile.lock"
   echo "  - gemfiles/rails_8_0.gemfile.lock"
   echo ""
@@ -69,7 +70,12 @@ sed -i.bak "s/VERSION = \"$CURRENT_VERSION\"/VERSION = \"$NEW_VERSION\"/" "$VERS
 rm "${VERSION_FILE}.bak"
 echo -e "  ${GREEN}✓${NC} Updated lib/rails_pulse/version.rb"
 
-# Update Gemfile.locks
+# Update root Gemfile.lock
+echo -e "${BLUE}⚙️  Updating Gemfile.lock...${NC}"
+bundle install --quiet
+echo -e "  ${GREEN}✓${NC} Updated Gemfile.lock"
+
+# Update Rails-specific Gemfile.locks
 RAILS_VERSIONS=("7.2" "8.0")
 
 for rails_ver in "${RAILS_VERSIONS[@]}"; do
@@ -91,6 +97,7 @@ echo -e "${GREEN}✅ Version bump complete!${NC}"
 echo ""
 echo "Files updated:"
 echo "  • lib/rails_pulse/version.rb"
+echo "  • Gemfile.lock"
 for rails_ver in "${RAILS_VERSIONS[@]}"; do
   echo "  • gemfiles/rails_${rails_ver//./_}.gemfile.lock"
 done

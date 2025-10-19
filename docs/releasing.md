@@ -36,7 +36,11 @@ This validates:
 bin/bump_version 0.3.0
 ```
 
-Updates `lib/rails_pulse/version.rb` and all `gemfiles/*.gemfile.lock` files.
+Updates:
+- `lib/rails_pulse/version.rb`
+- `Gemfile.lock`
+- `gemfiles/rails_7_2.gemfile.lock`
+- `gemfiles/rails_8_0.gemfile.lock`
 
 ### 3. Commit Changes
 

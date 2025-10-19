@@ -46,7 +46,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Check if there are changes to commit
-if git diff --quiet HEAD lib/rails_pulse/version.rb gemfiles/*.gemfile.lock 2>/dev/null; then
+if git diff --quiet HEAD lib/rails_pulse/version.rb Gemfile.lock gemfiles/*.gemfile.lock 2>/dev/null; then
   echo -e "${YELLOW}⚠${NC}  No changes to commit"
   echo "Run bin/bump_version first to update version files"
   exit 1
@@ -54,12 +54,13 @@ fi
 
 # Show what will be committed
 echo -e "${BLUE}Files to commit:${NC}"
-git diff --name-only HEAD lib/rails_pulse/version.rb gemfiles/*.gemfile.lock 2>/dev/null | sed 's/^/  • /'
+git diff --name-only HEAD lib/rails_pulse/version.rb Gemfile.lock gemfiles/*.gemfile.lock 2>/dev/null | sed 's/^/  • /'
 echo ""
 
 # Stage files
 echo -e "${BLUE}⚙️  Staging files...${NC}"
 git add lib/rails_pulse/version.rb
+git add Gemfile.lock
 git add gemfiles/*.gemfile.lock
 
 # Create commit
