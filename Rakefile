@@ -137,10 +137,16 @@ task :test_matrix do
   total_combinations = databases.size * rails_versions.size
   current = 0
 
+  # Check if system tests should be included
+  include_system_tests = ENV['BROWSER'] == 'true'
+  test_paths = "test/controllers test/helpers test/instrumentation test/jobs test/models test/services"
+  test_paths += " test/system" if include_system_tests
+
   puts "\n" + "=" * 60
   puts "🚀 Rails Pulse Full Test Matrix"
   puts "=" * 60
   puts "Testing #{total_combinations} combinations..."
+  puts "System tests: #{include_system_tests ? 'ENABLED (BROWSER=true)' : 'DISABLED (headless mode)'}"
   puts "=" * 60
 
   databases.each do |database|
@@ -158,10 +164,10 @@ task :test_matrix do
         # Then run the tests
         if rails_version == "rails-8-0" && database == "sqlite3"
           # Current default setup
-          sh "bundle exec rake test"
+          sh "BROWSER=#{ENV['BROWSER']} rails test #{test_paths}"
         else
           # Use appraisal with specific database
-          sh "DB=#{database} bundle exec appraisal #{rails_version} rake test"
+          sh "DB=#{database} BROWSER=#{ENV['BROWSER']} bundle exec appraisal #{rails_version} rails test #{test_paths}"
         end
 
         puts "✅ PASSED: #{database} + #{rails_version}"

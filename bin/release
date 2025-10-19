@@ -159,45 +159,7 @@ fi
 echo ""
 
 # ============================================================================
-# STEP 2: Version Bump
-# ============================================================================
-echo -e "${BOLD}${BLUE}📦 Version Bump${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-# Get current version
-CURRENT_VERSION=$(grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' lib/rails_pulse/version.rb | head -1)
-echo -e "Current version: ${YELLOW}$CURRENT_VERSION${NC}"
-echo ""
-
-# Ask for new version
-while true; do
-  read -p "Enter new version number: " NEW_VERSION
-  if [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
-    break
-  else
-    echo -e "${RED}Invalid version format. Expected: MAJOR.MINOR.PATCH (e.g., 0.3.0)${NC}"
-  fi
-done
-
-echo ""
-echo -e "New version: ${GREEN}$NEW_VERSION${NC}"
-echo ""
-
-if ! ask_yes_no "Proceed with version bump?"; then
-  echo "Aborted"
-  exit 1
-fi
-
-echo ""
-./bin/bump_version "$NEW_VERSION"
-
-echo ""
-read -p "Press Enter to continue..."
-clear
-
-# ============================================================================
-# STEP 3: Pre-release Tests (Optional)
+# STEP 2: Pre-release Tests (Optional)
 # ============================================================================
 echo -e "${BOLD}${BLUE}🧪 Pre-release Tests${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -231,6 +193,44 @@ else
   echo -e "${YELLOW}⊘ Skipping pre-release tests${NC}"
   echo -e "${YELLOW}  Make sure you ran them manually!${NC}"
 fi
+
+echo ""
+read -p "Press Enter to continue..."
+clear
+
+# ============================================================================
+# STEP 3: Version Bump
+# ============================================================================
+echo -e "${BOLD}${BLUE}📦 Version Bump${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Get current version
+CURRENT_VERSION=$(grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' lib/rails_pulse/version.rb | head -1)
+echo -e "Current version: ${YELLOW}$CURRENT_VERSION${NC}"
+echo ""
+
+# Ask for new version
+while true; do
+  read -p "Enter new version number: " NEW_VERSION
+  if [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$ ]]; then
+    break
+  else
+    echo -e "${RED}Invalid version format. Expected: MAJOR.MINOR.PATCH (e.g., 0.3.0)${NC}"
+  fi
+done
+
+echo ""
+echo -e "New version: ${GREEN}$NEW_VERSION${NC}"
+echo ""
+
+if ! ask_yes_no "Proceed with version bump?"; then
+  echo "Aborted"
+  exit 1
+fi
+
+echo ""
+./bin/bump_version "$NEW_VERSION"
 
 echo ""
 read -p "Press Enter to continue..."
