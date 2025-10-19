@@ -1,0 +1,314 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Manual test script for Rails Pulse install and upgrade generators
+# Tests both single and separate database configurations
+
+require "fileutils"
+
+class GeneratorTester
+  attr_reader :test_dir, :errors
+
+  def initialize
+    @test_dir = File.expand_path("../test/dummy", __dir__)
+    @errors = []
+    @passed = 0
+    @failed = 0
+  end
+
+  def run
+    puts "\n" + "=" * 80
+    puts "Rails Pulse Generator Manual Test Suite"
+    puts "=" * 80
+
+    cleanup_before_tests
+
+    # Run all tests
+    test_single_database_install
+    test_single_database_upgrade_no_migrations
+    test_single_database_upgrade_with_migration
+    cleanup_between_tests
+    test_separate_database_install
+    test_separate_database_upgrade
+
+    # Final cleanup
+    cleanup_after_tests
+
+    # Print summary
+    print_summary
+  end
+
+  private
+
+  def cleanup_before_tests
+    section "Cleaning up before tests"
+    Dir.chdir(test_dir) do
+      # Backup existing files if they exist
+      if File.exist?("config/initializers/rails_pulse.rb")
+        FileUtils.cp("config/initializers/rails_pulse.rb", "config/initializers/rails_pulse.rb.backup")
+      end
+
+      if File.exist?("db/rails_pulse_schema.rb")
+        FileUtils.cp("db/rails_pulse_schema.rb", "db/rails_pulse_schema.rb.backup")
+      end
+
+      run_command "rm -rf db/rails_pulse_schema.rb db/rails_pulse_migrate config/initializers/rails_pulse.rb"
+      run_command "rm -f db/migrate/*rails_pulse*.rb db/migrate/*test_feature*.rb db/migrate/*another_feature*.rb"
+      run_command "rm -f storage/development_rails_pulse.sqlite3"
+      # Clean up any leftover test migrations from gem directory
+      run_command "rm -f ../../db/rails_pulse_migrate/*test*.rb ../../db/rails_pulse_migrate/*another*.rb"
+    end
+  end
+
+  def cleanup_between_tests
+    section "Cleaning up between tests"
+    Dir.chdir(test_dir) do
+      run_command "rm -rf db/rails_pulse_schema.rb db/rails_pulse_migrate config/initializers/rails_pulse.rb"
+      run_command "rm -f db/migrate/*rails_pulse*.rb db/migrate/*test_feature*.rb"
+      run_command "rm -f storage/development_rails_pulse.sqlite3"
+      # Clean up test migrations from gem directory
+      run_command "rm -f ../../db/rails_pulse_migrate/*test*.rb"
+    end
+  end
+
+  def cleanup_after_tests
+    section "Cleaning up after tests"
+    Dir.chdir(test_dir) do
+      run_command "rm -f ../../db/rails_pulse_migrate/*test*.rb ../../db/rails_pulse_migrate/*another*.rb"
+      run_command "rm -f db/migrate/*another_feature*.rb db/rails_pulse_migrate/*another_feature*.rb"
+
+      # Restore original initializer if backup exists
+      if File.exist?("config/initializers/rails_pulse.rb.backup")
+        FileUtils.mv("config/initializers/rails_pulse.rb.backup", "config/initializers/rails_pulse.rb")
+        puts "  ✓ Restored original Rails Pulse initializer"
+      end
+
+      # Restore original schema if backup exists
+      if File.exist?("db/rails_pulse_schema.rb.backup")
+        FileUtils.mv("db/rails_pulse_schema.rb.backup", "db/rails_pulse_schema.rb")
+        puts "  ✓ Restored original Rails Pulse schema"
+      end
+    end
+  end
+
+  def test_single_database_install
+    section "Test 1: Single Database Install"
+
+    Dir.chdir(test_dir) do
+      # Run install generator
+      output = run_command("bin/rails generate rails_pulse:install", capture: true)
+
+      # Verify files created
+      assert_file_exists "db/rails_pulse_schema.rb", "Schema file created"
+      assert_file_exists "db/rails_pulse_migrate/.keep", "Migration directory created"
+      assert_file_exists "config/initializers/rails_pulse.rb", "Initializer created"
+      assert_file_matches "db/migrate/*install_rails_pulse*.rb", "Installation migration created"
+
+      # Verify output
+      assert_output_includes output, "Single Database Setup", "Correct setup type"
+
+      # Run migration
+      run_command "bin/rails db:migrate RAILS_ENV=test"
+
+      # Verify tables created
+      verify_tables_exist("Single database tables created")
+      verify_tags_column_exists("Tags column exists")
+    end
+  end
+
+  def test_single_database_upgrade_no_migrations
+    section "Test 2: Single Database Upgrade (No New Migrations)"
+
+    Dir.chdir(test_dir) do
+      output = run_command("bin/rails generate rails_pulse:upgrade", capture: true)
+
+      assert_output_includes output, "Detected database setup: single", "Detected single database"
+      assert_output_includes output, "Rails Pulse is up to date", "Reports up to date"
+    end
+  end
+
+  def test_single_database_upgrade_with_migration
+    section "Test 3: Single Database Upgrade (With New Migration)"
+
+    # Create test migration in gem directory
+    gem_migration_path = File.join(test_dir, "../../db/rails_pulse_migrate/20251019000000_add_test_feature.rb")
+    FileUtils.mkdir_p(File.dirname(gem_migration_path))
+    File.write(gem_migration_path, <<~RUBY)
+      class AddTestFeature < ActiveRecord::Migration[7.0]
+        def change
+          add_column :rails_pulse_routes, :test_column, :string, comment: "Test column for upgrade testing"
+        end
+      end
+    RUBY
+
+    Dir.chdir(test_dir) do
+      output = run_command("bin/rails generate rails_pulse:upgrade", capture: true)
+
+      assert_output_includes output, "Found 1 new migration", "Found new migration"
+      assert_file_exists "db/migrate/20251019000000_add_test_feature.rb", "Migration copied"
+
+      # Run migration
+      run_command "bin/rails db:migrate RAILS_ENV=test"
+
+      # Verify column added
+      result = run_command("bin/rails runner -e test \"puts RailsPulse::Route.column_names.include?('test_column')\"", capture: true)
+      if result.strip == "true"
+        pass "Test column added successfully"
+      else
+        fail "Test column not added"
+      end
+    end
+  end
+
+  def test_separate_database_install
+    section "Test 4: Separate Database Install"
+
+    Dir.chdir(test_dir) do
+      output = run_command("bin/rails generate rails_pulse:install --database=separate", capture: true)
+
+      assert_file_exists "db/rails_pulse_schema.rb", "Schema file created"
+      assert_file_exists "db/rails_pulse_migrate/.keep", "Migration directory created"
+      assert_file_exists "config/initializers/rails_pulse.rb", "Initializer created"
+      assert_no_file_matches "db/migrate/*install_rails_pulse*.rb", "No installation migration (correct for separate DB)"
+
+      assert_output_includes output, "Separate Database Setup", "Correct setup type"
+      assert_output_includes output, "rails_pulse:", "Database config instructions"
+
+      # Run db:prepare
+      run_command "bin/rails db:prepare RAILS_ENV=test"
+
+      verify_tables_exist("Separate database tables created")
+    end
+  end
+
+  def test_separate_database_upgrade
+    section "Test 5: Separate Database Upgrade"
+
+    # Create test migration in gem directory
+    gem_migration_path = File.join(test_dir, "../../db/rails_pulse_migrate/20251019000001_add_another_feature.rb")
+    File.write(gem_migration_path, <<~RUBY)
+      class AddAnotherFeature < ActiveRecord::Migration[7.0]
+        def change
+          add_column :rails_pulse_queries, :test_column, :string, comment: "Test column for separate database upgrade"
+        end
+      end
+    RUBY
+
+    Dir.chdir(test_dir) do
+      output = run_command("bin/rails generate rails_pulse:upgrade --database=separate", capture: true)
+
+      assert_output_includes output, "Detected database setup: separate", "Detected separate database"
+      assert_output_includes output, "Found 1 new migration", "Found new migration"
+      assert_file_exists "db/rails_pulse_migrate/20251019000001_add_another_feature.rb", "Migration copied to rails_pulse_migrate"
+    end
+  end
+
+  def run_command(cmd, capture: false)
+    if capture
+      `#{cmd} 2>&1`
+    else
+      system(cmd, out: File::NULL, err: File::NULL)
+      ""
+    end
+  end
+
+  def assert_file_exists(pattern, description)
+    files = Dir.glob(File.join(test_dir, pattern))
+    if files.any?
+      pass description
+    else
+      fail "#{description} - File not found: #{pattern}"
+    end
+  end
+
+  def assert_no_file_matches(pattern, description)
+    files = Dir.glob(File.join(test_dir, pattern))
+    if files.empty?
+      pass description
+    else
+      fail "#{description} - Unexpected file found: #{files.first}"
+    end
+  end
+
+  def assert_file_matches(pattern, description)
+    assert_file_exists(pattern, description)
+  end
+
+  def assert_output_includes(output, text, description)
+    if output.include?(text)
+      pass description
+    else
+      fail "#{description} - Expected output to include '#{text}'"
+    end
+  end
+
+  def verify_tables_exist(description)
+    Dir.chdir(test_dir) do
+      result = run_command(
+        "bin/rails runner -e test \"puts RailsPulse::Route.table_exists? && RailsPulse::Query.table_exists? && RailsPulse::Request.table_exists?\"",
+        capture: true
+      )
+
+      if result.strip == "true"
+        pass description
+      else
+        fail "#{description} - Tables do not exist"
+      end
+    end
+  end
+
+  def verify_tags_column_exists(description)
+    Dir.chdir(test_dir) do
+      result = run_command(
+        "bin/rails runner -e test \"puts RailsPulse::Route.column_names.include?('tags')\"",
+        capture: true
+      )
+
+      if result.strip == "true"
+        pass description
+      else
+        fail "#{description} - Tags column missing"
+      end
+    end
+  end
+
+  def section(title)
+    puts "\n#{title}"
+    puts "-" * 80
+  end
+
+  def pass(message)
+    @passed += 1
+    puts "  ✓ #{message}"
+  end
+
+  def fail(message)
+    @failed += 1
+    @errors << message
+    puts "  ✗ #{message}"
+  end
+
+  def print_summary
+    puts "\n" + "=" * 80
+    puts "Test Summary"
+    puts "=" * 80
+    puts "Passed: #{@passed}"
+    puts "Failed: #{@failed}"
+
+    if @failed > 0
+      puts "\nFailures:"
+      @errors.each do |error|
+        puts "  - #{error}"
+      end
+      puts "\n❌ Some tests failed"
+      exit 1
+    else
+      puts "\n✅ All tests passed!"
+      exit 0
+    end
+  end
+end
+
+# Run tests
+tester = GeneratorTester.new
+tester.run

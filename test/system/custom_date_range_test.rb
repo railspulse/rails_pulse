@@ -31,26 +31,8 @@ class CustomDateRangeTest < ApplicationSystemTestCase
     # Verify close button (X) is visible
     assert_selector '[data-action*="custom-range#showSelect"]', visible: true
 
-    # Verify the flatpickr input is present and visible
-    picker_input = find('input[placeholder*="Pick date range"]', visible: true)
-
-    # Wait for flatpickr to be fully initialized before interacting
-    sleep 0.5
-
-        # Retry logic for opening the calendar (sometimes needs multiple clicks)
-        # Only click if calendar is not already open
-        # 3.times do
-        #   # Check if calendar is already open
-        #   break if page.has_selector?(".flatpickr-calendar.open", visible: true, wait: 0.5)
-
-        #   # Only click if calendar is not open
-        #   unless page.has_selector?(".flatpickr-calendar.open", visible: true, wait: 0)
-        picker_input.click
-        sleep 0.3
-    #   end
-    # end
-
-    # Verify calendar is now open
+    # Wait for flatpickr to be fully initialized and auto-opened
+    # (The custom_range_controller automatically opens the calendar with a 50ms delay)
     assert_selector ".flatpickr-calendar.open", visible: true, wait: 2
 
     # === STEP 3: Select a custom date range and submit ===

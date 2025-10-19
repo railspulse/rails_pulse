@@ -74,7 +74,7 @@ rails db:migrate
 
 ```bash
 rails generate rails_pulse:upgrade --database=separate
-rails db:migrate:rails_pulse
+rails db:migrate
 ```
 
 ### What the Upgrade Generator Does

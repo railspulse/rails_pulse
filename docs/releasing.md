@@ -13,7 +13,25 @@ Run the full test matrix locally to ensure compatibility:
 rake test:matrix
 ```
 
-### 2. Build and Test Assets
+### 2. Test Install and Upgrade Generators
+
+Run manual generator tests to ensure both single and separate database installations work correctly:
+
+```bash
+# Run generator manual test script
+bin/test_generators
+```
+
+This script tests:
+- Single database install
+- Single database upgrade (with and without new migrations)
+- Separate database install
+- Separate database upgrade
+- Table and column creation verification
+
+If all tests pass, you'll see: ✅ All tests passed!
+
+### 3. Build and Test Assets
 
 Ensure all frontend assets build correctly:
 
@@ -28,7 +46,7 @@ npm run build
 ls -la public/rails-pulse-assets/
 ```
 
-### 3. Run Full Test Suite
+### 4. Run Full Test Suite
 
 ```bash
 # Run all tests (this will also validate the CI setup)
@@ -38,7 +56,7 @@ rake test_matrix
 gem build rails_pulse.gemspec
 ```
 
-### 4. Update Version Number
+### 5. Update Version Number
 
 Edit the version in `lib/rails_pulse/version.rb`:
 
@@ -61,7 +79,7 @@ BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile bundle install
 grep "rails_pulse" gemfiles/*.gemfile.lock
 ```
 
-### 5. Update Release Documentation
+### 6. Update Release Documentation
 
 - Document new features, bug fixes, and breaking changes
 - Update README.md if there are new installation steps or configuration changes
