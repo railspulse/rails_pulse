@@ -65,7 +65,7 @@ module GeneratorTestHelpers
 
     matching_files = Dir.glob(pattern)
 
-    assert matching_files.any?, "Expected migration matching #{migration_path} to exist, but does not"
+    assert_predicate matching_files, :any?, "Expected migration matching #{migration_path} to exist, but does not"
 
     # Read and verify the content of the first matching file
     if block_given?

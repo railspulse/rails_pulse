@@ -61,7 +61,7 @@ module RailsPulse
 
         return false unless File.exist?(config_path)
 
-        require 'yaml'
+        require "yaml"
         db_config = YAML.load_file(config_path)
 
         # Check if any environment has a rails_pulse database configuration
