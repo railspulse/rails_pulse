@@ -17,6 +17,8 @@
 test/dummy/rails_pulse_development
 test/dummy/rails_pulse_development-shm
 test/dummy/rails_pulse_development-wal
+test/dummy/config/initializers/rails_pulse.rb.backup
+test/dummy/db/rails_pulse_schema.rb.backup
 
 # Environment variables
 .env
