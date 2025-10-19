@@ -76,17 +76,35 @@ if [ "$WAIT_CI" = true ]; then
 
   # Wait for workflow runs to start (GitHub takes a moment to trigger them)
   echo "Waiting for workflow runs to start..."
-  sleep 5
+  sleep 10
 
-  # Watch CI status
-  if gh run watch "$COMMIT_SHA" --exit-status 2>/dev/null; then
+  # Watch CI status with better error handling
+  echo "Watching CI status..."
+  echo ""
+
+  # Use gh run watch and capture exit code
+  if gh run watch --exit-status 2>&1; then
     echo ""
     echo -e "${GREEN}✅ All CI checks passed!${NC}"
   else
+    EXIT_CODE=$?
     echo ""
-    echo -e "${RED}❌ CI checks failed!${NC}"
-    echo "View details: gh run list --commit $COMMIT_SHA"
-    exit 1
+
+    # Check actual status via API to confirm
+    ACTUAL_STATUS=$(gh run list --commit "$COMMIT_SHA" --json conclusion --jq '.[0].conclusion' 2>/dev/null)
+
+    if [ "$ACTUAL_STATUS" = "success" ]; then
+      echo -e "${GREEN}✅ CI checks passed (verified via API)${NC}"
+      echo -e "${YELLOW}Note: gh run watch exited with code $EXIT_CODE but workflow succeeded${NC}"
+    else
+      echo -e "${RED}❌ CI checks failed!${NC}"
+      echo "Status: $ACTUAL_STATUS"
+      echo ""
+      echo "View details:"
+      echo "  gh run list --commit $COMMIT_SHA"
+      echo "  https://github.com/railspulse/rails_pulse/actions"
+      exit 1
+    fi
   fi
 fi
 
