@@ -1,0 +1,73 @@
+#!/usr/bin/env bash
+# frozen_string_literal: true
+
+# commit_release - Create git commit for version bump
+#
+# Usage:
+#   bin/commit_release <version>
+#   bin/commit_release --help
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Help
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+  echo "Usage: bin/commit_release <version>"
+  echo ""
+  echo "Creates a git commit for the version bump with:"
+  echo "  - lib/rails_pulse/version.rb"
+  echo "  - gemfiles/*.gemfile.lock"
+  echo ""
+  echo "Commit message: 'Bump version to vX.Y.Z'"
+  echo ""
+  echo "Example:"
+  echo "  bin/commit_release 0.3.0"
+  exit 0
+fi
+
+# Validate arguments
+if [ -z "$1" ]; then
+  echo -e "${RED}❌ Error: Version number required${NC}"
+  echo "Usage: bin/commit_release <version>"
+  echo "Run with --help for more information"
+  exit 1
+fi
+
+VERSION="$1"
+
+echo -e "${BLUE}💾 Creating Release Commit${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Check if there are changes to commit
+if git diff --quiet HEAD lib/rails_pulse/version.rb gemfiles/*.gemfile.lock 2>/dev/null; then
+  echo -e "${YELLOW}⚠${NC}  No changes to commit"
+  echo "Run bin/bump_version first to update version files"
+  exit 1
+fi
+
+# Show what will be committed
+echo -e "${BLUE}Files to commit:${NC}"
+git diff --name-only HEAD lib/rails_pulse/version.rb gemfiles/*.gemfile.lock 2>/dev/null | sed 's/^/  • /'
+echo ""
+
+# Stage files
+echo -e "${BLUE}⚙️  Staging files...${NC}"
+git add lib/rails_pulse/version.rb
+git add gemfiles/*.gemfile.lock
+
+# Create commit
+COMMIT_MSG="Bump version to v$VERSION"
+echo -e "${BLUE}⚙️  Creating commit: ${YELLOW}$COMMIT_MSG${NC}"
+git commit -m "$COMMIT_MSG"
+
+echo ""
+echo -e "${GREEN}✅ Commit created successfully!${NC}"
+echo ""
+echo "Commit message: $COMMIT_MSG"

@@ -1,0 +1,106 @@
+#!/usr/bin/env bash
+# frozen_string_literal: true
+
+# publish_gem - Build and publish gem to RubyGems
+#
+# Usage:
+#   bin/publish_gem
+#   bin/publish_gem --help
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Help
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+  echo "Usage: bin/publish_gem"
+  echo ""
+  echo "Builds and publishes the gem to RubyGems.org"
+  echo ""
+  echo "Prerequisites:"
+  echo "  - Assets must be built (npm run build)"
+  echo "  - Must be authenticated with RubyGems (gem signin)"
+  echo ""
+  echo "This script will:"
+  echo "  1. Verify assets are built"
+  echo "  2. Build the gem package"
+  echo "  3. Publish to RubyGems.org"
+  echo ""
+  echo "Example:"
+  echo "  bin/publish_gem"
+  exit 0
+fi
+
+echo -e "${BLUE}💎 Publishing Gem to RubyGems${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Check if assets are built
+ASSETS_DIR="public/rails-pulse-assets"
+if [ ! -d "$ASSETS_DIR" ] || [ -z "$(ls -A $ASSETS_DIR 2>/dev/null)" ]; then
+  echo -e "${YELLOW}⚠${NC}  Warning: Assets directory is empty or missing"
+  echo "Run 'npm run build' to build assets first"
+  read -p "Continue anyway? [y/N]: " -n 1 -r
+  echo
+  if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+    echo "Aborted"
+    exit 1
+  fi
+else
+  echo -e "${GREEN}✓${NC} Assets found in $ASSETS_DIR"
+fi
+
+# Get version from version.rb
+VERSION=$(grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+' lib/rails_pulse/version.rb | head -1)
+echo -e "Version: ${GREEN}v$VERSION${NC}"
+echo ""
+
+# Build gem
+echo -e "${BLUE}⚙️  Building gem...${NC}"
+gem build rails_pulse.gemspec
+
+GEM_FILE="rails_pulse-${VERSION}.gem"
+
+if [ ! -f "$GEM_FILE" ]; then
+  echo -e "${RED}❌ Error: Gem file not found: $GEM_FILE${NC}"
+  exit 1
+fi
+
+echo -e "  ${GREEN}✓${NC} Built: $GEM_FILE"
+echo ""
+
+# Show gem info
+GEM_SIZE=$(ls -lh "$GEM_FILE" | awk '{print $5}')
+echo "Gem file: $GEM_FILE ($GEM_SIZE)"
+echo ""
+
+# Publish to RubyGems
+echo -e "${BLUE}↑ Publishing to RubyGems.org...${NC}"
+echo ""
+
+if gem push "$GEM_FILE"; then
+  echo ""
+  echo -e "${GREEN}✅ Gem published successfully!${NC}"
+  echo ""
+  echo "View on RubyGems: https://rubygems.org/gems/rails_pulse/versions/$VERSION"
+  echo ""
+
+  # Move gem to pkg directory
+  mkdir -p pkg
+  mv "$GEM_FILE" "pkg/$GEM_FILE"
+  echo "Gem moved to: pkg/$GEM_FILE"
+else
+  echo ""
+  echo -e "${RED}❌ Failed to publish gem${NC}"
+  echo ""
+  echo "Common issues:"
+  echo "  • Not authenticated: Run 'gem signin'"
+  echo "  • Version already exists: Bump version and try again"
+  echo "  • Network issues: Check your connection"
+  exit 1
+fi

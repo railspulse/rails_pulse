@@ -2,61 +2,54 @@
 
 This document outlines the steps to release a new version of the Rails Pulse gem to RubyGems.org.
 
+## Quick Start: Automated Release
+
+For a fully guided release process, use the interactive release script:
+
+```bash
+bin/release
+```
+
+This script will walk you through all the steps below interactively. Continue reading for manual release instructions or to understand what each script does.
+
+## Individual Release Scripts
+
+For more control, you can run individual scripts:
+
+```bash
+bin/bump_version <version>      # Update version files
+bin/commit_release <version>    # Create version bump commit
+bin/tag_release <version>       # Create annotated git tag
+bin/push_release [--wait-ci]    # Push and optionally wait for CI
+bin/publish_gem                 # Build and publish to RubyGems
+```
+
+Run any script with `--help` for more information.
+
 ## Pre-Release Checklist
 
-### 1. Test Across Supported Environments
+### 1. Run Comprehensive Pre-Release Tests
 
-Run the full test matrix locally to ensure compatibility:
-
-```bash
-# Test across all supported database and Rails versions locally
-rake test:matrix
-```
-
-### 2. Test Install and Upgrade Generators
-
-Run manual generator tests to ensure both single and separate database installations work correctly:
+Run the automated pre-release validation task that performs all necessary checks:
 
 ```bash
-# Run generator manual test script
-bin/test_generators
+rake test_release
 ```
 
-This script tests:
-- Single database install
-- Single database upgrade (with and without new migrations)
-- Separate database install
-- Separate database upgrade
-- Table and column creation verification
+This task will automatically:
+1. ✅ Check git status (no uncommitted changes)
+2. ✅ Run RuboCop linting
+3. ✅ Install Node dependencies
+4. ✅ Build and verify production assets
+5. ✅ Verify gem builds correctly
+6. ✅ Run generator tests (install/upgrade for both database setups)
+7. ✅ Run full test matrix across all databases and Rails versions with system tests
 
-If all tests pass, you'll see: ✅ All tests passed!
+**Expected output**: `🎉 All pre-release checks passed!`
 
-### 3. Build and Test Assets
+If any checks fail, fix the issues and re-run `rake test_release` until all checks pass.
 
-Ensure all frontend assets build correctly:
-
-```bash
-# Install Node dependencies
-npm install
-
-# Build production assets
-npm run build
-
-# Verify assets were built
-ls -la public/rails-pulse-assets/
-```
-
-### 4. Run Full Test Suite
-
-```bash
-# Run all tests (this will also validate the CI setup)
-rake test_matrix
-
-# Check that the gem builds successfully
-gem build rails_pulse.gemspec
-```
-
-### 5. Update Version Number
+### 2. Update Version Number
 
 Edit the version in `lib/rails_pulse/version.rb`:
 
@@ -79,7 +72,7 @@ BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile bundle install
 grep "rails_pulse" gemfiles/*.gemfile.lock
 ```
 
-### 6. Update Release Documentation
+### 3. Update Release Documentation
 
 - Document new features, bug fixes, and breaking changes
 - Update README.md if there are new installation steps or configuration changes
@@ -296,3 +289,146 @@ For security-related releases:
 - **Older Versions**: Security patches only (case-by-case basis)
 
 Always encourage users to upgrade to the latest version for the best experience and security.
+
+## Release Automation Scripts
+
+Rails Pulse includes several automation scripts to streamline the release process.
+
+### Interactive Release Manager: `bin/release`
+
+The primary release tool is an interactive script that guides you through the entire process:
+
+```bash
+bin/release
+```
+
+**What it does:**
+1. Pre-flight checks (git status, branch, up-to-date with remote)
+2. Prompts for new version number with validation
+3. Updates version files and Gemfile.locks
+4. Optionally runs pre-release tests (rake test_release)
+5. Creates git commit for version bump
+6. Opens editor for release notes
+7. Creates annotated git tag
+8. Pushes to GitHub
+9. Optionally waits for CI to complete (requires `gh` CLI)
+10. Builds and publishes gem to RubyGems
+11. Opens GitHub releases page in browser
+
+**Features:**
+- ✅ Colorized output for clear visual feedback
+- ✅ Confirms before destructive operations
+- ✅ Can be interrupted and resumed
+- ✅ Validates all inputs
+- ✅ Shows helpful error messages
+
+### Individual Scripts
+
+Each step can also be run independently:
+
+#### `bin/bump_version <version>`
+
+Updates version number in all necessary files:
+- `lib/rails_pulse/version.rb`
+- `gemfiles/rails_7_2.gemfile.lock`
+- `gemfiles/rails_8_0.gemfile.lock`
+
+```bash
+bin/bump_version 0.3.0
+```
+
+#### `bin/commit_release <version>`
+
+Creates a git commit for the version bump with a standardized message.
+
+```bash
+bin/commit_release 0.3.0
+# Commits: "Bump version to v0.3.0"
+```
+
+#### `bin/tag_release <version>`
+
+Creates an annotated git tag with release notes.
+
+```bash
+# Opens editor for release notes
+bin/tag_release 0.3.0
+
+# Or provide notes inline
+bin/tag_release 0.3.0 --notes "Bug fixes and improvements"
+```
+
+#### `bin/push_release [--wait-ci]`
+
+Pushes commits and tags to GitHub, optionally waiting for CI to complete.
+
+```bash
+# Push without waiting
+bin/push_release
+
+# Push and wait for CI (requires gh CLI)
+bin/push_release --wait-ci
+```
+
+#### `bin/publish_gem`
+
+Builds and publishes the gem to RubyGems.org.
+
+```bash
+bin/publish_gem
+```
+
+**Prerequisites:**
+- Assets must be built (`npm run build`)
+- Must be authenticated with RubyGems (`gem signin`)
+
+### Script Help
+
+Every script has built-in help:
+
+```bash
+bin/release --help
+bin/bump_version --help
+bin/commit_release --help
+bin/tag_release --help
+bin/push_release --help
+bin/publish_gem --help
+```
+
+### Example Workflows
+
+**Full automated release:**
+```bash
+bin/release
+# Follow the interactive prompts
+```
+
+**Manual step-by-step release:**
+```bash
+# 1. Update version
+bin/bump_version 0.3.0
+
+# 2. Run tests
+rake test_release
+
+# 3. Commit changes
+bin/commit_release 0.3.0
+
+# 4. Create tag
+bin/tag_release 0.3.0
+
+# 5. Push to GitHub
+bin/push_release --wait-ci
+
+# 6. Publish gem
+bin/publish_gem
+```
+
+**Quick patch release (skip tests):**
+```bash
+bin/bump_version 0.2.1
+bin/commit_release 0.2.1
+bin/tag_release 0.2.1 --notes "Critical bug fix for X"
+bin/push_release
+bin/publish_gem
+```

@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# frozen_string_literal: true
+
+# push_release - Push commits and tags to GitHub and optionally wait for CI
+#
+# Usage:
+#   bin/push_release [--wait-ci]
+#   bin/push_release --help
+
+set -e
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m' # No Color
+
+# Help
+if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+  echo "Usage: bin/push_release [--wait-ci]"
+  echo ""
+  echo "Pushes commits and tags to GitHub."
+  echo ""
+  echo "Options:"
+  echo "  --wait-ci    Wait for GitHub Actions CI to complete"
+  echo "               Requires 'gh' CLI tool to be installed"
+  echo ""
+  echo "Example:"
+  echo "  bin/push_release"
+  echo "  bin/push_release --wait-ci"
+  exit 0
+fi
+
+WAIT_CI=false
+if [ "$1" = "--wait-ci" ]; then
+  WAIT_CI=true
+
+  # Check if gh CLI is installed
+  if ! command -v gh &> /dev/null; then
+    echo -e "${YELLOW}⚠${NC}  Warning: 'gh' CLI not installed, cannot wait for CI"
+    echo "Install with: brew install gh"
+    WAIT_CI=false
+  fi
+fi
+
+echo -e "${BLUE}↑ Pushing to GitHub${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Get current branch
+BRANCH=$(git rev-parse --abbrev-ref HEAD)
+echo -e "Branch: ${GREEN}$BRANCH${NC}"
+
+# Push commits
+echo -e "${BLUE}⚙️  Pushing commits...${NC}"
+git push origin "$BRANCH"
+echo -e "  ${GREEN}✓${NC} Commits pushed"
+
+# Push tags
+echo -e "${BLUE}⚙️  Pushing tags...${NC}"
+git push origin --tags
+echo -e "  ${GREEN}✓${NC} Tags pushed"
+
+echo ""
+echo -e "${GREEN}✅ Push complete!${NC}"
+
+# Wait for CI if requested
+if [ "$WAIT_CI" = true ]; then
+  echo ""
+  echo -e "${BLUE}⏳ Waiting for CI to complete...${NC}"
+  echo ""
+
+  # Get the latest commit SHA
+  COMMIT_SHA=$(git rev-parse HEAD)
+
+  # Wait for workflow runs to start (GitHub takes a moment to trigger them)
+  echo "Waiting for workflow runs to start..."
+  sleep 5
+
+  # Watch CI status
+  if gh run watch "$COMMIT_SHA" --exit-status 2>/dev/null; then
+    echo ""
+    echo -e "${GREEN}✅ All CI checks passed!${NC}"
+  else
+    echo ""
+    echo -e "${RED}❌ CI checks failed!${NC}"
+    echo "View details: gh run list --commit $COMMIT_SHA"
+    exit 1
+  fi
+fi
+
+echo ""
+echo "View on GitHub: https://github.com/railspulse/rails_pulse/actions"
