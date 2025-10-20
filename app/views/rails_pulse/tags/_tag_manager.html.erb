@@ -11,7 +11,7 @@
 >
   <div class="tag-list">
     <% current_tags.each do |tag| %>
-      <span class="tag">
+      <span class="badge badge--secondary font-normal">
         <%= tag %>
         <%= button_to remove_tag_path(taggable_type, taggable.id, tag: tag),
               method: :delete,
@@ -29,7 +29,7 @@
         <button
           type="button"
           id="tag_menu_button_<%= taggable_type %>_<%= taggable.id %>"
-          class="btn btn--sm tag-add-button"
+          class="badge badge--positive tag-add-button font-normal"
           data-rails-pulse--popover-target="button"
           data-action="rails-pulse--popover#toggle"
           aria-haspopup="true"

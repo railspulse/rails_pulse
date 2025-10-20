@@ -16,5 +16,9 @@
     <div class="breadcrumb-tags">
       <%= render 'rails_pulse/tags/tag_manager', taggable: taggable %>
     </div>
+  <% elsif defined?(show_active_filters) && show_active_filters %>
+    <div class="breadcrumb-tags">
+      <%= render 'rails_pulse/components/active_filters' %>
+    </div>
   <% end %>
 </div>

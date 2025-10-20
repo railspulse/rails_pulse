@@ -33,6 +33,61 @@ module RailsPulse
       where(summarizable_type: "RailsPulse::Request", summarizable_id: 0)
     }
 
+    # Tag filtering scope for charts and metrics
+    # Filters summaries based on disabled tags in the underlying route/query
+    scope :with_tag_filters, ->(disabled_tags = [], show_non_tagged = true) {
+      # Separate "non_tagged" from actual tags (it's a virtual tag)
+      actual_disabled_tags = disabled_tags.reject { |tag| tag == "non_tagged" }
+
+      # Return early if no filters are applied
+      return all if actual_disabled_tags.empty? && show_non_tagged
+
+      # Determine which table to join based on summarizable_type
+      # We need to handle both Route and Query summaries
+      relation = all
+
+      # Filter route summaries
+      route_ids = RailsPulse::Route.all
+
+      # Exclude routes with disabled tags
+      actual_disabled_tags.each do |tag|
+        route_ids = route_ids.where.not("tags LIKE ?", "%#{tag}%")
+      end
+
+      # Exclude non-tagged routes if show_non_tagged is false
+      route_ids = route_ids.where("tags IS NOT NULL AND tags != '[]'") unless show_non_tagged
+
+      route_ids = route_ids.pluck(:id)
+
+      # Filter query summaries
+      query_ids = RailsPulse::Query.all
+
+      # Exclude queries with disabled tags
+      actual_disabled_tags.each do |tag|
+        query_ids = query_ids.where.not("tags LIKE ?", "%#{tag}%")
+      end
+
+      # Exclude non-tagged queries if show_non_tagged is false
+      query_ids = query_ids.where("tags IS NOT NULL AND tags != '[]'") unless show_non_tagged
+
+      query_ids = query_ids.pluck(:id)
+
+      # Apply filters: include only summaries for filtered routes/queries
+      # If no routes/queries match the filter, we need to ensure nothing is returned
+      # Use -1 as an impossible ID instead of 0 (which might be used for aggregates)
+      relation = relation.where(
+        "(" \
+        "  (summarizable_type = 'RailsPulse::Route' AND summarizable_id IN (?)) OR " \
+        "  (summarizable_type = 'RailsPulse::Query' AND summarizable_id IN (?)) OR " \
+        "  (summarizable_type = 'RailsPulse::Request')" \
+        ")",
+        route_ids.presence || [ -1 ],
+        query_ids.presence || [ -1 ]
+      )
+
+      relation
+    }
+
     # Ransack configuration
     def self.ransackable_attributes(auth_object = nil)
       %w[

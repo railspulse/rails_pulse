@@ -38,6 +38,8 @@ module ChartTableConcern
       start_time: @start_time,
       end_time: @end_time,
       start_duration: @start_duration,
+      disabled_tags: session_disabled_tags,
+      show_non_tagged: session[:show_non_tagged] != false,
       **chart_options
     ).to_rails_chart
   end

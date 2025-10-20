@@ -2,18 +2,21 @@ module RailsPulse
   module Queries
     module Charts
       class AverageQueryTimes
-        def initialize(ransack_query:, period_type: nil, query: nil, start_time: nil, end_time: nil, start_duration: nil)
+        def initialize(ransack_query:, period_type: nil, query: nil, start_time: nil, end_time: nil, start_duration: nil, disabled_tags: [], show_non_tagged: true)
           @ransack_query = ransack_query
           @period_type = period_type
           @query = query
           @start_time = start_time
           @end_time = end_time
           @start_duration = start_duration
+          @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
         end
 
         def to_rails_chart
-          # The ransack query already contains the correct filters, just add period_type
+          # The ransack query already contains the correct filters, just add period_type and tag filters
           summaries = @ransack_query.result(distinct: false)
+            .with_tag_filters(@disabled_tags, @show_non_tagged)
             .where(period_type: @period_type)
             .group(:period_start)
             .having("AVG(avg_duration) > ?", @start_duration || 0)

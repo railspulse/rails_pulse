@@ -2,8 +2,10 @@ module RailsPulse
   module Routes
     module Cards
       class AverageResponseTimes
-        def initialize(route:)
+        def initialize(route:, disabled_tags: [], show_non_tagged: true)
           @route = route
+          @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
         end
 
         def to_metric_card
@@ -11,11 +13,13 @@ module RailsPulse
           previous_7_days = 14.days.ago.beginning_of_day
 
           # Single query to get all aggregated metrics with conditional sums
-          base_query = RailsPulse::Summary.where(
-            summarizable_type: "RailsPulse::Route",
-            period_type: "day",
-            period_start: 2.weeks.ago.beginning_of_day..Time.current
-          )
+          base_query = RailsPulse::Summary
+            .with_tag_filters(@disabled_tags, @show_non_tagged)
+            .where(
+              summarizable_type: "RailsPulse::Route",
+              period_type: "day",
+              period_start: 2.weeks.ago.beginning_of_day..Time.current
+            )
           base_query = base_query.where(summarizable_id: @route.id) if @route
 
           metrics = base_query.select(

@@ -2,12 +2,13 @@ module RailsPulse
   module Routes
     module Tables
       class Index
-        def initialize(ransack_query:, period_type: nil, start_time:, params:, disabled_tags: [])
+        def initialize(ransack_query:, period_type: nil, start_time:, params:, disabled_tags: [], show_non_tagged: true)
           @ransack_query = ransack_query
           @period_type = period_type
           @start_time = start_time
           @params = params
           @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
         end
 
         def to_table
@@ -24,8 +25,17 @@ module RailsPulse
             )
 
           # Apply tag filters by excluding routes with disabled tags
-          @disabled_tags.each do |tag|
+          # Separate "non_tagged" from actual tags (it's a virtual tag)
+          actual_disabled_tags = @disabled_tags.reject { |tag| tag == "non_tagged" }
+
+          # Exclude routes with actual disabled tags
+          actual_disabled_tags.each do |tag|
             base_query = base_query.where.not("rails_pulse_routes.tags LIKE ?", "%#{tag}%")
+          end
+
+          # Exclude non-tagged routes if show_non_tagged is false
+          unless @show_non_tagged
+            base_query = base_query.where("rails_pulse_routes.tags IS NOT NULL AND rails_pulse_routes.tags != '[]'")
           end
 
           base_query = base_query.where(summarizable_id: @route.id) if @route

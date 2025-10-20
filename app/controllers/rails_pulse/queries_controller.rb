@@ -70,7 +70,8 @@ module RailsPulse
     def build_chart_ransack_params(ransack_params)
       base_params = ransack_params.except(:s).merge(
         period_start_gteq: Time.at(@start_time),
-        period_start_lt: Time.at(@end_time)
+        period_start_lt: Time.at(@end_time),
+        summarizable_type_eq: "RailsPulse::Query"
       )
 
       # Only add duration filter if we have a meaningful threshold
@@ -78,8 +79,7 @@ module RailsPulse
 
       if show_action?
         base_params.merge(
-          summarizable_id_eq: @query.id,
-          summarizable_type_eq: "RailsPulse::Query"
+          summarizable_id_eq: @query.id
         )
       else
         base_params
@@ -123,7 +123,8 @@ module RailsPulse
           period_type: period_type,
           start_time: @start_time,
           params: params,
-          disabled_tags: session_disabled_tags
+          disabled_tags: session_disabled_tags,
+          show_non_tagged: session[:show_non_tagged] != false
         ).to_table
       end
     end
@@ -133,9 +134,13 @@ module RailsPulse
     def setup_metric_cards
       return if turbo_frame_request?
 
-      @average_query_times_metric_card = RailsPulse::Queries::Cards::AverageQueryTimes.new(query: @query).to_metric_card
-      @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(query: @query).to_metric_card
-      @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(query: @query).to_metric_card
+      # Get tag filter values from session
+      disabled_tags = session_disabled_tags
+      show_non_tagged = session[:show_non_tagged] != false
+
+      @average_query_times_metric_card = RailsPulse::Queries::Cards::AverageQueryTimes.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
+      @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
+      @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
     end
 
     def show_action?

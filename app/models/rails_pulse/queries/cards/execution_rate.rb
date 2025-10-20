@@ -2,8 +2,10 @@ module RailsPulse
   module Queries
     module Cards
       class ExecutionRate
-        def initialize(query: nil)
+        def initialize(query: nil, disabled_tags: [], show_non_tagged: true)
           @query = query
+          @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
         end
 
         def to_metric_card
@@ -12,20 +14,24 @@ module RailsPulse
 
           # Get the most common period type for this query, or fall back to "day"
           period_type = if @query
-            RailsPulse::Summary.where(
-              summarizable_type: "RailsPulse::Query",
-              summarizable_id: @query.id
-            ).group(:period_type).count.max_by(&:last)&.first || "day"
+            RailsPulse::Summary
+              .with_tag_filters(@disabled_tags, @show_non_tagged)
+              .where(
+                summarizable_type: "RailsPulse::Query",
+                summarizable_id: @query.id
+              ).group(:period_type).count.max_by(&:last)&.first || "day"
           else
             "day"
           end
 
           # Single query to get all count metrics with conditional aggregation
-          base_query = RailsPulse::Summary.where(
-            summarizable_type: "RailsPulse::Query",
-            period_type: period_type,
-            period_start: 2.weeks.ago.beginning_of_day..Time.current
-          )
+          base_query = RailsPulse::Summary
+            .with_tag_filters(@disabled_tags, @show_non_tagged)
+            .where(
+              summarizable_type: "RailsPulse::Query",
+              period_type: period_type,
+              period_start: 2.weeks.ago.beginning_of_day..Time.current
+            )
           base_query = base_query.where(summarizable_id: @query.id) if @query
 
           metrics = base_query.select(

@@ -10,6 +10,19 @@ class GlobalFiltersTest < ApplicationSystemTestCase
     super
     load_shared_test_data
     create_comprehensive_test_data
+
+    # Configure tags for testing
+    RailsPulse.configure do |config|
+      config.tags = [ "api", "users", "posts", "maintenance", "database", "critical" ]
+    end
+  end
+
+  def teardown
+    # Reset configuration
+    RailsPulse.configure do |config|
+      config.tags = []
+    end
+    super
   end
 
   test "global filters complete workflow" do
@@ -132,6 +145,94 @@ class GlobalFiltersTest < ApplicationSystemTestCase
 
     assert_dropdown_visible
     assert_global_filters_inactive
+  end
+
+  test "tag filters complete workflow" do
+    # Fixture data includes:
+    # Routes with tags: api_users ["api", "users"], api_posts ["api", "posts"],
+    #                   api_test ["api"], api_cleanup ["maintenance"], api_other []
+    # Queries with tags: simple_query ["database", "users"], complex_query ["database", "posts"],
+    #                    analyzed_query ["database"], stale_analyzed_query [], query_with_issues ["critical"]
+
+    # === STEP 1: Visit routes page and verify all routes visible initially ===
+    visit_rails_pulse_path "/routes"
+
+    # Should see routes with different tags
+    assert_selector "table tbody tr", minimum: 1, wait: 5
+
+    # === STEP 2: Disable "api" tag and verify filtering on routes page ===
+    toggle_tag_filter("api")
+
+    # Global filter should be active
+    assert_global_filters_active
+
+    # Verify "api" tag is now disabled
+    assert_tag_disabled("api")
+
+    # Routes with "api" tag should be filtered out
+    # (api_users, api_posts, api_test all have "api" tag)
+    # Only api_cleanup with "maintenance" tag should show (if it has summaries)
+
+    # === STEP 3: Verify tag filters persist across pages ===
+    visit_rails_pulse_path "/queries"
+
+    # Global filter should still be active
+    assert_global_filters_active
+
+    # Verify "api" tag still disabled
+    assert_tag_disabled("api")
+
+    # === STEP 4: Disable "database" tag on queries page ===
+    toggle_tag_filter("database")
+
+    # Queries with "database" tag should be filtered out
+    # (simple_query, complex_query, analyzed_query all have "database" tag)
+    # Only stale_analyzed_query and query_with_issues should potentially show
+
+    # === STEP 5: Test "non_tagged" virtual tag ===
+    # Disable the "non_tagged" filter to hide items without tags
+    toggle_tag_filter("non_tagged")
+
+    # Now items without tags should be hidden
+    assert_tag_disabled("non_tagged")
+
+    # === STEP 6: Navigate to routes and verify both tag filters active ===
+    visit_rails_pulse_path "/routes"
+
+    assert_global_filters_active
+    assert_tag_disabled("api")
+    assert_tag_disabled("non_tagged")
+
+    # === STEP 7: Re-enable "api" tag ===
+    toggle_tag_filter("api")
+
+    # "api" tag should now be enabled again
+    assert_tag_enabled("api")
+
+    # But "non_tagged" should still be disabled
+    assert_tag_disabled("non_tagged")
+
+    # === STEP 8: Clear all filters ===
+    clear_global_filters
+
+    # All tags should be enabled again
+    assert_global_filters_inactive
+
+    # Verify all tags are back to enabled state
+    assert_tag_enabled("api")
+    assert_tag_enabled("database")
+    assert_tag_enabled("non_tagged")
+
+    # === STEP 9: Verify clean state across pages ===
+    visit_rails_pulse_path "/queries"
+
+    assert_global_filters_inactive
+    assert_tag_enabled("database")
+
+    visit_rails_pulse_path "/routes"
+
+    assert_global_filters_inactive
+    assert_tag_enabled("api")
   end
 
   private

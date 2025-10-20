@@ -15,8 +15,15 @@
   <div data-rails-pulse--global-filters-target="wrapper" data-action="click->rails-pulse--global-filters#closeOnClickOutside" style="display: none; position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.8); z-index: 1000; align-items: center; justify-content: center;">
     <div class="dialog" data-rails-pulse--global-filters-target="dialog" style="position: relative; opacity: 1; transform: scale(1);">
       <div class="dialog__content">
-        <h2 class="text-lg font-semibold mb-4">Global Filters</h2>
-        <p class="text-sm text-subtle mb-4">Set default time filters that persist across all pages. These can be overridden by page-specific filters.</p>
+        <div class="flex items-start justify-between">
+          <div>
+            <h2 class="text-lg font-semibold mbe-4">Global Filters</h2>
+            <p class="text-sm text-subtle">Set default time filters that persist across all pages. These can be overridden by page-specific filters.</p>
+          </div>
+          <%= link_to '#', "aria-label": "Close", data: { action: "rails-pulse--global-filters#close" }, class: "text-subtle hover:text-default" do %>
+            <%= rails_pulse_icon 'x', width: '20' %>
+          <% end %>
+        </div>
 
         <%= form_with url: settings_global_filters_path, method: :patch, local: true, data: { action: "submit->rails-pulse--global-filters#submit" } do |form| %>
           <div class="flex flex-col gap mb-4">

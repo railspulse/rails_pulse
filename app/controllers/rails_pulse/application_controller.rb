@@ -17,6 +17,7 @@ module RailsPulse
     def set_global_filters
       if params[:clear] == "true"
         session.delete(:global_filters)
+        session[:show_non_tagged] = true  # Reset show_non_tagged to default
       else
         filters = session[:global_filters] || {}
 

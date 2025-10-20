@@ -135,4 +135,53 @@ module GlobalFiltersHelpers
 
     assert_dropdown_visible
   end
+
+  # Tag filtering helpers
+  def toggle_tag_filter(tag_name)
+    open_global_filters_modal
+
+    within(".dialog__content") do
+      # Find the checkbox by its id (tag_<name>)
+      checkbox_id = "tag_#{tag_name.parameterize.underscore}"
+      find("##{checkbox_id}").click
+    end
+
+    within(".dialog__content") do
+      click_button "Apply Filters"
+    end
+
+    assert_no_selector ".dialog__content", wait: 3
+  end
+
+  def assert_tag_enabled(tag_name)
+    open_global_filters_modal
+
+    within(".dialog__content") do
+      checkbox_id = "tag_#{tag_name.parameterize.underscore}"
+      checkbox = find("##{checkbox_id}")
+
+      assert_predicate checkbox, :checked?, "Expected tag '#{tag_name}' to be enabled"
+
+      # Close modal using the X button
+      find('a[aria-label="Close"]').click
+    end
+
+    assert_no_selector ".dialog__content", wait: 3
+  end
+
+  def assert_tag_disabled(tag_name)
+    open_global_filters_modal
+
+    within(".dialog__content") do
+      checkbox_id = "tag_#{tag_name.parameterize.underscore}"
+      checkbox = find("##{checkbox_id}")
+
+      assert_not checkbox.checked?, "Expected tag '#{tag_name}' to be disabled"
+
+      # Close modal using the X button
+      find('a[aria-label="Close"]').click
+    end
+
+    assert_no_selector ".dialog__content", wait: 3
+  end
 end

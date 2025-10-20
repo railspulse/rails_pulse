@@ -58,3 +58,75 @@ route_summary_old:
   avg_duration: 400.0
   created_at: <%= 12.days.ago %>
   updated_at: <%= 12.days.ago %>
+
+# Tag filtering test data - Routes
+route_summary_maintenance:
+  summarizable: api_cleanup (RailsPulse::Route)
+  period_start: <%= 2.hours.ago.beginning_of_hour %>
+  period_end: <%= 2.hours.ago.end_of_hour %>
+  period_type: "hour"
+  count: 10
+  avg_duration: 450.0
+  min_duration: 400.0
+  max_duration: 500.0
+  error_count: 0
+  success_count: 10
+  created_at: <%= 2.hours.ago %>
+  updated_at: <%= 2.hours.ago %>
+
+route_summary_no_tags:
+  summarizable: api_other (RailsPulse::Route)
+  period_start: <%= 3.hours.ago.beginning_of_hour %>
+  period_end: <%= 3.hours.ago.end_of_hour %>
+  period_type: "hour"
+  count: 20
+  avg_duration: 150.0
+  min_duration: 100.0
+  max_duration: 200.0
+  error_count: 0
+  success_count: 20
+  created_at: <%= 3.hours.ago %>
+  updated_at: <%= 3.hours.ago %>
+
+# Tag filtering test data - Queries
+query_summary_simple:
+  summarizable: simple_query (RailsPulse::Query)
+  period_start: <%= 1.hour.ago.beginning_of_hour %>
+  period_end: <%= 1.hour.ago.end_of_hour %>
+  period_type: "hour"
+  count: 100
+  avg_duration: 25.5
+  min_duration: 10.0
+  max_duration: 50.0
+  error_count: 0
+  success_count: 100
+  created_at: <%= 1.hour.ago %>
+  updated_at: <%= 1.hour.ago %>
+
+query_summary_no_tags:
+  summarizable: stale_analyzed_query (RailsPulse::Query)
+  period_start: <%= 2.hours.ago.beginning_of_hour %>
+  period_end: <%= 2.hours.ago.end_of_hour %>
+  period_type: "hour"
+  count: 50
+  avg_duration: 35.0
+  min_duration: 20.0
+  max_duration: 60.0
+  error_count: 0
+  success_count: 50
+  created_at: <%= 2.hours.ago %>
+  updated_at: <%= 2.hours.ago %>
+
+query_summary_critical:
+  summarizable: query_with_issues (RailsPulse::Query)
+  period_start: <%= 3.hours.ago.beginning_of_hour %>
+  period_end: <%= 3.hours.ago.end_of_hour %>
+  period_type: "hour"
+  count: 200
+  avg_duration: 75.0
+  min_duration: 50.0
+  max_duration: 150.0
+  error_count: 0
+  success_count: 200
+  created_at: <%= 3.hours.ago %>
+  updated_at: <%= 3.hours.ago %>
