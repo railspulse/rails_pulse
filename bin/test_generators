@@ -77,16 +77,28 @@ class GeneratorTester
       run_command "rm -f ../../db/rails_pulse_migrate/*test*.rb ../../db/rails_pulse_migrate/*another*.rb"
       run_command "rm -f db/migrate/*another_feature*.rb db/rails_pulse_migrate/*another_feature*.rb"
 
-      # Restore original initializer if backup exists
+      # Restore original initializer if backup exists, otherwise remove it
       if File.exist?("config/initializers/rails_pulse.rb.backup")
         FileUtils.mv("config/initializers/rails_pulse.rb.backup", "config/initializers/rails_pulse.rb")
         puts "  ✓ Restored original Rails Pulse initializer"
+      else
+        FileUtils.rm_f("config/initializers/rails_pulse.rb")
+        puts "  ✓ Removed Rails Pulse initializer (didn't exist before tests)"
       end
 
-      # Restore original schema if backup exists
+      # Restore original schema if backup exists, otherwise remove it
       if File.exist?("db/rails_pulse_schema.rb.backup")
         FileUtils.mv("db/rails_pulse_schema.rb.backup", "db/rails_pulse_schema.rb")
         puts "  ✓ Restored original Rails Pulse schema"
+      else
+        FileUtils.rm_f("db/rails_pulse_schema.rb")
+        puts "  ✓ Removed Rails Pulse schema (didn't exist before tests)"
+      end
+
+      # Remove rails_pulse_migrate directory if it exists
+      if Dir.exist?("db/rails_pulse_migrate")
+        FileUtils.rm_rf("db/rails_pulse_migrate")
+        puts "  ✓ Removed db/rails_pulse_migrate directory"
       end
     end
   end
