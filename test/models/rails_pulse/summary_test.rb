@@ -115,4 +115,114 @@ class RailsPulse::SummaryTest < ActiveSupport::TestCase
     # Verify scope exists and is callable
     assert_respond_to RailsPulse::Summary, :recent
   end
+
+  # Tag filtering tests
+  test "with_tag_filters should return all summaries when no filters applied" do
+    all_count = RailsPulse::Summary.count
+    filtered_count = RailsPulse::Summary.with_tag_filters([], true).count
+
+    assert_equal all_count, filtered_count
+  end
+
+  test "with_tag_filters should exclude routes with disabled tags" do
+    # api_users has ["api", "users"], api_posts has ["api", "posts"]
+    route_summary = rails_pulse_summaries(:route_summary_1)  # links to api_users route
+
+    # When "api" tag is disabled, should exclude summaries for routes with "api" tag
+    filtered = RailsPulse::Summary.with_tag_filters([ "api" ], true)
+      .where(summarizable_type: "RailsPulse::Route")
+
+    assert_not_includes filtered, route_summary
+  end
+
+  test "with_tag_filters should exclude queries with disabled tags" do
+    # simple_query has ["database", "users"]
+    query_summary = rails_pulse_summaries(:query_summary_1)  # links to complex_query
+
+    # When "database" tag is disabled, should exclude summaries for queries with "database" tag
+    filtered = RailsPulse::Summary.with_tag_filters([ "database" ], true)
+      .where(summarizable_type: "RailsPulse::Query")
+
+    assert_not_includes filtered, query_summary
+  end
+
+  test "with_tag_filters should exclude non-tagged items when show_non_tagged is false" do
+    # api_other has tags: '[]'
+    # Create a summary for a non-tagged route
+    non_tagged_route = rails_pulse_routes(:api_other)
+    non_tagged_summary = RailsPulse::Summary.create!(
+      summarizable: non_tagged_route,
+      summarizable_type: "RailsPulse::Route",
+      period_type: "hour",
+      period_start: 1.hour.ago,
+      period_end: Time.current,
+      avg_duration: 100,
+      min_duration: 50,
+      max_duration: 150,
+      count: 10,
+      error_count: 0,
+      success_count: 10
+    )
+
+    # When show_non_tagged is false, should exclude non-tagged items
+    filtered = RailsPulse::Summary.with_tag_filters([], false)
+      .where(summarizable_type: "RailsPulse::Route")
+
+    assert_not_includes filtered, non_tagged_summary
+  end
+
+  test "with_tag_filters should include non-tagged items when show_non_tagged is true" do
+    # api_other has tags: '[]'
+    non_tagged_route = rails_pulse_routes(:api_other)
+    non_tagged_summary = RailsPulse::Summary.create!(
+      summarizable: non_tagged_route,
+      summarizable_type: "RailsPulse::Route",
+      period_type: "hour",
+      period_start: 1.hour.ago,
+      period_end: Time.current,
+      avg_duration: 100,
+      min_duration: 50,
+      max_duration: 150,
+      count: 10,
+      error_count: 0,
+      success_count: 10
+    )
+
+    # When show_non_tagged is true, should include non-tagged items
+    filtered = RailsPulse::Summary.with_tag_filters([], true)
+      .where(summarizable_type: "RailsPulse::Route")
+
+    assert_includes filtered, non_tagged_summary
+  end
+
+  test "with_tag_filters should always include Request summaries" do
+    # Create a Request summary
+    request_summary = RailsPulse::Summary.create!(
+      summarizable_type: "RailsPulse::Request",
+      summarizable_id: 0,
+      period_type: "hour",
+      period_start: 1.hour.ago,
+      period_end: Time.current,
+      avg_duration: 100,
+      min_duration: 50,
+      max_duration: 150,
+      count: 10,
+      error_count: 0,
+      success_count: 10
+    )
+
+    # Request summaries should always be included regardless of tag filters
+    filtered = RailsPulse::Summary.with_tag_filters([ "api" ], false)
+
+    assert_includes filtered, request_summary
+  end
+
+  test "with_tag_filters should handle non_tagged virtual tag correctly" do
+    # "non_tagged" is a virtual tag that doesn't exist in the database
+    # It should be filtered out and handled specially
+    filtered = RailsPulse::Summary.with_tag_filters([ "non_tagged" ], false)
+
+    # Should not error and should filter based on show_non_tagged parameter
+    assert_kind_of ActiveRecord::Relation, filtered
+  end
 end

@@ -1,5 +1,7 @@
 module RailsPulse
   class Query < RailsPulse::ApplicationRecord
+    include Taggable
+
     self.table_name = "rails_pulse_queries"
 
     # Associations

@@ -11,6 +11,7 @@ AllCops:
     - 'test/dummy/db/schema.rb'
     - 'test/dummy/db/rails_pulse_schema.rb'
     - 'lib/generators/rails_pulse/templates/migrations/*.rb'
+    - 'test/tmp/generator_test/db/migrate/20251018150730_upgrade_rails_pulse_tables.rb'
 
 # Ignore Minitest style preferences in test files
 Minitest/NonPublicTestMethod:

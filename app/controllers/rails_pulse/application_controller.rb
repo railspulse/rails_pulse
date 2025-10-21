@@ -1,6 +1,8 @@
 module RailsPulse
   class ApplicationController < ActionController::Base
     before_action :authenticate_rails_pulse_user!
+    before_action :set_show_non_tagged_default
+    helper_method :session_global_filters, :session_disabled_tags
 
     def set_pagination_limit(limit = nil)
       limit = limit || params[:limit]
@@ -10,6 +12,49 @@ module RailsPulse
       if (request.xhr? && !turbo_frame_request?) || (request.patch? && action_name == "set_pagination_limit")
         render json: { status: "ok" }
       end
+    end
+
+    def set_global_filters
+      if params[:clear] == "true"
+        session.delete(:global_filters)
+        session[:show_non_tagged] = true  # Reset show_non_tagged to default
+      else
+        filters = session[:global_filters] || {}
+
+        # Update time filters if provided
+        if params[:start_time].present? && params[:end_time].present?
+          filters["start_time"] = params[:start_time]
+          filters["end_time"] = params[:end_time]
+        end
+
+        # Update performance threshold if provided (or remove if empty)
+        if params[:performance_threshold].present?
+          filters["performance_threshold"] = params[:performance_threshold]
+        else
+          filters.delete("performance_threshold")
+        end
+
+        # Update tag visibility - convert enabled tags to disabled tags
+        all_tags = RailsPulse.configuration.tags
+        enabled_tags = params[:enabled_tags] || []
+
+        # Handle "non_tagged" separately
+        session[:show_non_tagged] = enabled_tags.include?("non_tagged")
+        enabled_tags = enabled_tags - [ "non_tagged" ]
+
+        disabled_tags = all_tags - enabled_tags
+
+        if disabled_tags.any?
+          filters["disabled_tags"] = disabled_tags
+        else
+          filters.delete("disabled_tags")
+        end
+
+        session[:global_filters] = filters
+      end
+
+      # Redirect back to the referring page or root
+      redirect_back(fallback_location: root_path)
     end
 
     private
@@ -70,6 +115,35 @@ module RailsPulse
       # Validate pagination limit: minimum 5, maximum 50 for performance
       validated_limit = limit.to_i.clamp(5, 50)
       session[:pagination_limit] = validated_limit if limit.present?
+    end
+
+    def session_global_filters
+      session[:global_filters] || {}
+    end
+
+    def session_disabled_tags
+      session_global_filters["disabled_tags"] || []
+    end
+
+    # Get the minimum duration based on global performance threshold
+    # Returns nil if no threshold is set (show all)
+    # context: :route, :request, or :query
+    def global_performance_threshold_duration(context)
+      threshold = session_global_filters["performance_threshold"]
+      return nil unless threshold.present?
+
+      config_key = "#{context}_thresholds".to_sym
+      thresholds = RailsPulse.configuration.public_send(config_key)
+
+      thresholds[threshold.to_sym]
+    rescue StandardError => e
+      Rails.logger.warn "Failed to get performance threshold: #{e.message}"
+      nil
+    end
+
+    # Set default value for show_non_tagged if not already set
+    def set_show_non_tagged_default
+      session[:show_non_tagged] = true if session[:show_non_tagged].nil?
     end
   end
 end

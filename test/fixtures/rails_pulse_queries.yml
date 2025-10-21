@@ -1,27 +1,32 @@
 simple_query:
   normalized_sql: "SELECT * FROM users WHERE id = ?"
+  tags: '["database", "users"]'
   created_at: <%= 2.days.ago %>
   updated_at: <%= 2.days.ago %>
 
 complex_query:
   normalized_sql: "SELECT * FROM posts WHERE id = ?"
+  tags: '["database", "posts"]'
   created_at: <%= 1.day.ago %>
   updated_at: <%= 1.day.ago %>
 
 analyzed_query:
   normalized_sql: "SELECT * FROM orders WHERE id = ?"
+  tags: '["database"]'
   analyzed_at: <%= 1.hour.ago %>
   created_at: <%= 6.hours.ago %>
   updated_at: <%= 6.hours.ago %>
 
 stale_analyzed_query:
   normalized_sql: "SELECT * FROM products WHERE id = ?"
+  tags: '[]'
   analyzed_at: <%= 2.hours.ago %>
   created_at: <%= 1.day.ago %>
   updated_at: <%= 1.day.ago %>
 
 query_with_issues:
   normalized_sql: "SELECT * FROM users WHERE email = ?"
+  tags: '["critical"]'
   analyzed_at: <%= Time.current %>
   issues: '[{"severity": "critical", "description": "Critical issue"}, {"severity": "warning", "description": "Warning issue"}]'
   query_stats: '{"query_type": "SELECT", "table_count": 1}'

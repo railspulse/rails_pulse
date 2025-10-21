@@ -11,6 +11,11 @@ RailsPulse::Engine.routes.draw do
   resources :operations, only: %i[show]
   resources :caches, only: %i[show], as: :cache
   patch "pagination/limit", to: "application#set_pagination_limit"
+  patch "settings/global_filters", to: "application#set_global_filters"
+
+  # Tag management
+  post "tags/:taggable_type/:taggable_id/add", to: "tags#create", as: :add_tag
+  delete "tags/:taggable_type/:taggable_id/remove", to: "tags#destroy", as: :remove_tag
 
   # CSP compliance testing
   get "csp_test", to: "csp_test#show", as: :csp_test

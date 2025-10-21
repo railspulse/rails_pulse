@@ -1,0 +1,36 @@
+<% global_filters = session_global_filters %>
+<% disabled_tags = global_filters['disabled_tags'] || [] %>
+<% has_date_filters = global_filters['start_time'].present? && global_filters['end_time'].present? %>
+<% has_performance_filter = global_filters['performance_threshold'].present? %>
+<% has_tag_filters = disabled_tags.any? || session[:show_non_tagged] == false %>
+<% has_any_filters = has_date_filters || has_performance_filter || has_tag_filters %>
+
+<% if has_any_filters %>
+  <div class="flex items-center gap text-sm">
+    Filtered:
+    <% if has_date_filters %>
+      <% start_time = Time.parse(global_filters['start_time']) %>
+      <% end_time = Time.parse(global_filters['end_time']) %>
+      <span class="badge badge--secondary"><%= start_time.strftime("%b %d, %Y %-I:%M %p") %> - <%= end_time.strftime("%b %d, %Y %-I:%M %p") %></span>
+    <% end %>
+
+    <% if has_performance_filter %>
+      <% threshold_label = case global_filters['performance_threshold']
+        when 'slow' then 'Slow and Above'
+        when 'very_slow' then 'Very Slow and Above'
+        when 'critical' then 'Critical'
+        else global_filters['performance_threshold'].titleize
+        end %>
+      <span class="badge badge--secondary"><%= threshold_label %></span>
+    <% end %>
+
+    <% if has_tag_filters %>
+      <% disabled_tags.each do |tag| %>
+        <span class="badge badge--secondary"><%= tag.humanize %></span>
+      <% end %>
+      <% if session[:show_non_tagged] == false %>
+        <span class="badge badge--secondary">Non tagged hidden</span>
+      <% end %>
+    <% end %>
+  </div>
+<% end %>

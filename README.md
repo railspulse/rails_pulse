@@ -25,6 +25,10 @@
 - [Authentication](#authentication)
   - [Authentication Setup](#authentication-setup)
   - [Authentication Examples](#authentication-examples)
+- [Tagging System](#tagging-system)
+  - [Configuring Tags](#configuring-tags)
+  - [Using Tags](#using-tags)
+  - [Filtering by Tags](#filtering-by-tags)
 - [Data Management](#data-management)
   - [Cleanup Strategies](#cleanup-strategies)
   - [Cleanup Configuration](#cleanup-configuration)
@@ -57,6 +61,11 @@ Rails Pulse is a comprehensive performance monitoring and debugging gem that pro
 - Beautiful responsive interface with dark/light mode
 - Smart caching with minimal performance overhead
 - Multiple database support (SQLite, PostgreSQL, MySQL)
+
+### Organization & Filtering
+- Flexible tagging system for routes, requests, and queries
+- Filter performance data by custom tags
+- Organize monitoring data by environment, priority, or custom categories
 
 ## Screenshots
 
@@ -176,6 +185,9 @@ RailsPulse.configure do |config|
   config.ignored_requests = []  # Array of request patterns to ignore
   config.ignored_queries = []   # Array of query patterns to ignore
 
+  # Tagging system - define available tags for categorizing performance data
+  config.tags = ["production", "staging", "critical", "needs-optimization"]
+
   # Data cleanup
   config.archiving_enabled = true        # Enable automatic cleanup
   config.full_retention_period = 2.weeks # Delete records older than this
@@ -242,6 +254,72 @@ config.authentication_method = proc {
   end
 }
 ```
+
+## Tagging System
+
+Rails Pulse includes a flexible tagging system that allows you to categorize and organize your performance data. Tag routes, requests, and queries with custom labels to better organize and filter your monitoring data.
+
+### Configuring Tags
+
+Define available tags in your Rails Pulse initializer:
+
+```ruby
+RailsPulse.configure do |config|
+  config.tags = [
+    "production",
+    "staging",
+    "critical",
+    "needs-optimization",
+    "high-traffic",
+    "background-job"
+  ]
+end
+```
+
+### Using Tags
+
+**Tag from the UI:**
+
+1. Navigate to any route, request, or query detail page
+2. Click the "+ tag" button next to the record
+3. Select from your configured tags
+4. Remove tags by clicking the × button on any tag badge
+
+**Tag Programmatically:**
+
+```ruby
+# Tag a route
+route = RailsPulse::Route.find_by(path: "/api/users")
+route.add_tag("critical")
+route.add_tag("high-traffic")
+
+# Tag a query
+query = RailsPulse::Query.find_by(normalized_sql: "SELECT * FROM users WHERE id = ?")
+query.add_tag("needs-optimization")
+
+# Remove a tag
+route.remove_tag("critical")
+
+# Check if has tag
+route.has_tag?("production") # => true
+```
+
+### Filtering by Tags
+
+Use the global filters modal to filter performance data by tags:
+
+1. Click the filter icon in the top navigation
+2. Select one or more tags from the tag selector
+3. Apply filters to see only records with those tags
+4. Tags appear as badges in all data tables for quick visual identification
+
+**Common Tagging Strategies:**
+
+- **By Environment**: `production`, `staging`, `development`
+- **By Priority**: `critical`, `high`, `medium`, `low`
+- **By Status**: `needs-optimization`, `investigating`, `resolved`
+- **By Type**: `api`, `background-job`, `user-facing`, `admin`
+- **By Team**: `team-frontend`, `team-backend`, `team-data`
 
 ## Data Management
 

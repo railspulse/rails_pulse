@@ -72,6 +72,27 @@ RailsPulse.configure do |config|
   config.ignored_queries  = []
 
   # ====================================================================================================
+  #                                                 TAGGING
+  # ====================================================================================================
+  # Define custom tags for categorizing routes, requests, and queries.
+  # You can add any custom tags you want for filtering and organization.
+  #
+  # Tag names should be in present tense and describe the current state or category.
+  # Examples of good tag names:
+  #   - "critical" (for high-priority endpoints)
+  #   - "experimental" (for routes under development)
+  #   - "deprecated" (for routes being phased out)
+  #   - "external" (for third-party API calls)
+  #   - "background" (for async job-related operations)
+  #   - "admin" (for administrative routes)
+  #   - "public" (for public-facing routes)
+  #
+  # Example configuration:
+  #   config.tags = ["ignored", "critical", "experimental", "deprecated", "external", "admin"]
+
+  config.tags = [ "ignored", "critical", "experimental" ]
+
+  # ====================================================================================================
   #                                            DATABASE CONFIGURATION
   # ====================================================================================================
   # Configure Rails Pulse to use a separate database for performance monitoring data.

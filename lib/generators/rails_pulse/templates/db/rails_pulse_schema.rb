@@ -18,6 +18,7 @@ RailsPulse::Schema = lambda do |connection|
   connection.create_table :rails_pulse_routes do |t|
     t.string :method, null: false, comment: "HTTP method (e.g., GET, POST)"
     t.string :path, null: false, comment: "Request path (e.g., /posts/index)"
+    t.text :tags, comment: "JSON array of tags for filtering and categorization"
     t.timestamps
   end
 
@@ -34,6 +35,7 @@ RailsPulse::Schema = lambda do |connection|
     t.text :index_recommendations, comment: "JSON array of database index recommendations"
     t.text :n_plus_one_analysis, comment: "JSON object with enhanced N+1 query detection results"
     t.text :suggestions, comment: "JSON array of optimization recommendations"
+    t.text :tags, comment: "JSON array of tags for filtering and categorization"
     t.timestamps
   end
 
@@ -47,6 +49,7 @@ RailsPulse::Schema = lambda do |connection|
     t.string :request_uuid, null: false, comment: "Unique identifier for the request (e.g., UUID)"
     t.string :controller_action, comment: "Controller and action handling the request (e.g., PostsController#show)"
     t.timestamp :occurred_at, null: false, comment: "When the request started"
+    t.text :tags, comment: "JSON array of tags for filtering and categorization"
     t.timestamps
   end
 

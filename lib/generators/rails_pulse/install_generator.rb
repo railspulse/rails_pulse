@@ -22,6 +22,25 @@ module RailsPulse
         create_file "db/rails_pulse_migrate/.keep"
       end
 
+      def copy_gem_migrations
+        gem_migrations_path = File.expand_path("../../../db/rails_pulse_migrate", __dir__)
+        destination_dir = separate_database? ? "db/rails_pulse_migrate" : "db/migrate"
+
+        if File.directory?(gem_migrations_path)
+          Dir.glob("#{gem_migrations_path}/*.rb").each do |migration_file|
+            migration_name = File.basename(migration_file)
+            destination_path = File.join(destination_dir, migration_name)
+
+            # Only copy if it doesn't already exist in the destination
+            # Use File.join with destination_root to check the actual location
+            full_destination_path = File.join(destination_root, destination_path)
+            unless File.exist?(full_destination_path)
+              copy_file migration_file, destination_path
+            end
+          end
+        end
+      end
+
       def copy_initializer
         copy_file "rails_pulse.rb", "config/initializers/rails_pulse.rb"
       end
@@ -84,7 +103,7 @@ module RailsPulse
           3. Restart your Rails server
 
           The schema file db/rails_pulse_schema.rb is your single source of truth.
-          Future schema changes will come as regular migrations in db/rails_pulse_migrate/
+          Future upgrades will automatically copy new migrations to db/rails_pulse_migrate/
 
         MESSAGE
       end
@@ -99,7 +118,7 @@ module RailsPulse
           2. Restart your Rails server
 
           The schema file db/rails_pulse_schema.rb is your single source of truth.
-          Future schema changes will come as regular migrations in db/migrate/
+          Future upgrades will automatically copy new migrations to db/migrate/
 
           Note: The installation migration loads from db/rails_pulse_schema.rb
           and includes all current Rails Pulse tables and columns.

@@ -41,15 +41,34 @@ module RailsPulse
         # Check for existing Rails Pulse tables
         tables_exist = rails_pulse_tables_exist?
 
-        if !tables_exist && File.exist?("db/rails_pulse_schema.rb")
+        root_path = respond_to?(:destination_root) ? destination_root : Rails.root
+        schema_path = File.join(root_path, "db/rails_pulse_schema.rb")
+
+        if !tables_exist && File.exist?(schema_path)
           :schema_only
         elsif !tables_exist
           :not_installed
-        elsif File.exist?("db/rails_pulse_migrate")
+        elsif has_separate_database_config?
           :separate
         else
           :single
         end
+      end
+
+      def has_separate_database_config?
+        root_path = respond_to?(:destination_root) ? destination_root : Rails.root
+        config_path = File.join(root_path, "config/database.yml")
+
+        return false unless File.exist?(config_path)
+
+        require "yaml"
+        db_config = YAML.load_file(config_path)
+
+        # Check if any environment has a rails_pulse database configuration
+        db_config.values.any? { |env| env.is_a?(Hash) && env.key?("rails_pulse") }
+      rescue => e
+        # If we can't read the file, assume single database
+        false
       end
 
       def rails_pulse_tables_exist?
@@ -65,7 +84,8 @@ module RailsPulse
 
       def get_rails_pulse_table_names
         # Load the schema file to get the table names dynamically
-        schema_file = File.join(Rails.root, "db/rails_pulse_schema.rb")
+        root_path = respond_to?(:destination_root) ? destination_root : Rails.root
+        schema_file = File.join(root_path, "db/rails_pulse_schema.rb")
 
         if File.exist?(schema_file)
           # Read the schema file and extract the required_tables array
@@ -84,44 +104,114 @@ module RailsPulse
       end
 
       def upgrade_single_database
-        missing_columns = detect_missing_columns
+        # Check for new migrations in gem
+        gem_migrations = get_gem_migrations
+        existing_migrations = get_user_migrations("db/migrate")
+        new_migrations = gem_migrations - existing_migrations
 
-        if missing_columns.empty?
-          say "Rails Pulse is up to date! No migration needed.", :green
-          return
+        if new_migrations.any?
+          say "Found #{new_migrations.size} new migration(s) to copy:", :blue
+          new_migrations.each do |migration|
+            say "  - #{migration}", :blue
+            copy_gem_migration_to(migration, "db/migrate")
+          end
+
+          say "\nMigrations copied successfully!", :green
+          say "\nNext steps:", :green
+          say "1. Run: rails db:migrate"
+          say "2. Restart your Rails server"
+        else
+          # Fall back to detecting missing columns
+          missing_columns = detect_missing_columns
+
+          if missing_columns.empty?
+            say "Rails Pulse is up to date! No migration needed.", :green
+            return
+          end
+
+          # Format missing columns by table for the template
+          missing_by_table = format_missing_columns_by_table(missing_columns)
+
+          say "Creating upgrade migration for missing columns: #{missing_columns.keys.join(', ')}", :blue
+
+          # Set instance variables for template
+          @migration_version = ActiveRecord::Migration.current_version
+          @missing_columns = missing_by_table
+
+          migration_template(
+            "migrations/upgrade_rails_pulse_tables.rb",
+            "db/migrate/upgrade_rails_pulse_tables.rb"
+          )
+
+          say <<~MESSAGE
+
+            Upgrade migration created successfully!
+
+            Next steps:
+            1. Run: rails db:migrate
+            2. Restart your Rails server
+
+            This migration will add: #{missing_columns.keys.join(', ')}
+
+          MESSAGE
         end
-
-        # Format missing columns by table for the template
-        missing_by_table = format_missing_columns_by_table(missing_columns)
-
-        say "Creating upgrade migration for missing columns: #{missing_columns.keys.join(', ')}", :blue
-
-        # Set instance variables for template
-        @migration_version = ActiveRecord::Migration.current_version
-        @missing_columns = missing_by_table
-
-        migration_template(
-          "migrations/upgrade_rails_pulse_tables.rb",
-          "db/migrate/upgrade_rails_pulse_tables.rb"
-        )
-
-        say <<~MESSAGE
-
-          Upgrade migration created successfully!
-
-          Next steps:
-          1. Run: rails db:migrate
-          2. Restart your Rails server
-
-          This migration will add: #{missing_columns.keys.join(', ')}
-
-        MESSAGE
       end
 
       def upgrade_separate_database
-        # For separate database, we'd need to check the schema file and generate migrations
-        # in db/rails_pulse_migrate/ directory
-        say "Separate database upgrade not implemented yet. Please check db/rails_pulse_schema.rb for updates.", :yellow
+        # Check for new migrations in gem
+        gem_migrations = get_gem_migrations
+        existing_migrations = get_user_migrations("db/rails_pulse_migrate")
+        new_migrations = gem_migrations - existing_migrations
+
+        if new_migrations.any?
+          say "Found #{new_migrations.size} new migration(s) to copy:", :blue
+          new_migrations.each do |migration|
+            say "  - #{migration}", :blue
+            copy_gem_migration_to(migration, "db/rails_pulse_migrate")
+          end
+
+          say "\nMigrations copied successfully!", :green
+          say "\nNext steps:", :green
+          say "1. Run migrations for the rails_pulse database:"
+          say "   rails db:migrate (will run migrations for all databases)"
+          say "   OR manually run the migration files in db/rails_pulse_migrate/"
+          say "2. Restart your Rails server"
+        else
+          # Fall back to detecting missing columns
+          missing_columns = detect_missing_columns
+
+          if missing_columns.empty?
+            say "Rails Pulse is up to date! No migrations needed.", :green
+          else
+            # Format missing columns by table for the template
+            missing_by_table = format_missing_columns_by_table(missing_columns)
+
+            say "Creating upgrade migration for missing columns: #{missing_columns.keys.join(', ')}", :blue
+
+            # Set instance variables for template
+            @migration_version = ActiveRecord::Migration.current_version
+            @missing_columns = missing_by_table
+
+            migration_template(
+              "migrations/upgrade_rails_pulse_tables.rb",
+              "db/rails_pulse_migrate/upgrade_rails_pulse_tables.rb"
+            )
+
+            say <<~MESSAGE
+
+              Upgrade migration created successfully!
+
+              Next steps:
+              1. Run migrations for the rails_pulse database:
+                 rails db:migrate (will run migrations for all databases)
+                 OR manually run the migration files in db/rails_pulse_migrate/
+              2. Restart your Rails server
+
+              This migration will add: #{missing_columns.keys.join(', ')}
+
+            MESSAGE
+          end
+        end
       end
 
       def offer_conversion_to_migrations
@@ -165,7 +255,8 @@ module RailsPulse
       end
 
       def get_expected_schema_from_file
-        schema_file = File.join(Rails.root, "db/rails_pulse_schema.rb")
+        root_path = respond_to?(:destination_root) ? destination_root : Rails.root
+        schema_file = File.join(root_path, "db/rails_pulse_schema.rb")
         return {} unless File.exist?(schema_file)
 
         schema_content = File.read(schema_file)
@@ -220,6 +311,31 @@ module RailsPulse
         end
 
         missing_by_table
+      end
+
+      def get_gem_migrations
+        gem_migrations_path = File.expand_path("../../../db/rails_pulse_migrate", __dir__)
+        return [] unless File.directory?(gem_migrations_path)
+
+        Dir.glob("#{gem_migrations_path}/*.rb").map { |f| File.basename(f) }
+      end
+
+      def get_user_migrations(directory)
+        # Use destination_root in tests, Rails.root in production
+        root_path = respond_to?(:destination_root) ? destination_root : Rails.root
+        full_directory = File.join(root_path, directory)
+
+        return [] unless File.directory?(full_directory)
+
+        Dir.glob("#{full_directory}/*.rb").map { |f| File.basename(f) }
+      end
+
+      def copy_gem_migration_to(migration_name, destination)
+        gem_migrations_path = File.expand_path("../../../db/rails_pulse_migrate", __dir__)
+        source_file = File.join(gem_migrations_path, migration_name)
+        destination_file = File.join(destination, migration_name)
+
+        copy_file source_file, destination_file
       end
     end
   end

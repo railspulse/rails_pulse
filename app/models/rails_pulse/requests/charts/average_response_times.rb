@@ -2,21 +2,27 @@ module RailsPulse
   module Requests
     module Charts
       class AverageResponseTimes
-        def initialize(ransack_query:, period_type: nil, route: nil, start_time: nil, end_time: nil, start_duration: nil)
+        def initialize(ransack_query:, period_type: nil, route: nil, start_time: nil, end_time: nil, start_duration: nil, disabled_tags: [], show_non_tagged: true)
           @ransack_query = ransack_query
           @period_type = period_type
           @route = route
           @start_time = start_time
           @end_time = end_time
           @start_duration = start_duration
+          @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
         end
 
         def to_rails_chart
-          summaries = @ransack_query.result(distinct: false).where(
-            summarizable_type: "RailsPulse::Request",
-            summarizable_id: 0,  # Overall request summaries
-            period_type: @period_type
-          )
+          # Note: Overall request summaries (summarizable_id: 0) are not filtered by tags
+          # as they aggregate all requests regardless of route tags
+          summaries = @ransack_query.result(distinct: false)
+            .with_tag_filters(@disabled_tags, @show_non_tagged)
+            .where(
+              summarizable_type: "RailsPulse::Request",
+              summarizable_id: 0,  # Overall request summaries
+              period_type: @period_type
+            )
 
           summaries = summaries
             .group(:period_start)

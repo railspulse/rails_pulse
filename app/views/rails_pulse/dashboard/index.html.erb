@@ -1,3 +1,7 @@
+<div class="flex justify-end mb-1">
+  <%= render 'rails_pulse/components/active_filters' %>
+</div>
+
 <div class="row">
   <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
   <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_response_times_metric_card } %>

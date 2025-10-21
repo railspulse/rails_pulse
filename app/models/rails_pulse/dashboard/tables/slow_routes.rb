@@ -4,6 +4,11 @@ module RailsPulse
       class SlowRoutes
         include RailsPulse::FormattingHelper
 
+        def initialize(disabled_tags: [], show_non_tagged: true)
+          @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
+        end
+
         def to_table_data
           # Get data for this week
           this_week_start = 1.week.ago.beginning_of_week
@@ -11,6 +16,7 @@ module RailsPulse
 
           # Fetch route data from Summary records for this week
           route_data = RailsPulse::Summary
+            .with_tag_filters(@disabled_tags, @show_non_tagged)
             .joins("INNER JOIN rails_pulse_routes ON rails_pulse_routes.id = rails_pulse_summaries.summarizable_id")
             .where(
               summarizable_type: "RailsPulse::Route",

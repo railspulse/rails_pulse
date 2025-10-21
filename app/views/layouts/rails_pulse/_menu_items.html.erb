@@ -8,12 +8,12 @@
   <span class="overflow-ellipsis">Routes</span>
 <% end %>
 
-<%= link_to requests_path, class: 'btn sidebar-menu__button' do %>
-  <%= rails_pulse_icon 'audio-lines', width: '16' %>
-  <span class="overflow-ellipsis">Requests</span>
-<% end %>
-
 <%= link_to queries_path, class: 'btn sidebar-menu__button' do %>
   <%= rails_pulse_icon 'database', width: '16' %>
   <span class="overflow-ellipsis">Queries</span>
+<% end %>
+
+<%= link_to requests_path, class: 'btn sidebar-menu__button' do %>
+  <%= rails_pulse_icon 'audio-lines', width: '16' %>
+  <span class="overflow-ellipsis">Requests</span>
 <% end %>

@@ -1,5 +1,7 @@
 module RailsPulse
   class Request < RailsPulse::ApplicationRecord
+    include Taggable
+
     self.table_name = "rails_pulse_requests"
 
     # Associations
@@ -17,7 +19,7 @@ module RailsPulse
     before_create :set_request_uuid
 
     def self.ransackable_attributes(auth_object = nil)
-      %w[id route_id occurred_at duration status status_indicator route_path]
+      %w[id route_id occurred_at duration status status_category status_indicator route_path]
     end
 
     def self.ransackable_associations(auth_object = nil)
@@ -30,6 +32,12 @@ module RailsPulse
 
     ransacker :route_path do |parent|
       Arel.sql("rails_pulse_routes.path")
+    end
+
+    ransacker :status_category do |parent|
+      # Returns the first digit of the status code (2, 3, 4, or 5)
+      # Use FLOOR instead of CAST for cross-database compatibility
+      Arel.sql("FLOOR(#{parent.table[:status].name} / 100)")
     end
 
     ransacker :status_indicator do |parent|

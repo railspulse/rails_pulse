@@ -74,6 +74,7 @@ module RailsPulse
       route_groups = Request
         .where(occurred_at: start_time...end_time)
         .where.not(route_id: nil)
+        .joins(:route)
         .group(:route_id)
 
       # Calculate basic aggregates
@@ -132,6 +133,7 @@ module RailsPulse
       query_groups = Operation
         .where(occurred_at: start_time...end_time)
         .where.not(query_id: nil)
+        .joins(:query)
         .group(:query_id)
 
       basic_stats = query_groups.pluck(

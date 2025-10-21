@@ -1,6 +1,7 @@
 module RailsPulse
   class RoutesController < ApplicationController
     include ChartTableConcern
+    include TagFilterConcern
 
     before_action :set_route, only: :show
 
@@ -19,10 +20,14 @@ module RailsPulse
     def setup_metric_cards
       return if turbo_frame_request?
 
-      @average_query_times_metric_card = RailsPulse::Routes::Cards::AverageResponseTimes.new(route: @route).to_metric_card
-      @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: @route).to_metric_card
-      @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: @route).to_metric_card
-      @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: @route).to_metric_card
+      # Get tag filter values from session
+      disabled_tags = session_disabled_tags
+      show_non_tagged = session[:show_non_tagged] != false
+
+      @average_query_times_metric_card = RailsPulse::Routes::Cards::AverageResponseTimes.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
+      @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
+      @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
+      @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
     end
 
     def chart_model
@@ -86,6 +91,8 @@ module RailsPulse
       if show_action?
         # Only show requests that belong to time periods where we have route summaries
         # This ensures the table data is consistent with the chart data
+        # Note: We don't apply tag filters here because we want to show all requests
+        # for this specific route, regardless of individual request tags
         base_query = @ransack_query.result
           .joins(<<~SQL)
             INNER JOIN rails_pulse_summaries ON
@@ -108,7 +115,9 @@ module RailsPulse
           ransack_query: @ransack_query,
           period_type: period_type,
           start_time: @start_time,
-          params: params
+          params: params,
+          disabled_tags: session_disabled_tags,
+          show_non_tagged: session[:show_non_tagged] != false
         ).to_table
       end
     end

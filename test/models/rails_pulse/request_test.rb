@@ -63,7 +63,7 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
   end
 
   test "should include ransackable attributes" do
-    expected_attributes = %w[id route_id occurred_at duration status status_indicator route_path]
+    expected_attributes = %w[id route_id occurred_at duration status status_category status_indicator route_path]
 
     assert_equal expected_attributes.sort, RailsPulse::Request.ransackable_attributes.sort
   end

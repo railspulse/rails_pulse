@@ -2,12 +2,14 @@ module RailsPulse
   module Queries
     module Tables
       class Index
-        def initialize(ransack_query:, period_type: nil, start_time:, params:, query: nil)
+        def initialize(ransack_query:, period_type: nil, start_time:, params:, query: nil, disabled_tags: [], show_non_tagged: true)
           @ransack_query = ransack_query
           @period_type = period_type
           @start_time = start_time
           @params = params
           @query = query
+          @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
         end
 
         def to_table
@@ -21,6 +23,20 @@ module RailsPulse
               period_type: @period_type
             )
 
+          # Apply tag filters by excluding queries with disabled tags
+          # Separate "non_tagged" from actual tags (it's a virtual tag)
+          actual_disabled_tags = @disabled_tags.reject { |tag| tag == "non_tagged" }
+
+          # Exclude queries with actual disabled tags
+          actual_disabled_tags.each do |tag|
+            base_query = base_query.where.not("rails_pulse_queries.tags LIKE ?", "%#{tag}%")
+          end
+
+          # Exclude non-tagged queries if show_non_tagged is false
+          unless @show_non_tagged
+            base_query = base_query.where("rails_pulse_queries.tags IS NOT NULL AND rails_pulse_queries.tags != '[]'")
+          end
+
           base_query = base_query.where(summarizable_id: @query.id) if @query
 
           # Apply grouping and aggregation
@@ -29,13 +45,15 @@ module RailsPulse
               "rails_pulse_summaries.summarizable_id",
               "rails_pulse_summaries.summarizable_type",
               "rails_pulse_queries.id",
-              "rails_pulse_queries.normalized_sql"
+              "rails_pulse_queries.normalized_sql",
+              "rails_pulse_queries.tags"
             )
             .select(
               "rails_pulse_summaries.summarizable_id",
               "rails_pulse_summaries.summarizable_type",
               "rails_pulse_queries.id as query_id",
               "rails_pulse_queries.normalized_sql",
+              "rails_pulse_queries.tags",
               "AVG(rails_pulse_summaries.avg_duration) as avg_duration",
               "MAX(rails_pulse_summaries.max_duration) as max_duration",
               "SUM(rails_pulse_summaries.count) as execution_count",

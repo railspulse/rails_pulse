@@ -5,6 +5,7 @@ import { Application } from "@hotwired/stimulus";
 
 // CSS Zero Controllers
 import ContextMenuController from "./controllers/context_menu_controller";
+import DatePickerController from "./controllers/datepicker_controller";
 import DialogController from "./controllers/dialog_controller";
 import MenuController from "./controllers/menu_controller";
 import PopoverController from "./controllers/popover_controller";
@@ -19,6 +20,8 @@ import IconController from "./controllers/icon_controller";
 import ExpandableRowsController from "./controllers/expandable_rows_controller";
 import CollapsibleController from "./controllers/collapsible_controller";
 import TableSortController from "./controllers/table_sort_controller";
+import GlobalFiltersController from "./controllers/global_filters_controller";
+import CustomRangeController from "./controllers/custom_range_controller";
 
 const application = Application.start();
 
@@ -33,6 +36,7 @@ window.echarts = echarts;
 window.Turbo = Turbo;
 
 application.register("rails-pulse--context-menu", ContextMenuController);
+application.register("rails-pulse--datepicker", DatePickerController);
 application.register("rails-pulse--dialog", DialogController);
 application.register("rails-pulse--menu", MenuController);
 application.register("rails-pulse--popover", PopoverController);
@@ -46,6 +50,8 @@ application.register("rails-pulse--icon", IconController);
 application.register("rails-pulse--expandable-rows", ExpandableRowsController);
 application.register("rails-pulse--collapsible", CollapsibleController);
 application.register("rails-pulse--table-sort", TableSortController);
+application.register("rails-pulse--global-filters", GlobalFiltersController);
+application.register("rails-pulse--custom-range", CustomRangeController);
 
 // Ensure Turbo Frames are loaded after page load
 document.addEventListener('DOMContentLoaded', () => {

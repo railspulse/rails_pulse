@@ -2,6 +2,11 @@ module RailsPulse
   module Dashboard
     module Charts
       class AverageResponseTime
+        def initialize(disabled_tags: [], show_non_tagged: true)
+          @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
+        end
+
         def to_chart_data
           # Create a range of all dates in the past 2 weeks
           start_date = 2.weeks.ago.beginning_of_day.to_date
@@ -9,11 +14,13 @@ module RailsPulse
           date_range = (start_date..end_date)
 
           # Get the actual data from Summary records (routes)
-          summaries = RailsPulse::Summary.where(
-            summarizable_type: "RailsPulse::Route",
-            period_type: "day",
-            period_start: start_date.beginning_of_day..end_date.end_of_day
-          )
+          summaries = RailsPulse::Summary
+            .with_tag_filters(@disabled_tags, @show_non_tagged)
+            .where(
+              summarizable_type: "RailsPulse::Route",
+              period_type: "day",
+              period_start: start_date.beginning_of_day..end_date.end_of_day
+            )
 
           # Group by day manually for cross-database compatibility
           actual_data = {}

@@ -1,4 +1,4 @@
-<%= render 'rails_pulse/components/breadcrumbs' %>
+<%= render 'rails_pulse/components/page_header', show_active_filters: true %>
 
 <% unless turbo_frame_request? %>
   <div class="row">
@@ -9,69 +9,51 @@
   </div>
 <% end %>
 
-<div
-  data-controller="rails-pulse--index"
-  data-rails-pulse--index-chart-id-value="average_response_times_chart"
->
-  <%= render 'rails_pulse/components/panel', { title: 'Average Response Time', } do %>
-    <%= search_form_for @ransack_query, url: requests_path, class: "flex items-center justify-between gap mb-4" do |form| %>
-      <div class="flex items-center grow gap">
-        <%= form.select :period_start_range,
-          RailsPulse::RequestsController::TIME_RANGE_OPTIONS,
-          { selected: @selected_time_range },
-          { class: "input" }
-        %>
-        <%= form.select :avg_duration,
-          duration_options(:request),
-          { selected: @selected_response_range },
-          { class: "input" }
-        %>
-        <%= link_to "Reset", requests_path, class: "btn btn--borderless show@md" if params.has_key?(:q) %>
-        <%= form.submit "Search", class: "btn show@sm" %>
-      </div>
-    <% end %>
+<%= render 'rails_pulse/components/panel', { title: 'Requests', } do %>
+  <%= search_form_for @ransack_query, url: requests_path, class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
+    <div class="flex items-center grow gap">
+      <%= time_range_selector(form,
+        time_range_options: RailsPulse::RequestsController::TIME_RANGE_OPTIONS,
+        selected_time_range: @selected_time_range,
+        mode: :recent_custom
+      ) %>
 
-    <% if @has_data %>
-      <% if @chart_data && @chart_data.values.any? { |v| v > 0 } %>
-        <div
-          class="chart-container chart-container--slim"
-          data-rails-pulse--index-target="chart"
-        >
-          <%= bar_chart(
-            @chart_data,
-            code: false,
-            id: "average_response_times_chart",
-            height: "100%",
-            options: bar_chart_options(
-              units: "ms",
-              zoom: true,
-              chart_start: 0,
-              chart_end: @chart_data.length - 1,
-              xaxis_formatter: @xaxis_formatter,
-              tooltip_formatter: @tooltip_formatter,
-              zoom_start: @zoom_start,
-              zoom_end: @zoom_end,
-              chart_data: @chart_data
-            )
-          ) %>
-        </div>
-      <% else %>
-        <div class="p-4 text-center text-muted">
-          No response time data available for the selected filters.
-        </div>
-      <% end %>
+      <%= form.search_field :route_path_cont,
+        placeholder: "Filter by route",
+        autocomplete: "off",
+        class: "input"
+      %>
 
-      <div class="alert flex items-start mbs-8" role="alert">
-        <p>The chart above shows aggregated average response times grouped by time periods while the table below shows specific request details.</p>
-      </div>
+      <%= form.select :status_category_eq,
+        [
+          ["All statuses", ""],
+          ["2xx Success", "2"],
+          ["3xx Redirect", "3"],
+          ["4xx Client Error", "4"],
+          ["5xx Server Error", "5"]
+        ],
+        {},
+        { class: "input" }
+      %>
 
-      <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
-        <%= render 'rails_pulse/requests/table' %>
-      <% end %>
-    <% else %>
-      <%= render 'rails_pulse/components/empty_state',
-          title: 'No request data found for the selected filters.',
-          description: 'Try adjusting your time range or filters to see results.' %>
-    <% end %>
+      <%= form.select :duration_gteq,
+        duration_options(:request),
+        { selected: @selected_response_range, prompt: "Min duration" },
+        { class: "input" }
+      %>
+
+      <%= link_to "Reset", requests_path, class: "btn btn--borderless show@md" if params.has_key?(:q) %>
+      <%= form.submit "Search", class: "btn show@sm" %>
+    </div>
   <% end %>
-</div>
+
+  <% if @has_data %>
+    <%= turbo_frame_tag :index_table do %>
+      <%= render 'rails_pulse/requests/table' %>
+    <% end %>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No request data found for the selected filters.',
+        description: 'Try adjusting your time range or filters to see results.' %>
+  <% end %>
+<% end %>
