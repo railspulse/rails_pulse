@@ -31,6 +31,14 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
     assert_predicate query, :valid?
   end
 
+  test "should include Taggable concern" do
+    assert_includes RailsPulse::Query.included_modules, RailsPulse::Taggable
+  end
+
+  test "should include Taggable methods" do
+    assert_respond_to RailsPulse::Query.new, :tag_list
+  end
+
   test "should include ransackable attributes" do
     expected_attributes = %w[id normalized_sql average_query_time_ms execution_count total_time_consumed performance_status occurred_at]
 

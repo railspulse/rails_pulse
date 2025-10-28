@@ -95,6 +95,14 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
     end
   end
 
+  test "should include Taggable concern" do
+    assert_includes RailsPulse::Request.included_modules, RailsPulse::Taggable
+  end
+
+  test "should include Taggable methods" do
+    assert_respond_to RailsPulse::Request.new, :tag_list
+  end
+
   test "ransacker methods should be available" do
     # Test that ransacker class method exists
     assert_respond_to RailsPulse::Request, :ransacker
