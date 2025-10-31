@@ -1,5 +1,7 @@
 module RailsPulse
   class ApplicationController < ActionController::Base
+    include Pagy::Method
+
     before_action :authenticate_rails_pulse_user!
     before_action :set_show_non_tagged_default
     helper_method :session_global_filters, :session_disabled_tags
@@ -8,10 +10,10 @@ module RailsPulse
       limit = limit || params[:limit]
       session[:pagination_limit] = limit.to_i if limit.present?
 
-      # Render JSON for direct API calls or AJAX requests (but not turbo frame requests)
-      if (request.xhr? && !turbo_frame_request?) || (request.patch? && action_name == "set_pagination_limit")
+    # Render JSON for direct API calls or AJAX requests (but not turbo frame requests)
+    if (request.xhr? && !turbo_frame_request?) || (request.patch? && action_name == "set_pagination_limit")
         render json: { status: "ok" }
-      end
+    end
     end
 
     def set_global_filters

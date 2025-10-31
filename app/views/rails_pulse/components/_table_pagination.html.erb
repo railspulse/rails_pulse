@@ -7,7 +7,7 @@
          data-rails-pulse--pagination-url-value="<%= rails_pulse.pagination_limit_path %>">
       <label for="pagination_limit" class="text-sm font-medium">Rows per page</label>
       <%= select_tag :limit,
-        options_for_select([[10, 10], [20, 20], [30, 30], [40, 40], [50, 50]], @pagy.vars[:items]),
+        options_for_select([[10, 10], [20, 20], [30, 30], [40, 40], [50, 50]], @pagy.options[:items]),
         {
           id: "pagination_limit",
           class: "input",
@@ -21,22 +21,22 @@
       %>
     </div>
 
-    <div class="text-sm font-medium"><%= "Page #{@pagy.page} of #{@pagy.pages}" %></div>
+    <div class="text-sm font-medium"><%= "Page #{@pagy.page} of #{@pagy.last}" %></div>
 
     <nav class="flex items-center gap shrink-0" style="--btn-padding: .5rem;" aria-label="Pagination">
-      <%= link_to pagy_url_for(@pagy, 1), class: "btn", aria: { disabled: @pagy.prev.nil? }.compact_blank do %>
+      <%= link_to @pagy.page_url(1), class: "btn", aria: { disabled: @pagy.previous.nil? }.compact_blank do %>
         <%= rails_pulse_icon 'chevrons-left', width: '16', height: '16' %>
         <span class="sr-only">Go to first page</span>
       <% end %>
-      <%= link_to pagy_url_for(@pagy, @pagy.prev || @pagy.page), class: "btn", aria: { disabled: @pagy.prev.nil? }.compact_blank do %>
+      <%= link_to @pagy.page_url(@pagy.previous || @pagy.page), class: "btn", aria: { disabled: @pagy.previous.nil? }.compact_blank do %>
         <%= rails_pulse_icon 'chevron-left', width: '16', height: '16' %>
         <span class="sr-only">Go to previous page</span>
       <% end %>
-      <%= link_to pagy_url_for(@pagy, @pagy.next || @pagy.page), class: "btn", aria: { disabled: @pagy.next.nil? }.compact_blank do %>
+      <%= link_to @pagy.page_url(@pagy.next || @pagy.page), class: "btn", aria: { disabled: @pagy.next.nil? }.compact_blank do %>
         <%= rails_pulse_icon 'chevron-right', width: '16', height: '16' %>
         <span class="sr-only">Go to next page</span>
       <% end %>
-      <%= link_to pagy_url_for(@pagy, @pagy.last), class: "btn", aria: { disabled: @pagy.next.nil? }.compact_blank do %>
+      <%= link_to @pagy.page_url(@pagy.last), class: "btn", aria: { disabled: @pagy.next.nil? }.compact_blank do %>
         <%= rails_pulse_icon 'chevrons-right', width: '16', height: '16' %>
         <span class="sr-only">Go to last page</span>
       <% end %>

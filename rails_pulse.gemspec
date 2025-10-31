@@ -29,7 +29,7 @@ Gem::Specification.new do |spec|
   spec.add_dependency "turbo-rails", "~> 2.0.11"
   spec.add_dependency "request_store", "~> 1.5"
   spec.add_dependency "ransack", "~> 4.0"
-  spec.add_dependency "pagy", ">= 8", "< 10"
+  spec.add_dependency "pagy", ">= 8", "< 44"
   spec.add_dependency "groupdate", "~> 6.0"
 
   spec.add_development_dependency "rails-controller-testing"

@@ -12,7 +12,7 @@ PATH
     rails_pulse (0.2.2)
       css-zero (~> 1.1, >= 1.1.4)
       groupdate (~> 6.0)
-      pagy (>= 8, < 10)
+      pagy (>= 8, < 44)
       rails (>= 7.1.0, < 9.0.0)
       rails_charts (~> 0.0, >= 0.0.6)
       ransack (~> 4.0)
@@ -208,7 +208,9 @@ GEM
       racc (~> 1.4)
     nokogiri (1.18.9-x86_64-linux-musl)
       racc (~> 1.4)
-    pagy (9.3.5)
+    pagy (43.0.0.rc4)
+      json
+      yaml
     parallel (1.27.0)
     parser (3.3.8.0)
       ast (~> 2.4.1)
@@ -367,6 +369,7 @@ GEM
     websocket-extensions (0.1.5)
     xpath (3.2.0)
       nokogiri (~> 1.8)
+    yaml (0.4.0)
     zeitwerk (2.7.3)
 
 PLATFORMS
@@ -393,7 +396,7 @@ DEPENDENCIES
   minitest-reporters
   mocha
   mysql2
-  pagy
+  pagy (~> 43.0.0pre)
   pg
   pry-byebug
   puma

@@ -2,7 +2,6 @@ module ChartTableConcern
   extend ActiveSupport::Concern
 
   included do
-    include Pagy::Backend
     include TimeRangeConcern
     include ResponseRangeConcern
     include ZoomRangeConcern
