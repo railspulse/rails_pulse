@@ -61,15 +61,15 @@ if defined?(RailsCharts)
   end
 end
 
-# Apply the patch to ApplicationHelper and any modules that include chart helpers
+# Apply the CSP patch only to Rails Pulse helpers, not the entire application
+# By prepending to ChartHelper instead of ApplicationHelper, we scope the patch to RailsPulse
+# namespace only, avoiding conflicts with any chart libraries in the host application
+# (Chartkick, Highcharts, Google Charts, ApexCharts, custom helpers, etc.)
 Rails.application.config.to_prepare do
-  if defined?(RailsCharts)
-    # Patch ActionView::Base to include our CSP patch for line_chart
-    ActionView::Base.prepend(RailsCharts::CspPatch)
-
-    # Also patch any Rails Pulse helpers that might use charts
-    if defined?(RailsPulse::ApplicationHelper)
-      RailsPulse::ApplicationHelper.prepend(RailsCharts::CspPatch)
-    end
+  if defined?(RailsCharts) && defined?(RailsPulse::ChartHelper)
+    # Prepend CSP patch to RailsPulse::ChartHelper
+    # This wraps only the rails_charts methods, ensuring clean CSP nonce injection
+    # without affecting the host application's chart helpers
+    RailsPulse::ChartHelper.prepend(RailsCharts::CspPatch)
   end
 end

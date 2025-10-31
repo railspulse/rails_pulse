@@ -273,7 +273,6 @@ DEPENDENCIES
   pry-byebug
   puma (= 6.6.0)
   rails (= 8.0.1)
-  rails_charts (= 0.0.6)
   rails_pulse!
   sqlite3 (= 2.6.0)
 
