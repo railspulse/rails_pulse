@@ -157,7 +157,7 @@ GEM
       pp (>= 0.6.0)
       rdoc (>= 4.0.0)
       reline (>= 0.4.2)
-    json (2.13.1)
+    json (2.15.2)
     language_server-protocol (3.17.0.5)
     lint_roller (1.1.0)
     logger (1.7.0)
@@ -208,9 +208,7 @@ GEM
       racc (~> 1.4)
     nokogiri (1.18.9-x86_64-linux-musl)
       racc (~> 1.4)
-    pagy (43.0.0.rc4)
-      json
-      yaml
+    pagy (8.6.3)
     parallel (1.27.0)
     parser (3.3.8.0)
       ast (~> 2.4.1)
@@ -369,7 +367,6 @@ GEM
     websocket-extensions (0.1.5)
     xpath (3.2.0)
       nokogiri (~> 1.8)
-    yaml (0.4.0)
     zeitwerk (2.7.3)
 
 PLATFORMS
@@ -396,7 +393,7 @@ DEPENDENCIES
   minitest-reporters
   mocha
   mysql2
-  pagy (~> 43.0.0pre)
+  pagy (>= 8, < 44)
   pg
   pry-byebug
   puma
