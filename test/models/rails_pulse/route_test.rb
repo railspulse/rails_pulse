@@ -32,6 +32,14 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
     assert_predicate route, :valid?
   end
 
+  test "should include Taggable concern" do
+    assert_includes RailsPulse::Route.included_modules, RailsPulse::Taggable
+  end
+
+  test "should include Taggable methods" do
+    assert_respond_to RailsPulse::Route.new, :tag_list
+  end
+
   test "should include ransackable attributes" do
     expected_attributes = %w[path average_response_time_ms max_response_time_ms request_count requests_per_minute occurred_at requests_occurred_at error_count error_rate_percentage status_indicator]
 
