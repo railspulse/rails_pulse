@@ -69,6 +69,11 @@ module RailsPulse
       return 0 unless defined?(RailsPulse::Request)
 
       count = RailsPulse::Request.where("occurred_at < ?", cutoff_time).count
+      request_ids = RailsPulse::Request.where("occurred_at < ?", cutoff_time).pluck(:id)
+
+      # Delete associated operations first to respect foreign key constraints
+      RailsPulse::Operation.where(request_id: request_ids).delete_all
+
       RailsPulse::Request.where("occurred_at < ?", cutoff_time).delete_all
       count
     end
@@ -139,6 +144,9 @@ module RailsPulse
         .order(:occurred_at)
         .limit(records_to_delete)
         .pluck(:id)
+
+      # Delete associated operations first to respect foreign key constraints
+      RailsPulse::Operation.where(request_id: ids_to_delete).delete_all
 
       RailsPulse::Request.where(id: ids_to_delete).delete_all
       records_to_delete

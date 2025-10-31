@@ -15,6 +15,9 @@
 
     <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app %>
+    <%= javascript_include_tag "https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.js" %>
+    <%= javascript_include_tag "https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js" %>
+    <%= javascript_include_tag "https://cdn.jsdelivr.net/npm/chartkick@5/dist/chartkick.min.js" %>
     <%= javascript_importmap_tags %>
   </head>
 
@@ -30,6 +33,7 @@
           <%= link_to "Search", search_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #6f42c1; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #6f42c1;" %>
           <%= link_to "API Simple", api_simple_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #17a2b8; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #17a2b8;" %>
           <%= link_to "API Complex", api_complex_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #6c757d; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #6c757d;" %>
+          <%= link_to "ChartKick", chartkick_demo_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #20c997; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #20c997;" %>
           <%= link_to "Rails Pulse", "/rails_pulse", data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: white; padding: 8px 12px; border-radius: 4px; background: #fd7e14; border: 1px solid #fd7e14; font-weight: bold;" %>
         </div>
       </div>

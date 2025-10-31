@@ -14,6 +14,17 @@ module RailsPulse
   class Engine < ::Rails::Engine
     isolate_namespace RailsPulse
 
+    # Prevent rails_charts from polluting the global ActionView namespace
+    # This MUST happen before any initializers run to avoid conflicts with host apps
+    # that use Chartkick or other chart libraries
+    if defined?(RailsCharts::Engine)
+      # Find and remove the rails_charts.helpers initializer
+      RailsCharts::Engine.initializers.delete_if do |init|
+        init.name == "rails_charts.helpers"
+      end
+    end
+
+
     # Load Rake tasks
     rake_tasks do
       Dir.glob(File.expand_path("../tasks/**/*.rake", __FILE__)).each { |file| load file }
@@ -49,6 +60,20 @@ module RailsPulse
     initializer "rails_pulse.rails_charts_theme" do
       RailsCharts.options[:theme] = "railspulse"
     end
+
+    # Manually include RailsCharts helpers only in RailsPulse views
+    # This ensures rails_charts methods are only available in RailsPulse namespace,
+    # not in the host application
+    initializer "rails_pulse.include_rails_charts_helpers" do
+      ActiveSupport.on_load :action_view do
+        if defined?(RailsCharts::Helpers) && defined?(RailsPulse::ChartHelper)
+          unless RailsPulse::ChartHelper.include?(RailsCharts::Helpers)
+            RailsPulse::ChartHelper.include(RailsCharts::Helpers)
+          end
+        end
+      end
+    end
+
 
     initializer "rails_pulse.ransack", after: "ransack.initialize" do
       # Ensure Ransack is loaded before our models

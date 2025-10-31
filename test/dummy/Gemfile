@@ -17,7 +17,11 @@ gem "rails_pulse", path: "../.."
 # Add other dependencies as needed (e.g., puma, lucide-rails)
 gem "puma", "6.6.0"
 gem "lucide-rails", "0.5.1"
-gem "rails_charts", "0.0.6"
 gem "css-zero", "1.1.5"
+gem "chartkick"
+gem "groupdate"
 gem "pry-byebug"
 gem "debug"
+
+# Note: rails_charts is included via rails_pulse dependency
+# It's intentionally not listed here to avoid version conflicts
