@@ -4,8 +4,6 @@ Add support for both Pagy 8.x and Pagy 43 (pre-release of 9.x), ensuring backwar
 
 ## Type of Change
 
-<!-- Mark the relevant option with an [x] -->
-
 - [ ] Bug fix (non-breaking change which fixes an issue)
 - [x] New feature (non-breaking change which adds functionality)
 - [ ] Breaking change (fix or feature that would cause existing functionality to not work as expected)
@@ -60,10 +58,6 @@ Add support for both Pagy 8.x and Pagy 43 (pre-release of 9.x), ensuring backwar
 
 - [x] No breaking changes
 - [ ] Breaking changes documented below
-
-## Screenshots
-
-<!-- If applicable, add screenshots to help explain your changes -->
 
 ## Checklist
 
