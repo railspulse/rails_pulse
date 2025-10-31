@@ -154613,7 +154613,7 @@
     );
     config.forms.mode = mode;
   }
-  var Turbo = /* @__PURE__ */ Object.freeze({
+  var Turbo2 = /* @__PURE__ */ Object.freeze({
     __proto__: null,
     navigator: navigator$1,
     session,
@@ -155374,7 +155374,7 @@
       element = element.parentElement;
     }
   })();
-  window.Turbo = { ...Turbo, StreamActions };
+  window.Turbo = { ...Turbo2, StreamActions };
   start2();
 
   // node_modules/@hotwired/stimulus/dist/stimulus.js
@@ -162157,36 +162157,31 @@
     connect() {
       this.restorePaginationLimit();
     }
-    // Update pagination limit and refresh the turbo frame
+    // Update pagination limit and navigate to page 1 with new limit
     updateLimit() {
       const limit = this.limitTarget.value;
       sessionStorage.setItem(this.storageKeyValue, limit);
-      const turboFrame = this.element.closest("turbo-frame");
-      if (turboFrame) {
-        const currentUrl = new URL(window.location);
-        currentUrl.searchParams.set("limit", limit);
-        turboFrame.src = currentUrl.pathname + currentUrl.search;
+      const currentUrl = new URL(window.location);
+      currentUrl.searchParams.set("limit", limit);
+      currentUrl.searchParams.delete("page");
+      if (typeof Turbo !== "undefined") {
+        Turbo.visit(currentUrl.toString(), { action: "replace" });
       } else {
-        const currentUrl = new URL(window.location);
-        currentUrl.searchParams.set("limit", limit);
-        window.location.href = currentUrl.pathname + currentUrl.search;
+        window.location.href = currentUrl.toString();
       }
     }
-    // Get CSRF token from meta tag
-    getCSRFToken() {
-      const token = document.querySelector('meta[name="csrf-token"]');
-      return token ? token.getAttribute("content") : "";
-    }
-    // Save the pagination limit to session storage when it changes
-    savePaginationLimit() {
-      const limit = this.limitTarget.value;
-      sessionStorage.setItem(this.storageKeyValue, limit);
-    }
-    // Restore the pagination limit from session storage on page load
+    // Restore the pagination limit from URL or session storage on page load
     restorePaginationLimit() {
-      const savedLimit = sessionStorage.getItem(this.storageKeyValue);
-      if (savedLimit && this.limitTarget) {
-        if (this.limitTarget.value !== savedLimit) {
+      const urlParams = new URLSearchParams(window.location.search);
+      const urlLimit = urlParams.get("limit");
+      if (urlLimit && this.limitTarget) {
+        sessionStorage.setItem(this.storageKeyValue, urlLimit);
+        if (this.limitTarget.value !== urlLimit) {
+          this.limitTarget.value = urlLimit;
+        }
+      } else {
+        const savedLimit = sessionStorage.getItem(this.storageKeyValue);
+        if (savedLimit && this.limitTarget && this.limitTarget.value !== savedLimit) {
           this.limitTarget.value = savedLimit;
         }
       }
@@ -162194,8 +162189,7 @@
   };
   __publicField(pagination_controller_default, "targets", ["limit"]);
   __publicField(pagination_controller_default, "values", {
-    storageKey: { type: String, default: "rails_pulse_pagination_limit" },
-    url: String
+    storageKey: { type: String, default: "rails_pulse_pagination_limit" }
   });
 
   // app/javascript/rails_pulse/controllers/timezone_controller.js

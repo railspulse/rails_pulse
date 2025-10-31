@@ -1,6 +1,11 @@
 module RailsPulse
   class ApplicationController < ActionController::Base
-    include Pagy::Method
+    # Support both Pagy 8.x (Backend) and Pagy 9+ (Method)
+    if defined?(Pagy::Method)
+      include Pagy::Method
+    else
+      include Pagy::Backend
+    end
 
     before_action :authenticate_rails_pulse_user!
     before_action :set_show_non_tagged_default

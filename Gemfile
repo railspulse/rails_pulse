@@ -26,7 +26,7 @@ gem "importmap-rails"
 gem "rails_charts", github: "railspulse/rails_charts", branch: "chart-initialize-event"
 gem "ransack"
 gem "turbo-rails"
-gem "pagy", "~> 43.0.0pre" 
+gem "pagy", ">= 8", "< 44"  # Support Pagy 8.x through 43.x (matches gemspec)
 gem "request_store"
 
 # Testing dependencies
