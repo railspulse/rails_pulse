@@ -1,0 +1,45 @@
+<div style="font-family: Arial, sans-serif; max-width: 1200px; margin: 0 auto; padding: 20px;">
+  <h1>ChartKick Demo - Rails Pulse Compatibility Test</h1>
+  <p>This page uses Chartkick to render various chart types. It tests Rails Pulse compatibility with host apps using Chartkick.</p>
+
+  <div style="margin-top: 30px;">
+
+    <section style="border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+      <h2>Line Chart: Posts Over Time</h2>
+      <%= line_chart @posts_over_time, height: "300px", colors: ["#007bff"] %>
+    </section>
+
+    <section style="border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+      <h2>Bar Chart: Posts Per User</h2>
+      <%= bar_chart @posts_per_user, height: "300px", colors: ["#28a745"] %>
+    </section>
+
+    <section style="border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+      <h2>Bar Chart: Top Posts by Comment Count</h2>
+      <%= bar_chart @comments_per_post, height: "300px", colors: ["#ffc107"] %>
+    </section>
+
+    <section style="border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+      <h2>Pie Chart: User Activity</h2>
+      <%= pie_chart @user_activity, height: "300px", colors: ["#17a2b8", "#6c757d"] %>
+    </section>
+
+    <section style="border: 1px solid #ddd; padding: 20px; border-radius: 8px; margin-bottom: 20px;">
+      <h2>Area Chart: Comments Over Time</h2>
+      <%= area_chart @comments_over_time, height: "300px", colors: ["#dc3545"] %>
+    </section>
+
+  </div>
+
+  <div style="margin-top: 30px; padding: 20px; background-color: #f8f9fa; border-radius: 8px;">
+    <h3>About This Test</h3>
+    <p>
+      This page demonstrates that Rails Pulse works correctly alongside Chartkick in host applications.
+      All charts execute database queries that will be tracked by Rails Pulse.
+    </p>
+    <p>
+      <a href="/rails_pulse" style="color: #007bff; text-decoration: none;">→ View Rails Pulse Dashboard</a> |
+      <a href="/" style="color: #007bff; text-decoration: none;">← Back to Test Dashboard</a>
+    </p>
+  </div>
+</div>

@@ -178,4 +178,34 @@ class HomeController < ApplicationController
       format.json { render json: @data }
     end
   end
+
+  # ChartKick demo action - tests compatibility with Chartkick
+  def chartkick_demo
+    # Generate data for various ChartKick chart types
+
+    # Posts per user (Bar Chart)
+    @posts_per_user = User.joins(:posts)
+                         .group("users.name")
+                         .count
+
+    # Posts over time (Line Chart)
+    @posts_over_time = Post.group_by_day(:created_at, last: 7).count
+
+    # Comments per post (Column Chart)
+    @comments_per_post = Post.joins(:comments)
+                            .group("posts.title")
+                            .count
+                            .first(10)
+
+    # User activity (Pie Chart)
+    active_users_count = User.joins(:posts).where(posts: { created_at: 1.week.ago.. }).distinct.count
+    total_users_count = User.count
+    @user_activity = {
+      "Active Users" => active_users_count,
+      "Inactive Users" => total_users_count - active_users_count
+    }
+
+    # Area chart data
+    @comments_over_time = Comment.group_by_day(:created_at, last: 7).count
+  end
 end
