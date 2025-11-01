@@ -20,7 +20,7 @@
     } do %>
       <% if @average_response_time_chart_data.present? %>
         <div class="chart-container chart-container--slim">
-          <%= bar_chart(
+          <%= rails_pulse_bar_chart(
             @average_response_time_chart_data,
             code: false,
             id: "dashboard_average_response_time_chart",
@@ -44,7 +44,7 @@
     } do %>
       <% if @p95_response_time_chart_data.present? %>
         <div class="chart-container chart-container--slim">
-          <%= bar_chart(
+          <%= rails_pulse_bar_chart(
             @p95_response_time_chart_data,
             code: false,
             id: "dashboard_p95_response_time_chart",

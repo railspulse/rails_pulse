@@ -29,7 +29,7 @@ const application = Application.start();
 application.debug = false;
 window.Stimulus = application;
 
-// Make ECharts available globally for rails_charts gem
+// Make ECharts available globally for chart rendering
 window.echarts = echarts;
 
 // Make Turbo available globally
@@ -131,23 +131,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 document.addEventListener('rails-pulse:color-scheme-changed', applyChartAxisLabelColors);
 
-// Global function to initialize Rails Charts in any container.
-// This is needed as we render Rails Charts in Turbo Frames.
-window.initializeChartsInContainer = function(containerId) {
-  requestAnimationFrame(() => {
-    const container = containerId ? document.getElementById(containerId) : document;
-    const scripts = container.querySelectorAll('script');
-    scripts.forEach(script => {
-      const content = script.textContent;
-      const match = content.match(/function\s+(init_rails_charts_[a-f0-9]+)/);
-      if (match && window[match[1]]) {
-        window[match[1]]();
-      }
-    });
-    // ensure colors are correct for any charts initialized in this container
-    setTimeout(applyChartAxisLabelColors, 10);
-  });
-};
 
 // Export for global access
 window.RailsPulse = {

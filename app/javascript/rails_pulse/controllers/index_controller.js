@@ -22,7 +22,7 @@ export default class extends Controller {
     document.addEventListener('chart:rendered', this.handleChartInitialized);
 
     // If the chart is already initialized (e.g., on back navigation), set up immediately
-    if (window.RailsCharts?.charts?.[this.chartIdValue]) {
+    if (window.RailsPulse?.charts?.[this.chartIdValue]) {
       this.setup();
     }
   }
@@ -64,8 +64,8 @@ export default class extends Controller {
       hasTarget = false;
     }
 
-    // Get the chart element which the RailsCharts library has created
-    this.chart = window.RailsCharts.charts[this.chartIdValue];
+    // Get the chart element which the RailsPulse helper has created
+    this.chart = window.RailsPulse.charts[this.chartIdValue];
 
     // Only proceed if we have BOTH the DOM target and the chart object
     if (!hasTarget || !this.chart) {

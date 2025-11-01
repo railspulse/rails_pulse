@@ -12,21 +12,15 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
   end
 
   test "bar_chart_options deep merges series and applies formatters" do
-    RailsCharts.expects(:js).with("formatT").returns("JS Tooltip").once
-    RailsCharts.expects(:js).with("formatX").returns("JS XAxis").once
-
     opts = bar_chart_options(units: "ms", zoom: false,
                              xaxis_formatter: "formatX",
                              tooltip_formatter: "formatT")
 
     assert_equal [ 5, 5, 5, 5 ], opts[:series][:itemStyle][:borderRadius]
-    assert_equal "JS Tooltip", opts[:tooltip][:formatter]
+    assert_equal "__FUNCTION_START__formatT__FUNCTION_END__", opts[:tooltip][:formatter]
   end
 
   test "line_chart_options deep merges series and applies formatters" do
-    RailsCharts.expects(:js).with("formatT").returns("JS Tooltip")
-    RailsCharts.expects(:js).with("formatX").returns("JS XAxis")
-
     opts = line_chart_options(units: "ms", zoom: false,
                               xaxis_formatter: "formatX",
                               tooltip_formatter: "formatT")
@@ -34,7 +28,7 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
     assert opts[:series][:smooth]
     assert_equal 3, opts[:series][:lineStyle][:width]
     assert_equal "circle", opts[:series][:symbol]
-    assert_equal "JS Tooltip", opts[:tooltip][:formatter]
+    assert_equal "__FUNCTION_START__formatT__FUNCTION_END__", opts[:tooltip][:formatter]
   end
 
   test "sparkline_chart_options hides axes and grid" do

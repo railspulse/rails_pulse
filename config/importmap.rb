@@ -1,6 +1,6 @@
 pin "application", to: "rails_pulse/application.js"
 
-# echarts is a dependency of the rails_charts gem
+# echarts is used for chart rendering
 pin "echarts", to: "echarts.min.js"
 # pin "echarts/theme/inspired", to: "echarts/theme/inspired.js"
 pin "rails_pulse/theme", to: "rails_pulse/theme.js"

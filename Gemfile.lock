@@ -1,11 +1,3 @@
-GIT
-  remote: https://github.com/railspulse/rails_charts.git
-  revision: 0a1492e6b08557950a2a4a1b47830b40c678b6b1
-  branch: chart-initialize-event
-  specs:
-    rails_charts (0.0.7)
-      rails
-
 PATH
   remote: .
   specs:
@@ -14,7 +6,6 @@ PATH
       groupdate (~> 6.0)
       pagy (>= 8, < 10)
       rails (>= 7.1.0, < 9.0.0)
-      rails_charts (~> 0.0, >= 0.0.6)
       ransack (~> 4.0)
       request_store (~> 1.5)
       turbo-rails (~> 2.0.11)
@@ -400,7 +391,6 @@ DEPENDENCIES
   pry-byebug
   puma
   rails-controller-testing
-  rails_charts!
   rails_pulse!
   ransack
   request_store
