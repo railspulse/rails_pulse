@@ -20,8 +20,10 @@
     } do %>
       <% if @average_response_time_chart_data.present? %>
         <div class="chart-container chart-container--slim">
-          <%= rails_pulse_bar_chart(
+          <%= render_stimulus_chart(
             @average_response_time_chart_data,
+            type: 'bar',
+            type: 'bar',
             code: false,
             id: "dashboard_average_response_time_chart",
             height: "100%",
@@ -44,8 +46,9 @@
     } do %>
       <% if @p95_response_time_chart_data.present? %>
         <div class="chart-container chart-container--slim">
-          <%= rails_pulse_bar_chart(
+          <%= render_stimulus_chart(
             @p95_response_time_chart_data,
+            type: 'bar',
             code: false,
             id: "dashboard_p95_response_time_chart",
             height: "100%",

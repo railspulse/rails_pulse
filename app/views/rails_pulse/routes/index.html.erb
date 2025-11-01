@@ -34,8 +34,9 @@
           class="chart-container chart-container--slim"
           data-rails-pulse--index-target="chart"
         >
-          <%= rails_pulse_bar_chart(
+          <%= render_stimulus_chart(
             @chart_data,
+            type: 'bar',
             code: false,
             id: "average_response_times_chart",
             height: "100%",

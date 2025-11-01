@@ -1,1 +1,1 @@
-<%= rails_pulse_bar_chart @component_data, height: "100%", options: bar_chart_options(units: "ms") %>
+<%= render_stimulus_chart @component_data, type: 'bar', height: "100%", options: bar_chart_options(units: "ms") %>

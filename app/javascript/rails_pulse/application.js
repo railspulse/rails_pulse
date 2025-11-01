@@ -12,6 +12,7 @@ import PopoverController from "./controllers/popover_controller";
 import FormController from "./controllers/form_controller";
 
 // Rails Pulse Controllers
+import ChartController from "./controllers/chart_controller";
 import IndexController from "./controllers/index_controller";
 import ColorSchemeController from "./controllers/color_scheme_controller";
 import PaginationController from "./controllers/pagination_controller";
@@ -42,6 +43,7 @@ application.register("rails-pulse--menu", MenuController);
 application.register("rails-pulse--popover", PopoverController);
 application.register("rails-pulse--form", FormController);
 
+application.register("rails-pulse--chart", ChartController);
 application.register("rails-pulse--index", IndexController);
 application.register("rails-pulse--color-scheme", ColorSchemeController);
 application.register("rails-pulse--pagination", PaginationController);
@@ -96,23 +98,25 @@ echarts.registerTheme('railspulse', {
   "bar": { "itemStyle": { "barBorderWidth": 0 } }
 });
 
-// Chart resize functionality (moved from inline script for CSP compliance)
+// Chart resize functionality
+// Note: Individual charts now handle resize via ResizeObserver in chart controller
+// This global handler is kept for backwards compatibility
 window.addEventListener('resize', function() {
-  if (window.RailsCharts && window.RailsCharts.charts) {
-    Object.keys(window.RailsCharts.charts).forEach(function(chartID) {
-      window.RailsCharts.charts[chartID].resize();
+  if (window.RailsPulse && window.RailsPulse.charts) {
+    Object.keys(window.RailsPulse.charts).forEach(function(chartID) {
+      window.RailsPulse.charts[chartID].resize();
     });
   }
 });
 
 // Apply axis label colors based on current color scheme
 function applyChartAxisLabelColors() {
-  if (!window.RailsCharts || !window.RailsCharts.charts) return;
+  if (!window.RailsPulse || !window.RailsPulse.charts) return;
   const scheme = document.documentElement.getAttribute('data-color-scheme');
   const isDark = scheme === 'dark';
   const axisColor = isDark ? '#ffffff' : '#999999';
-  Object.keys(window.RailsCharts.charts).forEach(function(chartID) {
-    const chart = window.RailsCharts.charts[chartID];
+  Object.keys(window.RailsPulse.charts).forEach(function(chartID) {
+    const chart = window.RailsPulse.charts[chartID];
     try {
       chart.setOption({
         xAxis: { axisLabel: { color: axisColor } },
