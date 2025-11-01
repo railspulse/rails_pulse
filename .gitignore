@@ -5,6 +5,7 @@
 /log/*.log
 /pkg/
 /tmp/
+/test/tmp/
 /test/dummy/db/*.sqlite3
 /test/dummy/db/*.sqlite3-*
 /test/dummy/log/*.log
