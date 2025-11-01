@@ -98,44 +98,6 @@ echarts.registerTheme('railspulse', {
   "bar": { "itemStyle": { "barBorderWidth": 0 } }
 });
 
-// Chart resize functionality
-// Note: Individual charts now handle resize via ResizeObserver in chart controller
-// This global handler is kept for backwards compatibility
-window.addEventListener('resize', function() {
-  if (window.RailsPulse && window.RailsPulse.charts) {
-    Object.keys(window.RailsPulse.charts).forEach(function(chartID) {
-      window.RailsPulse.charts[chartID].resize();
-    });
-  }
-});
-
-// Apply axis label colors based on current color scheme
-function applyChartAxisLabelColors() {
-  if (!window.RailsPulse || !window.RailsPulse.charts) return;
-  const scheme = document.documentElement.getAttribute('data-color-scheme');
-  const isDark = scheme === 'dark';
-  const axisColor = isDark ? '#ffffff' : '#999999';
-  Object.keys(window.RailsPulse.charts).forEach(function(chartID) {
-    const chart = window.RailsPulse.charts[chartID];
-    try {
-      chart.setOption({
-        xAxis: { axisLabel: { color: axisColor } },
-        yAxis: { axisLabel: { color: axisColor } }
-      });
-    } catch (e) {
-      // noop
-    }
-  });
-}
-
-// Initial apply after charts initialize and on scheme changes
-document.addEventListener('DOMContentLoaded', () => {
-  // run shortly after load to allow charts to initialize
-  setTimeout(applyChartAxisLabelColors, 50);
-});
-document.addEventListener('rails-pulse:color-scheme-changed', applyChartAxisLabelColors);
-
-
 // Export for global access
 window.RailsPulse = {
   application,

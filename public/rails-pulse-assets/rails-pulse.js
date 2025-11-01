@@ -161752,8 +161752,11 @@
   var chart_controller_default = class extends Controller {
     connect() {
       this.initializeChart();
+      this.handleColorSchemeChange = this.onColorSchemeChange.bind(this);
+      document.addEventListener("rails-pulse:color-scheme-changed", this.handleColorSchemeChange);
     }
     disconnect() {
+      document.removeEventListener("rails-pulse:color-scheme-changed", this.handleColorSchemeChange);
       this.disposeChart();
     }
     // Main initialization with retry logic
@@ -161777,23 +161780,15 @@
     }
     renderChart() {
       try {
-        if (!window.RailsPulse) {
-          window.RailsPulse = {};
-        }
-        if (!window.RailsPulse.charts) {
-          window.RailsPulse.charts = {};
-        }
         this.chart = echarts.init(this.element, this.themeValue || "railspulse");
         const config2 = this.buildChartConfig();
         this.chart.setOption(config2);
-        const chartId = this.element.id;
-        if (chartId) {
-          window.RailsPulse.charts[chartId] = this.chart;
-        }
-        document.dispatchEvent(new CustomEvent("chart:rendered", {
+        this.applyColorScheme();
+        document.dispatchEvent(new CustomEvent("stimulus:echarts:rendered", {
           detail: {
-            containerId: chartId,
-            chart: this.chart
+            containerId: this.element.id,
+            chart: this.chart,
+            controller: this
           }
         }));
         this.resizeObserver = new ResizeObserver(() => {
@@ -161876,15 +161871,15 @@
       this.element.classList.add("chart-error");
       this.element.innerHTML = '<p class="text-subtle p-4">Chart failed to load</p>';
     }
+    // Public accessor for chart instance
+    get chartInstance() {
+      return this.chart;
+    }
     disposeChart() {
       if (this.resizeObserver) {
         this.resizeObserver.disconnect();
       }
       if (this.chart) {
-        const chartId = this.element.id;
-        if (chartId && window.RailsPulse?.charts?.[chartId]) {
-          delete window.RailsPulse.charts[chartId];
-        }
         this.chart.dispose();
         this.chart = null;
       }
@@ -161901,6 +161896,21 @@
         const config2 = this.buildChartConfig();
         this.chart.setOption(config2, true);
       }
+    }
+    // Color scheme management
+    onColorSchemeChange() {
+      this.applyColorScheme();
+    }
+    applyColorScheme() {
+      if (!this.chart)
+        return;
+      const scheme = document.documentElement.getAttribute("data-color-scheme");
+      const isDark = scheme === "dark";
+      const axisColor = isDark ? "#ffffff" : "#999999";
+      this.chart.setOption({
+        xAxis: { axisLabel: { color: axisColor } },
+        yAxis: { axisLabel: { color: axisColor } }
+      });
     }
   };
   __publicField(chart_controller_default, "values", {
@@ -161927,13 +161937,10 @@
     }
     connect() {
       this.handleChartInitialized = this.onChartInitialized.bind(this);
-      document.addEventListener("chart:rendered", this.handleChartInitialized);
-      if (window.RailsPulse?.charts?.[this.chartIdValue]) {
-        this.setup();
-      }
+      document.addEventListener("stimulus:echarts:rendered", this.handleChartInitialized);
     }
     disconnect() {
-      document.removeEventListener("chart:rendered", this.handleChartInitialized);
+      document.removeEventListener("stimulus:echarts:rendered", this.handleChartInitialized);
       if (this.hasChartTarget && this.chartTarget) {
         this.chartTarget.removeEventListener("mousedown", this.handleChartMouseDown);
         this.chartTarget.removeEventListener("mouseup", this.handleChartMouseUp);
@@ -161946,6 +161953,7 @@
     // After the chart is initialized, set up the event listeners and data tracking
     onChartInitialized(event) {
       if (event.detail.containerId === this.chartIdValue) {
+        this.chart = event.detail.chart;
         this.setup();
       }
     }
@@ -161959,7 +161967,6 @@
       } catch (e2) {
         hasTarget = false;
       }
-      this.chart = window.RailsPulse.charts[this.chartIdValue];
       if (!hasTarget || !this.chart) {
         return;
       }
@@ -162891,34 +162898,6 @@
     "line": { "lineStyle": { "width": "3" }, "symbolSize": "8" },
     "bar": { "itemStyle": { "barBorderWidth": 0 } }
   });
-  window.addEventListener("resize", function() {
-    if (window.RailsPulse && window.RailsPulse.charts) {
-      Object.keys(window.RailsPulse.charts).forEach(function(chartID) {
-        window.RailsPulse.charts[chartID].resize();
-      });
-    }
-  });
-  function applyChartAxisLabelColors() {
-    if (!window.RailsPulse || !window.RailsPulse.charts)
-      return;
-    const scheme = document.documentElement.getAttribute("data-color-scheme");
-    const isDark = scheme === "dark";
-    const axisColor = isDark ? "#ffffff" : "#999999";
-    Object.keys(window.RailsPulse.charts).forEach(function(chartID) {
-      const chart = window.RailsPulse.charts[chartID];
-      try {
-        chart.setOption({
-          xAxis: { axisLabel: { color: axisColor } },
-          yAxis: { axisLabel: { color: axisColor } }
-        });
-      } catch (e2) {
-      }
-    });
-  }
-  document.addEventListener("DOMContentLoaded", () => {
-    setTimeout(applyChartAxisLabelColors, 50);
-  });
-  document.addEventListener("rails-pulse:color-scheme-changed", applyChartAxisLabelColors);
   window.RailsPulse = {
     application,
     version: "1.0.0"

@@ -15,21 +15,16 @@ export default class extends Controller {
   originalSeriesOption = null;
 
   connect() {
-    // Listen for the custom event 'chart:initialized' to set up the chart.
-    // This event is sent from the RailsCharts library when the chart is ready.
+    // Listen for the custom event 'stimulus:echarts:rendered' to set up the chart.
+    // This event is dispatched by the chart controller when the chart is ready.
     this.handleChartInitialized = this.onChartInitialized.bind(this);
 
-    document.addEventListener('chart:rendered', this.handleChartInitialized);
-
-    // If the chart is already initialized (e.g., on back navigation), set up immediately
-    if (window.RailsPulse?.charts?.[this.chartIdValue]) {
-      this.setup();
-    }
+    document.addEventListener('stimulus:echarts:rendered', this.handleChartInitialized);
   }
 
   disconnect() {
-    // Remove the event listener from RailsCharts when the controller is disconnected
-    document.removeEventListener('chart:rendered', this.handleChartInitialized);
+    // Remove the event listener when the controller is disconnected
+    document.removeEventListener('stimulus:echarts:rendered', this.handleChartInitialized);
 
     // Remove chart event listeners if they exist
     if (this.hasChartTarget && this.chartTarget) {
@@ -47,6 +42,8 @@ export default class extends Controller {
   // After the chart is initialized, set up the event listeners and data tracking
   onChartInitialized(event) {
     if (event.detail.containerId === this.chartIdValue) {
+      // Store the chart instance from the event
+      this.chart = event.detail.chart;
       this.setup();
     }
   }
@@ -56,7 +53,7 @@ export default class extends Controller {
       return; // Prevent multiple setups
     }
 
-    // We need both the chart target in DOM and the chart object from RailsCharts
+    // We need both the chart target in DOM and the chart object from the event
     let hasTarget = false;
     try {
       hasTarget = !!this.chartTarget;
@@ -64,10 +61,8 @@ export default class extends Controller {
       hasTarget = false;
     }
 
-    // Get the chart element which the RailsPulse helper has created
-    this.chart = window.RailsPulse.charts[this.chartIdValue];
-
     // Only proceed if we have BOTH the DOM target and the chart object
+    // (chart is set by onChartInitialized from the event)
     if (!hasTarget || !this.chart) {
       return;
     }

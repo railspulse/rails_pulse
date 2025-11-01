@@ -10,9 +10,12 @@ export default class extends Controller {
 
   connect() {
     this.initializeChart()
+    this.handleColorSchemeChange = this.onColorSchemeChange.bind(this)
+    document.addEventListener('rails-pulse:color-scheme-changed', this.handleColorSchemeChange)
   }
 
   disconnect() {
+    document.removeEventListener('rails-pulse:color-scheme-changed', this.handleColorSchemeChange)
     this.disposeChart()
   }
 
@@ -40,14 +43,6 @@ export default class extends Controller {
 
   renderChart() {
     try {
-      // Initialize global registry
-      if (!window.RailsPulse) {
-        window.RailsPulse = {}
-      }
-      if (!window.RailsPulse.charts) {
-        window.RailsPulse.charts = {}
-      }
-
       // Initialize chart
       this.chart = echarts.init(this.element, this.themeValue || 'railspulse')
 
@@ -55,17 +50,15 @@ export default class extends Controller {
       const config = this.buildChartConfig()
       this.chart.setOption(config)
 
-      // Store in global registry (for existing index controller compatibility)
-      const chartId = this.element.id
-      if (chartId) {
-        window.RailsPulse.charts[chartId] = this.chart
-      }
+      // Apply current color scheme
+      this.applyColorScheme()
 
-      // Dispatch event for other controllers
-      document.dispatchEvent(new CustomEvent('chart:rendered', {
+      // Dispatch event for other controllers (event-based communication)
+      document.dispatchEvent(new CustomEvent('stimulus:echarts:rendered', {
         detail: {
-          containerId: chartId,
-          chart: this.chart
+          containerId: this.element.id,
+          chart: this.chart,
+          controller: this
         }
       }))
 
@@ -186,18 +179,17 @@ export default class extends Controller {
     this.element.innerHTML = '<p class="text-subtle p-4">Chart failed to load</p>'
   }
 
+  // Public accessor for chart instance
+  get chartInstance() {
+    return this.chart
+  }
+
   disposeChart() {
     if (this.resizeObserver) {
       this.resizeObserver.disconnect()
     }
 
     if (this.chart) {
-      // Remove from global registry
-      const chartId = this.element.id
-      if (chartId && window.RailsPulse?.charts?.[chartId]) {
-        delete window.RailsPulse.charts[chartId]
-      }
-
       this.chart.dispose()
       this.chart = null
     }
@@ -215,5 +207,23 @@ export default class extends Controller {
       const config = this.buildChartConfig()
       this.chart.setOption(config, true) // true = not merge
     }
+  }
+
+  // Color scheme management
+  onColorSchemeChange() {
+    this.applyColorScheme()
+  }
+
+  applyColorScheme() {
+    if (!this.chart) return
+
+    const scheme = document.documentElement.getAttribute('data-color-scheme')
+    const isDark = scheme === 'dark'
+    const axisColor = isDark ? '#ffffff' : '#999999'
+
+    this.chart.setOption({
+      xAxis: { axisLabel: { color: axisColor } },
+      yAxis: { axisLabel: { color: axisColor } }
+    })
   }
 }
