@@ -1,12 +1,11 @@
 PATH
   remote: ../..
   specs:
-    rails_pulse (0.2.2)
+    rails_pulse (0.2.3)
       css-zero (~> 1.1, >= 1.1.4)
       groupdate (~> 6.0)
       pagy (>= 8, < 10)
       rails (>= 7.1.0, < 9.0.0)
-      rails_charts (~> 0.0, >= 0.0.6)
       ransack (~> 4.0)
       request_store (~> 1.5)
       turbo-rails (~> 2.0.11)
@@ -205,8 +204,6 @@ GEM
     rails-html-sanitizer (1.6.2)
       loofah (~> 2.21)
       nokogiri (>= 1.15.7, != 1.16.7, != 1.16.6, != 1.16.5, != 1.16.4, != 1.16.3, != 1.16.2, != 1.16.1, != 1.16.0.rc1, != 1.16.0)
-    rails_charts (0.0.6)
-      rails
     railties (8.0.1)
       actionpack (= 8.0.1)
       activesupport (= 8.0.1)

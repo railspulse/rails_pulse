@@ -41,7 +41,7 @@ module ChartTableConcern
       disabled_tags: session_disabled_tags,
       show_non_tagged: session[:show_non_tagged] != false,
       **chart_options
-    ).to_rails_chart
+    ).to_chart_data
   end
 
   def setup_table_data(ransack_params)

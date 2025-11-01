@@ -1,6 +1,6 @@
 module RailsPulse
   module ChartHelper
-    # Renders a bar chart using eCharts directly (no rails_charts gem dependency)
+    # Renders a bar chart using eCharts
     def rails_pulse_bar_chart(data, options = {})
       chart_id = options[:id] || "rails-pulse-chart-#{SecureRandom.hex(8)}"
       height = options[:height] || "400px"

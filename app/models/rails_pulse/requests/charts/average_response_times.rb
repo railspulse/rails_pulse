@@ -13,7 +13,7 @@ module RailsPulse
           @show_non_tagged = show_non_tagged
         end
 
-        def to_rails_chart
+        def to_chart_data
           # Note: Overall request summaries (summarizable_id: 0) are not filtered by tags
           # as they aggregate all requests regardless of route tags
           summaries = @ransack_query.result(distinct: false)

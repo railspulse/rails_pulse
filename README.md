@@ -601,7 +601,7 @@ Rails Pulse is built using modern, battle-tested technologies that ensure reliab
 - **[Turbo Frames](https://turbo.hotwired.dev/handbook/frames)** - Lazy loading and partial page updates for optimal performance
 
 ### **Data Visualization**
-- **[Rails Charts](https://github.com/railsjazz/rails_charts)** - Rails wrapper around Apache ECharts
+- **[Apache ECharts](https://echarts.apache.org/)** - Powerful, interactive charting library
 - **[Lucide Icons](https://lucide.dev/)** - Beautiful, consistent iconography with pre-compiled SVG bundle
 
 ### **Asset Management**

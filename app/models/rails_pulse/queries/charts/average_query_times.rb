@@ -13,7 +13,7 @@ module RailsPulse
           @show_non_tagged = show_non_tagged
         end
 
-        def to_rails_chart
+        def to_chart_data
           # The ransack query already contains the correct filters, just add period_type and tag filters
           summaries = @ransack_query.result(distinct: false)
             .with_tag_filters(@disabled_tags, @show_non_tagged)
