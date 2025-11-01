@@ -90,21 +90,21 @@
     checkAssetLoading();
     setupAjaxTest();
     trackCSPViolations();
+
+    // Add a visible indicator for system tests
+    const indicator = document.createElement('div');
+    indicator.id = 'js-loaded-indicator';
+    indicator.textContent = 'CSP Test JS loaded successfully';
+    indicator.style.display = 'none'; // Hidden but accessible to tests
+    document.body.appendChild(indicator);
   }
-  
+
+  console.log('CSP Test JS loaded successfully - monitoring for violations');
+
   // Run tests when DOM is ready
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', initializeTests);
   } else {
     initializeTests();
   }
-  
-  console.log('CSP Test JS loaded successfully - monitoring for violations');
-  
-  // Add a visible indicator for system tests
-  const indicator = document.createElement('div');
-  indicator.id = 'js-loaded-indicator';
-  indicator.textContent = 'CSP Test JS loaded successfully';
-  indicator.style.display = 'none'; // Hidden but accessible to tests
-  document.body.appendChild(indicator);
 })();
