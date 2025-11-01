@@ -20,26 +20,26 @@ module RailsPulse
 
       # Now set/override the data-related properties
       echarts_config[:xAxis] ||= {}
-      echarts_config[:xAxis][:type] = 'category'
+      echarts_config[:xAxis][:type] = "category"
       echarts_config[:xAxis][:data] = labels
 
       echarts_config[:yAxis] ||= {}
-      echarts_config[:yAxis][:type] = 'value'
+      echarts_config[:yAxis][:type] = "value"
 
       # Handle series: if it's a hash (from bar_chart_options), convert to array format
       # and merge with data
       if echarts_config[:series].is_a?(Hash)
         series_config = echarts_config[:series]
-        echarts_config[:series] = [{
-          type: 'bar',
+        echarts_config[:series] = [ {
+          type: "bar",
           data: values
-        }.merge(series_config)]
+        }.merge(series_config) ]
       else
         # If it's already an array or nil, create the series array with data
-        echarts_config[:series] = [{
-          type: 'bar',
+        echarts_config[:series] = [ {
+          type: "bar",
           data: values
-        }]
+        } ]
       end
 
       # Render chart container + initialization script
@@ -168,7 +168,7 @@ module RailsPulse
     def render_chart_html(chart_id, height, width, theme, config)
       config_json = chart_config_to_json(config)
 
-      content_tag(:div, '',
+      content_tag(:div, "",
         id: chart_id,
         style: "height: #{height}; width: #{width};"
       ) +
@@ -256,7 +256,7 @@ module RailsPulse
         function_str = function_str.gsub('\\n', "\n")     # Unescape newlines
         function_str = function_str.gsub('\\t', "\t")     # Unescape tabs
         function_str = function_str.gsub('\\r', "\r")     # Unescape carriage returns
-        function_str = function_str.gsub('\\\\', '\\')    # Unescape backslashes last
+        function_str = function_str.gsub("\\\\", "\\")    # Unescape backslashes last
         function_str
       end
     end
