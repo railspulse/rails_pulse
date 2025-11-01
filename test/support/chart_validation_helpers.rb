@@ -1,5 +1,25 @@
 module ChartValidationHelpers
   # Chart validation helper methods for system tests
+
+  # Verify that charts are rendered using Stimulus (no inline scripts)
+  def assert_chart_rendered(chart_id)
+    # Wait for Stimulus to initialize chart
+    assert_selector "[id='#{chart_id}'][data-chart-rendered='true']", wait: 10
+
+    # Verify chart container has Stimulus attributes
+    assert_selector "[data-controller='rails-pulse--chart']"
+    assert_selector "[data-rails-pulse--chart-type-value]"
+  end
+
+  # Verify no inline echarts initialization scripts
+  def assert_no_inline_scripts
+    # Verify no inline script tags with echarts initialization
+    page.all("script:not([src])").each do |script|
+      refute_match(/echarts\.init/, script.text, "Found inline echarts initialization")
+      refute_match(/window\.RailsPulse\.charts/, script.text, "Found inline chart registry manipulation")
+    end
+  end
+
   def validate_chart_data(chart_selector, expected_data: [], filter_applied: nil)
     # Wait for chart to be fully rendered
     assert_selector "#{chart_selector}[data-chart-rendered='true']", wait: 10

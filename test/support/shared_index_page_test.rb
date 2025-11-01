@@ -273,12 +273,16 @@ class SharedIndexPageTest < ApplicationSystemTestCase
       assert_operator common_items.length, :>, 0, "Should have some common items to verify sort persistence"
     end
 
-    # Verify chart has data
+    # Verify chart has data by accessing chart instance via echarts
     chart_columns = page.execute_script("
-      if (window.RailsPulse && window.RailsPulse.charts) {
-        var charts = Object.keys(window.RailsPulse.charts);
-        if (charts.length > 0) {
-          return window.RailsPulse.charts[charts[0]].getOption().series[0].data.length;
+      var chartElement = document.querySelector('[data-chart-rendered=\"true\"]');
+      if (chartElement && window.echarts) {
+        var chartInstance = echarts.getInstanceByDom(chartElement);
+        if (chartInstance) {
+          var option = chartInstance.getOption();
+          if (option.series && option.series[0] && option.series[0].data) {
+            return option.series[0].data.length;
+          }
         }
       }
       return 0;
@@ -343,10 +347,10 @@ class SharedIndexPageTest < ApplicationSystemTestCase
 
     # Use JavaScript to simulate column selection
     page.execute_script("
-      if (window.Stimulus && window.RailsPulse && window.RailsPulse.charts) {
+      if (window.Stimulus) {
         var controller = window.Stimulus.getControllerForElementAndIdentifier(arguments[0], 'rails-pulse--index');
-        if (controller && window.RailsPulse.charts[controller.chartIdValue]) {
-          var chart = window.RailsPulse.charts[controller.chartIdValue];
+        if (controller && controller.chart) {
+          var chart = controller.chart;
           var option = chart.getOption();
           var seriesData = option.series[0].data;
           var xAxisData = option.xAxis[0].data;
