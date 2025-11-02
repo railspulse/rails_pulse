@@ -47,4 +47,5 @@ end
 
 group :development, :test do
   gem "debug"
+  gem "chartkick" # For testing compatibility with host apps using Chartkick
 end

@@ -698,3 +698,131 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
   puts "Final summary count: #{RailsPulse::Summary.count}"
   puts "Queries with summaries: #{RailsPulse::Query.joins(:summaries).distinct.count}"
 end
+
+# Generate large dataset for testing cleanup FK violations
+if ENV["GENERATE_LARGE_DATA"] == "true"
+  puts "\n" + ("=" * 80)
+  puts "GENERATING LARGE DATASET FOR CLEANUP TESTING"
+  puts "=" * 80
+  puts "\nThis will create a scenario that reproduces the FK violation issue:"
+  puts "- 12,000+ requests (exceeding the 10,000 limit)"
+  puts "- Oldest requests will have operations that shouldn't be deleted"
+  puts "- This tests count-based cleanup with FK constraints\n\n"
+
+  # Clear existing Rails Pulse data
+  puts "Clearing existing Rails Pulse data..."
+  RailsPulse::Operation.destroy_all
+  RailsPulse::Query.destroy_all
+  RailsPulse::Request.destroy_all
+  RailsPulse::Route.destroy_all
+  RailsPulse::Summary.destroy_all
+
+  # Create routes
+  puts "Creating routes..."
+  routes_data = [
+    { method: "GET", path: "/" },
+    { method: "GET", path: "/users" },
+    { method: "GET", path: "/posts" },
+    { method: "POST", path: "/posts" },
+    { method: "GET", path: "/api/data" }
+  ]
+
+  created_routes = routes_data.map { |route_data| RailsPulse::Route.create!(route_data) }
+
+  # Create a few queries
+  puts "Creating queries..."
+  queries_data = [
+    "SELECT * FROM users WHERE id = ?",
+    "SELECT * FROM posts WHERE user_id = ?",
+    "INSERT INTO posts (title, content) VALUES (?, ?)",
+    "UPDATE posts SET title = ? WHERE id = ?",
+    "SELECT COUNT(*) FROM comments WHERE post_id = ?"
+  ]
+
+  created_queries = queries_data.map { |sql| RailsPulse::Query.create!(normalized_sql: sql) }
+
+  # Generate 12,500 requests to exceed the 10,000 limit
+  request_count = 12_500
+  puts "Generating #{request_count} requests over 5 weeks..."
+
+  requests_created = []
+  request_count.times do |i|
+    route = created_routes.sample
+    # Distribute evenly over 5 weeks (35 days)
+    occurred_at = 5.weeks.ago + (i.to_f / request_count * 35.days)
+
+    request = RailsPulse::Request.create!(
+      route: route,
+      duration: rand(50..500),
+      status: [ 200, 201, 200, 200 ].sample,
+      is_error: false,
+      request_uuid: SecureRandom.uuid,
+      controller_action: "#{route.path.split('/')[1] || 'home'}#index",
+      occurred_at: occurred_at
+    )
+
+    requests_created << request
+    print "." if i % 500 == 0
+  end
+
+  puts "\n\nCreated #{requests_created.count} requests"
+  puts "Oldest request: #{requests_created.first.occurred_at}"
+  puts "Newest request: #{requests_created.last.occurred_at}"
+
+  # Now create operations ONLY for the oldest 3,000 requests
+  # BUT set their occurred_at to be RECENT (within retention period)
+  # This creates the problematic scenario:
+  # - Requests are old and exceed the count limit
+  # - Time-based cleanup won't delete the recent operations
+  # - Count-based cleanup will try to delete old requests
+  # - But those requests still have recent operations attached
+  # - FK violation!
+  puts "\nCreating RECENT operations for the oldest 3,000 requests..."
+  puts "Operations will be timestamped within the retention period."
+  puts "This creates the FK violation scenario when cleanup runs.\n"
+
+  operations_to_create = requests_created.first(3_000)
+  operation_count = 0
+
+  operations_to_create.each_with_index do |request, i|
+    # Create 2-4 operations per request
+    ops_per_request = rand(2..4)
+
+    ops_per_request.times do
+      query = created_queries.sample
+      # KEY: Set operation occurred_at to be RECENT (within last 7 days)
+      # This ensures time-based cleanup won't delete these operations
+      recent_occurred_at = rand(7.days.ago..Time.current)
+
+      RailsPulse::Operation.create!(
+        request: request,
+        query: query,
+        operation_type: "sql",
+        label: query.normalized_sql,
+        duration: rand(10..100),
+        codebase_location: "app/models/post.rb:#{rand(10..50)}",
+        start_time: rand(0..20),
+        occurred_at: recent_occurred_at  # RECENT timestamp!
+      )
+      operation_count += 1
+    end
+
+    print "." if i % 300 == 0
+  end
+
+  puts "\n\nCreated #{operation_count} operations"
+  puts "Operations are associated with the oldest #{operations_to_create.count} requests"
+
+  puts "\n" + ("=" * 80)
+  puts "LARGE DATASET GENERATION COMPLETE"
+  puts "=" * 80
+  puts "\nFinal Statistics:"
+  puts "  Routes: #{RailsPulse::Route.count}"
+  puts "  Queries: #{RailsPulse::Query.count}"
+  puts "  Requests: #{RailsPulse::Request.count}"
+  puts "  Operations: #{RailsPulse::Operation.count}"
+  puts "\nRequests exceeding limit of 10,000: #{RailsPulse::Request.count - 10_000}"
+  puts "Oldest requests with operations: #{RailsPulse::Request.joins(:operations).where('rails_pulse_requests.occurred_at < ?', 3.weeks.ago).count}"
+  puts "\nTo test the FK violation, run: rake rails_pulse:cleanup"
+  puts "Expected: FK violation when trying to delete old requests that still have operations"
+end
