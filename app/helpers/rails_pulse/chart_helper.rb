@@ -14,7 +14,7 @@ module RailsPulse
         controller: "rails-pulse--chart",
         rails_pulse__chart_type_value: type,
         rails_pulse__chart_data_value: data.to_json,
-        rails_pulse__chart_options_value: serialize_chart_options(chart_options),
+        rails_pulse__chart_options_value: chart_options.to_json,
         rails_pulse__chart_theme_value: theme
       }
 
@@ -121,14 +121,6 @@ module RailsPulse
     end
 
     private
-
-    # Serialize chart options to JSON for data attributes
-    # Preserves JavaScript function strings for Stimulus controller to parse
-    def serialize_chart_options(options)
-      # Just return plain JSON - Rails will handle HTML escaping in data attributes
-      # The controller will parse function strings
-      options.to_json
-    end
 
     # Wraps JavaScript function strings for later processing
     def js_function(func_string)
