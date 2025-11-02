@@ -1,7 +1,5 @@
 module RailsPulse
   class SummaryJob < ApplicationJob
-    queue_as :low_priority
-
     def perform(target_hour = nil)
       target_hour ||= 1.hour.ago.beginning_of_hour
 

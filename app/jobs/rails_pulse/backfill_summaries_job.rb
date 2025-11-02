@@ -1,7 +1,5 @@
 module RailsPulse
   class BackfillSummariesJob < ApplicationJob
-    queue_as :low_priority
-
     def perform(start_date, end_date, period_types = [ "hour", "day" ])
       start_date = start_date.to_datetime
       end_date = end_date.to_datetime

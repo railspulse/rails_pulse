@@ -1,7 +1,5 @@
 module RailsPulse
   class CleanupJob < ApplicationJob
-    queue_as :default
-
     def perform
       return unless RailsPulse.configuration.archiving_enabled
 
