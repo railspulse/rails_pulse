@@ -25,7 +25,7 @@ gem "groupdate", ">= 6.5.1"
 gem "importmap-rails"
 gem "ransack"
 gem "turbo-rails"
-gem "pagy"
+gem "pagy", ">= 8", "< 44"  # Support Pagy 8.x through 43.x (matches gemspec)
 gem "request_store"
 
 # Testing dependencies

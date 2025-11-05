@@ -4,7 +4,7 @@ PATH
     rails_pulse (0.2.3)
       css-zero (~> 1.1, >= 1.1.4)
       groupdate (~> 6.0)
-      pagy (>= 8, < 10)
+      pagy (>= 8, < 44)
       rails (>= 7.1.0, < 9.0.0)
       ransack (~> 4.0)
       request_store (~> 1.5)
@@ -377,7 +377,7 @@ DEPENDENCIES
   minitest-reporters
   mocha
   mysql2
-  pagy
+  pagy (~> 8.6)
   pg
   pry-byebug
   puma

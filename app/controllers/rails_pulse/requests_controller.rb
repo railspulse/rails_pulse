@@ -128,7 +128,8 @@ module RailsPulse
       table_results = build_table_results
       handle_pagination
 
-      @pagy, @table_data = pagy(table_results, limit: session_pagination_limit)
+      # Use 'items:' for Pagy 8.x compatibility ('limit:' is for Pagy 43+)
+      @pagy, @table_data = pagy(table_results, items: session_pagination_limit)
     end
 
     def handle_pagination

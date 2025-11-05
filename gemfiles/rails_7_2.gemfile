@@ -13,7 +13,7 @@ gem "groupdate", ">= 6.5.1"
 gem "importmap-rails"
 gem "ransack"
 gem "turbo-rails"
-gem "pagy"
+gem "pagy", "~> 8.6"
 gem "request_store"
 gem "rails", "~> 7.2.0"
 

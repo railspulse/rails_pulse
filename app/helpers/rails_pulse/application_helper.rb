@@ -1,7 +1,5 @@
 module RailsPulse
   module ApplicationHelper
-    include Pagy::Frontend
-
     include BreadcrumbsHelper
     include ChartHelper
     include FormattingHelper
@@ -9,6 +7,10 @@ module RailsPulse
     include TableHelper
     include FormHelper
     include TagsHelper
+
+    # Include Pagy frontend helpers for Pagy 8.x compatibility
+    # Pagy 43+ doesn't need this, but it doesn't hurt to include it
+    include Pagy::Frontend if defined?(Pagy::Frontend)
 
     # Replacement for lucide_icon helper that works with pre-compiled assets
     # Outputs a custom element that will be hydrated by Stimulus
@@ -35,6 +37,49 @@ module RailsPulse
 
     # Backward compatibility alias - can be removed after migration
     alias_method :lucide_icon, :rails_pulse_icon
+
+    # Get items per page from Pagy instance (compatible with Pagy 8.x and 43+)
+    def pagy_items(pagy)
+      # Pagy 43+ uses options[:items] or has a limit method
+      if pagy.respond_to?(:options) && pagy.options.is_a?(Hash)
+        pagy.options[:items]
+      # Pagy 8.x uses vars[:items]
+      elsif pagy.respond_to?(:vars)
+        pagy.vars[:items]
+      # Fallback
+      else
+        pagy.limit || 10
+      end
+    end
+
+    # Get page URL from Pagy instance (compatible with Pagy 8.x and 43+)
+    def pagy_page_url(pagy, page_number)
+      # Pagy 43+ has page_url method
+      if pagy.respond_to?(:page_url)
+        pagy.page_url(page_number)
+      # Pagy 8.x requires using pagy_url_for helper
+      else
+        pagy_url_for(pagy, page_number)
+      end
+    end
+
+    # Get previous page number (compatible with Pagy 8.x and 43+)
+    def pagy_previous(pagy)
+      # Pagy 43+ uses 'previous'
+      if pagy.respond_to?(:previous)
+        pagy.previous
+      # Pagy 8.x uses 'prev'
+      elsif pagy.respond_to?(:prev)
+        pagy.prev
+      else
+        nil
+      end
+    end
+
+    # Get next page number (compatible with Pagy 8.x and 43+)
+    def pagy_next(pagy)
+      pagy.respond_to?(:next) ? pagy.next : nil
+    end
 
     # Make Rails Pulse routes available as rails_pulse in views
     def rails_pulse
