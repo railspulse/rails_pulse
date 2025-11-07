@@ -22,6 +22,9 @@
   - [Installation](#installation)
   - [Quick Setup](#quick-setup)
   - [Basic Configuration](#basic-configuration)
+- [Upgrading](#upgrading)
+  - [Upgrading from Schema-based Installations](#upgrading-from-schema-based-installations)
+  - [Migration-based Upgrades](#migration-based-upgrades)
 - [Authentication](#authentication)
   - [Authentication Setup](#authentication-setup)
   - [Authentication Examples](#authentication-examples)
@@ -204,6 +207,93 @@ RailsPulse.configure do |config|
   #   database: { writing: :rails_pulse, reading: :rails_pulse }
   # }
 end
+```
+
+## Upgrading
+
+Rails Pulse uses a **migration-based upgrade system** starting from version 0.2.5+ to ensure smooth schema updates without manual intervention.
+
+### Migration-based Upgrades (Recommended)
+
+**For new installations (v0.2.5+)**, the installation process uses standard Rails migrations by default:
+
+```bash
+# Update your Gemfile
+bundle update rails_pulse
+
+# Generate and run any new migrations
+rails generate rails_pulse:upgrade
+rails db:migrate
+
+# Restart your server
+```
+
+The `rails_pulse:upgrade` generator intelligently detects missing schema changes and generates only the necessary migrations.
+
+### Upgrading from Schema-based Installations
+
+**If you installed Rails Pulse before v0.2.5** (using the schema file approach), you may encounter issues when upgrading because the schema file approach couldn't add new columns to existing tables.
+
+#### Common Upgrade Issue
+
+When upgrading from v0.2.3 or earlier to v0.2.4+, you may see this error:
+
+```
+NameError (undefined local variable or method 'tags' for an instance of RailsPulse::Request)
+```
+
+This occurs because v0.2.4 added the tagging feature but couldn't automatically add the `tags` columns to existing installations.
+
+#### Solution
+
+Run the upgrade generator to add missing columns:
+
+```bash
+# This will detect and generate migrations for any missing columns/tables
+rails generate rails_pulse:upgrade
+rails db:migrate
+
+# Restart your server
+```
+
+The upgrade generator checks your current schema and creates migrations only for what's missing:
+- **Tags columns** (added in v0.2.4) - for routes, queries, and requests tables
+- **Query analysis columns** (added in v0.2.x) - for enhanced query performance insights
+- **Summaries table** (added in v0.2.x) - for aggregated performance metrics
+
+#### Manual Upgrade (Alternative)
+
+If you prefer to see exactly what's being added, you can manually create a migration:
+
+```ruby
+# db/migrate/TIMESTAMP_add_missing_rails_pulse_columns.rb
+class AddMissingRailsPulseColumns < ActiveRecord::Migration[7.1]
+  def change
+    # Add tags columns if missing
+    add_column :rails_pulse_routes, :tags, :text unless column_exists?(:rails_pulse_routes, :tags)
+    add_column :rails_pulse_queries, :tags, :text unless column_exists?(:rails_pulse_queries, :tags)
+    add_column :rails_pulse_requests, :tags, :text unless column_exists?(:rails_pulse_requests, :tags)
+  end
+end
+```
+
+Then run: `rails db:migrate`
+
+### Best Practices
+
+1. **Always run the upgrade generator** after updating Rails Pulse
+2. **Review generated migrations** before running `db:migrate` in production
+3. **Test in development/staging** before deploying to production
+4. **Check the CHANGELOG** for breaking changes or new features
+
+### Future Upgrades
+
+Starting from v0.2.5+, all schema changes will include proper migrations, making upgrades seamless:
+
+```bash
+bundle update rails_pulse
+rails generate rails_pulse:upgrade  # Only if new schema changes exist
+rails db:migrate
 ```
 
 ## Authentication
