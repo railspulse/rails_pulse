@@ -10,6 +10,7 @@ module RailsPulse
     def configure
       self.configuration ||= Configuration.new
       yield(configuration)
+      configuration.validate_configuration!
     end
 
     def clear_metric_cache!

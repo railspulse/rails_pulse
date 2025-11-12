@@ -43,8 +43,6 @@ module RailsPulse
       @authentication_method = nil
       @authentication_redirect_path = "/"
       @tags = [ "ignored", "critical", "experimental" ]
-
-      validate_configuration!
     end
 
     # Get all routes to ignore, including asset patterns if track_assets is false
