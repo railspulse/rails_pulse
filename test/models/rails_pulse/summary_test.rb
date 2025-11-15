@@ -9,6 +9,7 @@ class RailsPulse::SummaryTest < ActiveSupport::TestCase
     assert belong_to(:summarizable).optional.matches?(RailsPulse::Summary.new)
     assert belong_to(:route).optional.matches?(RailsPulse::Summary.new)
     assert belong_to(:query).optional.matches?(RailsPulse::Summary.new)
+    assert belong_to(:job).optional.matches?(RailsPulse::Summary.new)
   end
 
   # Test validations
@@ -47,7 +48,7 @@ class RailsPulse::SummaryTest < ActiveSupport::TestCase
   end
 
   test "should include ransackable associations" do
-    expected_associations = %w[route query]
+    expected_associations = %w[job query route]
 
     assert_equal expected_associations.sort, RailsPulse::Summary.ransackable_associations.sort
   end

@@ -11,6 +11,7 @@ class RailsPulse::ApplicationHelperTest < ActionView::TestCase
     assert_includes html, "rails-pulse--icon-name-value=\"alert\""
     assert_includes html, "rails-pulse--icon-width-value=\"24\""
     assert_includes html, "rails-pulse--icon-height-value=\"24\""
+    assert_includes html, "style=\"display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;flex-shrink:0\""
   end
 
   test "rails_pulse_icon applies custom width, height and class" do
@@ -19,6 +20,13 @@ class RailsPulse::ApplicationHelperTest < ActionView::TestCase
     assert_includes html, "rails-pulse--icon-width-value=\"32\""
     assert_includes html, "rails-pulse--icon-height-value=\"32\""
     assert_includes html, "class=\"my-class\""
+    assert_includes html, "width:32px;height:32px"
+  end
+
+  test "rails_pulse_icon merges custom style with default dimensions" do
+    html = rails_pulse_icon("alert", style: "margin-left:4px")
+
+    assert_includes html, "flex-shrink:0;margin-left:4px"
   end
 
   test "rails_pulse_icon passes through extra attributes" do

@@ -1,0 +1,34 @@
+<%= render 'rails_pulse/components/page_header', show_active_filters: true, show_global_filters: true %>
+
+<% unless turbo_frame_request? %>
+  <div class="row">
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @total_runs_metric_card } %>
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @failure_rate_metric_card } %>
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_duration_metric_card } %>
+  </div>
+<% end %>
+
+<%= render 'rails_pulse/components/panel', { title: 'Job Classes' } do %>
+  <%= search_form_for @ransack_query, url: jobs_path, class: "flex items-center justify-between gap mb-4" do |form| %>
+    <div class="flex items-center grow gap">
+      <%= form.search_field :name_cont, placeholder: "Filter by job name", autocomplete: "off", class: "input" %>
+      <%= form.select :queue_name_eq,
+        options_for_select([["All queues", ""]] + @available_queues.map { |q| [q || "default", q] }, params.dig(:q, :queue_name_eq)),
+        {},
+        { class: "input" }
+      %>
+      <%= link_to "Reset", jobs_path, class: "btn btn--borderless show@md" if params.has_key?(:q) %>
+      <%= form.submit "Search", class: "btn show@sm" %>
+    </div>
+  <% end %>
+
+  <% if @jobs.any? %>
+    <%= turbo_frame_tag :index_table do %>
+      <%= render 'rails_pulse/jobs/table' %>
+    <% end %>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No jobs found',
+        description: 'No background jobs have been executed yet.' %>
+  <% end %>
+<% end %>

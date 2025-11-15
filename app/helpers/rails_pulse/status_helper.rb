@@ -281,5 +281,21 @@ module RailsPulse
         [ "Critical (≥ #{thresholds[:critical]}ms)", :critical ]
       ]
     end
+
+    def duration_threshold_filter_options(type = :route)
+      thresholds = RailsPulse.configuration.public_send("#{type}_thresholds")
+
+      all_label =
+        case type
+        when :job then "All Job Runs"
+        else "All #{type.to_s.humanize.pluralize}"
+        end
+
+      threshold_options = thresholds.map do |name, value|
+        [ "#{name.to_s.humanize} (≥ #{value}ms)", value ]
+      end.sort_by { |_, value| value }
+
+      [ [ all_label, nil ] ] + threshold_options
+    end
   end
 end

@@ -6,12 +6,13 @@
 <% has_any_filters = has_date_filters || has_performance_filter || has_tag_filters %>
 
 <% if has_any_filters %>
-  <div class="flex items-center gap text-sm">
-    Filtered:
+  <div class="flex items-center gap text-sm card pi-3 pb-2 shadow-xs">
+    Global Filters:
     <% if has_date_filters %>
       <% start_time = Time.parse(global_filters['start_time']) %>
       <% end_time = Time.parse(global_filters['end_time']) %>
-      <span class="badge badge--secondary"><%= start_time.strftime("%b %d, %Y %-I:%M %p") %> - <%= end_time.strftime("%b %d, %Y %-I:%M %p") %></span>
+      <% date_range = "#{start_time.strftime("%b %d, %Y %-I:%M %p")} - #{end_time.strftime("%b %d, %Y %-I:%M %p")}" %>
+      <%= render_tag_badge(date_range, variant: :secondary) %>
     <% end %>
 
     <% if has_performance_filter %>
@@ -21,15 +22,15 @@
         when 'critical' then 'Critical'
         else global_filters['performance_threshold'].titleize
         end %>
-      <span class="badge badge--secondary"><%= threshold_label %></span>
+      <%= render_tag_badge(threshold_label, variant: :secondary) %>
     <% end %>
 
     <% if has_tag_filters %>
       <% disabled_tags.each do |tag| %>
-        <span class="badge badge--secondary"><%= tag.humanize %></span>
+        <%= render_tag_badge(tag.humanize, variant: :secondary) %>
       <% end %>
       <% if session[:show_non_tagged] == false %>
-        <span class="badge badge--secondary">Non tagged hidden</span>
+        <%= render_tag_badge("Non tagged hidden", variant: :secondary) %>
       <% end %>
     <% end %>
   </div>

@@ -2,6 +2,8 @@ require "rails_pulse/version"
 require "rails_pulse/middleware/request_collector"
 require "rails_pulse/middleware/asset_server"
 require "rails_pulse/subscribers/operation_subscriber"
+require "rails_pulse/job_run_collector"
+require "rails_pulse/active_job_extensions"
 require "request_store"
 require "rack/static"
 require "ransack"
@@ -47,6 +49,30 @@ module RailsPulse
 
     initializer "rails_pulse.ransack", after: "ransack.initialize" do
       # Ensure Ransack is loaded before our models
+    end
+
+    initializer "rails_pulse.active_job" do
+      ActiveSupport.on_load(:active_job) do
+        include RailsPulse::ActiveJobExtensions
+      end
+    end
+
+    initializer "rails_pulse.configure_sidekiq", after: "rails_pulse.active_job" do
+      if defined?(Sidekiq) && RailsPulse.configuration.job_adapters.dig(:sidekiq, :enabled)
+        require "rails_pulse/adapters/sidekiq_middleware"
+        Sidekiq.configure_server do |config|
+          config.server_middleware do |chain|
+            chain.add RailsPulse::Adapters::SidekiqMiddleware
+          end
+        end
+      end
+    end
+
+    initializer "rails_pulse.configure_delayed_job", after: "rails_pulse.active_job" do
+      if defined?(Delayed::Job) && RailsPulse.configuration.job_adapters.dig(:delayed_job, :enabled)
+        require "rails_pulse/adapters/delayed_job_plugin"
+        Delayed::Worker.plugins << RailsPulse::Adapters::DelayedJobPlugin
+      end
     end
 
     initializer "rails_pulse.database_configuration", before: "active_record.initialize_timezone" do

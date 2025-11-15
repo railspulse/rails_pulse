@@ -121,7 +121,7 @@ module GlobalFiltersHelpers
   end
 
   def assert_custom_picker_visible
-    assert_selector '[data-rails-pulse--custom-range-target="pickerWrapper"]', visible: true
+    assert_selector '[data-rails-pulse--custom-range-target="pickerWrapper"]', visible: true, wait: 3
     assert_selector '[data-rails-pulse--custom-range-target="selectWrapper"]', visible: false
   end
 

@@ -49,9 +49,23 @@ module RailsPulse
 
         is_last = index == path_segments.length - 1
 
+        # For nested resources, if this is a collection name followed by an ID,
+        # link to the parent resource's show page instead of the nested index
+        breadcrumb_path = if !is_last &&
+                            segment !~ /^\d+$/ &&
+                            index > 0 &&
+                            path_segments[index - 1] =~ /^\d+$/ &&
+                            path_segments[index + 1] =~ /^\d+$/
+          # This is a nested collection (e.g., /jobs/5/runs/291)
+          # Link to parent show page (e.g., /jobs/5)
+          path_segments[0..index-1].inject(main_app.rails_pulse_path.chomp("/")) { |path, seg| path + "/#{seg}" }
+        else
+          current_path
+        end
+
         crumbs << {
           title: title,
-          path: current_path,
+          path: breadcrumb_path,
           current: is_last
         }
       end

@@ -1,0 +1,43 @@
+<% columns = [
+  { field: :name, label: 'Job Class', class: 'w-auto' },
+  { field: :queue_name, label: 'Queue', class: 'w-32' },
+  { field: :runs_count, label: 'Total Runs', class: 'w-28' },
+  { field: :failures_count, label: 'Failures', class: 'w-24' },
+  { field: :retries_count, label: 'Retries', class: 'w-24' },
+  { field: :avg_duration, label: 'Avg Duration', class: 'w-32' },
+  { field: nil, label: 'Tags', class: 'w-32', sortable: false }
+] %>
+
+<table class="table mbs-4" data-controller="rails-pulse--table-sort">
+  <%= render "rails_pulse/components/table_head", columns: columns %>
+
+  <tbody>
+    <% @table_data.each do |job| %>
+      <tr>
+        <td>
+          <%= link_to job.name, job_path(job), data: { turbo_frame: '_top' } %>
+        </td>
+        <td>
+          <%= job.queue_name || 'default' %>
+        </td>
+        <td>
+          <%= number_with_delimiter(job.runs_count) %>
+        </td>
+        <td>
+          <%= number_with_delimiter(job.failures_count) %>
+        </td>
+        <td>
+          <%= number_with_delimiter(job.retries_count) %>
+        </td>
+        <td>
+          <%= number_to_human(job.avg_duration || 0, units: { unit: "ms", thousand: "s" }, precision: 2) %>
+        </td>
+        <td>
+          <%= display_tag_badges(job) %>
+        </td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= render "rails_pulse/components/table_pagination" %>

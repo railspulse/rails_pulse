@@ -21,16 +21,18 @@
   <dd>Partial template - ensure data is pre-loaded in controller</dd>
 <% end %>
 
-<% view_start = operation.occurred_at %>
-<% view_end = operation.occurred_at + operation.duration %>
-<% concurrent_db_ops = operation.request.operations
-     .where(operation_type: ["sql"])
-     .where("occurred_at >= ? AND occurred_at <= ?", view_start, view_end)
-     .count %>
+<% if parent %>
+  <% view_start = operation.occurred_at %>
+  <% view_end = operation.occurred_at + operation.duration %>
+  <% concurrent_db_ops = parent.operations
+       .where(operation_type: ["sql"])
+       .where("occurred_at >= ? AND occurred_at <= ?", view_start, view_end)
+       .count %>
 
-<% if concurrent_db_ops > 0 %>
-  <dt>Queries During Rendering</dt>
-  <dd><%= concurrent_db_ops %> database <%= 'query'.pluralize(concurrent_db_ops) %></dd>
+  <% if concurrent_db_ops > 0 %>
+    <dt>Queries During Rendering</dt>
+    <dd><%= concurrent_db_ops %> database <%= 'query'.pluralize(concurrent_db_ops) %></dd>
+  <% end %>
 <% end %>
 
 <% if operation.duration > 50 %>

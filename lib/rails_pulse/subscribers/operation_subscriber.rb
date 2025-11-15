@@ -59,7 +59,8 @@ module RailsPulse
           return if RequestStore.store[:skip_recording_rails_pulse_activity]
 
           request_id = RequestStore.store[:rails_pulse_request_id]
-          return unless request_id
+          job_run_id = RequestStore.store[:rails_pulse_job_run_id]
+          return unless request_id || job_run_id
 
           # Skip RailsPulse-related operations to prevent recursion
           if operation_type == "sql"
@@ -91,6 +92,7 @@ module RailsPulse
 
           operation_data = {
             request_id: request_id,
+            job_run_id: job_run_id,
             operation_type: operation_type,
             label: label,
             duration: (finish - start) * 1000,
@@ -174,6 +176,7 @@ module RailsPulse
             codebase_location = find_app_frame || caller_locations(2, 1).first&.path
             operation_data = {
               request_id: RequestStore.store[:rails_pulse_request_id],
+              job_run_id: RequestStore.store[:rails_pulse_job_run_id],
               operation_type: "http",
               label: label,
               duration: (finish - start) * 1000,
@@ -182,7 +185,7 @@ module RailsPulse
               occurred_at: Time.zone.at(start)
             }
 
-            if operation_data[:request_id]
+            if operation_data[:request_id] || operation_data[:job_run_id]
               RequestStore.store[:rails_pulse_operations] ||= []
               RequestStore.store[:rails_pulse_operations] << operation_data
             end
@@ -199,6 +202,7 @@ module RailsPulse
             codebase_location = find_app_frame || caller_locations(2, 1).first&.path
             operation_data = {
               request_id: RequestStore.store[:rails_pulse_request_id],
+              job_run_id: RequestStore.store[:rails_pulse_job_run_id],
               operation_type: "job",
               label: label,
               duration: (finish - start) * 1000,
@@ -207,7 +211,7 @@ module RailsPulse
               occurred_at: Time.zone.at(start)
             }
 
-            if operation_data[:request_id]
+            if operation_data[:request_id] || operation_data[:job_run_id]
               RequestStore.store[:rails_pulse_operations] ||= []
               RequestStore.store[:rails_pulse_operations] << operation_data
             end
@@ -233,6 +237,7 @@ module RailsPulse
             codebase_location = find_app_frame || caller_locations(2, 1).first&.path
             operation_data = {
               request_id: RequestStore.store[:rails_pulse_request_id],
+              job_run_id: RequestStore.store[:rails_pulse_job_run_id],
               operation_type: "mailer",
               label: label,
               duration: (finish - start) * 1000,
@@ -241,7 +246,7 @@ module RailsPulse
               occurred_at: Time.zone.at(start)
             }
 
-            if operation_data[:request_id]
+            if operation_data[:request_id] || operation_data[:job_run_id]
               RequestStore.store[:rails_pulse_operations] ||= []
               RequestStore.store[:rails_pulse_operations] << operation_data
             end
@@ -258,6 +263,7 @@ module RailsPulse
             codebase_location = find_app_frame || caller_locations(2, 1).first&.path
             operation_data = {
               request_id: RequestStore.store[:rails_pulse_request_id],
+              job_run_id: RequestStore.store[:rails_pulse_job_run_id],
               operation_type: "storage",
               label: label,
               duration: (finish - start) * 1000,
@@ -266,7 +272,7 @@ module RailsPulse
               occurred_at: Time.zone.at(start)
             }
 
-            if operation_data[:request_id]
+            if operation_data[:request_id] || operation_data[:job_run_id]
               RequestStore.store[:rails_pulse_operations] ||= []
               RequestStore.store[:rails_pulse_operations] << operation_data
             end

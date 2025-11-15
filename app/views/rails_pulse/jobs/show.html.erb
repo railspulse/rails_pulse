@@ -1,0 +1,49 @@
+<%= render 'rails_pulse/components/page_header', taggable: @job, show_active_filters: true %>
+
+<% unless turbo_frame_request? %>
+  <div class="row">
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @total_runs_metric_card } %>
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @failure_rate_metric_card } %>
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_duration_metric_card } %>
+  </div>
+<% end %>
+
+<%= render 'rails_pulse/components/panel', { title: 'Job Runs' } do %>
+  <%= search_form_for @ransack_query, url: job_path(@job), class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
+    <div class="flex items-center grow gap">
+      <%= time_range_selector(form,
+        time_range_options: RailsPulse::JobsController::TIME_RANGE_OPTIONS,
+        selected_time_range: @selected_time_range,
+        mode: :recent_custom
+      ) %>
+
+      <%= form.select :status_eq,
+        options_for_select(
+          [["All Statuses", ""]] + RailsPulse::JobRun::STATUSES.map { |s| [s.humanize, s] },
+          params.dig(:q, :status_eq)
+        ),
+        {},
+        { class: "input" }
+      %>
+
+      <%= form.select :duration_gteq,
+        duration_threshold_filter_options(:job),
+        { selected: params.dig(:q, :duration_gteq) },
+        { class: "input" }
+      %>
+
+      <%= link_to "Reset", job_path(@job), class: "btn btn--borderless show@md" if params.has_key?(:q) %>
+      <%= form.submit "Search", class: "btn show@sm" %>
+    </div>
+  <% end %>
+
+  <% if @recent_runs.any? %>
+    <%= turbo_frame_tag :index_table do %>
+      <%= render 'rails_pulse/jobs/job_runs_table' %>
+    <% end %>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No runs found',
+        description: 'This job has not been executed yet or no runs match the selected filters.' %>
+  <% end %>
+<% end %>

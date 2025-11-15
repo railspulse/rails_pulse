@@ -6,35 +6,37 @@
   <dd><%= html_escape(action) %></dd>
 <% end %>
 
-<% total_db_time = operation.request.operations
-     .where(operation_type: ["sql"])
-     .sum(:duration) %>
-<% total_view_time = operation.request.operations
-     .where(operation_type: ["template", "partial", "layout", "collection"])
-     .sum(:duration) %>
-<% pure_controller_time = operation.duration - total_db_time - total_view_time %>
+<% if parent %>
+  <% total_db_time = parent.operations
+       .where(operation_type: ["sql"])
+       .sum(:duration) %>
+  <% total_view_time = parent.operations
+       .where(operation_type: ["template", "partial", "layout", "collection"])
+       .sum(:duration) %>
+  <% pure_controller_time = operation.duration - total_db_time - total_view_time %>
 
-<% if pure_controller_time > 0 %>
-  <dt>Pure Logic Time</dt>
-  <dd>
-    <%= pure_controller_time.round(1) %>ms
-    <% if pure_controller_time > 100 %>
-      - consider optimization
-    <% end %>
-  </dd>
-<% end %>
+  <% if pure_controller_time > 0 %>
+    <dt>Pure Logic Time</dt>
+    <dd>
+      <%= pure_controller_time.round(1) %>ms
+      <% if pure_controller_time > 100 %>
+        - consider optimization
+      <% end %>
+    </dd>
+  <% end %>
 
-<% db_operations_count = operation.request.operations
-     .where(operation_type: ["sql"])
-     .count %>
-<% if db_operations_count > 0 %>
-  <dt>Database Queries</dt>
-  <dd>
-    <%= db_operations_count %>
-    <% if db_operations_count > 10 %>
-      - potential N+1 queries
-    <% end %>
-  </dd>
+  <% db_operations_count = parent.operations
+       .where(operation_type: ["sql"])
+       .count %>
+  <% if db_operations_count > 0 %>
+    <dt>Database Queries</dt>
+    <dd>
+      <%= db_operations_count %>
+      <% if db_operations_count > 10 %>
+        - potential N+1 queries
+      <% end %>
+    </dd>
+  <% end %>
 <% end %>
 
 <% if operation.codebase_location.present? %>

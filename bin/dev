@@ -89,26 +89,6 @@ else
   npm run build > /dev/null 2>&1
 fi
 
-# Detect database adapter
-cd "$DUMMY_DIR"
-DB=${DB:-$(./bin/rails runner "puts ActiveRecord::Base.connection.adapter_name" 2>/dev/null || echo "sqlite3")}
-
-# Display database adapter info
-case "$DB" in
-  "SQLite")
-    echo "🗂️  Database: SQLite"
-    ;;
-  "PostgreSQL"|"postgresql")
-    echo "🐘 Database: PostgreSQL"
-    ;;
-  "MySQL"|"Mysql2"|"mysql2")
-    echo "🐬 Database: MySQL"
-    ;;
-  *)
-    echo "🗄️  Database: $DB"
-    ;;
-esac
-
 # Start the Rails server from the dummy app directory
 echo "🌐 Starting Rails server..."
 cd "$DUMMY_DIR"

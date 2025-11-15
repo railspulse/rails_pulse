@@ -12,6 +12,9 @@ module RailsPulse
                foreign_key: "summarizable_id", class_name: "RailsPulse::Route", optional: true
     belongs_to :query, -> { where(rails_pulse_summaries: { summarizable_type: "RailsPulse::Query" }) },
                foreign_key: "summarizable_id", class_name: "RailsPulse::Query", optional: true
+    belongs_to :job,
+               -> { where(rails_pulse_summaries: { summarizable_type: "RailsPulse::Job" }) },
+               foreign_key: "summarizable_id", class_name: "RailsPulse::Job", optional: true
 
     # Validations
     validates :period_type, inclusion: { in: PERIOD_TYPES }
@@ -26,6 +29,8 @@ module RailsPulse
     scope :for_requests, -> { where(summarizable_type: "RailsPulse::Request") }
     scope :for_routes, -> { where(summarizable_type: "RailsPulse::Route") }
     scope :for_queries, -> { where(summarizable_type: "RailsPulse::Query") }
+    scope :for_jobs, -> { where(summarizable_type: "RailsPulse::Job") }
+    scope :by_job_name, ->(job_name) { for_jobs.joins(:job).where(rails_pulse_jobs: { name: job_name }) }
     scope :recent, -> { order(period_start: :desc) }
 
     # Special scope for overall request summaries
@@ -99,7 +104,7 @@ module RailsPulse
     end
 
     def self.ransackable_associations(auth_object = nil)
-      %w[route query]
+      %w[route query job]
     end
 
     # Note: Basic fields like count, avg_duration, min_duration, max_duration

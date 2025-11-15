@@ -4,10 +4,14 @@ module RailsPulse
                   :route_thresholds,
                   :request_thresholds,
                   :query_thresholds,
+                  :job_thresholds,
                   :ignored_routes,
                   :ignored_requests,
                   :ignored_queries,
+                  :ignored_jobs,
+                  :ignored_queues,
                   :track_assets,
+                  :track_jobs,
                   :custom_asset_patterns,
                   :mount_path,
                   :full_retention_period,
@@ -17,32 +21,50 @@ module RailsPulse
                   :authentication_enabled,
                   :authentication_method,
                   :authentication_redirect_path,
-                  :tags
+                  :tags,
+                  :job_tracking_mode,
+                  :job_adapters,
+                  :capture_job_arguments
 
     def initialize
       @enabled = true
       @route_thresholds = { slow: 500, very_slow: 1500, critical: 3000 }
       @request_thresholds = { slow: 700, very_slow: 2000, critical: 4000 }
       @query_thresholds = { slow: 100, very_slow: 500, critical: 1000 }
+      @job_thresholds = { slow: 5_000, very_slow: 30_000, critical: 60_000 }
       @ignored_routes = []
       @ignored_requests = []
       @ignored_queries = []
+      @ignored_jobs = []
+      @ignored_queues = []
       @track_assets = false
+      @track_jobs = true
       @custom_asset_patterns = []
       @mount_path = nil
-      @full_retention_period = 2.weeks
+      @full_retention_period = 30.days
       @archiving_enabled = true
       @max_table_records = {
-        rails_pulse_requests: 10000,
-        rails_pulse_operations: 50000,
-        rails_pulse_routes: 1000,
-        rails_pulse_queries: 500
+        rails_pulse_operations: 100_000,
+        rails_pulse_requests: 50_000,
+        rails_pulse_job_runs: 50_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 1_000,
+        rails_pulse_jobs: 1_000
       }
       @connects_to = nil
       @authentication_enabled = Rails.env.production?
       @authentication_method = nil
       @authentication_redirect_path = "/"
       @tags = [ "ignored", "critical", "experimental" ]
+      @job_tracking_mode = :universal
+      @job_adapters = {
+        sidekiq: { enabled: true, track_queue_depth: false },
+        solid_queue: { enabled: true, track_recurring: false },
+        good_job: { enabled: true, track_cron: false },
+        delayed_job: { enabled: true },
+        resque: { enabled: true }
+      }
+      @capture_job_arguments = false
 
       validate_configuration!
     end
@@ -67,6 +89,7 @@ module RailsPulse
       validate_database_settings!
       validate_authentication_settings!
       validate_tags!
+      validate_job_settings!
     end
 
     # Revalidate configuration after changes
@@ -77,7 +100,7 @@ module RailsPulse
     private
 
     def validate_thresholds!
-      [ @route_thresholds, @request_thresholds, @query_thresholds ].each do |thresholds|
+      [ @route_thresholds, @request_thresholds, @query_thresholds, @job_thresholds ].each do |thresholds|
         thresholds.each do |key, value|
           unless value.is_a?(Numeric) && value > 0
             raise ArgumentError, "Threshold #{key} must be a positive number, got #{value}"
@@ -147,6 +170,32 @@ module RailsPulse
         unless tag.is_a?(String)
           raise ArgumentError, "tags must be strings, got #{tag.class}"
         end
+      end
+    end
+
+    def validate_job_settings!
+      unless @ignored_jobs.is_a?(Array) && @ignored_queues.is_a?(Array)
+        raise ArgumentError, "ignored_jobs and ignored_queues must be arrays"
+      end
+
+      unless [ true, false ].include?(@track_jobs)
+        raise ArgumentError, "track_jobs must be a boolean"
+      end
+
+      unless @job_adapters.is_a?(Hash)
+        raise ArgumentError, "job_adapters must be a hash"
+      end
+
+      unless @job_thresholds.is_a?(Hash)
+        raise ArgumentError, "job_thresholds must be a hash"
+      end
+
+      unless @job_tracking_mode.is_a?(Symbol)
+        raise ArgumentError, "job_tracking_mode must be a symbol"
+      end
+
+      unless [ true, false ].include?(@capture_job_arguments)
+        raise ArgumentError, "capture_job_arguments must be a boolean"
       end
     end
 

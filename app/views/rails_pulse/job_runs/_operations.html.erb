@@ -1,0 +1,78 @@
+<%= render 'rails_pulse/components/panel', { title: 'Event Sequence ' } do %>
+  <% if operations.any? %>
+    <table class="table operations-table">
+      <thead>
+        <tr>
+          <th class="w-8"></th>
+          <th class="operations-label-cell">Operation</th>
+          <th class="operations-duration-cell">Duration</th>
+          <th class="w-20">Impact</th>
+          <th class="w-16"></th>
+          <th class="operations-event-cell">Timeline</th>
+          <th class="w-16">Actions</th>
+        </tr>
+      </thead>
+      <tbody data-controller="rails-pulse--expandable-rows" data-action="click->rails-pulse--expandable-rows#toggle">
+        <% total_run_duration = @run.duration.to_f %>
+        <% @operation_timeline.bars.each_with_index do |bar, index| %>
+            <tr data-operation-id="<%= bar.operation.id %>">
+              <!-- Toggle chevron column -->
+              <td class="text-center cursor-pointer">
+                <div class="chevron mbs-2">
+                  <%= rails_pulse_icon('chevron-right', width: '16', class: 'transition-transform duration-200') %>
+                </div>
+              </td>
+
+              <td class="operations-label-cell">
+                <span class="text-link" style="color: <%= event_color(bar.operation.operation_type) %>;">
+                  <%= html_escape(bar.operation.label) %>
+                </span>
+              </td>
+
+              <td class="whitespace-nowrap">
+                <%= bar.duration.round(2) %> ms
+              </td>
+
+              <td class="whitespace-nowrap">
+                <% impact_percentage = total_run_duration > 0 ? (bar.operation.duration / total_run_duration * 100).round(1) : 0 %>
+                <%= impact_percentage %>%
+              </td>
+
+              <td class="whitespace-nowrap text-center">
+                <%= operation_status_indicator(bar.operation) %>
+              </td>
+
+              <td class="operations-event-cell">
+                <div
+                  class="operations-event"
+                  style="left: <%= bar.left_pct %>%; width: <%= bar.width_pct %>%; background-color: <%= event_color(bar.operation.operation_type) %>;">
+                </div>
+              </td>
+
+              <td>
+                <%= link_to rails_pulse_icon('eye', width: '16', class: 'inline-block mbi-2'), operation_path(bar.operation), title: 'View details', data: { turbo_frame: "_top" } %>
+                <% if bar.operation.operation_type == "sql" && bar.operation.query.present? %>
+                  <%= link_to rails_pulse_icon('database', width: '16', class: 'inline-block'), query_path(bar.operation.query), title: 'View query', data: { turbo_frame: "_top" } %>
+                <% end %>
+              </td>
+            </tr>
+
+            <!-- Expandable details row -->
+            <tr
+              class="operation-details-row hidden"
+              data-operation-id="<%= bar.operation.id %>"
+            >
+              <td colspan="7" class="pi-8 pb-4">
+                <%= turbo_frame_tag "operation_#{bar.operation.id}_details", data: { "operation-url": operation_path(bar.operation) } do %>
+                <% end %>
+              </td>
+            </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No operations found for this job run.',
+        description: 'This job run may not have had any tracked operations.' %>
+  <% end %>
+<% end %>

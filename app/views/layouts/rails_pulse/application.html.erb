@@ -10,6 +10,29 @@
 
     <%= yield :head %>
 
+    <script nonce="<%= rails_pulse_csp_nonce %>">
+      (function() {
+        var storageKey = 'color-scheme';
+        var root = document.documentElement;
+        var scheme = 'light';
+
+        try {
+          var stored = localStorage.getItem(storageKey);
+          if (stored === 'dark' || stored === 'light') {
+            scheme = stored;
+          } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            scheme = 'dark';
+          }
+        } catch (error) {
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            scheme = 'dark';
+          }
+        }
+
+        root.setAttribute('data-color-scheme', scheme);
+      })();
+    </script>
+
     <!-- Rails Pulse Pre-compiled Assets (CSP-safe) -->
     <%= stylesheet_link_tag rails_pulse.asset_path('rails-pulse.css'), 'data-turbo-track': 'reload' %>
     <%= javascript_include_tag rails_pulse.asset_path('rails-pulse-icons.js'), 'data-turbo-track': 'reload', defer: true, nonce: rails_pulse_csp_nonce %>

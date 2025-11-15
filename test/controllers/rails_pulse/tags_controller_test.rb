@@ -1,7 +1,7 @@
 require "test_helper"
 
 class RailsPulse::TagsControllerTest < ActionDispatch::IntegrationTest
-  fixtures :rails_pulse_routes, :rails_pulse_requests, :rails_pulse_queries
+  fixtures :rails_pulse_routes, :rails_pulse_requests, :rails_pulse_queries, :rails_pulse_jobs, :rails_pulse_job_runs
 
   def setup
     ENV["TEST_TYPE"] = "functional"
@@ -16,6 +16,12 @@ class RailsPulse::TagsControllerTest < ActionDispatch::IntegrationTest
 
     @test_query = rails_pulse_queries(:simple_query)
     @test_query.update!(tags: [ "slow" ].to_json)
+
+    @test_job = rails_pulse_jobs(:report_job)
+    @test_job.update!(tags: [ "report" ].to_json)
+
+    @test_job_run = rails_pulse_job_runs(:report_run_success)
+    @test_job_run.update!(tags: [].to_json)
   end
 
   test "controller has create action" do
@@ -65,6 +71,24 @@ class RailsPulse::TagsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_includes @test_query.reload.tag_list, "needs-optimization"
+    assert_response :success
+  end
+
+  test "create action adds tag to job" do
+    assert_difference -> { @test_job.reload.tag_list.count }, 1 do
+      post rails_pulse_engine.add_tag_path("job", @test_job.id, tag: "background")
+    end
+
+    assert_includes @test_job.reload.tag_list, "background"
+    assert_response :success
+  end
+
+  test "create action adds tag to job_run" do
+    assert_difference -> { @test_job_run.reload.tag_list.count }, 1 do
+      post rails_pulse_engine.add_tag_path("job_run", @test_job_run.id, tag: "retry")
+    end
+
+    assert_includes @test_job_run.reload.tag_list, "retry"
     assert_response :success
   end
 
@@ -124,6 +148,26 @@ class RailsPulse::TagsControllerTest < ActionDispatch::IntegrationTest
     end
 
     assert_not_includes @test_query.reload.tag_list, "slow"
+    assert_response :success
+  end
+
+  test "destroy action removes tag from job" do
+    assert_difference -> { @test_job.reload.tag_list.count }, -1 do
+      delete rails_pulse_engine.remove_tag_path("job", @test_job.id, tag: "report")
+    end
+
+    assert_not_includes @test_job.reload.tag_list, "report"
+    assert_response :success
+  end
+
+  test "destroy action removes tag from job_run" do
+    @test_job_run.add_tag("failed")
+
+    assert_difference -> { @test_job_run.reload.tag_list.count }, -1 do
+      delete rails_pulse_engine.remove_tag_path("job_run", @test_job_run.id, tag: "failed")
+    end
+
+    assert_not_includes @test_job_run.reload.tag_list, "failed"
     assert_response :success
   end
 

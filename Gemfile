@@ -44,6 +44,12 @@ group :test do
   gem "timecop"
 end
 
+# Performance benchmarking
+group :development, :test do
+  gem "benchmark-ips"
+  gem "memory_profiler"
+end
+
 group :development, :test do
   gem "debug"
   gem "chartkick" # For testing compatibility with host apps using Chartkick

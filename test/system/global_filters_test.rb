@@ -10,6 +10,7 @@ class GlobalFiltersTest < ApplicationSystemTestCase
     super
     load_shared_test_data
     create_comprehensive_test_data
+    @report_job = rails_pulse_jobs(:report_job)
 
     # Configure tags for testing
     RailsPulse.configure do |config|
@@ -62,19 +63,25 @@ class GlobalFiltersTest < ApplicationSystemTestCase
     assert_custom_picker_visible
     assert_selector "table tbody tr", wait: 5
 
+    # Navigate to jobs page
+    visit_rails_pulse_path "/jobs"
+
+    assert_global_filters_active
+    assert_selector "table tbody tr", wait: 5
+    assert_selector ".card", text: "Global Filters:"
+
     # === STEP 3: Test clearing global filters ===
-    # Clear filters from queries page
+    # Clear filters from jobs page
     clear_global_filters
 
     # Verify filters removed
     assert_global_filters_inactive
-    assert_dropdown_visible # Should show dropdown, not custom picker
     assert_selector "table tbody tr", wait: 5
 
-    # Navigate to routes page and verify filters cleared
+    # Navigate to routes page and verify filters cleared (routes has time range dropdown)
     visit_rails_pulse_path "/routes"
 
-    assert_dropdown_visible
+    assert_dropdown_visible # Should show dropdown, not custom picker
     assert_global_filters_inactive
 
     # Default "Last 24 hours" should be selected
@@ -92,6 +99,11 @@ class GlobalFiltersTest < ApplicationSystemTestCase
     # Verify global filter applied
     assert_custom_picker_visible
     assert_global_filters_active
+
+    visit_rails_pulse_path "/jobs"
+
+    assert_global_filters_active
+    assert_selector ".card", text: "Global Filters:"
 
     # Now override with page-specific preset by navigating to a URL with preset parameter
     # This simulates selecting "Last 24 hours" from the dropdown
@@ -127,6 +139,10 @@ class GlobalFiltersTest < ApplicationSystemTestCase
     visit_rails_pulse_path "/requests"
 
     assert_custom_picker_visible
+    assert_selector "table tbody tr", wait: 5
+
+    visit_rails_pulse_path "/jobs/#{@report_job.id}"
+
     assert_selector "table tbody tr", wait: 5
 
     # === STEP 6: Clear all global filters and verify clean state ===

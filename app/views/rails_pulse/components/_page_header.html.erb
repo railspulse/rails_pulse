@@ -12,13 +12,14 @@
     <% end %>
   </nav>
 
-  <% if defined?(taggable) && taggable.present? %>
-    <div class="breadcrumb-tags">
-      <%= render 'rails_pulse/tags/tag_manager', taggable: taggable %>
-    </div>
-  <% elsif defined?(show_active_filters) && show_active_filters %>
-    <div class="breadcrumb-tags">
-      <%= render 'rails_pulse/components/active_filters' %>
+  <% if (defined?(taggable) && taggable.present?) || (defined?(show_active_filters) && show_active_filters) %>
+    <div class="breadcrumb-tags gap">
+      <% if defined?(show_active_filters) && show_active_filters %>
+        <%= render 'rails_pulse/components/active_filters' %>
+      <% end %>
+      <% if defined?(taggable) && taggable.present? %>
+        <%= render 'rails_pulse/tags/tag_manager', taggable: taggable %>
+      <% end %>
     </div>
   <% end %>
 </div>

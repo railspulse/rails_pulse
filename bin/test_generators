@@ -27,6 +27,9 @@ class GeneratorTester
     test_single_database_install
     test_single_database_upgrade_no_migrations
     test_single_database_upgrade_with_migration
+    test_single_db_migration_idempotency
+    test_single_db_branch_switching_scenario
+    test_schema_file_consistency
     cleanup_between_tests
     test_separate_database_install
     test_separate_database_upgrade
@@ -215,6 +218,88 @@ class GeneratorTester
     end
   end
 
+  def test_single_db_migration_idempotency
+    section "Test 6: Single Database Migration Idempotency"
+
+    Dir.chdir(test_dir) do
+      # Migrations already ran in test 1, run them again
+      output = run_command("bin/rails db:migrate RAILS_ENV=test", capture: true)
+      exit_status = $?
+
+      if exit_status.success?
+        pass "Migrations can run multiple times without error"
+      else
+        fail "Migration failed on second run (exit code: #{exit_status.exitstatus})"
+      end
+
+      # Verify tables still exist and are correct
+      verify_all_schema_tables_exist("All tables still exist after re-run")
+    end
+  end
+
+  def test_single_db_branch_switching_scenario
+    section "Test 7: Single Database Branch Switching Scenario"
+
+    Dir.chdir(test_dir) do
+      # Simulate having tables from schema.rb (like switching from main branch)
+      puts "  Simulating branch switch: dropping and recreating with schema.rb"
+      run_command "bin/rails db:drop db:create RAILS_ENV=test"
+
+      # Load from schema.rb to simulate main branch state
+      run_command "bin/rails db:schema:load RAILS_ENV=test"
+
+      # Verify core tables exist (but maybe not jobs tables if schema.rb is old)
+      verify_tables_exist("Core tables loaded from schema.rb")
+
+      # Now try running the install migration (like switching to jobs branch)
+      output = run_command("bin/rails db:migrate RAILS_ENV=test 2>&1", capture: true)
+
+      if $?.success?
+        pass "Install migration handles existing tables gracefully"
+      else
+        if output.include?("already exist") && output.include?("Skipping")
+          pass "Install migration detected existing tables and skipped"
+        else
+          fail "Install migration failed with existing tables"
+        end
+      end
+
+      # Verify tables still exist
+      verify_tables_exist("Tables still exist after migration attempt")
+    end
+  end
+
+  def test_schema_file_consistency
+    section "Test 8: Schema File Consistency"
+
+    Dir.chdir(test_dir) do
+      schema_file = "db/rails_pulse_schema.rb"
+
+      # Verify schema file exists
+      assert_file_exists schema_file, "Schema file exists"
+
+      # Verify it contains all expected core tables
+      schema_content = File.read(schema_file)
+
+      # Dynamically extract required_tables from schema
+      if match = schema_content.match(/required_tables\s*=\s*\[(.*?)\]/m)
+        table_names = match[1].scan(/:(\w+)/).flatten
+
+        table_names.each do |table|
+          if schema_content.include?("create_table :#{table}")
+            pass "Schema includes #{table} definition"
+          else
+            fail "Schema missing #{table} definition"
+          end
+        end
+
+        pass "Schema file declares #{table_names.size} tables"
+      else
+        fail "Could not parse required_tables from schema"
+      end
+    end
+  end
+
   def run_command(cmd, capture: false)
     if capture
       `#{cmd} 2>&1`
@@ -265,6 +350,36 @@ class GeneratorTester
         pass description
       else
         fail "#{description} - Tables do not exist"
+      end
+    end
+  end
+
+  def verify_all_schema_tables_exist(description)
+    Dir.chdir(test_dir) do
+      # Dynamically read required tables from schema file
+      schema_file = File.join(test_dir, "db/rails_pulse_schema.rb")
+      if File.exist?(schema_file)
+        schema_content = File.read(schema_file)
+        if match = schema_content.match(/required_tables\s*=\s*\[(.*?)\]/m)
+          table_names = match[1].scan(/:(\w+)/).flatten
+
+          # Check all tables exist
+          tables_check = table_names.map { |t| "ActiveRecord::Base.connection.table_exists?(:#{t})" }.join(" && ")
+          result = run_command(
+            "bin/rails runner -e test \"puts #{tables_check}\"",
+            capture: true
+          )
+
+          if result.strip == "true"
+            pass "#{description} (#{table_names.size} tables)"
+          else
+            fail "#{description} - Some tables missing from: #{table_names.join(', ')}"
+          end
+        else
+          fail "#{description} - Could not parse required_tables from schema"
+        end
+      else
+        fail "#{description} - Schema file not found"
       end
     end
   end

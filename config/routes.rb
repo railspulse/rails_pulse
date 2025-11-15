@@ -10,6 +10,10 @@ RailsPulse::Engine.routes.draw do
   end
   resources :operations, only: %i[show]
   resources :caches, only: %i[show], as: :cache
+
+  resources :jobs, only: %i[index show], param: :id do
+    resources :runs, only: %i[index show], controller: "job_runs"
+  end
   patch "pagination/limit", to: "application#set_pagination_limit"
   patch "settings/global_filters", to: "application#set_global_filters"
 
