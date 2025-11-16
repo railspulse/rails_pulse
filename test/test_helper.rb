@@ -20,7 +20,8 @@ Dir[File.expand_path("support/**/*.rb", __dir__)].each { |f| require f }
 
 class ActiveSupport::TestCase
   # Enable parallel testing for local performance
-  parallelize(workers: :number_of_processors)
+  # Disable when BROWSER is set to avoid multiple browser windows
+  parallelize(workers: ENV["BROWSER"] ? 0 : :number_of_processors)
 
   # Use Rails' built-in transactional cleanup
   self.use_transactional_tests = true

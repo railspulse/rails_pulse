@@ -51,7 +51,8 @@ module ChartTableConcern
     table_results = build_table_results
     handle_pagination
 
-    @pagy, @table_data = pagy(table_results, items: session_pagination_limit)
+    # Use pagy_options for version compatibility
+    @pagy, @table_data = pagy(table_results, **pagy_options(session_pagination_limit))
   end
 
   def setup_zoom_range_data

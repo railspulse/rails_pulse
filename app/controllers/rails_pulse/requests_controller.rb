@@ -18,7 +18,7 @@ module RailsPulse
     end
 
     def show
-      @operation_timeline = RailsPulse::Requests::Charts::OperationsChart.new(@request.operations)
+      @operation_timeline = RailsPulse::Charts::OperationsChart.new(@request.operations)
     end
 
     private
@@ -118,18 +118,12 @@ module RailsPulse
     def setup_table_data(ransack_params)
       table_ransack_params = build_table_ransack_params(ransack_params)
       @ransack_query = table_model.ransack(table_ransack_params)
-
-      # Only apply default sort if not using Requests::Tables::Index (which handles its own sorting)
-      # For requests, we always use the Tables::Index on the index action
-      unless action_name == "index"
-        @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?
-      end
+      @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?
 
       table_results = build_table_results
       handle_pagination
 
-      # Use 'items:' for Pagy 8.x compatibility ('limit:' is for Pagy 43+)
-      @pagy, @table_data = pagy(table_results, items: session_pagination_limit)
+      @pagy, @table_data = pagy(table_results, **pagy_options(session_pagination_limit))
     end
 
     def handle_pagination

@@ -170,8 +170,6 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     within(panel_element, &block)
   end
 
-
-
   def create_summary_data_for_dashboard
     # Create summary data for recent time periods using fixture data
     # Need to create summaries for multiple days within "this week" (1.week.ago to now)

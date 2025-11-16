@@ -1,0 +1,6 @@
+[tools]
+ruby = "3.3.6"
+node = "22.12.0"
+
+[env]
+# Optional: Set environment variables here

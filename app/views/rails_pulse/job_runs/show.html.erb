@@ -1,0 +1,51 @@
+<%= render 'rails_pulse/components/page_header', taggable: @run %>
+
+<div class="row">
+  <div class="grid-item">
+    <%= render 'rails_pulse/components/panel', title: 'Job Run Details' do %>
+      <dl class="descriptive-list mbs-4">
+        <dt>Job Class</dt>
+        <dd><%= link_to @job.name, job_path(@job) %></dd>
+        <dt>Status</dt>
+        <dd>
+          <%= @run.status.humanize %>
+        </dd>
+        <dt>Occurred At</dt>
+        <dd><%= @run.occurred_at.strftime("%b %d, %Y %l:%M:%S %p") %></dd>
+        <% if @run.enqueued_at %>
+          <dt>Enqueued At</dt>
+          <dd><%= @run.enqueued_at.strftime("%b %d, %Y %l:%M:%S %p") %></dd>
+        <% end %>
+        <dt>Duration</dt>
+        <dd><%= number_to_human(@run.duration || 0, units: { unit: "ms", thousand: "s" }, precision: 2) %></dd>
+        <dt>Attempts</dt>
+        <dd><%= @run.attempts %></dd>
+        <dt>Queue</dt>
+        <dd><%= @job.queue_name || 'default' %></dd>
+      </dl>
+    <% end %>
+  </div>
+
+  <% if @run.error_class.present? %>
+    <div class="grid-item">
+      <%= render 'rails_pulse/components/panel', title: 'Error Details' do %>
+        <dl class="descriptive-list mbs-4">
+          <dt>Error Class</dt>
+          <dd><%= @run.error_class %></dd>
+          <% if @run.error_message.present? %>
+            <dt>Error Message</dt>
+            <dd><%= @run.error_message %></dd>
+          <% end %>
+        </dl>
+      <% end %>
+    </div>
+  <% elsif @run.arguments.present? %>
+    <div class="grid-item">
+      <%= render 'rails_pulse/components/panel', title: 'Arguments' do %>
+        <pre class="mbs-4"><%= JSON.pretty_generate(JSON.parse(@run.arguments)) rescue @run.arguments %></pre>
+      <% end %>
+    </div>
+  <% end %>
+</div>
+
+<%= render 'operations', operations: @operations %>

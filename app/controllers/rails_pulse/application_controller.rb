@@ -1,6 +1,6 @@
 module RailsPulse
   class ApplicationController < ActionController::Base
-    # Support both Pagy 8.x (Backend) and Pagy 9+ (Method)
+    # Support both Pagy 8.x (Backend) and Pagy 43+ (Method)
     if defined?(Pagy::Method)
       include Pagy::Method
     else
@@ -151,6 +151,16 @@ module RailsPulse
     # Set default value for show_non_tagged if not already set
     def set_show_non_tagged_default
       session[:show_non_tagged] = true if session[:show_non_tagged].nil?
+    end
+
+    # Returns Pagy options hash with correct parameter name for current version
+    # Pagy 8.x uses 'items:', Pagy 43+ uses 'limit:'
+    def pagy_options(count)
+      if defined?(Pagy::Method)
+        { limit: count }  # Pagy 43+
+      else
+        { items: count }  # Pagy 8.x
+      end
     end
   end
 end

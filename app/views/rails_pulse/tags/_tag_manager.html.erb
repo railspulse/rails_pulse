@@ -7,21 +7,14 @@
 
 <div
   id="tag_manager_<%= taggable_type %>_<%= taggable.id %>"
-  class="tag-manager"
+  class="tag-manager card pi-3 pb-2 text-sm shadow-xs"
 >
+  <% if current_tags.present? %>
+    Tags:
+    <% end %>
   <div class="tag-list">
     <% current_tags.each do |tag| %>
-      <span class="badge badge--secondary font-normal">
-        <%= tag %>
-        <%= button_to remove_tag_path(taggable_type, taggable.id, tag: tag),
-              method: :delete,
-              class: "tag-remove",
-              data: {
-                turbo_frame: "_top"
-              } do %>
-          <span aria-hidden="true">&times;</span>
-        <% end %>
-      </span>
+      <%= render_tag_badge(tag, variant: :secondary, removable: true, taggable_type: taggable_type, taggable_id: taggable.id) %>
     <% end %>
 
     <% if available_to_add.any? %>
@@ -35,7 +28,7 @@
           aria-haspopup="true"
           aria-controls="tag_menu_<%= taggable_type %>_<%= taggable.id %>"
         >
-          + tag
+          tag +
         </button>
 
         <div
@@ -62,7 +55,7 @@
                     },
                     style: "cursor: pointer;",
                     role: "menuitem" do %>
-                <%= tag %>
+                <%= tag.humanize %>
               <% end %>
             <% end %>
           </div>

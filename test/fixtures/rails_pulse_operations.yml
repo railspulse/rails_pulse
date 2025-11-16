@@ -65,3 +65,13 @@ sql_operation_4:
   occurred_at: <%= Time.current - 1.hour %>
   created_at: <%= Time.current - 1.hour %>
   updated_at: <%= Time.current - 1.hour %>
+job_sql_operation:
+  job_run: report_run_retried
+  operation_type: "sql"
+  label: "SELECT count(*) FROM reports"
+  duration: 75.0
+  codebase_location: "app/jobs/generate_report_job.rb:42"
+  start_time: 2.0
+  occurred_at: <%= Time.current - 30.minutes %>
+  created_at: <%= Time.current - 30.minutes %>
+  updated_at: <%= Time.current - 30.minutes %>

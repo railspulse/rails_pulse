@@ -32,19 +32,21 @@
         <%= @operation.duration.round(2) %> ms
       </dd>
 
-      <dt>Request Impact</dt>
-      <dd>
-        <% impact = (@operation.duration / @request.duration * 100).round(1) %>
-        <%= impact %>% of total request time
-      </dd>
+      <% if @parent %>
+        <dt><%= @request ? 'Request' : 'Job Run' %> Impact</dt>
+        <dd>
+          <% impact = (@operation.duration / @parent.duration * 100).round(1) %>
+          <%= impact %>% of total <%= @request ? 'request' : 'job run' %> time
+        </dd>
+      <% end %>
 
       <dt>Occurred At</dt>
       <dd><%= human_readable_occurred_at @operation.occurred_at %></dd>
 
       <% begin %>
-        <%= render partial: "operation_analysis_#{categorize_operation(@operation.operation_type)}", locals: { operation: @operation } %>
+        <%= render partial: "operation_analysis_#{categorize_operation(@operation.operation_type)}", locals: { operation: @operation, parent: @parent } %>
       <% rescue ActionView::MissingTemplate %>
-        <%= render partial: "operation_analysis_generic", locals: { operation: @operation } %>
+        <%= render partial: "operation_analysis_generic", locals: { operation: @operation, parent: @parent } %>
       <% end %>
 
       <% if @performance_context.any? %>
@@ -59,7 +61,7 @@
       <% if @related_operations.any? %>
         <dt>Related Operations</dt>
         <dd>
-          <%= pluralize(@related_operations.count, 'similar operation') %> in this request
+          <%= pluralize(@related_operations.count, 'similar operation') %> in this <%= @request ? 'request' : 'job run' %>
           <% if @related_operations.count > 2 %>
             <br>Potential N+1 query pattern detected
           <% end %>

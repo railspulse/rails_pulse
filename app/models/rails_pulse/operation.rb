@@ -18,15 +18,16 @@ module RailsPulse
     ].freeze
 
     # Associations
-    belongs_to :request, class_name: "RailsPulse::Request"
+    belongs_to :request, class_name: "RailsPulse::Request", optional: true
+    belongs_to :job_run, class_name: "RailsPulse::JobRun", optional: true
     belongs_to :query, class_name: "RailsPulse::Query", optional: true
 
     # Validations
-    validates :request_id, presence: true
     validates :operation_type, presence: true, inclusion: { in: OPERATION_TYPES }
     validates :label, presence: true
     validates :occurred_at, presence: true
     validates :duration, presence: true, numericality: { greater_than_or_equal_to: 0 }
+    validate :has_request_or_job_run
 
     # Scopes (optional, for convenience)
     scope :by_type, ->(type) { where(operation_type: type) }
@@ -71,6 +72,12 @@ module RailsPulse
     end
 
     private
+
+    def has_request_or_job_run
+      return if request_id.present? || job_run_id.present?
+
+      errors.add(:base, "Operation must belong to a request or a job run")
+    end
 
     def associate_query
       return unless operation_type == "sql" && label.present?

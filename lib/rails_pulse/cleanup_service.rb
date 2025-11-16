@@ -39,9 +39,11 @@ module RailsPulse
 
       # Clean up in order that respects foreign key constraints
       @stats[:time_based][:operations] = cleanup_operations_by_time(cutoff_time)
+      @stats[:time_based][:job_runs] = cleanup_job_runs_by_time(cutoff_time)
       @stats[:time_based][:requests] = cleanup_requests_by_time(cutoff_time)
       @stats[:time_based][:queries] = cleanup_queries_by_time(cutoff_time)
       @stats[:time_based][:routes] = cleanup_routes_by_time(cutoff_time)
+      @stats[:time_based][:jobs] = cleanup_jobs_by_time(cutoff_time)
     end
 
     def perform_count_based_cleanup
@@ -51,9 +53,11 @@ module RailsPulse
 
       # Clean up in order that respects foreign key constraints
       @stats[:count_based][:operations] = cleanup_operations_by_count
+      @stats[:count_based][:job_runs] = cleanup_job_runs_by_count
       @stats[:count_based][:requests] = cleanup_requests_by_count
       @stats[:count_based][:queries] = cleanup_queries_by_count
       @stats[:count_based][:routes] = cleanup_routes_by_count
+      @stats[:count_based][:jobs] = cleanup_jobs_by_count
     end
 
     # Time-based cleanup methods
@@ -107,6 +111,27 @@ module RailsPulse
         .where("created_at < ?", cutoff_time)
         .where.not(id: route_ids_with_requests)
         .delete_all
+      count
+    end
+
+    def cleanup_job_runs_by_time(cutoff_time)
+      return 0 unless defined?(RailsPulse::JobRun)
+
+      job_runs = RailsPulse::JobRun.where("occurred_at < ?", cutoff_time)
+      count = job_runs.count
+      job_runs.delete_all
+      count
+    end
+
+    def cleanup_jobs_by_time(cutoff_time)
+      return 0 unless defined?(RailsPulse::Job)
+
+      job_ids_with_runs = RailsPulse::JobRun.distinct.pluck(:job_id).compact
+      jobs = RailsPulse::Job
+        .where("created_at < ?", cutoff_time)
+        .where.not(id: job_ids_with_runs)
+      count = jobs.count
+      jobs.delete_all
       count
     end
 
@@ -193,6 +218,46 @@ module RailsPulse
         .pluck(:id)
 
       RailsPulse::Route.where(id: ids_to_delete).delete_all
+      records_to_delete
+    end
+
+    def cleanup_job_runs_by_count
+      return 0 unless defined?(RailsPulse::JobRun)
+
+      max_records = @config.max_table_records[:rails_pulse_job_runs]
+      return 0 unless max_records
+
+      current_count = RailsPulse::JobRun.count
+      return 0 if current_count <= max_records
+
+      records_to_delete = current_count - max_records
+      ids_to_delete = RailsPulse::JobRun
+        .order(:occurred_at)
+        .limit(records_to_delete)
+        .pluck(:id)
+
+      RailsPulse::JobRun.where(id: ids_to_delete).delete_all
+      records_to_delete
+    end
+
+    def cleanup_jobs_by_count
+      return 0 unless defined?(RailsPulse::Job)
+
+      max_records = @config.max_table_records[:rails_pulse_jobs]
+      return 0 unless max_records
+
+      job_ids_with_runs = RailsPulse::JobRun.distinct.pluck(:job_id).compact
+      available_jobs = RailsPulse::Job.where.not(id: job_ids_with_runs)
+      current_count = available_jobs.count
+      return 0 if current_count <= max_records
+
+      records_to_delete = current_count - max_records
+      ids_to_delete = available_jobs
+        .order(:created_at)
+        .limit(records_to_delete)
+        .pluck(:id)
+
+      RailsPulse::Job.where(id: ids_to_delete).delete_all
       records_to_delete
     end
 

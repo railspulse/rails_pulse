@@ -7,6 +7,7 @@ class OperationSubscriberTest < ActiveSupport::TestCase
 
     # Setup request context for operation tracking
     RequestStore.store[:rails_pulse_request_id] = @request.id
+    RequestStore.store[:rails_pulse_job_run_id] = nil
     RequestStore.store[:rails_pulse_operations] = []
 
     super
@@ -184,6 +185,7 @@ class OperationSubscriberTest < ActiveSupport::TestCase
 
   test "should not capture operations without request context" do
     RequestStore.store[:rails_pulse_request_id] = nil
+    RequestStore.store[:rails_pulse_job_run_id] = nil
 
     payload = {
       sql: "SELECT * FROM users",
@@ -197,6 +199,26 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     operations = RequestStore.store[:rails_pulse_operations]
 
     assert_equal 0, operations.size
+  end
+
+  test "should capture operations for background job context" do
+    job_run = rails_pulse_job_runs(:mailer_run_success)
+
+    RequestStore.store[:rails_pulse_request_id] = nil
+    RequestStore.store[:rails_pulse_job_run_id] = job_run.id
+    RequestStore.store[:rails_pulse_operations] = []
+
+    payload = { sql: "SELECT 1", name: "Job SQL" }
+
+    ActiveSupport::Notifications.instrument("sql.active_record", payload) do
+      sleep(0.001)
+    end
+
+    operations = RequestStore.store[:rails_pulse_operations]
+
+    assert_equal 1, operations.size
+    assert_nil operations.first[:request_id]
+    assert_equal job_run.id, operations.first[:job_run_id]
   end
 
   test "should clean SQL labels by removing Rails comments" do

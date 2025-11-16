@@ -4,6 +4,8 @@ module RailsPulse
 
     def show
       @request = @operation.request
+      @job_run = @operation.job_run
+      @parent = @request || @job_run
       @related_operations = find_related_operations
       @performance_context = calculate_performance_context
       @optimization_suggestions = generate_optimization_suggestions
@@ -20,22 +22,24 @@ module RailsPulse
     end
 
     def find_related_operations
+      return [] unless @parent
+
       case @operation.operation_type
       when "sql"
-        # Find other SQL operations in the same request with similar queries
-        @operation.request.operations
+        # Find other SQL operations in the same request/job run with similar queries
+        @parent.operations
           .where(operation_type: [ "sql" ])
           .where.not(id: @operation.id)
           .limit(5)
       when "template", "partial", "layout", "collection"
-        # Find other view operations in the same request
-        @operation.request.operations
+        # Find other view operations in the same request/job run
+        @parent.operations
           .where(operation_type: [ "template", "partial", "layout", "collection" ])
           .where.not(id: @operation.id)
           .limit(5)
       else
-        # Find operations of the same type in the same request
-        @operation.request.operations
+        # Find operations of the same type in the same request/job run
+        @parent.operations
           .where(operation_type: @operation.operation_type)
           .where.not(id: @operation.id)
           .limit(5)
@@ -117,19 +121,21 @@ module RailsPulse
       end
 
       # Check for potential N+1 queries
-      similar_queries = @operation.request.operations
-        .where(operation_type: [ "sql" ])
-        .where("label LIKE ?", "%#{@operation.label.split.first(3).join(' ')}%")
-        .where.not(id: @operation.id)
+      if @parent
+        similar_queries = @parent.operations
+          .where(operation_type: [ "sql" ])
+          .where("label LIKE ?", "%#{@operation.label.split.first(3).join(' ')}%")
+          .where.not(id: @operation.id)
 
-      if similar_queries.count > 2
-        suggestions << {
-          type: "n_plus_one",
-          icon: "alert-triangle",
-          title: "Potential N+1 Query",
-          description: "#{similar_queries.count + 1} similar queries detected. Consider using includes() or joins().",
-          priority: "high"
-        }
+        if similar_queries.count > 2
+          suggestions << {
+            type: "n_plus_one",
+            icon: "alert-triangle",
+            title: "Potential N+1 Query",
+            description: "#{similar_queries.count + 1} similar queries detected. Consider using includes() or joins().",
+            priority: "high"
+          }
+        end
       end
 
       suggestions
@@ -149,20 +155,22 @@ module RailsPulse
       end
 
       # Check for database queries in views
-      view_db_operations = @operation.request.operations
-        .where(operation_type: [ "sql" ])
-        .where("occurred_at >= ? AND occurred_at <= ?",
-               @operation.occurred_at,
-               @operation.occurred_at + @operation.duration)
+      if @parent
+        view_db_operations = @parent.operations
+          .where(operation_type: [ "sql" ])
+          .where("occurred_at >= ? AND occurred_at <= ?",
+                 @operation.occurred_at,
+                 @operation.occurred_at + @operation.duration)
 
-      if view_db_operations.count > 0
-        suggestions << {
-          type: "database",
-          icon: "database",
-          title: "Database Queries in View",
-          description: "#{view_db_operations.count} database queries during view rendering. Move data fetching to the controller.",
-          priority: "medium"
-        }
+        if view_db_operations.count > 0
+          suggestions << {
+            type: "database",
+            icon: "database",
+            title: "Database Queries in View",
+            description: "#{view_db_operations.count} database queries during view rendering. Move data fetching to the controller.",
+            priority: "medium"
+          }
+        end
       end
 
       suggestions

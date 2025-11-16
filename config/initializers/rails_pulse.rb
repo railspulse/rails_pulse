@@ -72,6 +72,58 @@ RailsPulse.configure do |config|
   config.ignored_queries  = []
 
   # ====================================================================================================
+  #                                                 TAGGING
+  # ====================================================================================================
+  # Define custom tags for categorizing routes, requests, and queries.
+  # You can add any custom tags you want for filtering and organization.
+  #
+  # Tag names should be in present tense and describe the current state or category.
+  # Examples of good tag names:
+  #   - "critical" (for high-priority endpoints)
+  #   - "experimental" (for routes under development)
+  #   - "deprecated" (for routes being phased out)
+  #   - "external" (for third-party API calls)
+  #   - "background" (for async job-related operations)
+  #   - "admin" (for administrative routes)
+  #   - "public" (for public-facing routes)
+  #
+  # Example configuration:
+  #   config.tags = ["ignored", "critical", "experimental", "deprecated", "external", "admin"]
+
+  config.tags = [ "ignored", "critical", "experimental" ]
+
+  # ====================================================================================================
+  #                                            BACKGROUND JOBS
+  # ====================================================================================================
+  # Configure background job monitoring and tracking.
+  # When enabled, Rails Pulse will track job executions, durations, failures, and retries.
+  # Supports ActiveJob, Sidekiq, and Delayed Job.
+
+  # Enable or disable background job tracking
+  config.track_jobs = false
+
+  # Thresholds for job execution times (in milliseconds)
+  config.job_thresholds = {
+    slow:      5_000,   # 5 seconds
+    very_slow: 30_000,  # 30 seconds
+    critical:  60_000   # 1 minute
+  }
+
+  # Job classes to ignore from tracking (by class name)
+  # Examples:
+  #   config.ignored_jobs = ["ActionMailer::MailDeliveryJob", "MyApp::HealthCheckJob"]
+  config.ignored_jobs = []
+
+  # Queue names to ignore from tracking
+  # Examples:
+  #   config.ignored_queues = ["low_priority", "mailers"]
+  config.ignored_queues = []
+
+  # Capture job arguments for debugging (may contain sensitive data)
+  # Set to false in production to avoid storing potentially sensitive information
+  config.capture_job_arguments = true
+
+  # ====================================================================================================
   #                                            DATABASE CONFIGURATION
   # ====================================================================================================
   # Configure Rails Pulse to use a separate database for performance monitoring data.

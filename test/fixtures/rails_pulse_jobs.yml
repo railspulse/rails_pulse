@@ -1,0 +1,23 @@
+mailer_job:
+  name: UserMailerJob
+  queue_name: mailers
+  description: Sends notification emails
+  runs_count: 1
+  failures_count: 0
+  retries_count: 0
+  avg_duration: 150.0
+  tags: '[]'
+  created_at: 2024-01-01 00:00:00
+  updated_at: 2024-01-01 00:00:00
+
+report_job:
+  name: GenerateReportJob
+  queue_name: default
+  description: Generates analytics reports
+  runs_count: 4
+  failures_count: 2
+  retries_count: 1
+  avg_duration: 450.0
+  tags: '["report"]'
+  created_at: 2024-01-02 00:00:00
+  updated_at: 2024-01-02 00:00:00

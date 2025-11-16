@@ -6,7 +6,8 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
 
   # Test associations
   test "should have correct associations" do
-    assert belong_to(:request).matches?(RailsPulse::Operation.new)
+    assert belong_to(:request).optional.matches?(RailsPulse::Operation.new)
+    assert belong_to(:job_run).optional.matches?(RailsPulse::Operation.new)
     assert belong_to(:query).optional.matches?(RailsPulse::Operation.new)
   end
 
@@ -15,7 +16,6 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     operation = RailsPulse::Operation.new
 
     # Presence validations
-    assert validate_presence_of(:request_id).matches?(operation)
     assert validate_presence_of(:operation_type).matches?(operation)
     assert validate_presence_of(:label).matches?(operation)
     assert validate_presence_of(:occurred_at).matches?(operation)
@@ -26,6 +26,22 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
 
     # Numericality validation
     assert validate_numericality_of(:duration).is_greater_than_or_equal_to(0).matches?(operation)
+  end
+
+  test "should require either request or job run" do
+    operation = RailsPulse::Operation.new(
+      operation_type: "sql",
+      label: "TEST",
+      duration: 10,
+      occurred_at: Time.current
+    )
+
+    assert_not operation.valid?
+    assert_includes operation.errors[:base], "Operation must belong to a request or a job run"
+
+    operation.request = rails_pulse_requests(:users_request_1)
+
+    assert_predicate operation, :valid?, "operation should be valid with request present"
   end
 
   test "should be valid with required attributes" do
@@ -124,7 +140,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     assert_equal "SELECT * FROM posts WHERE id = ?", sql_op_2.query.normalized_sql
 
     # Verify we have exactly 6 operations total (4 original + 2 added for queries)
-    assert_equal 6, RailsPulse::Operation.count
+    assert_equal 7, RailsPulse::Operation.count
 
     # Test that we can access other fixture types
     route = rails_pulse_routes(:api_users)
@@ -139,5 +155,11 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     assert_equal route, request.route
     assert_equal query, sql_op.query
     assert_equal request, sql_op.request
+
+    # Verify job operation is associated with job run only
+    job_operation = rails_pulse_operations(:job_sql_operation)
+
+    assert_nil job_operation.request
+    assert_equal rails_pulse_job_runs(:report_run_retried), job_operation.job_run
   end
 end

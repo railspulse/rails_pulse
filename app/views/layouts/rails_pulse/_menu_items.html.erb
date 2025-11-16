@@ -17,3 +17,10 @@
   <%= rails_pulse_icon 'audio-lines', width: '16' %>
   <span class="overflow-ellipsis">Requests</span>
 <% end %>
+
+<% if RailsPulse.configuration.track_jobs %>
+  <%= link_to jobs_path, class: 'btn sidebar-menu__button' do %>
+    <%= rails_pulse_icon 'zap', width: '16' %>
+    <span class="overflow-ellipsis">Jobs</span>
+  <% end %>
+<% end %>
