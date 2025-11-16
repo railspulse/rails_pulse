@@ -27,7 +27,7 @@ module RailsPulse
     private
 
     def set_job
-      @job = Job.find(params[:job_id])
+      @job = RailsPulse::Job.find(params[:job_id])
     end
 
     def set_run

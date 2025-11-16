@@ -15,7 +15,7 @@ module RailsPulse
     def index
       setup_metric_cards
 
-      @ransack_query = Job.ransack(params[:q])
+      @ransack_query = RailsPulse::Job.ransack(params[:q])
 
       # Apply tag filters from session
       base_query = apply_tag_filters(@ransack_query.result)
@@ -24,7 +24,7 @@ module RailsPulse
                           **pagy_options(session_pagination_limit),
                           overflow: :last_page)
       @table_data = @jobs
-      @available_queues = Job.distinct.pluck(:queue_name).compact.sort
+      @available_queues = RailsPulse::Job.distinct.pluck(:queue_name).compact.sort
     end
 
     def show
@@ -65,7 +65,7 @@ module RailsPulse
     private
 
     def set_job
-      @job = Job.find(params[:id])
+      @job = RailsPulse::Job.find(params[:id])
     end
 
     def setup_metric_cards
