@@ -38,7 +38,7 @@ module RailsPulse
       @ignored_jobs = []
       @ignored_queues = []
       @track_assets = false
-      @track_jobs = true
+      @track_jobs = false
       @custom_asset_patterns = []
       @mount_path = nil
       @full_retention_period = 30.days
