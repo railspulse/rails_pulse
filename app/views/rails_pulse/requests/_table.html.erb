@@ -1,12 +1,12 @@
 <% columns = [
-  { field: :occurred_at, label: 'Occurred At' },
-  { field: :route_path, label: 'Route', class: 'w-auto' },
+  { field: :route_path, label: 'Route', cell_class: 'truncate-cell' },
+  { field: :occurred_at, label: 'Occurred At', class: 'w-48' },
   { field: :duration, label: 'Response Time', class: 'w-36' },
   { field: :status, label: 'Status', class: 'w-20' },
   { field: nil, label: 'Tags', class: 'w-32' }
 ] %>
 
-<table class="table mbs-4" data-controller="rails-pulse--table-sort">
+<table class="table table-fixed mbs-4" data-controller="rails-pulse--table-sort">
   <%= render "rails_pulse/components/table_head", columns: columns %>
 
   <tbody>
@@ -21,11 +21,11 @@
         end
       %>
       <tr>
-        <td class="whitespace-nowrap">
-          <%= link_to human_readable_occurred_at(request.occurred_at), request_path(request), data: { turbo_frame: '_top' } %>
+        <td class="truncate-cell">
+          <%= link_to "#{request.route.path} #{request.route.method}", route_path(request.route), data: { turbo_frame: '_top' } %>
         </td>
         <td class="whitespace-nowrap">
-          <%= link_to "#{request.route.path} #{request.route.method}", route_path(request.route), data: { turbo_frame: '_top' } %>
+          <%= link_to human_readable_occurred_at(request.occurred_at), request_path(request), data: { turbo_frame: '_top' } %>
         </td>
         <td class="whitespace-nowrap">
           <span class="<%= performance_class %> font-medium">

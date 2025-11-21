@@ -1,5 +1,5 @@
 <% columns = [
-  { field: :name, label: 'Job Class', class: 'w-auto' },
+  { field: :name, label: 'Job Class', class: 'w-48', cell_class: 'truncate-cell' },
   { field: :queue_name, label: 'Queue', class: 'w-32' },
   { field: :runs_count, label: 'Total Runs', class: 'w-28' },
   { field: :failures_count, label: 'Failures', class: 'w-24' },
@@ -8,13 +8,13 @@
   { field: nil, label: 'Tags', class: 'w-32', sortable: false }
 ] %>
 
-<table class="table mbs-4" data-controller="rails-pulse--table-sort">
+<table class="table table-fixed mbs-4" data-controller="rails-pulse--table-sort">
   <%= render "rails_pulse/components/table_head", columns: columns %>
 
   <tbody>
     <% @table_data.each do |job| %>
       <tr>
-        <td>
+        <td class="truncate-cell">
           <%= link_to job.name, job_path(job), data: { turbo_frame: '_top' } %>
         </td>
         <td>

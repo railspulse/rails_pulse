@@ -1,18 +1,18 @@
 <% columns = [
-  { field: :route_path, label: 'Route', class: 'w-auto' },
+  { field: :route_path, label: 'Route', class: 'w-48', cell_class: 'truncate-cell' },
   { field: :avg_duration_sort, label: 'Average Response Time', class: 'w-48' },
   { field: :max_duration_sort, label: 'Max Response Time', class: 'w-44' },
   { field: :count_sort, label: 'Requests', class: 'w-24' },
   { field: nil, label: 'Tags', class: 'w-32' }
 ] %>
 
-<table class="table mbs-4" data-controller="rails-pulse--table-sort">
+<table class="table table-fixed mbs-4" data-controller="rails-pulse--table-sort">
   <%= render "rails_pulse/components/table_head", columns: columns %>
 
   <tbody>
     <% @table_data.each do |summary| %>
       <tr>
-        <td class="whitespace-nowrap"><%= link_to "#{summary.path} #{summary.route_method}", route_path(summary.route_id), data: { turbo_frame: '_top' } %></td>
+        <td class="truncate-cell"><%= link_to "#{summary.path} #{summary.route_method}", route_path(summary.route_id), data: { turbo_frame: '_top' } %></td>
         <td class="whitespace-nowrap"><%= summary.avg_duration.to_i %> ms</td>
         <td class="whitespace-nowrap"><%= summary.max_duration.to_i %> ms</td>
         <td class="whitespace-nowrap"><%= number_with_delimiter summary.count %></td>

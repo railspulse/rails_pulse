@@ -35,6 +35,9 @@
 .max-w-lg { max-width: 32rem; }
 .max-w-xl { max-width: 36rem; }
 
+/* Table layout utilities */
+.table-fixed { table-layout: fixed; }
+
 /* Global filters active indicator */
 .global-filters-active {
   position: relative;
