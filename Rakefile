@@ -7,6 +7,27 @@ require "dotenv/load" if File.exist?(".env")
 APP_RAKEFILE = File.expand_path("test/dummy/Rakefile", __dir__)
 load "rails/tasks/engine.rake"
 
+desc "Verify dummy app migrations are in sync with gem migrations"
+task :verify_dummy_migrations do
+  gem_migrations = Dir["db/rails_pulse_migrate/*.rb"].map { |f| File.basename(f) }.sort
+  dummy_migrations = Dir["test/dummy/db/migrate/202501*.rb"].map { |f| File.basename(f) }.sort
+
+  missing = gem_migrations - dummy_migrations
+
+  if missing.any?
+    puts "\n❌ Dummy app is missing Rails Pulse migrations:"
+    missing.each { |m| puts "   • #{m}" }
+    puts "\nTo fix this, run:"
+    puts "  cd test/dummy"
+    puts "  rails generate rails_pulse:upgrade"
+    puts "  rails db:migrate RAILS_ENV=test"
+    puts "\nThen commit the new migration files."
+    exit 1
+  else
+    puts "✅ Dummy app migrations are in sync with gem migrations"
+  end
+end
+
 desc "Setup database for testing"
 task :test_setup do
   database = ENV['DB'] || 'sqlite3'
@@ -203,9 +224,21 @@ task :test_release do
 
   failed_tasks = []
   current_step = 0
-  total_steps = 7
+  total_steps = 8
 
-  # Step 1: Git status check
+  # Step 1: Verify dummy migrations
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Verifying dummy app migrations..."
+    puts "-" * 70
+    Rake::Task[:verify_dummy_migrations].invoke
+  rescue => e
+    puts "❌ Dummy app migration verification failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "verify_dummy_migrations"
+  end
+
+  # Step 2: Git status check
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Checking git status..."
@@ -225,7 +258,7 @@ task :test_release do
     puts "⚠️  Warning: Could not check git status (#{e.message})"
   end
 
-  # Step 2: RuboCop linting
+  # Step 3: RuboCop linting
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running RuboCop linting..."
@@ -238,7 +271,7 @@ task :test_release do
     failed_tasks << "rubocop"
   end
 
-  # Step 3: Install Node dependencies
+  # Step 4: Install Node dependencies
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Installing Node dependencies..."
@@ -251,7 +284,7 @@ task :test_release do
     failed_tasks << "npm_install"
   end
 
-  # Step 4: Build and verify assets
+  # Step 5: Build and verify assets
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Building production assets..."
@@ -273,7 +306,7 @@ task :test_release do
     failed_tasks << "npm_build"
   end
 
-  # Step 5: Verify gem builds
+  # Step 6: Verify gem builds
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Verifying gem builds correctly..."
@@ -291,7 +324,7 @@ task :test_release do
     failed_tasks << "gem_build"
   end
 
-  # Step 6: Run generator tests
+  # Step 7: Run generator tests
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running generator tests..."
@@ -304,7 +337,7 @@ task :test_release do
     failed_tasks << "test_generators"
   end
 
-  # Step 7: Run full test matrix with system tests
+  # Step 8: Run full test matrix with system tests
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running full test matrix with system tests..."

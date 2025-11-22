@@ -86,6 +86,59 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     assert_equal "SELECT * FROM posts WHERE id = ?", operation.query.normalized_sql
   end
 
+  test "creates query using hashed_sql on save" do
+    route = rails_pulse_routes(:api_users)
+    request = RailsPulse::Request.create!(
+      route: route,
+      duration: 100,
+      status: 200,
+      request_uuid: SecureRandom.uuid,
+      occurred_at: Time.current
+    )
+
+    sql = "SELECT * FROM users WHERE email = ?"
+    operation = RailsPulse::Operation.new(
+      request: request,
+      operation_type: "sql",
+      label: sql,
+      duration: 10,
+      occurred_at: Time.current
+    )
+
+    assert_nil operation.query, "Query should not be associated before save"
+
+    operation.save!
+
+    assert_not_nil operation.query, "Query should be associated after save"
+    assert_equal sql, operation.query.normalized_sql
+    assert_equal Digest::MD5.hexdigest(sql), operation.query.hashed_sql
+  end
+
+  test "reuses existing query with same hashed_sql" do
+    sql = "SELECT * FROM products WHERE active = ?"
+    existing_query = RailsPulse::Query.create!(normalized_sql: sql)
+
+    route = rails_pulse_routes(:api_users)
+    request = RailsPulse::Request.create!(
+      route: route,
+      duration: 100,
+      status: 200,
+      request_uuid: SecureRandom.uuid,
+      occurred_at: Time.current
+    )
+
+    operation = RailsPulse::Operation.create!(
+      request: request,
+      operation_type: "sql",
+      label: sql,
+      duration: 10,
+      occurred_at: Time.current
+    )
+
+    assert_equal existing_query.id, operation.query.id, "Should reuse existing query"
+    assert_equal 1, RailsPulse::Query.where(normalized_sql: sql).count, "Should not create duplicate query"
+  end
+
   test "should not associate query for non-sql operations" do
     operation = rails_pulse_operations(:template_operation_1)
 

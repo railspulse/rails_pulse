@@ -1,3 +1,5 @@
+require "digest"
+
 module RailsPulse
   class Operation < RailsPulse::ApplicationRecord
     self.table_name = "rails_pulse_operations"
@@ -83,7 +85,11 @@ module RailsPulse
       return unless operation_type == "sql" && label.present?
 
       normalized = normalize_query_label(label)
-      self.query = RailsPulse::Query.find_or_create_by(normalized_sql: normalized)
+      hashed = Digest::MD5.hexdigest(normalized)
+
+      self.query = RailsPulse::Query.find_or_create_by(hashed_sql: hashed) do |q|
+        q.normalized_sql = normalized
+      end
     end
 
     # Normalize SQL query using the dedicated service
