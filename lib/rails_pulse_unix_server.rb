@@ -1,25 +1,25 @@
 #!/usr/bin/env ruby
 
-require 'socket'
-require 'json'
+require "socket"
+require "json"
 
 # Load Rails environment - try multiple locations
-if File.exist?('test/dummy/config/environment.rb')
+if File.exist?("test/dummy/config/environment.rb")
   # Running from Rails Pulse gem root
-  require_relative '../test/dummy/config/environment'
-elsif File.exist?('config/environment.rb')
+  require_relative "../test/dummy/config/environment"
+elsif File.exist?("config/environment.rb")
   # Running from a Rails app that has Rails Pulse installed
-  require File.expand_path('config/environment', Dir.pwd)
+  require File.expand_path("config/environment", Dir.pwd)
 else
   # Fallback - just load the basics we need
   puts "WARNING: Could not find Rails environment, loading minimal dependencies"
-  require 'active_support/all'
-  require 'active_record'
-  require_relative 'rails_pulse'
+  require "active_support/all"
+  require "active_record"
+  require_relative "rails_pulse"
 end
 
 # Load the sidecar server class
-require_relative 'rails_pulse/sidecar_server'
+require_relative "rails_pulse/sidecar_server"
 
 module RailsPulse
   class UnixSocketServer
@@ -69,11 +69,11 @@ module RailsPulse
 
       # Convert to Rack env
       env = {
-        'REQUEST_METHOD' => 'POST',
-        'PATH_INFO' => '/track',
-        'rack.input' => StringIO.new(data),
-        'CONTENT_TYPE' => 'application/json',
-        'CONTENT_LENGTH' => data.bytesize.to_s
+        "REQUEST_METHOD" => "POST",
+        "PATH_INFO" => "/track",
+        "rack.input" => StringIO.new(data),
+        "CONTENT_TYPE" => "application/json",
+        "CONTENT_LENGTH" => data.bytesize.to_s
       }
 
       # Process via Rack app
@@ -90,7 +90,7 @@ end
 
 # Run if executed directly
 if __FILE__ == $0
-  socket_path = ENV['RAILS_PULSE_SOCKET'] || '/tmp/rails_pulse.sock'
+  socket_path = ENV["RAILS_PULSE_SOCKET"] || "/tmp/rails_pulse.sock"
   server = RailsPulse::UnixSocketServer.new(socket_path)
   server.start
 end

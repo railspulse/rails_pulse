@@ -26,18 +26,18 @@ RailsPulse.configure do |config|
   #   bin/dev --sidecar       (uses :sidecar with UNIX socket)
   #   bin/dev --sidecar-tcp   (uses :sidecar with TCP)
 
-  adapter_mode = ENV.fetch('RAILS_PULSE_ADAPTER', 'sync').to_sym
+  adapter_mode = ENV.fetch("RAILS_PULSE_ADAPTER", "sync").to_sym
   config.tracking_adapter = adapter_mode
 
   # Sidecar configuration (only used when adapter is :sidecar)
   if adapter_mode == :sidecar
     # UNIX socket mode (default, fastest)
-    if ENV['RAILS_PULSE_SIDECAR_HOST'].blank?
-      config.sidecar_socket = ENV.fetch('RAILS_PULSE_SIDECAR_SOCKET', '/tmp/rails_pulse.sock')
+    if ENV["RAILS_PULSE_SIDECAR_HOST"].blank?
+      config.sidecar_socket = ENV.fetch("RAILS_PULSE_SIDECAR_SOCKET", "/tmp/rails_pulse.sock")
     else
       # TCP mode (for testing/debugging)
-      config.sidecar_host = ENV['RAILS_PULSE_SIDECAR_HOST']
-      config.sidecar_port = ENV.fetch('RAILS_PULSE_SIDECAR_PORT', '3001').to_i
+      config.sidecar_host = ENV["RAILS_PULSE_SIDECAR_HOST"]
+      config.sidecar_port = ENV.fetch("RAILS_PULSE_SIDECAR_PORT", "3001").to_i
     end
   end
 

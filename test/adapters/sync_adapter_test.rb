@@ -24,6 +24,7 @@ module RailsPulse
         end
 
         route = RailsPulse::Route.last
+
         assert_equal "GET", route.method
         assert_equal "/users", route.path
       end
@@ -34,9 +35,10 @@ module RailsPulse
         end
 
         request = RailsPulse::Request.last
-        assert_equal 123.45, request.duration
+
+        assert_in_delta(123.45, request.duration)
         assert_equal 200, request.status
-        assert_equal false, request.is_error
+        refute request.is_error
         assert_equal "UsersController#index", request.controller_action
       end
 
@@ -56,8 +58,9 @@ module RailsPulse
         end
 
         operation = RailsPulse::Operation.last
+
         assert_equal "sql", operation.operation_type
-        assert_equal 10.5, operation.duration
+        assert_in_delta(10.5, operation.duration)
       end
 
       test "reuses existing route" do
@@ -82,7 +85,7 @@ module RailsPulse
       end
 
       test "is healthy by default" do
-        assert @adapter.healthy?
+        assert_predicate @adapter, :healthy?
       end
 
       test "close does not raise error" do

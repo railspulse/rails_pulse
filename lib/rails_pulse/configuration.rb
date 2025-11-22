@@ -74,7 +74,7 @@ module RailsPulse
       @tracking_adapter = :sync
 
       # Sidecar settings
-      @sidecar_socket = '/tmp/rails_pulse.sock'
+      @sidecar_socket = "/tmp/rails_pulse.sock"
       @sidecar_host = nil
       @sidecar_port = 3001
 

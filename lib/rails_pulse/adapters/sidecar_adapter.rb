@@ -1,5 +1,5 @@
-require 'socket'
-require 'json'
+require "socket"
+require "json"
 
 module RailsPulse
   module Adapters
@@ -7,7 +7,7 @@ module RailsPulse
       def initialize
         @socket_path = RailsPulse.configuration.sidecar_socket
         @use_tcp = RailsPulse.configuration.sidecar_host.present?
-        @host = RailsPulse.configuration.sidecar_host || 'localhost'
+        @host = RailsPulse.configuration.sidecar_host || "localhost"
         @port = RailsPulse.configuration.sidecar_port || 3001
       end
 
