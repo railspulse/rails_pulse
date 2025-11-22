@@ -26,6 +26,7 @@ class AddQueryFingerprintingTest < ActiveSupport::TestCase
 
     assert @connection.column_exists?(:rails_pulse_queries, :hashed_sql), "hashed_sql column should exist"
     column = @connection.columns(:rails_pulse_queries).find { |c| c.name == "hashed_sql" }
+
     assert_equal :string, column.type
     assert_equal 32, column.limit
     refute column.null, "hashed_sql should be NOT NULL"
@@ -67,6 +68,7 @@ class AddQueryFingerprintingTest < ActiveSupport::TestCase
     @migration.up
 
     column = @connection.columns(:rails_pulse_queries).find { |c| c.name == "normalized_sql" }
+
     assert_equal :text, column.type, "normalized_sql should be text type"
   end
 
@@ -134,10 +136,12 @@ class AddQueryFingerprintingTest < ActiveSupport::TestCase
     # Both operations should point to the same query
     op1.reload
     op2.reload
+
     assert_equal op1.query_id, op2.query_id, "Both operations should reference the same query"
 
     # The kept query should have the correct hash
     kept_query = RailsPulse::Query.find_by(normalized_sql: sql)
+
     assert_equal Digest::MD5.hexdigest(sql), kept_query.hashed_sql
   end
 
@@ -180,6 +184,7 @@ class AddQueryFingerprintingTest < ActiveSupport::TestCase
            "Old normalized_sql index should be restored"
 
     column = @connection.columns(:rails_pulse_queries).find { |c| c.name == "normalized_sql" }
+
     assert_equal :string, column.type, "normalized_sql should be back to string type"
     assert_equal 1000, column.limit, "normalized_sql should have 1000 char limit"
   end
