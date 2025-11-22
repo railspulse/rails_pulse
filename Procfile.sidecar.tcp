@@ -1,0 +1,9 @@
+# Rails Pulse Development - SIDECAR ADAPTER MODE (TCP)
+#
+# This uses the :sidecar adapter with TCP instead of UNIX socket
+# Good for: testing TCP mode, debugging sidecar communication
+#
+# Start with: bin/dev --sidecar-tcp
+
+web: cd test/dummy && RAILS_PULSE_ADAPTER=sidecar RAILS_PULSE_SIDECAR_HOST=localhost RAILS_PULSE_SIDECAR_PORT=3001 bin/rails server -p 3000
+sidecar: bundle exec rackup lib/rails_pulse_server.ru -p 3001

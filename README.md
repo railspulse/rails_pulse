@@ -44,6 +44,7 @@
   - [Schema Loading](#schema-loading)
 - [Performance Impact](#performance-impact)
   - [Running Performance Benchmarks](#running-performance-benchmarks)
+- [Sidecar Deployment for High-Traffic Applications](#sidecar-deployment-for-high-traffic-applications)
 - [Testing](#testing)
 - [Technology Stack](#technology-stack)
 - [Advantages Over Other Solutions](#advantages-over-other-solutions)
@@ -638,16 +639,27 @@ The schema file `db/rails_pulse_schema.rb` serves as your single source of truth
 
 ## Performance Impact
 
-Rails Pulse includes comprehensive performance monitoring with measurable overhead. Based on real benchmarking:
+Rails Pulse offers **two deployment modes** to balance monitoring capabilities with performance requirements:
+
+### Sync Mode (Default)
+The default adapter that writes tracking data directly to the database during request processing.
 
 - **Request overhead:** 5-6ms per request (includes database writes)
 - **Memory allocation:** ~830 KB per request (temporary, garbage collected)
-- **Job tracking overhead:** < 0.1ms per background job
 - **Relative impact:** 1-5% for typical requests (100-500ms)
+- **Best for:** Development, staging, and production with < 1,000 RPM
 
-**Important:** The overhead is primarily from persisting tracking data to the database. For high-traffic production applications (> 10,000 RPM), consider using aggressive filtering, sampling, or a separate database.
+### Sidecar Mode (High-Performance)
+An optional high-performance adapter that offloads tracking data to a separate process via IPC.
 
-For detailed benchmarking methodology, optimization strategies, and how to measure Rails Pulse's impact on your specific application, see the **[Performance Impact Guide](docs/performance_impact.md)**.
+- **Request overhead:** < 0.1ms per request (UNIX socket) or 0.2-0.3ms (TCP)
+- **Performance gain:** ~50x faster than sync mode
+- **Best for:** High-traffic production (1,000+ RPM)
+- **Requires:** Foreman or similar process manager
+
+For sidecar setup instructions, see the **[Sidecar Deployment](#sidecar-deployment-for-high-traffic-applications)** section below.
+
+For detailed benchmarking methodology and optimization strategies, see the **[Performance Impact Guide](docs/performance_impact.md)**.
 
 ### Running Performance Benchmarks
 
@@ -672,6 +684,25 @@ bundle exec rake rails_pulse:benchmark:middleware
 ```
 
 See the **[Performance Impact Guide](docs/performance_impact.md)** for detailed instructions and interpreting results.
+
+## Sidecar Deployment for High-Traffic Applications
+
+For production applications handling 1,000+ requests per minute, Rails Pulse offers an optional **sidecar mode** that reduces overhead from 5-6ms to < 0.1ms by offloading tracking to a separate process.
+
+**Quick Setup:**
+
+```ruby
+# config/initializers/rails_pulse.rb
+RailsPulse.configure do |config|
+  config.tracking_adapter = :sidecar
+  config.sidecar_socket = '/tmp/rails_pulse.sock'  # UNIX socket (fastest)
+  # OR
+  # config.sidecar_host = 'localhost'  # TCP (for Docker)
+  # config.sidecar_port = 3001
+end
+```
+
+For complete setup instructions, Docker examples, and deployment guides, see the **[Sidecar Deployment Documentation](https://github.com/railspulse/rails_pulse/wiki/Sidecar-Deployment)**.
 
 ## Testing
 

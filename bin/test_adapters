@@ -1,0 +1,374 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Manual test script for Rails Pulse adapter modes
+# Tests sync, sidecar UNIX socket, and sidecar TCP configurations
+
+require "fileutils"
+require "net/http"
+require "json"
+
+class AdapterTester
+  attr_reader :errors
+
+  def initialize
+    @root_dir = File.expand_path("..", __dir__)
+    @errors = []
+    @passed = 0
+    @failed = 0
+    @server_pid = nil
+  end
+
+  def run
+    puts "\n" + "=" * 80
+    puts "Rails Pulse Adapter Testing Suite"
+    puts "=" * 80
+
+    check_prerequisites
+    cleanup_before_tests
+
+    # Run all tests
+    test_help_command
+    test_sync_adapter
+    test_sidecar_unix_adapter
+    test_sidecar_tcp_adapter
+
+    # Final cleanup
+    cleanup_after_tests
+
+    # Print summary
+    print_summary
+  end
+
+  private
+
+  def check_prerequisites
+    section "Checking Prerequisites"
+
+    # Check foreman
+    if system("which foreman > /dev/null 2>&1")
+      pass "foreman is installed"
+    else
+      fail "foreman is not installed (required for sidecar modes)"
+      puts "  Install with: gem install foreman"
+      exit 1
+    end
+
+    # Check curl
+    if system("which curl > /dev/null 2>&1")
+      pass "curl is installed"
+    else
+      fail "curl is not installed (required for testing)"
+      exit 1
+    end
+  end
+
+  def cleanup_before_tests
+    section "Cleaning Up Before Tests"
+    cleanup_processes
+    cleanup_files
+  end
+
+  def cleanup_after_tests
+    section "Cleaning Up After Tests"
+    cleanup_processes
+    # Don't cleanup log files - user might want to review them
+  end
+
+  def cleanup_processes
+    puts "  Stopping any running servers..."
+
+    # First try graceful shutdown
+    system("pkill -TERM -f 'foreman start' > /dev/null 2>&1")
+    sleep 1
+
+    # Then force kill specific processes
+    system("pkill -9 -f 'bin/rails server' > /dev/null 2>&1")
+    system("pkill -9 -f 'rails_pulse_unix_server' > /dev/null 2>&1")
+    system("pkill -9 -f 'rails_pulse_server.ru' > /dev/null 2>&1")
+    system("pkill -9 -f 'bin/dev' > /dev/null 2>&1")
+
+    # Kill any remaining foreman or puma processes
+    system("pgrep -f 'foreman start' | xargs kill -9 > /dev/null 2>&1")
+    system("pgrep -f 'puma.*3000' | xargs kill -9 > /dev/null 2>&1")
+    system("pgrep -f 'puma.*3001' | xargs kill -9 > /dev/null 2>&1")
+
+    # Wait for ports to be released
+    sleep 2
+
+    # Clean up PID files
+    Dir.chdir(@root_dir) do
+      FileUtils.rm_f("test/dummy/tmp/pids/server.pid")
+    end
+  end
+
+  def cleanup_files
+    FileUtils.rm_f("/tmp/rails_pulse.sock")
+    FileUtils.rm_f("/tmp/sync_test.log")
+    FileUtils.rm_f("/tmp/sidecar_unix_test.log")
+    FileUtils.rm_f("/tmp/sidecar_tcp_test.log")
+  end
+
+  def test_help_command
+    section "Test 1: Help Command"
+
+    Dir.chdir(@root_dir) do
+      output = `bin/dev --help 2>&1`
+
+      if output.include?("--sync") && output.include?("--sidecar")
+        pass "Help shows adapter mode options"
+      else
+        fail "Help missing adapter mode options"
+      end
+    end
+  end
+
+  def test_sync_adapter
+    section "Test 2: Sync Adapter Mode"
+
+    Dir.chdir(@root_dir) do
+      puts "  Starting server with --sync flag..."
+      @server_pid = spawn("bin/dev --sync > /tmp/sync_test.log 2>&1")
+
+      if wait_for_server
+        pass "Sync mode: Server started"
+      else
+        fail "Sync mode: Server failed to start"
+        cleanup_test_server
+        return
+      end
+
+      # Verify configuration
+      sleep 2
+      log_content = File.read("/tmp/sync_test.log")
+      if log_content.include?("Adapter: SYNC")
+        pass "Sync mode: Correct adapter configuration"
+      else
+        fail "Sync mode: Wrong adapter configuration"
+      end
+
+      # Make test request
+      if make_request("http://localhost:3000/search")
+        pass "Sync mode: Server responded to /search"
+      else
+        fail "Sync mode: No response from /search"
+      end
+
+      cleanup_test_server
+    end
+  end
+
+  def test_sidecar_unix_adapter
+    section "Test 3: Sidecar Adapter (UNIX Socket)"
+
+    Dir.chdir(@root_dir) do
+      puts "  Starting server with --sidecar flag..."
+      @server_pid = spawn("bin/dev --sidecar > /tmp/sidecar_unix_test.log 2>&1")
+
+      if wait_for_server
+        pass "Sidecar UNIX: Server started"
+      else
+        fail "Sidecar UNIX: Server failed to start"
+        cleanup_test_server
+        return
+      end
+
+      # Check socket file created
+      sleep 3
+      if File.socket?("/tmp/rails_pulse.sock")
+        pass "Sidecar UNIX: Socket file created"
+      else
+        fail "Sidecar UNIX: Socket file not found"
+      end
+
+      # Verify configuration
+      log_content = File.read("/tmp/sidecar_unix_test.log")
+      if log_content.include?("Adapter: SIDECAR") && log_content.include?("UNIX socket")
+        pass "Sidecar UNIX: Correct adapter configuration"
+      else
+        fail "Sidecar UNIX: Wrong adapter configuration"
+      end
+
+      # Check sidecar process started
+      if log_content.include?("Rails Pulse sidecar listening")
+        pass "Sidecar UNIX: Sidecar process started"
+      else
+        fail "Sidecar UNIX: Sidecar process not detected"
+      end
+
+      # Make test request
+      if make_request("http://localhost:3000/search")
+        pass "Sidecar UNIX: Server responded to /search"
+      else
+        fail "Sidecar UNIX: No response from /search"
+      end
+
+      # Verify tracking data received (give it more time to flush logs)
+      sleep 5
+      log_content = File.read("/tmp/sidecar_unix_test.log")
+      if log_content.include?("Received tracking:")
+        pass "Sidecar UNIX: Tracking data received by sidecar"
+      else
+        fail "Sidecar UNIX: No tracking data in sidecar logs"
+      end
+
+      cleanup_test_server
+    end
+  end
+
+  def test_sidecar_tcp_adapter
+    section "Test 4: Sidecar Adapter (TCP)"
+
+    Dir.chdir(@root_dir) do
+      puts "  Starting server with --sidecar-tcp flag..."
+      @server_pid = spawn("bin/dev --sidecar-tcp > /tmp/sidecar_tcp_test.log 2>&1")
+
+      if wait_for_server
+        pass "Sidecar TCP: Server started"
+      else
+        fail "Sidecar TCP: Server failed to start"
+        cleanup_test_server
+        return
+      end
+
+      # Verify configuration
+      sleep 2
+      log_content = File.read("/tmp/sidecar_tcp_test.log")
+      if log_content.include?("Adapter: SIDECAR") && log_content.include?("TCP")
+        pass "Sidecar TCP: Correct adapter configuration"
+      else
+        fail "Sidecar TCP: Wrong adapter configuration"
+      end
+
+      # Check health endpoint (wait for sidecar to start)
+      sleep 5
+      begin
+        response = make_request("http://localhost:3001/health")
+        if response && response.include?('"status":"ok"')
+          pass "Sidecar TCP: Health endpoint responding"
+        else
+          fail "Sidecar TCP: Health endpoint not working"
+        end
+      rescue => e
+        fail "Sidecar TCP: Could not reach health endpoint - #{e.message}"
+      end
+
+      # Make multiple test requests to ensure tracking happens
+      if make_request("http://localhost:3000/search")
+        pass "Sidecar TCP: Server responded to /search"
+      else
+        fail "Sidecar TCP: No response from /search"
+      end
+
+      # Make another request to be sure
+      sleep 2
+      make_request("http://localhost:3000/search")
+
+      # Verify tracking data received (give it more time to flush logs)
+      sleep 5
+      log_content = File.read("/tmp/sidecar_tcp_test.log")
+
+      # Check for either tracking data OR debug errors that would explain why tracking didn't happen
+      if log_content.include?("Received tracking:") || log_content.include?("POST /track")
+        pass "Sidecar TCP: Tracking data received by sidecar"
+      else
+        # Check if tracking was attempted but failed
+        if log_content.include?("Failed") || log_content.include?("ERROR")
+          fail "Sidecar TCP: Tracking attempted but failed (check logs)"
+        else
+          fail "Sidecar TCP: No tracking data in sidecar logs (tracking may not be sending to TCP)"
+        end
+      end
+
+      cleanup_test_server
+    end
+  end
+
+  def wait_for_server(max_attempts: 30, port: 3000)
+    puts "  Waiting for server on port #{port}..."
+
+    max_attempts.times do |attempt|
+      begin
+        uri = URI("http://localhost:#{port}/")
+        response = Net::HTTP.get_response(uri)
+        return true if response
+      rescue Errno::ECONNREFUSED, Errno::EADDRNOTAVAIL, SocketError
+        sleep 1
+      end
+    end
+
+    false
+  end
+
+  def make_request(url)
+    uri = URI(url)
+    response = Net::HTTP.get_response(uri)
+    response.is_a?(Net::HTTPSuccess) ? response.body : nil
+  rescue => e
+    puts "  Request error: #{e.message}"
+    nil
+  end
+
+  def cleanup_test_server
+    if @server_pid
+      puts "  Stopping test server (PID: #{@server_pid})..."
+      begin
+        # Kill the process group to get foreman and all child processes
+        Process.kill("-TERM", @server_pid) rescue nil
+        sleep 2
+        Process.kill("-KILL", @server_pid) rescue nil
+      rescue Errno::ESRCH
+        # Process already dead
+      end
+      @server_pid = nil
+    end
+
+    # Extra cleanup to be sure
+    cleanup_processes
+    sleep 1
+  end
+
+  def section(title)
+    puts "\n#{title}"
+    puts "-" * 80
+  end
+
+  def pass(message)
+    @passed += 1
+    puts "  ✓ #{message}"
+  end
+
+  def fail(message)
+    @failed += 1
+    @errors << message
+    puts "  ✗ #{message}"
+  end
+
+  def print_summary
+    puts "\n" + "=" * 80
+    puts "Test Summary"
+    puts "=" * 80
+    puts "Passed: #{@passed}"
+    puts "Failed: #{@failed}"
+
+    if @failed > 0
+      puts "\nFailures:"
+      @errors.each do |error|
+        puts "  - #{error}"
+      end
+      puts "\nLog files available at:"
+      puts "  - /tmp/sync_test.log"
+      puts "  - /tmp/sidecar_unix_test.log"
+      puts "  - /tmp/sidecar_tcp_test.log"
+      puts "\n❌ Some tests failed"
+      exit 1
+    else
+      puts "\n✅ All tests passed!"
+      exit 0
+    end
+  end
+end
+
+# Run tests
+tester = AdapterTester.new
+tester.run

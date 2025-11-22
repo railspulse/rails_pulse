@@ -24,7 +24,11 @@ module RailsPulse
                   :tags,
                   :job_tracking_mode,
                   :job_adapters,
-                  :capture_job_arguments
+                  :capture_job_arguments,
+                  :tracking_adapter,
+                  :sidecar_socket,
+                  :sidecar_host,
+                  :sidecar_port
 
     def initialize
       @enabled = true
@@ -66,6 +70,14 @@ module RailsPulse
       }
       @capture_job_arguments = false
 
+      # Adapter settings
+      @tracking_adapter = :sync
+
+      # Sidecar settings
+      @sidecar_socket = '/tmp/rails_pulse.sock'
+      @sidecar_host = nil
+      @sidecar_port = 3001
+
       validate_configuration!
     end
 
@@ -90,6 +102,7 @@ module RailsPulse
       validate_authentication_settings!
       validate_tags!
       validate_job_settings!
+      validate_sidecar_settings!
     end
 
     # Revalidate configuration after changes
@@ -196,6 +209,26 @@ module RailsPulse
 
       unless [ true, false ].include?(@capture_job_arguments)
         raise ArgumentError, "capture_job_arguments must be a boolean"
+      end
+    end
+
+    def validate_sidecar_settings!
+      unless [ :sync, :sidecar ].include?(@tracking_adapter)
+        raise ArgumentError, "tracking_adapter must be :sync or :sidecar, got #{@tracking_adapter}"
+      end
+
+      if @tracking_adapter == :sidecar
+        if @sidecar_host.present?
+          # Using TCP
+          unless @sidecar_port.is_a?(Integer) && @sidecar_port > 0
+            raise ArgumentError, "sidecar_port must be a positive integer when using sidecar_host"
+          end
+        else
+          # Using UNIX socket
+          unless @sidecar_socket.present?
+            raise ArgumentError, "sidecar_socket must be set when using :sidecar adapter"
+          end
+        end
       end
     end
 

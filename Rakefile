@@ -85,7 +85,7 @@ task :test do
   puts "=" * 50
   puts
 
-  sh "rails test test/controllers test/helpers test/instrumentation test/jobs test/models test/services"
+  sh "rails test test/adapters test/controllers test/helpers test/instrumentation test/jobs test/models test/services"
 end
 
 desc "Setup database for specific Rails version and database"
@@ -203,7 +203,7 @@ task :test_release do
 
   failed_tasks = []
   current_step = 0
-  total_steps = 7
+  total_steps = 8
 
   # Step 1: Git status check
   current_step += 1
@@ -304,7 +304,20 @@ task :test_release do
     failed_tasks << "test_generators"
   end
 
-  # Step 7: Run full test matrix with system tests
+  # Step 7: Run adapter tests
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Running adapter tests..."
+    puts "-" * 70
+    sh "./bin/test_adapters"
+    puts "✅ Adapter tests passed!"
+  rescue => e
+    puts "❌ Adapter tests failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "test_adapters"
+  end
+
+  # Step 8: Run full test matrix with system tests
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running full test matrix with system tests..."

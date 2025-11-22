@@ -31,52 +31,33 @@ module RailsPulse
           return result
         end
 
-        # Clear any previous request ID to avoid conflicts
+        # Clear any previous request data
         RequestStore.store[:rails_pulse_request_id] = nil
+        RequestStore.store[:rails_pulse_operations] = []
 
         start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-
-        # Temporarily skip recording while we create the route and request
-        RequestStore.store[:skip_recording_rails_pulse_activity] = true
-        route = find_or_create_route(req)
         controller_action = "#{env['action_dispatch.request.parameters']&.[]('controller')&.classify}##{env['action_dispatch.request.parameters']&.[]('action')}"
         occurred_at = Time.current
 
-        request = nil
-        if route
-          request = RailsPulse::Request.create!(
-            route: route,
-            duration: 0, # will update after response
-            status: 0, # will update after response
-            is_error: false,
-            request_uuid: req.uuid,
-            controller_action: controller_action,
-            occurred_at: occurred_at
-          )
-          RequestStore.store[:rails_pulse_request_id] = request.id
-        end
-
-        # Re-enable recording for the actual request processing
-        RequestStore.store[:skip_recording_rails_pulse_activity] = false
-
+        # Process request
         status, headers, response = @app.call(env)
         duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
 
-        # Temporarily skip recording while we update the request and save operations
-        RequestStore.store[:skip_recording_rails_pulse_activity] = true
-        if request
-          request.update(duration: duration, status: status, is_error: status.to_i >= 500)
+        # Collect all tracking data
+        tracking_data = {
+          method: req.request_method,
+          path: req.path,
+          duration: duration,
+          status: status,
+          is_error: status.to_i >= 500,
+          request_uuid: req.uuid,
+          controller_action: controller_action,
+          occurred_at: occurred_at,
+          operations: RequestStore.store[:rails_pulse_operations] || []
+        }
 
-          # Save collected operations
-          operations_data = RequestStore.store[:rails_pulse_operations] || []
-          operations_data.each do |operation_data|
-            begin
-              RailsPulse::Operation.create!(operation_data)
-            rescue => e
-              Rails.logger.error "[RailsPulse] Failed to save operation: #{e.message}"
-            end
-          end
-        end
+        # Send to adapter (non-blocking for sidecar adapter)
+        RailsPulse.adapter.track_request(tracking_data)
 
         [ status, headers, response ]
       ensure
@@ -86,12 +67,6 @@ module RailsPulse
       end
 
       private
-
-      def find_or_create_route(req)
-        method = req.request_method
-        path = req.path
-        RailsPulse::Route.find_or_create_by(method: method, path: path)
-      end
 
       def should_ignore_route?(req)
         # Get ignored routes from configuration

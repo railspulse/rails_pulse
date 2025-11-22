@@ -7,6 +7,41 @@ RailsPulse.configure do |config|
   config.enabled = true
 
   # ====================================================================================================
+  #                                         ADAPTER CONFIGURATION
+  # ====================================================================================================
+  # Rails Pulse supports two deployment adapters:
+  #
+  # :sync (default) - Direct database writes during request (5-6ms overhead)
+  #   Good for: development, staging, low-traffic production (< 1K RPM)
+  #
+  # :sidecar - Sends data to separate process via UNIX socket (< 0.1ms overhead)
+  #   Good for: production with high traffic (1K+ RPM)
+  #
+  # The adapter can be controlled via RAILS_PULSE_ADAPTER environment variable:
+  #   RAILS_PULSE_ADAPTER=sync bin/dev
+  #   RAILS_PULSE_ADAPTER=sidecar bin/dev
+  #
+  # Or use the convenient bin/dev flags:
+  #   bin/dev --sync          (uses :sync adapter)
+  #   bin/dev --sidecar       (uses :sidecar with UNIX socket)
+  #   bin/dev --sidecar-tcp   (uses :sidecar with TCP)
+
+  adapter_mode = ENV.fetch('RAILS_PULSE_ADAPTER', 'sync').to_sym
+  config.tracking_adapter = adapter_mode
+
+  # Sidecar configuration (only used when adapter is :sidecar)
+  if adapter_mode == :sidecar
+    # UNIX socket mode (default, fastest)
+    if ENV['RAILS_PULSE_SIDECAR_HOST'].blank?
+      config.sidecar_socket = ENV.fetch('RAILS_PULSE_SIDECAR_SOCKET', '/tmp/rails_pulse.sock')
+    else
+      # TCP mode (for testing/debugging)
+      config.sidecar_host = ENV['RAILS_PULSE_SIDECAR_HOST']
+      config.sidecar_port = ENV.fetch('RAILS_PULSE_SIDECAR_PORT', '3001').to_i
+    end
+  end
+
+  # ====================================================================================================
   #                                               THRESHOLDS
   # ====================================================================================================
   # These thresholds are used to determine if a route, request, or query is slow, very slow, or critical.

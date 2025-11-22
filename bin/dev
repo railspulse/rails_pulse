@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 
 # Rails Pulse Development Server
-# Builds assets and starts the Rails server
+# Builds assets and starts the Rails server with optional adapter modes
 
 set -e
 
 # Parse arguments
 VERBOSE=false
+ADAPTER_MODE=""
 RAILS_ARGS=()
 
 for arg in "$@"; do
@@ -15,20 +16,41 @@ for arg in "$@"; do
       VERBOSE=true
       shift
       ;;
+    --sync)
+      ADAPTER_MODE="sync"
+      shift
+      ;;
+    --sidecar)
+      ADAPTER_MODE="sidecar"
+      shift
+      ;;
+    --sidecar-tcp)
+      ADAPTER_MODE="sidecar-tcp"
+      shift
+      ;;
     --help|-h)
       echo "Rails Pulse Development Server"
       echo ""
       echo "Usage: ./bin/dev [options] [rails server options]"
       echo ""
       echo "Options:"
-      echo "  -v, --verbose    Show detailed output from asset building and watching"
-      echo "  -h, --help       Show this help message"
+      echo "  -v, --verbose      Show detailed output from asset building and watching"
+      echo "  --sync             Use sync adapter (default, 5-6ms overhead)"
+      echo "  --sidecar          Use sidecar adapter with UNIX socket (< 0.1ms overhead)"
+      echo "  --sidecar-tcp      Use sidecar adapter with TCP (0.2-0.3ms overhead)"
+      echo "  -h, --help         Show this help message"
+      echo ""
+      echo "Adapter Modes:"
+      echo "  sync        - Direct database writes (default)"
+      echo "  sidecar     - Separate process via UNIX socket (requires foreman/overmind)"
+      echo "  sidecar-tcp - Separate process via TCP (easier debugging)"
       echo ""
       echo "Examples:"
-      echo "  ./bin/dev                    # Start with quiet output"
+      echo "  ./bin/dev                    # Start with sync adapter (default)"
+      echo "  ./bin/dev --sidecar          # Start with sidecar adapter (UNIX socket)"
+      echo "  ./bin/dev --sidecar-tcp      # Start with sidecar adapter (TCP)"
       echo "  ./bin/dev --verbose          # Start with detailed output"
       echo "  ./bin/dev -p 3001            # Start on port 3001"
-      echo "  ./bin/dev --verbose -p 3001  # Verbose mode on port 3001"
       exit 0
       ;;
     *)
@@ -39,6 +61,11 @@ for arg in "$@"; do
 done
 
 echo "🚀 Starting Rails Pulse development server..."
+
+# Determine which adapter mode to use
+if [ -z "$ADAPTER_MODE" ]; then
+  ADAPTER_MODE="sync"  # Default to sync
+fi
 
 # We're already in the Rails Pulse root directory
 ROOT_DIR="$(pwd)"
@@ -89,7 +116,42 @@ else
   npm run build > /dev/null 2>&1
 fi
 
-# Start the Rails server from the dummy app directory
-echo "🌐 Starting Rails server..."
-cd "$DUMMY_DIR"
-exec ./bin/rails server "${RAILS_ARGS[@]}"
+# Determine which mode to run
+if [ "$ADAPTER_MODE" = "sync" ]; then
+  # Sync mode - just run Rails server
+  echo "📊 Adapter: SYNC (5-6ms overhead)"
+  echo "🌐 Starting Rails server..."
+  cd "$DUMMY_DIR"
+  export RAILS_PULSE_ADAPTER=sync
+  exec ./bin/rails server "${RAILS_ARGS[@]}"
+
+elif [ "$ADAPTER_MODE" = "sidecar" ] || [ "$ADAPTER_MODE" = "sidecar-tcp" ]; then
+  # Sidecar mode - use foreman to run both processes
+
+  # Check if foreman is available
+  if ! command -v foreman &> /dev/null; then
+    echo "❌ foreman is required for sidecar mode but not installed."
+    echo "   Install with: gem install foreman"
+    echo "   Or use sync mode: ./bin/dev --sync"
+    exit 1
+  fi
+
+  if [ "$ADAPTER_MODE" = "sidecar" ]; then
+    echo "📊 Adapter: SIDECAR (< 0.1ms overhead, UNIX socket)"
+    export RAILS_PULSE_ADAPTER=sidecar
+    export RAILS_PULSE_SIDECAR_SOCKET=/tmp/rails_pulse.sock
+    PROCFILE="$ROOT_DIR/Procfile.sidecar"
+  else
+    echo "📊 Adapter: SIDECAR (0.2-0.3ms overhead, TCP)"
+    export RAILS_PULSE_ADAPTER=sidecar
+    export RAILS_PULSE_SIDECAR_HOST=localhost
+    export RAILS_PULSE_SIDECAR_PORT=3001
+    PROCFILE="$ROOT_DIR/Procfile.sidecar.tcp"
+  fi
+
+  echo "🌐 Starting Rails server and sidecar..."
+  exec foreman start -f "$PROCFILE"
+else
+  echo "❌ Unknown adapter mode: $ADAPTER_MODE"
+  exit 1
+fi
