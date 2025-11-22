@@ -659,8 +659,6 @@ An optional high-performance adapter that offloads tracking data to a separate p
 
 For sidecar setup instructions, see the **[Sidecar Deployment](#sidecar-deployment-for-high-traffic-applications)** section below.
 
-For detailed benchmarking methodology and optimization strategies, see the **[Performance Impact Guide](docs/performance_impact.md)**.
-
 ### Running Performance Benchmarks
 
 Rails Pulse includes built-in benchmarking tools. To use them:
@@ -683,8 +681,6 @@ bundle exec rake rails_pulse:benchmark:request_overhead
 bundle exec rake rails_pulse:benchmark:middleware
 ```
 
-See the **[Performance Impact Guide](docs/performance_impact.md)** for detailed instructions and interpreting results.
-
 ## Sidecar Deployment for High-Traffic Applications
 
 For production applications handling 1,000+ requests per minute, Rails Pulse offers an optional **sidecar mode** that reduces overhead from 5-6ms to < 0.1ms by offloading tracking to a separate process.
@@ -702,7 +698,7 @@ RailsPulse.configure do |config|
 end
 ```
 
-For complete setup instructions, Docker examples, and deployment guides, see the **[Sidecar Deployment Documentation](https://github.com/railspulse/rails_pulse/wiki/Sidecar-Deployment)**.
+**Note:** Sidecar mode is completely optional and backward compatible. Existing installations continue to work unchanged with sync mode.
 
 ## Testing
 
@@ -870,7 +866,6 @@ The gem is available as open source under the terms of the [MIT License](https:/
 <div align="center">
   <strong>Built with ❤️ for the Rails community</strong>
 
-  [Documentation](https://github.com/railspulse/rails_pulse/wiki) •
   [Issues](https://github.com/railspulse/rails_pulse/issues) •
-  [Contributing](CONTRIBUTING.md)
+  [Discussions](https://github.com/railspulse/rails_pulse/discussions)
 </div>
