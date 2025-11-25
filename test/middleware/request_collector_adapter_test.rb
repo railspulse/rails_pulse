@@ -77,6 +77,7 @@ module RailsPulse
         RailsPulse.configuration.async = true
 
         get "/"
+
         assert_response :success
 
         # Request completes immediately, no records yet

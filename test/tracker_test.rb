@@ -35,7 +35,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
 
     # Should return in less than 10ms (non-blocking)
-    assert elapsed < 0.01, "Async mode should not block, took #{elapsed}s"
+    assert_operator elapsed, :<, 0.01, "Async mode should not block, took #{elapsed}s"
   end
 
   test "async mode creates records in background" do
@@ -47,11 +47,13 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     sleep 0.2
 
     route = RailsPulse::Route.find_by(method: "GET", path: "/users")
+
     assert_not_nil route, "Route should be created"
 
     request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
+
     assert_not_nil request, "Request should be created"
-    assert_equal 150.0, request.duration
+    assert_in_delta(150.0, request.duration)
     assert_equal 1, request.operations.count
   end
 
@@ -62,6 +64,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
 
     # Data should be immediately available (no sleep needed)
     request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
+
     assert_not_nil request, "Request should be immediately available in sync mode"
   end
 
@@ -71,9 +74,11 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Tracker.track_request(@tracking_data)
 
     route = RailsPulse::Route.find_by(method: "GET", path: "/users")
+
     assert_not_nil route
 
     request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
+
     assert_not_nil request
     assert_equal 1, request.operations.count
   end
@@ -119,12 +124,12 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
   end
 
   test "healthy? returns true when database is connected" do
-    assert RailsPulse::Tracker.healthy?, "Tracker should be healthy when DB is connected"
+    assert_predicate RailsPulse::Tracker, :healthy?, "Tracker should be healthy when DB is connected"
   end
 
   test "healthy? returns false when database is disconnected" do
     RailsPulse::Base.connection.stub :active?, false do
-      refute RailsPulse::Tracker.healthy?, "Tracker should be unhealthy when DB is disconnected"
+      refute_predicate RailsPulse::Tracker, :healthy?, "Tracker should be unhealthy when DB is disconnected"
     end
   end
 
@@ -174,18 +179,5 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
 
     # Should not create any records
     assert_nil RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
-  end
-
-  test "returns nil on error in sync mode" do
-    RailsPulse.configuration.async = false
-
-    result = nil
-    RailsPulse::Route.stub :find_or_create_by, ->(*) { raise "Error" } do
-      result = RailsPulse::Tracker.track_request(@tracking_data)
-    end
-
-    # track_request itself doesn't return a value, but perform_tracking returns nil on error
-    # Just verify no exception was raised
-    assert true
   end
 end

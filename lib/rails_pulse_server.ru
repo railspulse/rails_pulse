@@ -19,18 +19,18 @@ else
   require "rails_pulse"
 
   # Load database configuration from environment
-  db_config = if ENV['RAILS_PULSE_DATABASE_URL']
-    { url: ENV['RAILS_PULSE_DATABASE_URL'] }
-  elsif ENV['DATABASE_URL']
-    { url: ENV['DATABASE_URL'] }
+  db_config = if ENV["RAILS_PULSE_DATABASE_URL"]
+    { url: ENV["RAILS_PULSE_DATABASE_URL"] }
+  elsif ENV["DATABASE_URL"]
+    { url: ENV["DATABASE_URL"] }
   else
     {
-      adapter: ENV.fetch('RAILS_PULSE_DB_ADAPTER', 'postgresql'),
-      host: ENV.fetch('RAILS_PULSE_DB_HOST', 'localhost'),
-      port: ENV.fetch('RAILS_PULSE_DB_PORT', '5432'),
-      database: ENV.fetch('RAILS_PULSE_DB_NAME', 'rails_pulse_production'),
-      username: ENV.fetch('RAILS_PULSE_DB_USER', 'postgres'),
-      password: ENV.fetch('RAILS_PULSE_DB_PASSWORD', '')
+      adapter: ENV.fetch("RAILS_PULSE_DB_ADAPTER", "postgresql"),
+      host: ENV.fetch("RAILS_PULSE_DB_HOST", "localhost"),
+      port: ENV.fetch("RAILS_PULSE_DB_PORT", "5432"),
+      database: ENV.fetch("RAILS_PULSE_DB_NAME", "rails_pulse_production"),
+      username: ENV.fetch("RAILS_PULSE_DB_USER", "postgres"),
+      password: ENV.fetch("RAILS_PULSE_DB_PASSWORD", "")
     }
   end
 
@@ -57,8 +57,8 @@ $stdout.sync = true
 $stderr.sync = true
 
 # Build the Rack app with session support
-require 'rack/session/cookie'
-require 'securerandom'
+require "rack/session/cookie"
+require "securerandom"
 
 # Simple Rack app that just serves the dashboard
 class DashboardApp
@@ -68,11 +68,11 @@ class DashboardApp
 
   def call(env)
     # Health check endpoint
-    if env['PATH_INFO'] == '/health'
+    if env["PATH_INFO"] == "/health"
       return [
         200,
-        { 'Content-Type' => 'application/json' },
-        [{ status: 'ok', mode: 'dashboard', timestamp: Time.now.iso8601 }.to_json]
+        { "Content-Type" => "application/json" },
+        [ { status: "ok", mode: "dashboard", timestamp: Time.now.iso8601 }.to_json ]
       ]
     end
 
@@ -83,8 +83,8 @@ end
 
 # Add session middleware for the dashboard
 use Rack::Session::Cookie,
-  key: 'rails_pulse_session',
-  secret: ENV.fetch('SECRET_KEY_BASE', SecureRandom.hex(32)),
+  key: "rails_pulse_session",
+  secret: ENV.fetch("SECRET_KEY_BASE", SecureRandom.hex(32)),
   same_site: :lax,
   max_age: 86400  # 1 day
 
