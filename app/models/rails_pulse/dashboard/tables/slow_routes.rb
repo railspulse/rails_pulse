@@ -49,7 +49,7 @@ module RailsPulse
           # Return new structure with columns and data
           {
             columns: [
-              { field: :route_path, label: "Route", link_to: :route_link, class: "w-auto" },
+              { field: :route_path, label: "Route", link_to: :route_link, class: "w-48", cell_class: "truncate-cell" },
               { field: :average_time, label: "Average Time", class: "w-32" },
               { field: :request_count, label: "Requests", class: "w-24" },
               { field: :last_request, label: "Last Request", class: "w-32" }

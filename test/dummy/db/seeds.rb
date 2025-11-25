@@ -143,7 +143,13 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
     { method: "GET", path: "/admin/dashboard" },
     { method: "GET", path: "/admin/users" },
     { method: "GET", path: "/api/v1/posts" },
-    { method: "GET", path: "/api/v1/users" }
+    { method: "GET", path: "/api/v1/users" },
+    # Very long paths for testing dashboard display
+    { method: "GET", path: "/rails/active_storage/representations/redirect/eyJfcmFpbHMiOnsiZGF0YSI6NDIsInB1ciI6ImJsb2JfaWQifX0=--a1b2c3d4e5f6789abcdef0123456789abcdef012/eyJfcmFpbHMiOnsiZGF0YSI6eyJjcm9wIjpbMTkyMCwxMDgwLDc2OCw0MzJdLCJyZXNpemVfdG9fbGltaXQiOls4MDAsNjAwXSwic2F2ZXIiOnsic3RyaXAiOnRydWUsImNvbXByZXNzaW9uIjo5fSwiZm9ybWF0IjoianBlZyJ9LCJwdXIiOiJ2YXJpYXRpb24ifX0=--9876543210fedcba987654321098765432109876/very_long_filename_with_lots_of_details.jpg" },
+    { method: "GET", path: "/api/v2/organizations/:organization_id/projects/:project_id/documents/:document_id/attachments/:attachment_id/versions/:version_id/representations/thumbnail" },
+    { method: "POST", path: "/webhooks/integrations/third_party_service/notifications/delivery_status_updates/batch_processing/results" },
+    { method: "GET", path: "/rails/active_storage/disk/encoded_key/eyJfcmFpbHMiOnsiZGF0YSI6NzgsInB1ciI6ImJsb2JfaWQifX0=--xyz789abc123def456ghi789jkl012mno345pqr678/eyJfcmFpbHMiOnsiZGF0YSI6eyJ0cmFuc2Zvcm0iOnsibWV0aG9kIjoidHJhbnNmb3JtIiwid2lkdGgiOjEyMDAsImhlaWdodCI6ODAwLCJyZXNpemUiOiJmaXQiLCJmb3JtYXQiOiJwbmciLCJxdWFsaXR5Ijo4NX0sInB1ciI6InZhcmlhdGlvbiJ9fQ==--fedcba0987654321abcdef1234567890abcdef12/extremely_detailed_technical_documentation_report_final_version.pdf" },
+    { method: "PUT", path: "/admin/system/configuration/advanced_settings/performance_monitoring/database_optimization/query_analysis/automated_recommendations" }
   ]
 
   created_routes = routes_data.map do |route_data|
@@ -204,7 +210,13 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
   puts "Simulating performance issue from #{slowdown_start.strftime('%B %d, %Y at %I:%M %p')} to #{slowdown_end.strftime('%I:%M %p')}"
 
   request_count.times do |i|
-    route = created_routes.sample
+    # Bias selection toward long paths to make them appear prominently in dashboard
+    route = if i % 10 < 4  # 40% chance to select a long path
+      long_paths = created_routes.select { |r| r.path.length > 80 }
+      long_paths.any? ? long_paths.sample : created_routes.sample
+    else
+      created_routes.sample
+    end
     occurred_at = rand(5.weeks.ago..Time.current)
 
     # Determine performance characteristics based on route (web app durations)
@@ -224,7 +236,18 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
     when "/api_complex"
       rand(250..900)  # Complex API with aggregations
     else
-      rand(35..250)   # Standard CRUD operations
+      # Handle long paths with specific performance characteristics to ensure display on dashboard
+      if route.path.include?("/rails/active_storage/")
+        rand(300..800)  # Active Storage operations can be slow
+      elsif route.path.include?("/api/v2/organizations/")
+        rand(150..400)  # Complex nested API operations
+      elsif route.path.include?("/webhooks/")
+        rand(200..600)  # Webhook processing
+      elsif route.path.include?("/admin/system/configuration/")
+        rand(400..1200) # Admin configuration operations
+      else
+        rand(35..250)   # Standard CRUD operations
+      end
     end
 
     # Add some realistic variance
@@ -1099,6 +1122,18 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
 
   puts "Final summary count: #{RailsPulse::Summary.count}"
   puts "Queries with summaries: #{RailsPulse::Query.joins(:summaries).distinct.count}"
+
+  # Run SummaryJob to generate additional recent summaries
+  puts "\nRunning SummaryJob to generate recent hourly summaries..."
+  # Process the current hour and the last few hours to ensure dashboard has recent data
+  (0..3).each do |hours_ago|
+    target_hour = hours_ago.hours.ago.beginning_of_hour
+    puts "  Processing summary for #{target_hour.strftime('%Y-%m-%d %H:%M:%S')}"
+    RailsPulse::SummaryJob.perform_now(target_hour)
+  end
+
+  puts "SummaryJob execution completed!"
+  puts "Updated summary count: #{RailsPulse::Summary.count}"
 end
 
 # Generate large dataset for testing cleanup FK violations

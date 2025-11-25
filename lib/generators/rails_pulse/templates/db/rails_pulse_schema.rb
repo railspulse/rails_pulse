@@ -39,7 +39,8 @@ RailsPulse::Schema = lambda do |connection|
 
   unless connection.table_exists?(:rails_pulse_queries)
     connection.create_table :rails_pulse_queries do |t|
-      t.string :normalized_sql, limit: 1000, null: false, comment: "Normalized SQL query string (e.g., SELECT * FROM users WHERE id = ?)"
+      t.string :hashed_sql, limit: 32, null: false, comment: "MD5 hash of normalized SQL for indexing"
+      t.text :normalized_sql, null: false, comment: "Normalized SQL query string (e.g., SELECT * FROM users WHERE id = ?)"
       t.datetime :analyzed_at, comment: "When query analysis was last performed"
       t.text :explain_plan, comment: "EXPLAIN output from actual SQL execution"
       t.text :issues, comment: "JSON array of detected performance issues"
@@ -53,7 +54,7 @@ RailsPulse::Schema = lambda do |connection|
       t.timestamps
     end
 
-    connection.add_index :rails_pulse_queries, :normalized_sql, unique: true, name: "index_rails_pulse_queries_on_normalized_sql", length: 191
+    connection.add_index :rails_pulse_queries, :hashed_sql, unique: true, name: "index_rails_pulse_queries_on_hashed_sql"
   end
 
   unless connection.table_exists?(:rails_pulse_requests)

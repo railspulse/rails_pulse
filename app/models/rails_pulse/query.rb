@@ -9,7 +9,11 @@ module RailsPulse
     has_many :summaries, as: :summarizable, class_name: "RailsPulse::Summary", dependent: :destroy
 
     # Validations
-    validates :normalized_sql, presence: true, uniqueness: true
+    validates :normalized_sql, presence: true
+    validates :hashed_sql, presence: true, uniqueness: true
+
+    # Callbacks
+    before_validation :generate_hashed_sql, if: -> { normalized_sql.present? && (normalized_sql_changed? || hashed_sql.blank?) }
 
     # JSON serialization for analysis columns
     serialize :issues, type: Array, coder: JSON
@@ -102,6 +106,11 @@ module RailsPulse
 
     def to_s
       id
+    end
+
+    def generate_hashed_sql
+      require "digest"
+      self.hashed_sql = Digest::MD5.hexdigest(normalized_sql)
     end
   end
 end

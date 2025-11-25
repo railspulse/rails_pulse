@@ -1,7 +1,7 @@
 <%
   # Extract the table data from the arguments
   table_data = defined?(table_data) ? table_data : (defined?(data) ? data : {})
-  
+
   # Handle both old format (array) and new format (hash with columns and data)
   if table_data.is_a?(Array)
     # Legacy format - assume route data
@@ -18,11 +18,14 @@
     columns = table_data[:columns] || []
     data_rows = table_data[:data] || []
   end
-  
+
   colspan = columns.length
+  has_truncation = columns.any? { |col| col[:cell_class]&.include?('truncate-cell') }
+  table_classes = ['table', 'mbs-4']
+  table_classes << 'table-fixed' if has_truncation
 %>
 
-<table class="table mbs-4">
+<table class="<%= table_classes.join(' ') %>">
   <thead>
     <tr>
       <% columns.each do |column| %>

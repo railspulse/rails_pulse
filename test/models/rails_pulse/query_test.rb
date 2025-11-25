@@ -16,13 +16,45 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
 
     # Presence validation
     assert validate_presence_of(:normalized_sql).matches?(query)
+    assert validate_presence_of(:hashed_sql).matches?(query)
 
     # Uniqueness validation (test manually for cross-database compatibility)
     existing_query = rails_pulse_queries(:simple_query)
-    duplicate_query = RailsPulse::Query.new(normalized_sql: existing_query.normalized_sql)
+    duplicate_query = RailsPulse::Query.new(
+      normalized_sql: existing_query.normalized_sql,
+      hashed_sql: existing_query.hashed_sql
+    )
 
     refute_predicate duplicate_query, :valid?
-    assert_includes duplicate_query.errors[:normalized_sql], "has already been taken"
+    assert_includes duplicate_query.errors[:hashed_sql], "has already been taken"
+  end
+
+  test "automatically generates hashed_sql from normalized_sql" do
+    query = RailsPulse::Query.new(normalized_sql: "SELECT * FROM users WHERE id = ?")
+    query.valid?
+
+    assert_not_nil query.hashed_sql, "hashed_sql should be generated"
+    assert_equal Digest::MD5.hexdigest(query.normalized_sql), query.hashed_sql
+  end
+
+  test "regenerates hashed_sql when normalized_sql changes" do
+    query = rails_pulse_queries(:simple_query)
+    original_hash = query.hashed_sql
+
+    query.normalized_sql = "SELECT * FROM posts WHERE user_id = ?"
+    query.valid?
+
+    assert_not_equal original_hash, query.hashed_sql, "hashed_sql should change when normalized_sql changes"
+    assert_equal Digest::MD5.hexdigest(query.normalized_sql), query.hashed_sql
+  end
+
+  test "does not regenerate hashed_sql if normalized_sql unchanged" do
+    query = rails_pulse_queries(:simple_query)
+    original_hash = query.hashed_sql
+
+    query.valid?
+
+    assert_equal original_hash, query.hashed_sql, "hashed_sql should not change if normalized_sql unchanged"
   end
 
   test "should be valid with required attributes" do
