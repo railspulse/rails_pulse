@@ -44,7 +44,7 @@
   - [Schema Loading](#schema-loading)
 - [Performance Impact](#performance-impact)
   - [Running Performance Benchmarks](#running-performance-benchmarks)
-- [Sidecar Deployment for High-Traffic Applications](#sidecar-deployment-for-high-traffic-applications)
+- [Standalone Dashboard Deployment](#standalone-dashboard-deployment)
 - [Testing](#testing)
 - [Technology Stack](#technology-stack)
 - [Advantages Over Other Solutions](#advantages-over-other-solutions)
@@ -639,25 +639,32 @@ The schema file `db/rails_pulse_schema.rb` serves as your single source of truth
 
 ## Performance Impact
 
-Rails Pulse offers **two deployment modes** to balance monitoring capabilities with performance requirements:
+Rails Pulse offers **two tracking modes** to balance monitoring capabilities with performance requirements:
 
-### Sync Mode (Default)
-The default adapter that writes tracking data directly to the database during request processing.
+### Async Mode (Default - Recommended)
+Tracking data is collected during the request and database writes are deferred to background threads.
+
+- **Request overhead:** ~1-2ms per request (data collection only)
+- **Database writes:** Non-blocking, handled in background threads
+- **Memory allocation:** Minimal, ~200 KB per request (temporary)
+- **Best for:** All environments - development, staging, and production
+- **Thread safety:** Proper connection pooling with `ActiveRecord::Base.connection_pool.with_connection`
+
+### Sync Mode
+Traditional mode that writes tracking data directly to the database during request processing.
 
 - **Request overhead:** 5-6ms per request (includes database writes)
 - **Memory allocation:** ~830 KB per request (temporary, garbage collected)
 - **Relative impact:** 1-5% for typical requests (100-500ms)
-- **Best for:** Development, staging, and production with < 1,000 RPM
+- **Best for:** Debugging when you need immediate database writes
 
-### Sidecar Mode (High-Performance)
-An optional high-performance adapter that offloads tracking data to a separate process via IPC.
-
-- **Request overhead:** < 0.1ms per request (UNIX socket) or 0.2-0.3ms (TCP)
-- **Performance gain:** ~50x faster than sync mode
-- **Best for:** High-traffic production (1,000+ RPM)
-- **Requires:** Foreman or similar process manager
-
-For sidecar setup instructions, see the **[Sidecar Deployment](#sidecar-deployment-for-high-traffic-applications)** section below.
+**Configuration:**
+```ruby
+RailsPulse.configure do |config|
+  config.async = true   # Default - recommended for all environments
+  # config.async = false  # Uncomment for synchronous writes
+end
+```
 
 ### Running Performance Benchmarks
 
@@ -681,24 +688,55 @@ bundle exec rake rails_pulse:benchmark:request_overhead
 bundle exec rake rails_pulse:benchmark:middleware
 ```
 
-## Sidecar Deployment for High-Traffic Applications
+## Standalone Dashboard Deployment
 
-For production applications handling 1,000+ requests per minute, Rails Pulse offers an optional **sidecar mode** that reduces overhead from 5-6ms to < 0.1ms by offloading tracking to a separate process.
+For production environments, you can run the Rails Pulse dashboard as a standalone application, separate from your main Rails app. This provides several benefits:
+
+- **Dashboard remains accessible when main app is under heavy load**
+- **Separate resource allocation** for monitoring vs application
+- **Enhanced security** - isolate dashboard access from public app
+- **Independent scaling** - dashboard doesn't scale with app instances
 
 **Quick Setup:**
 
-```ruby
-# config/initializers/rails_pulse.rb
-RailsPulse.configure do |config|
-  config.tracking_adapter = :sidecar
-  config.sidecar_socket = '/tmp/rails_pulse.sock'  # UNIX socket (fastest)
-  # OR
-  # config.sidecar_host = 'localhost'  # TCP (for Docker)
-  # config.sidecar_port = 3001
-end
+```bash
+# Set database connection (same database your app writes to)
+export RAILS_PULSE_DATABASE_URL="postgresql://user:pass@host/db"
+
+# Or use individual environment variables
+export RAILS_PULSE_DB_ADAPTER="postgresql"
+export RAILS_PULSE_DB_HOST="localhost"
+export RAILS_PULSE_DB_NAME="myapp_production"
+export RAILS_PULSE_DB_USER="rails_pulse"
+export RAILS_PULSE_DB_PASSWORD="secret"
+
+# Run standalone dashboard server
+bundle exec rackup lib/rails_pulse_server.ru -p 3001
 ```
 
-**Note:** Sidecar mode is completely optional and backward compatible. Existing installations continue to work unchanged with sync mode.
+**Deployment Options:**
+
+1. **Same subdomain, different path:**
+   ```nginx
+   location /pulse {
+       proxy_pass http://localhost:3001;
+   }
+   ```
+
+2. **Separate subdomain (recommended):**
+   ```nginx
+   server {
+       server_name pulse.myapp.com;
+       location / {
+           proxy_pass http://localhost:3001;
+       }
+   }
+   ```
+
+3. **Docker/Kubernetes:**
+   Deploy as separate container/pod alongside your main app, connecting to the same database.
+
+**Note:** When running standalone, the dashboard is read-only and doesn't track its own requests (tracking is automatically disabled).
 
 ## Testing
 

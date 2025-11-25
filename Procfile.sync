@@ -1,8 +1,0 @@
-# Rails Pulse Development - SYNC ADAPTER MODE
-#
-# This uses the default :sync adapter (5-6ms overhead)
-# Good for: development, debugging, understanding the flow
-#
-# Start with: bin/dev --sync
-
-web: cd test/dummy && bin/rails server -p 3000

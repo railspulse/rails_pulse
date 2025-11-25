@@ -1,9 +1,0 @@
-# Rails Pulse Development - SIDECAR ADAPTER MODE
-#
-# This uses the :sidecar adapter (< 0.1ms overhead)
-# Good for: performance testing, production simulation
-#
-# Start with: bin/dev --sidecar
-
-web: cd test/dummy && RAILS_PULSE_ADAPTER=sidecar RAILS_PULSE_SIDECAR_SOCKET=/tmp/rails_pulse.sock bin/rails server -p 3000
-sidecar: RAILS_PULSE_SIDECAR_SOCKET=/tmp/rails_pulse.sock bundle exec ruby lib/rails_pulse_unix_server.rb
