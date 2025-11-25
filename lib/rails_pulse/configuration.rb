@@ -25,10 +25,9 @@ module RailsPulse
                   :job_tracking_mode,
                   :job_adapters,
                   :capture_job_arguments,
-                  :tracking_adapter,
-                  :sidecar_socket,
-                  :sidecar_host,
-                  :sidecar_port
+                  :async,
+                  :mount_dashboard,
+                  :logger
 
     def initialize
       @enabled = true
@@ -70,13 +69,10 @@ module RailsPulse
       }
       @capture_job_arguments = false
 
-      # Adapter settings
-      @tracking_adapter = :sync
-
-      # Sidecar settings
-      @sidecar_socket = "/tmp/rails_pulse.sock"
-      @sidecar_host = nil
-      @sidecar_port = 3001
+      # Tracking settings
+      @async = true
+      @mount_dashboard = true
+      @logger = nil
 
       validate_configuration!
     end
@@ -102,7 +98,7 @@ module RailsPulse
       validate_authentication_settings!
       validate_tags!
       validate_job_settings!
-      validate_sidecar_settings!
+      validate_async_settings!
     end
 
     # Revalidate configuration after changes
@@ -212,23 +208,13 @@ module RailsPulse
       end
     end
 
-    def validate_sidecar_settings!
-      unless [ :sync, :sidecar ].include?(@tracking_adapter)
-        raise ArgumentError, "tracking_adapter must be :sync or :sidecar, got #{@tracking_adapter}"
+    def validate_async_settings!
+      unless [ true, false ].include?(@async)
+        raise ArgumentError, "async must be true or false, got #{@async}"
       end
 
-      if @tracking_adapter == :sidecar
-        if @sidecar_host.present?
-          # Using TCP
-          unless @sidecar_port.is_a?(Integer) && @sidecar_port > 0
-            raise ArgumentError, "sidecar_port must be a positive integer when using sidecar_host"
-          end
-        else
-          # Using UNIX socket
-          unless @sidecar_socket.present?
-            raise ArgumentError, "sidecar_socket must be set when using :sidecar adapter"
-          end
-        end
+      unless [ true, false ].include?(@mount_dashboard)
+        raise ArgumentError, "mount_dashboard must be true or false, got #{@mount_dashboard}"
       end
     end
 

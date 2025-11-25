@@ -56,8 +56,8 @@ module RailsPulse
           operations: RequestStore.store[:rails_pulse_operations] || []
         }
 
-        # Send to adapter (non-blocking for sidecar adapter)
-        RailsPulse.adapter.track_request(tracking_data)
+        # Send to tracker (non-blocking if async mode enabled)
+        RailsPulse::Tracker.track_request(tracking_data)
 
         [ status, headers, response ]
       ensure

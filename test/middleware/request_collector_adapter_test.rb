@@ -8,11 +8,10 @@ module RailsPulse
         RailsPulse::Operation.delete_all
         RailsPulse::Request.delete_all
         RailsPulse::Route.delete_all
-        RailsPulse.configuration.tracking_adapter = :sync
-        RailsPulse.reset_adapter!
+        RailsPulse.configuration.async = false  # Use sync mode for tests
       end
 
-      test "middleware tracks successful requests with sync adapter" do
+      test "middleware tracks successful requests in sync mode" do
         assert_difference -> { RailsPulse::Request.count }, 1 do
           get "/"
 
@@ -27,7 +26,7 @@ module RailsPulse
         assert_operator request.operations.count, :>, 0
       end
 
-      test "middleware tracks error requests with sync adapter" do
+      test "middleware tracks error requests in sync mode" do
         # Need a route that raises an error - using a non-existent route
         assert_difference -> { RailsPulse::Request.count }, 1 do
           get "/nonexistent"
@@ -40,48 +39,54 @@ module RailsPulse
         assert_equal 404, request.status
       end
 
-      test "middleware passes complete tracking data to adapter" do
+      test "middleware passes complete tracking data to tracker" do
         captured_data = nil
 
-        # Intercept the adapter's track_request to see what data it receives
-        original_adapter = RailsPulse.adapter
-        RailsPulse.adapter.define_singleton_method(:track_request) do |data|
-          captured_data = data
-          original_adapter.method(:track_request).super_method.call(data)
+        # Intercept the tracker's track_request to see what data it receives
+        RailsPulse::Tracker.singleton_class.class_eval do
+          alias_method :original_track_request, :track_request
+          define_method(:track_request) do |data|
+            captured_data = data
+            original_track_request(data)
+          end
         end
 
-        get "/"
-
-        # Verify the middleware passed all required fields
-        assert_not_nil captured_data
-        assert_equal "GET", captured_data[:method]
-        assert_equal "/", captured_data[:path]
-        assert_kind_of Numeric, captured_data[:duration]
-        assert_equal 200, captured_data[:status]
-        refute captured_data[:is_error]
-        assert_predicate captured_data[:request_uuid], :present?
-        assert_predicate captured_data[:occurred_at], :present?
-        assert_kind_of Array, captured_data[:operations]
-      end
-
-      test "sidecar adapter sends data without creating database records" do
-        RailsPulse.configuration.tracking_adapter = :sidecar
-        RailsPulse.configuration.sidecar_socket = "/tmp/test.sock"
-        RailsPulse.reset_adapter!
-
-        # Mock the socket so it doesn't actually try to connect
-        socket = mock("socket")
-        socket.stubs(:puts)
-        socket.stubs(:flush)
-        socket.stubs(:close)
-        UNIXSocket.stubs(:new).returns(socket)
-
-        # With sidecar adapter, no DB records should be created directly
-        assert_no_difference -> { RailsPulse::Request.count } do
+        begin
           get "/"
 
-          assert_response :success
+          # Verify the middleware passed all required fields
+          assert_not_nil captured_data
+          assert_equal "GET", captured_data[:method]
+          assert_equal "/", captured_data[:path]
+          assert_kind_of Numeric, captured_data[:duration]
+          assert_equal 200, captured_data[:status]
+          refute captured_data[:is_error]
+          assert_predicate captured_data[:request_uuid], :present?
+          assert_predicate captured_data[:occurred_at], :present?
+          assert_kind_of Array, captured_data[:operations]
+        ensure
+          # Restore original method
+          RailsPulse::Tracker.singleton_class.class_eval do
+            alias_method :track_request, :original_track_request
+            remove_method :original_track_request
+          end
         end
+      end
+
+      test "async mode creates records in background" do
+        RailsPulse.configuration.async = true
+
+        get "/"
+        assert_response :success
+
+        # Request completes immediately, no records yet
+        assert_equal 0, RailsPulse::Request.count
+
+        # Wait for background thread
+        sleep 0.2
+
+        # Now records should exist
+        assert_equal 1, RailsPulse::Request.count
       end
     end
   end
