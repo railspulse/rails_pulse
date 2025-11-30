@@ -1,310 +1,220 @@
 # Deployment Modes
 
-Rails Pulse offers flexible deployment options through two independent configuration settings: **tracking mode** and **dashboard mode**.
+Rails Pulse offers flexible deployment options for the dashboard UI. Choose the mode that best fits your infrastructure and performance requirements.
 
-## Configuration Overview
+## Dashboard Deployment Options
 
-### Tracking Mode
+### Embedded Mode (Development/Staging)
 
-Controls **how** performance data is written to the database:
+The dashboard runs within your main Rails application process.
 
-- **`async` (default)**: Background threads write to database (~1-2ms overhead)
-- **`sync`**: Inline writes during request (5-6ms overhead)
-
-### Dashboard Mode
-
-Controls **where** the dashboard UI runs:
-
-- **Embedded**: Dashboard mounted in your app at `/rails_pulse`
-- **Standalone**: Dashboard runs as separate process via `rackup lib/rails_pulse_server.ru`
-
-## Valid Combinations
-
-All four combinations are valid and serve different use cases:
-
-### 1. Async + Embedded (Default - Most Common)
+**Configuration:**
 
 ```ruby
+# config/initializers/rails_pulse.rb
 RailsPulse.configure do |config|
-  config.async = true              # Default
-  config.mount_dashboard = true     # Default
+  config.mount_dashboard = true  # Default
 end
 ```
 
-**Use case:** Development, staging, low-to-medium traffic production
-
-**Characteristics:**
-- Dashboard lives in your app
-- Non-blocking tracking
-- Simplest setup
-- Good for most use cases
+```ruby
+# config/routes.rb
+Rails.application.routes.draw do
+  mount RailsPulse::Engine => "/rails_pulse"
+  # ... your other routes
+end
+```
 
 **Access:** `https://myapp.com/rails_pulse`
 
-### 2. Async + Standalone (Production Recommended)
+**Use cases:**
+- Development and testing environments
+- Staging servers
+- Low-to-medium traffic production apps
+- Simple deployments where isolation isn't critical
+
+**Advantages:**
+- ✅ Zero additional infrastructure
+- ✅ Same authentication/session as main app
+- ✅ Simplest setup
+
+**Disadvantages:**
+- ❌ Dashboard shares resources with main app
+- ❌ Dashboard unavailable if main app is down
+- ❌ Scales with app instance count
+
+---
+
+### Standalone Mode (Production Recommended)
+
+The dashboard runs as a separate Rack application process.
+
+**Main App Configuration:**
 
 ```ruby
-# In main app initializer:
+# config/initializers/rails_pulse.rb
 RailsPulse.configure do |config|
-  config.async = true
-  config.mount_dashboard = false    # Don't mount in main app
+  config.mount_dashboard = false  # Disable embedded dashboard
 end
-
-# Remove from routes.rb:
-# mount RailsPulse::Engine => "/rails_pulse"
 ```
 
+**Standalone Server:**
+
 ```bash
-# Run dashboard separately:
-export RAILS_PULSE_DATABASE_URL="postgresql://user:pass@host/db"
+# Run the standalone dashboard server
 bundle exec rackup lib/rails_pulse_server.ru -p 3001
 ```
 
-**Use case:** High-traffic production
+**Database Connection:**
 
-**Characteristics:**
-- App tracks with background threads
-- Dashboard runs as separate process/container
-- Dashboard accessible even when app is under heavy load
-- Better security isolation
-- Independent scaling
+The standalone server reads from the same database as your main app. Two configuration options:
 
-**Access:** `https://pulse.myapp.com` (proxied to port 3001)
-
-**Benefits:**
-- Dashboard remains responsive during traffic spikes
-- Separate resource allocation
-- Enhanced security (isolate monitoring from public app)
-- Dashboard doesn't scale with app instances
-
-### 3. Sync + Embedded (Debugging)
-
-```ruby
-RailsPulse.configure do |config|
-  config.async = false
-  config.mount_dashboard = true
-end
-```
-
-**Use case:** Local development debugging
-
-**Characteristics:**
-- Immediate data visibility
-- Easier to debug tracking issues
-- Higher overhead (acceptable locally)
-- Blocking database writes
-
-**Access:** `http://localhost:3000/rails_pulse`
-
-### 4. Sync + Standalone (Rarely Used)
-
-```ruby
-# In main app:
-RailsPulse.configure do |config|
-  config.async = false
-  config.mount_dashboard = false
-end
-```
-
-```bash
-# Run dashboard separately
-bundle exec rackup lib/rails_pulse_server.ru -p 3001
-```
-
-**Use case:** Testing standalone dashboard setup while debugging
-
-**Characteristics:**
-- Combines sync overhead with standalone complexity
-- Generally not recommended
-- Might be useful for testing deployment architecture locally
-
-## Recommendations by Environment
-
-### Development
-
-```ruby
-RailsPulse.configure do |config|
-  config.async = true              # Default, or false for debugging
-  config.mount_dashboard = true    # Convenience
-end
-```
-
-**Rationale:** Embedded dashboard is most convenient. Use async by default, sync only when debugging tracking issues.
-
-### Staging
-
-```ruby
-RailsPulse.configure do |config|
-  config.async = true              # Production-like performance
-  config.mount_dashboard = true    # or false to test standalone setup
-end
-```
-
-**Rationale:** Mirror production configuration. Use embedded unless testing standalone deployment.
-
-### Production (< 1,000 RPM)
-
-```ruby
-RailsPulse.configure do |config|
-  config.async = true
-  config.mount_dashboard = true
-end
-```
-
-**Rationale:** Simple setup works fine for lower traffic. Async mode keeps overhead minimal.
-
-### Production (> 1,000 RPM or High Security Requirements)
-
-```ruby
-# Main app
-RailsPulse.configure do |config|
-  config.async = true
-  config.mount_dashboard = false
-end
-```
-
-```bash
-# Standalone dashboard (separate container/process)
-export RAILS_PULSE_DATABASE_URL="postgresql://..."
-bundle exec rackup lib/rails_pulse_server.ru -p 3001
-```
-
-**Rationale:**
-- Async tracking keeps main app fast
-- Standalone dashboard remains accessible during traffic spikes
-- Better security isolation
-- Can apply different access controls
-
-## Independent Variables
-
-**Key insight:** Tracking mode and dashboard mode are completely independent:
-
-- **Tracking mode** affects your main app's performance characteristics
-- **Dashboard mode** affects how you access the UI and operational architecture
-
-You can mix and match based on your specific needs:
-- The tracking mode decision is primarily about **performance**
-- The dashboard mode decision is primarily about **architecture and security**
-
-## Switching Between Modes
-
-### Switching Tracking Mode
-
-No data migration needed - just change configuration:
-
-```ruby
-# From sync to async
-config.async = true
-
-# From async to sync
-config.async = false
-```
-
-Restart your application for changes to take effect.
-
-### Switching Dashboard Mode
-
-**From Embedded to Standalone:**
-
-1. Update configuration:
-   ```ruby
-   config.mount_dashboard = false
+1. **DATABASE_URL environment variable:**
+   ```bash
+   export DATABASE_URL="postgresql://user:pass@host/db"
+   bundle exec rackup lib/rails_pulse_server.ru -p 3001
    ```
 
-2. Remove route:
-   ```ruby
-   # Remove from config/routes.rb
-   # mount RailsPulse::Engine => "/rails_pulse"
-   ```
+2. **config/database.yml (automatic):**
+   - The server looks for a `rails_pulse` database connection in `config/database.yml`
+   - Falls back to the primary connection if `rails_pulse` is not found
+   - No environment variable needed
 
-3. Start standalone server:
+**Deployment with Kamal:**
+
+Deploy the dashboard as an accessory (similar to Sidekiq or SolidQueue):
+
+```yaml
+# config/deploy.yml
+accessories:
+  rails_pulse:
+    image: your-app-image
+    host: your-server
+    cmd: bundle exec rackup lib/rails_pulse_server.ru -p 3001
+    env:
+      clear:
+        DATABASE_URL: "postgresql://user:pass@host/db"
+    directories:
+      - data:/data
+    healthcheck:
+      path: /health
+      port: 3001
+      interval: 10s
+```
+
+**Nginx Configuration:**
+
+```nginx
+server {
+    server_name pulse.myapp.com;
+
+    location / {
+        proxy_pass http://localhost:3001;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}
+```
+
+**Use cases:**
+- Production environments
+- High-traffic applications
+- When you need dashboard isolation
+- When dashboard needs independent scaling
+
+**Advantages:**
+- ✅ Dashboard remains accessible if main app is under load
+- ✅ Separate resource allocation
+- ✅ Enhanced security isolation
+- ✅ Independent scaling
+- ✅ Healthcheck endpoint for orchestration tools
+
+**Disadvantages:**
+- ❌ Requires additional process/container
+- ❌ Separate authentication setup
+- ❌ Slightly more complex deployment
+
+---
+
+## Tracking Behavior
+
+Rails Pulse uses **async tracking** by default in all environments for minimal performance overhead:
+
+- **Production/Development:** Uses fiber-based async tracking (via `async` gem)
+- **Test:** Runs synchronously for predictability and easier debugging
+
+This is handled automatically and requires no configuration.
+
+**Performance Impact:**
+- Async mode: ~0.1ms overhead per request
+- Database writes happen in background fibers
+- Non-blocking for request processing
+
+---
+
+## Healthcheck Endpoint
+
+The standalone dashboard includes a healthcheck endpoint at `/health`:
+
+**Response when healthy (200 OK):**
+```json
+{
+  "status": "ok",
+  "mode": "dashboard",
+  "database": "connected",
+  "timestamp": "2025-11-30T12:00:00Z"
+}
+```
+
+**Response when unhealthy (503 Service Unavailable):**
+```json
+{
+  "status": "unhealthy",
+  "mode": "dashboard",
+  "database": "disconnected",
+  "timestamp": "2025-11-30T12:00:00Z"
+}
+```
+
+Use this endpoint with:
+- Kamal healthchecks
+- Docker/Kubernetes liveness probes
+- Load balancer health checks
+- Monitoring systems
+
+---
+
+## Recommendation by Environment
+
+| Environment | Recommended Mode | Rationale |
+|-------------|-----------------|-----------|
+| Development | Embedded | Simplicity, immediate access |
+| Test | Embedded | Easier test setup |
+| Staging | Embedded or Standalone | Depends on production similarity goals |
+| Production (< 10 req/s) | Embedded | Simple deployment acceptable |
+| Production (> 10 req/s) | Standalone | Better isolation and reliability |
+| Production (High Traffic) | Standalone | Critical for dashboard availability |
+
+---
+
+## Migration from Embedded to Standalone
+
+1. **Deploy standalone server** (no changes to main app yet):
    ```bash
    bundle exec rackup lib/rails_pulse_server.ru -p 3001
    ```
 
-4. Configure reverse proxy (nginx/etc) to route to port 3001
+2. **Verify dashboard works** at standalone URL
 
-**From Standalone to Embedded:**
-
-1. Update configuration:
+3. **Update main app config**:
    ```ruby
-   config.mount_dashboard = true
+   config.mount_dashboard = false
    ```
 
-2. Add route:
-   ```ruby
-   # In config/routes.rb
-   mount RailsPulse::Engine => "/rails_pulse"
-   ```
+4. **Deploy main app changes**
 
-3. Stop standalone server
+5. **Update documentation/bookmarks** with new dashboard URL
 
-4. Restart application
-
-## Environment Variables
-
-You can control modes via environment variables:
-
-```bash
-# Tracking mode
-export RAILS_PULSE_ASYNC=true   # or false
-
-# In initializer:
-config.async = ENV.fetch("RAILS_PULSE_ASYNC", "true") == "true"
-```
-
-```bash
-# Dashboard mode (implicit - run standalone server separately)
-export RAILS_PULSE_DATABASE_URL="postgresql://..."
-bundle exec rackup lib/rails_pulse_server.ru -p 3001
-```
-
-## Performance Impact Summary
-
-| Mode | Request Overhead | Database Writes | Best For |
-|------|-----------------|-----------------|----------|
-| Async | ~1-2ms | Background threads | Production, staging |
-| Sync | ~5-6ms | During request | Debugging, development |
-
-| Dashboard | Isolation | Complexity | Best For |
-|-----------|-----------|------------|----------|
-| Embedded | Same process | Low | Development, low traffic |
-| Standalone | Separate process | Medium | Production, high traffic |
-
-## Common Patterns
-
-### Pattern 1: Simple Development Setup
-```ruby
-config.async = true
-config.mount_dashboard = true
-```
-
-### Pattern 2: Production-Ready Architecture
-```ruby
-# Main app
-config.async = true
-config.mount_dashboard = false
-
-# Separate dashboard container/service
-# Runs: rackup lib/rails_pulse_server.ru
-```
-
-### Pattern 3: Debugging Issues
-```ruby
-# Temporarily switch to sync for immediate visibility
-config.async = false
-config.mount_dashboard = true
-```
-
-### Pattern 4: Testing Deployment
-```ruby
-# Use async + standalone locally to test production setup
-config.async = true
-config.mount_dashboard = false
-
-# Terminal 1: Main app
-./bin/dev --async
-
-# Terminal 2: Standalone dashboard
-./bin/dev --standalone
-```
+This allows zero-downtime migration.
