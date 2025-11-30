@@ -645,11 +645,6 @@ Rails Pulse uses **fiber-based async tracking** for minimal performance overhead
 - **Database writes:** Non-blocking, handled in background fibers via the `async` gem
 - **Memory allocation:** Minimal, ~200 KB per request (temporary)
 - **Thread safety:** Proper connection pooling with `RailsPulse::ApplicationRecord.connection_pool.with_connection`
-- **Test environment:** Automatically runs synchronously for predictable test behavior
-
-**Tracking Behavior:**
-- **Production/Development:** Uses fiber-based async tracking (via `async` gem)
-- **Test:** Runs synchronously for predictability and easier debugging
 
 This is handled automatically and requires no configuration.
 
