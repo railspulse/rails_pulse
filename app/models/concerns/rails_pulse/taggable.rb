@@ -2,13 +2,24 @@ module RailsPulse
   module Taggable
     extend ActiveSupport::Concern
 
+    # Tag validation constants
+    TAG_NAME_REGEX = /\A[a-z0-9_-]+\z/i
+    MAX_TAG_LENGTH = 50
+
     included do
       # Callbacks
       before_save :ensure_tags_is_array
 
       # Scopes with table name qualification to avoid ambiguity
-      scope :with_tag, ->(tag) { where("#{table_name}.tags LIKE ?", "%#{tag}%") }
-      scope :without_tag, ->(tag) { where.not("#{table_name}.tags LIKE ?", "%#{tag}%") }
+      # Note: LIKE patterns are sanitized to prevent SQL injection via wildcards
+      scope :with_tag, ->(tag) {
+        sanitized_tag = sanitize_sql_like(tag.to_s, '\\')
+        where("#{table_name}.tags LIKE ?", "%#{sanitized_tag}%")
+      }
+      scope :without_tag, ->(tag) {
+        sanitized_tag = sanitize_sql_like(tag.to_s, '\\')
+        where.not("#{table_name}.tags LIKE ?", "%#{sanitized_tag}%")
+      }
       scope :with_tags, -> { where("#{table_name}.tags IS NOT NULL AND #{table_name}.tags != '[]'") }
     end
 
@@ -26,11 +37,16 @@ module RailsPulse
     end
 
     def add_tag(tag)
+      # Validate tag format and length
+      return false unless valid_tag_name?(tag)
+
       current_tags = tag_list
       unless current_tags.include?(tag.to_s)
         current_tags << tag.to_s
         self.tag_list = current_tags
         save
+      else
+        true  # Tag already exists, return success
       end
     end
 
@@ -44,6 +60,13 @@ module RailsPulse
     end
 
     private
+
+    def valid_tag_name?(tag)
+      return false if tag.blank?
+      return false if tag.to_s.length > MAX_TAG_LENGTH
+      return false unless tag.to_s.match?(TAG_NAME_REGEX)
+      true
+    end
 
     def parsed_tags
       return [] if tags.nil? || tags.empty?

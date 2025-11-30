@@ -161,17 +161,121 @@ export default class extends Controller {
     // Remove function markers if present
     const cleanString = formatterString.replace(/__FUNCTION_START__|__FUNCTION_END__/g, '')
 
-    // If it's a function string, parse it
+    // If it's a function string, use safe formatter registry instead of eval()
     if (cleanString.trim().startsWith('function')) {
-      try {
-        // eslint-disable-next-line no-eval
-        return eval(`(${cleanString})`)
-      } catch (error) {
-        console.error('[RailsPulse] Error parsing formatter function:', error)
-        return cleanString
-      }
+      // Extract formatter logic using safe parsing
+      // Rather than eval(), we match against known safe patterns
+      return this.getSafeFormatter(cleanString)
     }
     return cleanString
+  }
+
+  /**
+   * Returns a safe formatter function based on the formatter string.
+   * This prevents arbitrary code execution by using a whitelist approach.
+   *
+   * Security: Replaces eval() to prevent XSS and code injection attacks.
+   */
+  getSafeFormatter(formatterString) {
+    // Whitelist of safe formatter patterns
+    // Each pattern maps to a safe implementation
+    const SAFE_FORMATTERS = {
+      // Duration formatter (milliseconds)
+      'duration_ms': (value) => {
+        if (typeof value === 'number') {
+          return value.toFixed(2) + ' ms'
+        }
+        return value
+      },
+
+      // Percentage formatter
+      'percentage': (value) => {
+        if (typeof value === 'number') {
+          return value.toFixed(1) + '%'
+        }
+        return value
+      },
+
+      // Number with commas
+      'number_delimited': (value) => {
+        if (typeof value === 'number') {
+          return value.toLocaleString()
+        }
+        return value
+      },
+
+      // Timestamp formatter
+      'timestamp': (value) => {
+        if (typeof value === 'number' || typeof value === 'string') {
+          const date = new Date(value)
+          return date.toLocaleString()
+        }
+        return value
+      },
+
+      // Date only
+      'date': (value) => {
+        if (typeof value === 'number' || typeof value === 'string') {
+          const date = new Date(value)
+          return date.toLocaleDateString()
+        }
+        return value
+      },
+
+      // Time only
+      'time': (value) => {
+        if (typeof value === 'number' || typeof value === 'string') {
+          const date = new Date(value)
+          return date.toLocaleTimeString()
+        }
+        return value
+      },
+
+      // Bytes formatter
+      'bytes': (value) => {
+        if (typeof value !== 'number') return value
+
+        const units = ['B', 'KB', 'MB', 'GB', 'TB']
+        let size = value
+        let unitIndex = 0
+
+        while (size >= 1024 && unitIndex < units.length - 1) {
+          size /= 1024
+          unitIndex++
+        }
+
+        return size.toFixed(2) + ' ' + units[unitIndex]
+      }
+    }
+
+    // Try to match the formatter string to a known safe pattern
+    for (const [key, formatter] of Object.entries(SAFE_FORMATTERS)) {
+      if (formatterString.includes(key) ||
+          formatterString.includes(key.replace('_', ''))) {
+        return formatter
+      }
+    }
+
+    // Check for specific safe patterns in the function string
+    if (formatterString.includes('toFixed(2)') && formatterString.includes('ms')) {
+      return SAFE_FORMATTERS.duration_ms
+    }
+
+    if (formatterString.includes('toLocaleString')) {
+      return SAFE_FORMATTERS.number_delimited
+    }
+
+    if (formatterString.includes('toLocaleDateString')) {
+      return SAFE_FORMATTERS.date
+    }
+
+    if (formatterString.includes('toLocaleTimeString')) {
+      return SAFE_FORMATTERS.time
+    }
+
+    // Default: return a safe identity function that just returns the value
+    console.warn('[RailsPulse] Unknown formatter pattern, using identity function:', formatterString)
+    return (value) => value
   }
 
   showError() {

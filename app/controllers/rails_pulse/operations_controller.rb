@@ -122,9 +122,13 @@ module RailsPulse
 
       # Check for potential N+1 queries
       if @parent
+        # Sanitize LIKE pattern to prevent SQL injection via wildcards
+        label_prefix = @operation.label.split.first(3).join(' ')
+        sanitized_pattern = ActiveRecord::Base.sanitize_sql_like(label_prefix, '\\')
+
         similar_queries = @parent.operations
           .where(operation_type: [ "sql" ])
-          .where("label LIKE ?", "%#{@operation.label.split.first(3).join(' ')}%")
+          .where("label LIKE ?", "%#{sanitized_pattern}%")
           .where.not(id: @operation.id)
 
         if similar_queries.count > 2

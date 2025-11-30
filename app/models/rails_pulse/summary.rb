@@ -56,7 +56,8 @@ module RailsPulse
 
       # Exclude routes with disabled tags
       actual_disabled_tags.each do |tag|
-        route_ids = route_ids.where.not("tags LIKE ?", "%#{tag}%")
+        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, '\\')
+        route_ids = route_ids.where.not("tags LIKE ?", "%#{sanitized_tag}%")
       end
 
       # Exclude non-tagged routes if show_non_tagged is false
@@ -69,7 +70,8 @@ module RailsPulse
 
       # Exclude queries with disabled tags
       actual_disabled_tags.each do |tag|
-        query_ids = query_ids.where.not("tags LIKE ?", "%#{tag}%")
+        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, '\\')
+        query_ids = query_ids.where.not("tags LIKE ?", "%#{sanitized_tag}%")
       end
 
       # Exclude non-tagged queries if show_non_tagged is false
