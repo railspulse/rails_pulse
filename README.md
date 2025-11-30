@@ -658,13 +658,7 @@ Traditional mode that writes tracking data directly to the database during reque
 - **Relative impact:** 1-5% for typical requests (100-500ms)
 - **Best for:** Debugging when you need immediate database writes
 
-**Configuration:**
-```ruby
-RailsPulse.configure do |config|
-  config.async = true   # Default - recommended for all environments
-  # config.async = false  # Uncomment for synchronous writes
-end
-```
+**Note:** Rails Pulse uses async tracking by default in production environments for minimal overhead.
 
 ### Running Performance Benchmarks
 
@@ -700,15 +694,11 @@ For production environments, you can run the Rails Pulse dashboard as a standalo
 **Quick Setup:**
 
 ```bash
-# Set database connection (same database your app writes to)
-export RAILS_PULSE_DATABASE_URL="postgresql://user:pass@host/db"
+# Option 1: Set DATABASE_URL environment variable
+export DATABASE_URL="postgresql://user:pass@host/db"
 
-# Or use individual environment variables
-export RAILS_PULSE_DB_ADAPTER="postgresql"
-export RAILS_PULSE_DB_HOST="localhost"
-export RAILS_PULSE_DB_NAME="myapp_production"
-export RAILS_PULSE_DB_USER="rails_pulse"
-export RAILS_PULSE_DB_PASSWORD="secret"
+# Option 2: Use config/database.yml (looks for 'rails_pulse' connection, falls back to primary)
+# No environment variable needed - will automatically read from config/database.yml
 
 # Run standalone dashboard server
 bundle exec rackup lib/rails_pulse_server.ru -p 3001
@@ -716,14 +706,7 @@ bundle exec rackup lib/rails_pulse_server.ru -p 3001
 
 **Deployment Options:**
 
-1. **Same subdomain, different path:**
-   ```nginx
-   location /pulse {
-       proxy_pass http://localhost:3001;
-   }
-   ```
-
-2. **Separate subdomain (recommended):**
+1. **Separate subdomain (recommended):**
    ```nginx
    server {
        server_name pulse.myapp.com;
@@ -733,8 +716,28 @@ bundle exec rackup lib/rails_pulse_server.ru -p 3001
    }
    ```
 
-3. **Docker/Kubernetes:**
-   Deploy as separate container/pod alongside your main app, connecting to the same database.
+2. **Kamal Deployment:**
+   Deploy the dashboard as an accessory in your Kamal configuration (similar to Sidekiq or SolidQueue):
+
+   ```yaml
+   # config/deploy.yml
+   accessories:
+     rails_pulse:
+       image: your-app-image
+       host: your-server
+       cmd: bundle exec rackup lib/rails_pulse_server.ru -p 3001
+       env:
+         clear:
+           DATABASE_URL: "postgresql://user:pass@host/db"
+       directories:
+         - data:/data
+       healthcheck:
+         path: /health
+         port: 3001
+         interval: 10s
+   ```
+
+   The healthcheck endpoint (`/health`) verifies database connectivity and returns proper HTTP status codes (200 for healthy, 503 for unhealthy).
 
 **Note:** When running standalone, the dashboard is read-only and doesn't track its own requests (tracking is automatically disabled).
 
