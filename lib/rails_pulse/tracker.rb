@@ -18,7 +18,7 @@ module RailsPulse
       def healthy?
         # Simple health check - can we connect to database?
         begin
-          RailsPulse::Base.connection.active?
+          RailsPulse::ApplicationRecord.connection.active?
         rescue
           false
         end
@@ -27,7 +27,7 @@ module RailsPulse
       private
 
       def perform_tracking(data)
-        ActiveRecord::Base.connection_pool.with_connection do
+        RailsPulse::ApplicationRecord.connection_pool.with_connection do
           # Set recursion prevention flag
           RequestStore.store[:skip_recording_rails_pulse_activity] = true
 
