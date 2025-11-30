@@ -7,7 +7,6 @@ set -e
 
 # Parse arguments
 VERBOSE=false
-TRACKING_MODE=""
 STANDALONE_DASHBOARD=false
 RAILS_ARGS=()
 
@@ -15,14 +14,6 @@ for arg in "$@"; do
   case $arg in
     --verbose|-v)
       VERBOSE=true
-      shift
-      ;;
-    --sync)
-      TRACKING_MODE="sync"
-      shift
-      ;;
-    --async)
-      TRACKING_MODE="async"
       shift
       ;;
     --standalone)
@@ -36,23 +27,15 @@ for arg in "$@"; do
       echo ""
       echo "Options:"
       echo "  -v, --verbose      Show detailed output from asset building and watching"
-      echo "  --sync             Use sync mode (blocking, easier debugging)"
-      echo "  --async            Use async mode (non-blocking, production-like)"
       echo "  --standalone       Run standalone dashboard on port 3001"
       echo "  -h, --help         Show this help message"
       echo ""
-      echo "Tracking Modes:"
-      echo "  sync        - Synchronous database writes (5-6ms overhead, data immediate)"
-      echo "  async       - Background thread writes (~0.1ms overhead, data with tiny delay)"
-      echo ""
       echo "Dashboard Modes:"
-      echo "  default     - Dashboard embedded in main app"
+      echo "  default     - Dashboard embedded in main app (async tracking)"
       echo "  standalone  - Dashboard runs as separate process (production architecture)"
       echo ""
       echo "Examples:"
-      echo "  ./bin/dev                    # Start with async mode (default)"
-      echo "  ./bin/dev --sync             # Start with sync mode (for debugging)"
-      echo "  ./bin/dev --async            # Start with async mode explicitly"
+      echo "  ./bin/dev                    # Start embedded dashboard with async tracking"
       echo "  ./bin/dev --standalone       # Run standalone dashboard only"
       echo "  ./bin/dev --verbose          # Start with detailed output"
       echo "  ./bin/dev -p 3001            # Start on port 3001"
@@ -66,11 +49,6 @@ for arg in "$@"; do
 done
 
 echo "🚀 Starting Rails Pulse development server..."
-
-# Determine which tracking mode to use
-if [ -z "$TRACKING_MODE" ]; then
-  TRACKING_MODE="async"  # Default to async (production-like)
-fi
 
 # We're already in the Rails Pulse root directory
 ROOT_DIR="$(pwd)"
@@ -130,8 +108,7 @@ if [ "$STANDALONE_DASHBOARD" = true ]; then
   echo "🌐 Starting standalone dashboard on port 3001..."
   echo ""
   echo "   The dashboard will read from the dummy app's database."
-  echo "   Make sure to run the main app separately with:"
-  echo "   ./bin/dev --async (or --sync)"
+  echo "   Make sure to run the main app separately with: ./bin/dev"
   echo ""
 
   # Point to dummy app's database
@@ -140,31 +117,13 @@ if [ "$STANDALONE_DASHBOARD" = true ]; then
   cd "$ROOT_DIR"
   exec bundle exec rackup lib/rails_pulse_server.ru -p 3001 -o 0.0.0.0
 
-elif [ "$TRACKING_MODE" = "sync" ]; then
-  # Sync mode - blocking writes
-  echo "📊 Tracking Mode: SYNC"
-  echo "   - Direct database writes (5-6ms overhead)"
-  echo "   - Data available immediately"
-  echo "   - Good for: development, debugging"
-  echo ""
-  echo "🌐 Starting Rails server..."
-  cd "$DUMMY_DIR"
-  export RAILS_PULSE_ASYNC=false
-  exec ./bin/rails server "${RAILS_ARGS[@]}"
-
-elif [ "$TRACKING_MODE" = "async" ]; then
-  # Async mode - non-blocking writes
-  echo "📊 Tracking Mode: ASYNC (default)"
-  echo "   - Background thread writes (~0.1ms overhead)"
-  echo "   - Data available with tiny delay (~0.1s)"
-  echo "   - Good for: production, staging, most use cases"
-  echo ""
-  echo "🌐 Starting Rails server..."
-  cd "$DUMMY_DIR"
-  export RAILS_PULSE_ASYNC=true
-  exec ./bin/rails server "${RAILS_ARGS[@]}"
-
 else
-  echo "❌ Unknown tracking mode: $TRACKING_MODE"
-  exit 1
+  # Embedded dashboard mode with async tracking
+  echo "📊 Mode: EMBEDDED DASHBOARD"
+  echo "   - Async tracking (fiber-based, ~0.1ms overhead)"
+  echo "   - Dashboard available at /rails_pulse"
+  echo ""
+  echo "🌐 Starting Rails server..."
+  cd "$DUMMY_DIR"
+  exec ./bin/rails server "${RAILS_ARGS[@]}"
 fi
