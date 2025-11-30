@@ -14,12 +14,9 @@ module RailsPulse
       end
 
       def healthy?
-        # Simple health check - can we connect to database?
-        begin
-          RailsPulse::ApplicationRecord.connection.active?
-        rescue
-          false
-        end
+        RailsPulse::ApplicationRecord.connection.active?
+      rescue
+        false
       end
 
       private
