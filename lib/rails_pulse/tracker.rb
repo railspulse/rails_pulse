@@ -1,17 +1,15 @@
+require 'async'
+
 module RailsPulse
   module Tracker
     class << self
       def track_request(data)
         return if RequestStore.store[:skip_recording_rails_pulse_activity]
 
-        if RailsPulse.configuration.async
-          # Async mode - spawn background thread
-          Thread.new do
-            perform_tracking(data)
-          end
-        else
-          # Sync mode - blocking write
+        if Rails.env.test?
           perform_tracking(data)
+        else
+          Async { perform_tracking(data) }
         end
       end
 
