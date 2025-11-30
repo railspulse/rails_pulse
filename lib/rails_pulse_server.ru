@@ -76,7 +76,7 @@ class DashboardApp
 
       return [
         status_code,
-        { "Content-Type" => "application/json" },
+        { "content-type" => "application/json" },
         [ {
           status: healthy ? "ok" : "unhealthy",
           mode: "dashboard",
