@@ -14,7 +14,8 @@ module RailsPulse
       end
 
       def healthy?
-        RailsPulse::ApplicationRecord.connection.active?
+        RailsPulse::ApplicationRecord.connection.execute("SELECT 1")
+        true
       rescue
         false
       end

@@ -71,9 +71,9 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
   end
 
   test "healthy? returns false when database is disconnected" do
-    RailsPulse::ApplicationRecord.connection.stubs(:active?).returns(false)
+    RailsPulse::ApplicationRecord.connection.stubs(:execute).raises(ActiveRecord::ConnectionNotEstablished)
     refute_predicate RailsPulse::Tracker, :healthy?, "Tracker should be unhealthy when DB is disconnected"
-    RailsPulse::ApplicationRecord.connection.unstub(:active?)
+    RailsPulse::ApplicationRecord.connection.unstub(:execute)
   end
 
   test "sets recursion prevention flag during tracking" do
