@@ -2,7 +2,6 @@ require "test_helper"
 
 class RailsPulse::TrackerTest < ActiveSupport::TestCase
   setup do
-    @original_async = RailsPulse.configuration.async
     @tracking_data = {
       method: "GET",
       path: "/users",
@@ -23,81 +22,30 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     }
   end
 
-  teardown do
-    RailsPulse.configuration.async = @original_async
-  end
-
-  test "async mode returns immediately without blocking" do
-    RailsPulse.configuration.async = true
-
-    start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  test "creates request records" do
     RailsPulse::Tracker.track_request(@tracking_data)
-    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time
-
-    # Should return in less than 10ms (non-blocking)
-    assert_operator elapsed, :<, 0.01, "Async mode should not block, took #{elapsed}s"
-  end
-
-  test "async mode creates records in background" do
-    RailsPulse.configuration.async = true
-
-    RailsPulse::Tracker.track_request(@tracking_data)
-
-    # Wait for background thread
-    sleep 0.2
 
     route = RailsPulse::Route.find_by(method: "GET", path: "/users")
-
     assert_not_nil route, "Route should be created"
 
     request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
-
     assert_not_nil request, "Request should be created"
     assert_in_delta(150.0, request.duration)
     assert_equal 1, request.operations.count
   end
 
-  test "sync mode blocks until complete" do
-    RailsPulse.configuration.async = false
-
-    RailsPulse::Tracker.track_request(@tracking_data)
-
-    # Data should be immediately available (no sleep needed)
-    request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
-
-    assert_not_nil request, "Request should be immediately available in sync mode"
-  end
-
-  test "sync mode creates records immediately" do
-    RailsPulse.configuration.async = false
-
+  test "creates route and request records with operations" do
     RailsPulse::Tracker.track_request(@tracking_data)
 
     route = RailsPulse::Route.find_by(method: "GET", path: "/users")
-
     assert_not_nil route
 
     request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
-
     assert_not_nil request
     assert_equal 1, request.operations.count
   end
 
-  test "handles errors gracefully in async mode" do
-    RailsPulse.configuration.async = true
-
-    # Stub to raise an error
-    RailsPulse::Route.stub :find_or_create_by, ->(*) { raise StandardError, "DB Error" } do
-      assert_nothing_raised do
-        RailsPulse::Tracker.track_request(@tracking_data)
-        sleep 0.1
-      end
-    end
-  end
-
-  test "handles errors gracefully in sync mode" do
-    RailsPulse.configuration.async = false
-
+  test "handles errors gracefully" do
     # Stub to raise an error
     RailsPulse::Route.stub :find_or_create_by, ->(*) { raise StandardError, "DB Error" } do
       assert_nothing_raised do
@@ -107,8 +55,6 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
   end
 
   test "logs errors when tracking fails" do
-    RailsPulse.configuration.async = false
-
     logged_messages = []
     mock_logger = Minitest::Mock.new
     mock_logger.expect(:error, nil) { |msg| logged_messages << msg; true }
@@ -128,14 +74,12 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
   end
 
   test "healthy? returns false when database is disconnected" do
-    RailsPulse::Base.connection.stub :active?, false do
+    RailsPulse::ApplicationRecord.connection.stub :active?, false do
       refute_predicate RailsPulse::Tracker, :healthy?, "Tracker should be unhealthy when DB is disconnected"
     end
   end
 
-  test "sets recursion prevention flag in sync mode" do
-    RailsPulse.configuration.async = false
-
+  test "sets recursion prevention flag during tracking" do
     # Flag should be false before tracking
     refute RequestStore.store[:skip_recording_rails_pulse_activity]
 
@@ -155,9 +99,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     refute RequestStore.store[:skip_recording_rails_pulse_activity], "Flag should be reset after tracking"
   end
 
-  test "handles concurrent requests in async mode" do
-    RailsPulse.configuration.async = true
-
+  test "handles concurrent requests with connection pooling" do
     threads = 10.times.map do |i|
       Thread.new do
         data = @tracking_data.merge(request_uuid: "uuid-#{i}")
@@ -166,7 +108,6 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     end
 
     threads.each(&:join)
-    sleep 0.3  # Wait for all background threads
 
     assert_equal 10, RailsPulse::Request.count, "Should create 10 requests"
   end
@@ -174,7 +115,6 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
   test "skips tracking when recursion flag is set" do
     RequestStore.store[:skip_recording_rails_pulse_activity] = true
 
-    RailsPulse.configuration.async = false
     RailsPulse::Tracker.track_request(@tracking_data)
 
     # Should not create any records
