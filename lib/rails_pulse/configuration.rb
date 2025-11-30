@@ -25,7 +25,6 @@ module RailsPulse
                   :job_tracking_mode,
                   :job_adapters,
                   :capture_job_arguments,
-                  :async,
                   :mount_dashboard,
                   :logger
 
@@ -69,8 +68,7 @@ module RailsPulse
       }
       @capture_job_arguments = false
 
-      # Tracking settings
-      @async = true
+      # Dashboard settings
       @mount_dashboard = true
       @logger = nil
 
@@ -98,7 +96,7 @@ module RailsPulse
       validate_authentication_settings!
       validate_tags!
       validate_job_settings!
-      validate_async_settings!
+      validate_dashboard_settings!
     end
 
     # Revalidate configuration after changes
@@ -208,11 +206,7 @@ module RailsPulse
       end
     end
 
-    def validate_async_settings!
-      unless [ true, false ].include?(@async)
-        raise ArgumentError, "async must be true or false, got #{@async}"
-      end
-
+    def validate_dashboard_settings!
       unless [ true, false ].include?(@mount_dashboard)
         raise ArgumentError, "mount_dashboard must be true or false, got #{@mount_dashboard}"
       end
