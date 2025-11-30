@@ -1,0 +1,213 @@
+{
+  "ignored_warnings": [
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "3d4cff0f317df7445891a1fc467912f3ad09e869da9b3e8433d5897354f5d849",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/request.rb",
+      "line": 40,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "Arel.sql(\"FLOOR(#{parent.table[:status].name} / 100)\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Request",
+        "method": null
+      },
+      "user_input": "parent.table[:status].name",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: Using Arel.sql with column name from ActiveRecord table definition - safe, not user input"
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "dc13170579f824326ffcaf309858f90fc807c7bdc4bfe41df3bb5d2b8f719a12",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/request.rb",
+      "line": 54,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "Arel.sql with configuration thresholds",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Request",
+        "method": null
+      },
+      "user_input": "((RailsPulse.configuration rescue nil).request_thresholds or { :slow => 500, :very_slow => 1000, :critical => 2000 })[:slow]",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: Using Arel.sql with configuration values from RailsPulse.configuration - safe, not user input"
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "f3a63d26866552b7e487f0de0f73af1c6575a62a0bbea859a52fd24912b06f3d",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/jobs/cards/average_duration.rb",
+      "line": 21,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "quote(current_window_start)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Jobs::Cards::AverageDuration",
+        "method": "to_metric_card"
+      },
+      "user_input": "quote(current_window_start)",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: Uses connection.quote() method with calculated timestamp - safe, properly escaped by ActiveRecord"
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "e9c51f9fff0ace6daba404a62decb15efdbc72129cdf0818ee802dcfb3419c11",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/jobs/cards/failure_rate.rb",
+      "line": 21,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "quote(current_window_start)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Jobs::Cards::FailureRate",
+        "method": "to_metric_card"
+      },
+      "user_input": "quote(current_window_start)",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: Uses connection.quote() method with calculated timestamp - safe, properly escaped by ActiveRecord"
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "808fdc102a0d41199ed96c40058b819ea5a28dc4a8eeabca5c444d528006cb40",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/jobs/cards/total_jobs.rb",
+      "line": 22,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "quote(current_window_start)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Jobs::Cards::TotalJobs",
+        "method": "to_metric_card"
+      },
+      "user_input": "quote(current_window_start)",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: Uses connection.quote() method with calculated timestamp - safe, properly escaped by ActiveRecord"
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "f92a184f3bc0b0374b67cf49510f2c7dd5fb010fe86a9ae210daf920b9523214",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/jobs/cards/total_runs.rb",
+      "line": 20,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "quote(current_window_start)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Jobs::Cards::TotalRuns",
+        "method": "to_metric_card"
+      },
+      "user_input": "quote(current_window_start)",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: Uses connection.quote() method with calculated timestamp - safe, properly escaped by ActiveRecord"
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "3c816cd9f565d6592595f5566cbd9d9a19ecb51ad704477f01a9bf2b4c1f29fb",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
+      "line": 191,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN (ANALYZE, BUFFERS) #{sql}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
+        "method": "execute_postgres_explain"
+      },
+      "user_input": "sql",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: SQL comes from Rails' ActiveRecord instrumentation (payload[:sql]), not user input. This is internally-generated SQL that Rails has already executed safely. EXPLAIN is read-only."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "a57a1c949d21de15d6b48e52bfc3077e3177a13ba1d703ddf48e241fb4e81c6e",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
+      "line": 196,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN #{sql}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
+        "method": "execute_mysql_explain"
+      },
+      "user_input": "sql",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: SQL comes from Rails' ActiveRecord instrumentation (payload[:sql]), not user input. This is internally-generated SQL that Rails has already executed safely. EXPLAIN is read-only."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "85c09ca9672d132fb206d0371e20087deaf381d89733f73d647129878b89f374",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
+      "line": 201,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN QUERY PLAN #{sql}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
+        "method": "execute_sqlite_explain"
+      },
+      "user_input": "sql",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: SQL comes from Rails' ActiveRecord instrumentation (payload[:sql]), not user input. This is internally-generated SQL that Rails has already executed safely. EXPLAIN is read-only."
+    }
+  ],
+  "updated": "2025-11-30 15:10:00 +0700",
+  "brakeman_version": "7.1.1"
+}

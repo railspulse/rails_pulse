@@ -224,7 +224,7 @@ task :test_release do
 
   failed_tasks = []
   current_step = 0
-  total_steps = 8
+  total_steps = 9
 
   # Step 1: Verify dummy migrations
   current_step += 1
@@ -271,7 +271,19 @@ task :test_release do
     failed_tasks << "rubocop"
   end
 
-  # Step 4: Install Node dependencies
+  # Step 4: Brakeman security scan
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Running Brakeman security scanner..."
+    puts "-" * 70
+    Rake::Task[:brakeman].invoke
+  rescue => e
+    puts "❌ Brakeman security scan failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "brakeman"
+  end
+
+  # Step 5: Install Node dependencies
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Installing Node dependencies..."
@@ -284,7 +296,7 @@ task :test_release do
     failed_tasks << "npm_install"
   end
 
-  # Step 5: Build and verify assets
+  # Step 6: Build and verify assets
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Building production assets..."
@@ -306,7 +318,7 @@ task :test_release do
     failed_tasks << "npm_build"
   end
 
-  # Step 6: Verify gem builds
+  # Step 7: Verify gem builds
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Verifying gem builds correctly..."
@@ -324,7 +336,7 @@ task :test_release do
     failed_tasks << "gem_build"
   end
 
-  # Step 7: Run generator tests
+  # Step 8: Run generator tests
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running generator tests..."
@@ -337,7 +349,7 @@ task :test_release do
     failed_tasks << "test_generators"
   end
 
-  # Step 8: Run full test matrix with system tests
+  # Step 9: Run full test matrix with system tests
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running full test matrix with system tests..."
@@ -370,5 +382,45 @@ task :test_release do
   end
 end
 
+desc "Run Brakeman security scanner"
+task :brakeman do
+  require "brakeman"
+
+  puts "\n" + "=" * 50
+  puts "🔒 Running Brakeman Security Scanner"
+  puts "=" * 50
+  puts
+
+  begin
+    # Run Brakeman with the configuration file
+    result = Brakeman.run(
+      app_path: ".",
+      config_file: "config/brakeman.yml",
+      print_report: true,
+      pager: false
+    )
+
+    # Check if any unignored warnings were found
+    # result.filtered_warnings only includes warnings that aren't ignored
+    unignored_warnings = result.filtered_warnings
+    total_warnings = result.warnings.count
+    ignored_count = total_warnings - unignored_warnings.count
+
+    if unignored_warnings.any? || result.errors.any?
+      puts "\n❌ Security issues found!"
+      puts "   Warnings: #{unignored_warnings.count}"
+      puts "   Ignored: #{ignored_count}" if ignored_count > 0
+      puts "   Errors: #{result.errors.count}"
+      exit 1
+    else
+      puts "\n✅ No security issues found!"
+      puts "   (#{ignored_count} warnings reviewed and ignored)" if ignored_count > 0
+    end
+  rescue => e
+    puts "\n❌ Brakeman scan failed!"
+    puts "   Error: #{e.message}"
+    exit 1
+  end
+end
 
 task default: :test

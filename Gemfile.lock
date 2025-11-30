@@ -103,6 +103,8 @@ GEM
     benchmark (0.4.1)
     benchmark-ips (2.14.0)
     bigdecimal (3.2.2)
+    brakeman (7.1.1)
+      racc
     builder (3.3.0)
     byebug (12.0.0)
     capybara (3.40.0)
@@ -394,6 +396,7 @@ PLATFORMS
 DEPENDENCIES
   appraisal
   benchmark-ips
+  brakeman
   capybara
   chartkick
   css-zero

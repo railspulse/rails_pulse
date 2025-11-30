@@ -1,0 +1,68 @@
+---
+# Brakeman configuration file for Rails Pulse Engine
+# https://brakemanscanner.org/docs/options/
+
+# Application path - scan the engine files
+:app_path: "."
+
+# This is a Rails engine, not a standalone app
+:engine_paths:
+  - app
+  - lib
+
+# Rails version - let Brakeman detect automatically from gemspec
+:rails7: true
+
+# Output format for reports (can be: text, json, html, csv, tabs, markdown)
+:output_format: :text
+
+# Paths to skip - don't scan dummy app or test files
+:skip_files:
+  - test/dummy/**/*
+  - node_modules/**/*
+  - vendor/**/*
+  - gemfiles/**/*
+
+# Paths to ignore - additional paths to skip
+:ignore_paths:
+  - test/**/*
+  - tmp/**/*
+  - log/**/*
+  - vendor/**/*
+  - node_modules/**/*
+  - public/**/*
+  - gemfiles/**/*
+
+# Confidence levels: 0 = high only, 1 = high and medium, 2 = all
+:min_confidence: 1  # Report high and medium confidence warnings only
+
+# Exit code configuration
+:exit_on_warn: true  # Exit with error code if warnings found
+:exit_on_error: true  # Exit with error code if errors found
+
+# Interactive mode
+:interactive: false
+
+# Parallelization
+:parallel_checks: true
+
+# Report additional information
+:report_progress: true
+:highlight_user_input: true
+:message_limit: 100  # Maximum number of warnings to report per type
+
+# Ignore file for specific false positives
+:ignore_file: config/brakeman.ignore
+
+# Additional options
+:absolute_paths: false  # Use relative paths in reports
+:summary_only: false    # Show full details, not just summary
+
+# Engine-specific: Skip checks that don't apply to mountable engines
+# These checks are more relevant for standalone apps
+:skip_checks:
+  # Skip checks that are handled by the host application
+  - CheckForgerySetting  # CSRF protection is handled by host app
+
+# Note: We're NOT skipping SQL injection checks - those should be reviewed
+# Note: We're NOT skipping file access checks - those should be reviewed

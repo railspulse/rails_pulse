@@ -4,11 +4,17 @@ module RailsPulse
 
     def show
       asset_name = params[:asset_name]
-      asset_path = Rails.root.join("public", "rails-pulse-assets", asset_name)
+
+      # Prevent path traversal attacks by validating asset name
+      return head :not_found unless valid_asset_name?(asset_name)
+
+      # Use sanitized asset name to build path
+      sanitized_name = File.basename(asset_name)
+      asset_path = Rails.root.join("public", "rails-pulse-assets", sanitized_name)
 
       # Fallback to engine assets if not found in host app
       unless File.exist?(asset_path)
-        asset_path = RailsPulse::Engine.root.join("public", "rails-pulse-assets", asset_name)
+        asset_path = RailsPulse::Engine.root.join("public", "rails-pulse-assets", sanitized_name)
       end
 
       if File.exist?(asset_path)
@@ -28,6 +34,16 @@ module RailsPulse
       else
         head :not_found
       end
+    end
+
+    private
+
+    def valid_asset_name?(name)
+      return false if name.blank?
+      return false if name.include?("..")
+      return false if name.include?("/")
+      return false if name.include?("\\")
+      true
     end
   end
 end

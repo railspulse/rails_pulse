@@ -20,6 +20,9 @@ end
 gem "rubocop-rails-omakase", require: false
 gem "rubocop-minitest", require: false
 
+# Security scanning
+gem "brakeman", require: false
+
 gem "css-zero"
 gem "groupdate", ">= 6.5.1"
 gem "importmap-rails"
