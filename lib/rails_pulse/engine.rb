@@ -87,6 +87,12 @@ module RailsPulse
       # Instead, we explicitly use time_zone: "UTC" in all groupdate calls
     end
 
+    initializer "rails_pulse.configure_logger", before: :initialize_logger do
+      RailsPulse.configure do |config|
+        config.logger ||= Rails.logger
+      end
+    end
+
     initializer "rails_pulse.disable_turbo" do
       # Disable Turbo navigation globally for Rails Pulse to avoid CSP issues with charts
       # This ensures all navigation within Rails Pulse uses full page refreshes
