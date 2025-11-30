@@ -109,7 +109,7 @@ The standalone server needs to connect to the same database as your main app. It
 
 **Deployment with Kamal:**
 
-Deploy the dashboard as an accessory (similar to Sidekiq or SolidQueue):
+Deploy the dashboard as an accessory
 
 ```yaml
 # config/deploy.yml
@@ -233,12 +233,6 @@ curl http://localhost:3001/health
   "timestamp": "2025-11-30T12:00:00Z"
 }
 ```
-
-**How it works:**
-- Executes `SELECT 1` query to verify database connectivity
-- Returns HTTP 200 if database is reachable
-- Returns HTTP 503 if database connection fails
-- Uses Rack 3-compatible lowercase headers
 
 **Use this endpoint with:**
 - Kamal healthcheck configuration
