@@ -7,22 +7,8 @@ RailsPulse.configure do |config|
   config.enabled = true
 
   # ====================================================================================================
-  #                                         TRACKING CONFIGURATION
+  #                                         DASHBOARD CONFIGURATION
   # ====================================================================================================
-  # Rails Pulse supports two tracking modes:
-  #
-  # async (default) - Non-blocking tracking using background threads (~0.1ms overhead)
-  #   Good for: production, staging, most use cases
-  #
-  # sync - Synchronous database writes during request (5-6ms overhead)
-  #   Good for: development, debugging (easier to see data immediately)
-  #
-  # The mode can be controlled via RAILS_PULSE_ASYNC environment variable:
-  #   RAILS_PULSE_ASYNC=true bin/dev    (default)
-  #   RAILS_PULSE_ASYNC=false bin/dev   (sync mode for debugging)
-
-  config.async = ENV.fetch("RAILS_PULSE_ASYNC", "true") == "true"
-
   # Mount dashboard in main app (true) or run separately (false)
   # For production, it's recommended to run the dashboard as a separate process
   # using: bundle exec rackup lib/rails_pulse_server.ru -p 3001
