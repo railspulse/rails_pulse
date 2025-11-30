@@ -19,19 +19,21 @@ else
   require "rails_pulse"
 
   # Load database configuration from environment
-  db_config = if ENV["RAILS_PULSE_DATABASE_URL"]
-    { url: ENV["RAILS_PULSE_DATABASE_URL"] }
-  elsif ENV["DATABASE_URL"]
+  db_config = if ENV["DATABASE_URL"]
     { url: ENV["DATABASE_URL"] }
+  elsif File.exist?("config/database.yml")
+    require "yaml"
+    db_yml = YAML.load_file("config/database.yml", aliases: true)
+    rails_env = ENV.fetch("RAILS_ENV", "production")
+
+    if db_yml.dig(rails_env, "rails_pulse")
+      db_yml.dig(rails_env, "rails_pulse")
+    else
+      puts "WARNING: No 'rails_pulse' database found in config/database.yml, using primary connection"
+      db_yml[rails_env]
+    end
   else
-    {
-      adapter: ENV.fetch("RAILS_PULSE_DB_ADAPTER", "postgresql"),
-      host: ENV.fetch("RAILS_PULSE_DB_HOST", "localhost"),
-      port: ENV.fetch("RAILS_PULSE_DB_PORT", "5432"),
-      database: ENV.fetch("RAILS_PULSE_DB_NAME", "rails_pulse_production"),
-      username: ENV.fetch("RAILS_PULSE_DB_USER", "postgres"),
-      password: ENV.fetch("RAILS_PULSE_DB_PASSWORD", "")
-    }
+    raise "Database configuration not found. Set DATABASE_URL or provide config/database.yml"
   end
 
   puts "Connecting to database: #{db_config[:database] || db_config[:url]&.split('@')&.last}"
