@@ -69,10 +69,18 @@ class DashboardApp
   def call(env)
     # Health check endpoint
     if env["PATH_INFO"] == "/health"
+      healthy = RailsPulse::Tracker.healthy? rescue false
+      status_code = healthy ? 200 : 503
+
       return [
-        200,
+        status_code,
         { "Content-Type" => "application/json" },
-        [ { status: "ok", mode: "dashboard", timestamp: Time.now.iso8601 }.to_json ]
+        [ {
+          status: healthy ? "ok" : "unhealthy",
+          mode: "dashboard",
+          database: healthy ? "connected" : "disconnected",
+          timestamp: Time.now.iso8601
+        }.to_json ]
       ]
     end
 
