@@ -642,9 +642,9 @@ The schema file `db/rails_pulse_schema.rb` serves as your single source of truth
 Rails Pulse uses **fiber-based async tracking** for minimal performance overhead:
 
 - **Request overhead:** ~0.1ms per request (data collection only)
-- **Database writes:** Non-blocking, handled in background fibers via the `async` gem
+- **Database writes:** Non-blocking, handled in background fibers
 - **Memory allocation:** Minimal, ~200 KB per request (temporary)
-- **Thread safety:** Proper connection pooling with `RailsPulse::ApplicationRecord.connection_pool.with_connection`
+- **Thread safety:** Proper connection pooling with isolated database connections
 
 This is handled automatically and requires no configuration.
 
