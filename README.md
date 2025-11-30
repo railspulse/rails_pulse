@@ -718,7 +718,7 @@ curl http://localhost:3001/health
    ```
 
 2. **Kamal Deployment:**
-   Deploy the dashboard as an accessory (similar to Sidekiq or SolidQueue):
+   Deploy the dashboard as an accessory
 
    ```yaml
    # config/deploy.yml
