@@ -740,12 +740,6 @@ curl http://localhost:3001/health
          timeout: 5s
    ```
 
-**Healthcheck Details:**
-- Executes `SELECT 1` query to verify database connectivity
-- Returns HTTP 200 if database is reachable, HTTP 503 if not
-- Rack 3-compatible with proper lowercase headers
-- Use with Kamal, Docker, Kubernetes, or load balancers
-
 **Note:** When running standalone, the dashboard is read-only and doesn't track its own requests (tracking is automatically disabled).
 
 For detailed deployment instructions, see [docs/deployment-modes.md](docs/deployment-modes.md).
