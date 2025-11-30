@@ -64,6 +64,8 @@ module RailsPulse
 
       def log_error(error)
         logger = RailsPulse.configuration.logger
+        return unless logger
+
         logger.error("[RailsPulse] Failed to persist tracking data: #{error.message}")
         logger.error(error.backtrace.join("\n")) if logger.debug?
       end
