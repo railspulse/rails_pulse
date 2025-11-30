@@ -30,9 +30,11 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Tracker.track_request(@tracking_data)
 
     route = RailsPulse::Route.find_by(method: @tracking_data[:method], path: @tracking_data[:path])
+
     assert_not_nil route, "Route should be created"
 
     request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
+
     assert_not_nil request, "Request should be created"
     assert_in_delta(150.0, request.duration)
     assert_equal 1, request.operations.count
@@ -42,9 +44,11 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Tracker.track_request(@tracking_data)
 
     route = RailsPulse::Route.find_by(method: @tracking_data[:method], path: @tracking_data[:path])
+
     assert_not_nil route
 
     request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
+
     assert_not_nil request
     assert_equal 1, request.operations.count
   end
@@ -72,6 +76,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
 
   test "healthy? returns false when database is disconnected" do
     RailsPulse::ApplicationRecord.connection.stubs(:execute).raises(ActiveRecord::ConnectionNotEstablished)
+
     refute_predicate RailsPulse::Tracker, :healthy?, "Tracker should be unhealthy when DB is disconnected"
     RailsPulse::ApplicationRecord.connection.unstub(:execute)
   end
@@ -80,7 +85,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     # Flag should be false before tracking
     refute RequestStore.store[:skip_recording_rails_pulse_activity]
 
-    #Track a request
+    # Track a request
     RailsPulse::Tracker.track_request(@tracking_data)
 
     # Flag should be reset after tracking

@@ -1,4 +1,4 @@
-require 'async'
+require "async"
 
 module RailsPulse
   module Tracker
