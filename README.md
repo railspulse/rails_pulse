@@ -639,26 +639,19 @@ The schema file `db/rails_pulse_schema.rb` serves as your single source of truth
 
 ## Performance Impact
 
-Rails Pulse offers **two tracking modes** to balance monitoring capabilities with performance requirements:
+Rails Pulse uses **fiber-based async tracking** for minimal performance overhead:
 
-### Async Mode (Default - Recommended)
-Tracking data is collected during the request and database writes are deferred to background threads.
-
-- **Request overhead:** ~1-2ms per request (data collection only)
-- **Database writes:** Non-blocking, handled in background threads
+- **Request overhead:** ~0.1ms per request (data collection only)
+- **Database writes:** Non-blocking, handled in background fibers via the `async` gem
 - **Memory allocation:** Minimal, ~200 KB per request (temporary)
-- **Best for:** All environments - development, staging, and production
-- **Thread safety:** Proper connection pooling with `ActiveRecord::Base.connection_pool.with_connection`
+- **Thread safety:** Proper connection pooling with `RailsPulse::ApplicationRecord.connection_pool.with_connection`
+- **Test environment:** Automatically runs synchronously for predictable test behavior
 
-### Sync Mode
-Traditional mode that writes tracking data directly to the database during request processing.
+**Tracking Behavior:**
+- **Production/Development:** Uses fiber-based async tracking (via `async` gem)
+- **Test:** Runs synchronously for predictability and easier debugging
 
-- **Request overhead:** 5-6ms per request (includes database writes)
-- **Memory allocation:** ~830 KB per request (temporary, garbage collected)
-- **Relative impact:** 1-5% for typical requests (100-500ms)
-- **Best for:** Debugging when you need immediate database writes
-
-**Note:** Rails Pulse uses async tracking by default in production environments for minimal overhead.
+This is handled automatically and requires no configuration.
 
 ### Running Performance Benchmarks
 
@@ -694,14 +687,23 @@ For production environments, you can run the Rails Pulse dashboard as a standalo
 **Quick Setup:**
 
 ```bash
-# Option 1: Set DATABASE_URL environment variable
+# Option 1: Set DATABASE_URL environment variable (recommended for production)
 export DATABASE_URL="postgresql://user:pass@host/db"
-
-# Option 2: Use config/database.yml (looks for 'rails_pulse' connection, falls back to primary)
-# No environment variable needed - will automatically read from config/database.yml
-
-# Run standalone dashboard server
 bundle exec rackup lib/rails_pulse_server.ru -p 3001
+
+# Option 2: Use config/database.yml (recommended for development)
+# Looks for 'rails_pulse' connection, falls back to primary
+# No environment variable needed - automatically reads from config/database.yml
+bundle exec rackup lib/rails_pulse_server.ru -p 3001
+```
+
+**Healthcheck Endpoint:**
+
+The standalone server includes a `/health` endpoint that verifies database connectivity:
+
+```bash
+curl http://localhost:3001/health
+# Returns: {"status":"ok","mode":"dashboard","database":"connected","timestamp":"..."}
 ```
 
 **Deployment Options:**
@@ -712,34 +714,46 @@ bundle exec rackup lib/rails_pulse_server.ru -p 3001
        server_name pulse.myapp.com;
        location / {
            proxy_pass http://localhost:3001;
+           proxy_set_header Host $host;
+           proxy_set_header X-Real-IP $remote_addr;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
        }
    }
    ```
 
 2. **Kamal Deployment:**
-   Deploy the dashboard as an accessory in your Kamal configuration (similar to Sidekiq or SolidQueue):
+   Deploy the dashboard as an accessory (similar to Sidekiq or SolidQueue):
 
    ```yaml
    # config/deploy.yml
    accessories:
      rails_pulse:
-       image: your-app-image
+       image: your-app-image  # Same image as your main app
        host: your-server
        cmd: bundle exec rackup lib/rails_pulse_server.ru -p 3001
        env:
          clear:
            DATABASE_URL: "postgresql://user:pass@host/db"
-       directories:
-         - data:/data
+           RAILS_ENV: production
+           SECRET_KEY_BASE: <%= ENV.fetch("SECRET_KEY_BASE") %>
+       port: "3001:3001"
        healthcheck:
          path: /health
          port: 3001
          interval: 10s
+         timeout: 5s
    ```
 
-   The healthcheck endpoint (`/health`) verifies database connectivity and returns proper HTTP status codes (200 for healthy, 503 for unhealthy).
+**Healthcheck Details:**
+- Executes `SELECT 1` query to verify database connectivity
+- Returns HTTP 200 if database is reachable, HTTP 503 if not
+- Rack 3-compatible with proper lowercase headers
+- Use with Kamal, Docker, Kubernetes, or load balancers
 
 **Note:** When running standalone, the dashboard is read-only and doesn't track its own requests (tracking is automatically disabled).
+
+For detailed deployment instructions, see [docs/deployment-modes.md](docs/deployment-modes.md).
 
 ## Testing
 
