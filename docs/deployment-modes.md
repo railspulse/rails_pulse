@@ -60,25 +60,52 @@ end
 
 **Standalone Server:**
 
+The standalone server can run from either:
+- **Your Rails app directory** (recommended): Has access to your `config/database.yml`
+- **Rails Pulse gem directory**: For development/testing
+
 ```bash
-# Run the standalone dashboard server
+# From your Rails app directory
+bundle exec rackup lib/rails_pulse_server.ru -p 3001
+
+# Or from the Rails Pulse gem directory (for development)
+cd vendor/bundle/ruby/*/gems/rails_pulse-*
 bundle exec rackup lib/rails_pulse_server.ru -p 3001
 ```
 
 **Database Connection:**
 
-The standalone server reads from the same database as your main app. Two configuration options:
+The standalone server needs to connect to the same database as your main app. It supports two configuration methods (in priority order):
 
-1. **DATABASE_URL environment variable:**
+**Option 1: DATABASE_URL environment variable (recommended for production)**
    ```bash
    export DATABASE_URL="postgresql://user:pass@host/db"
    bundle exec rackup lib/rails_pulse_server.ru -p 3001
    ```
 
-2. **config/database.yml (automatic):**
-   - The server looks for a `rails_pulse` database connection in `config/database.yml`
-   - Falls back to the primary connection if `rails_pulse` is not found
-   - No environment variable needed
+**Option 2: config/database.yml (recommended for development)**
+
+   When running from your Rails app directory, the server automatically reads `config/database.yml`:
+   - First looks for a `rails_pulse` connection in your current environment
+   - Falls back to the primary connection if `rails_pulse` is not defined
+   - Respects `RAILS_ENV` (defaults to `production`)
+
+   Example `config/database.yml`:
+   ```yaml
+   production:
+     primary:
+       adapter: postgresql
+       database: myapp_production
+       # ... other settings
+
+     # Optional: Dedicated connection for Rails Pulse
+     rails_pulse:
+       adapter: postgresql
+       database: myapp_production  # Same database, but isolated connection pool
+       # ... other settings
+   ```
+
+**Important:** The server will fail to start if neither DATABASE_URL nor config/database.yml is available.
 
 **Deployment with Kamal:**
 
@@ -88,14 +115,38 @@ Deploy the dashboard as an accessory (similar to Sidekiq or SolidQueue):
 # config/deploy.yml
 accessories:
   rails_pulse:
-    image: your-app-image
+    image: your-app-image  # Same image as your main app
     host: your-server
     cmd: bundle exec rackup lib/rails_pulse_server.ru -p 3001
     env:
       clear:
         DATABASE_URL: "postgresql://user:pass@host/db"
-    directories:
-      - data:/data
+        RAILS_ENV: production
+        # Optional: Secret for session cookies (defaults to random value)
+        SECRET_KEY_BASE: <%= ENV.fetch("SECRET_KEY_BASE") %>
+    port: "3001:3001"  # Map container port to host port
+    healthcheck:
+      path: /health
+      port: 3001
+      interval: 10s
+      timeout: 5s
+```
+
+**Alternative Kamal config using database.yml:**
+
+If your app image includes `config/database.yml`, you can omit DATABASE_URL:
+
+```yaml
+accessories:
+  rails_pulse:
+    image: your-app-image
+    host: your-server
+    cmd: bundle exec rackup lib/rails_pulse_server.ru -p 3001
+    env:
+      clear:
+        RAILS_ENV: production
+        SECRET_KEY_BASE: <%= ENV.fetch("SECRET_KEY_BASE") %>
+    port: "3001:3001"
     healthcheck:
       path: /health
       port: 3001
@@ -156,7 +207,12 @@ This is handled automatically and requires no configuration.
 
 ## Healthcheck Endpoint
 
-The standalone dashboard includes a healthcheck endpoint at `/health`:
+The standalone dashboard includes a healthcheck endpoint at `/health` that verifies database connectivity.
+
+**Testing the healthcheck:**
+```bash
+curl http://localhost:3001/health
+```
 
 **Response when healthy (200 OK):**
 ```json
@@ -178,11 +234,17 @@ The standalone dashboard includes a healthcheck endpoint at `/health`:
 }
 ```
 
-Use this endpoint with:
-- Kamal healthchecks
-- Docker/Kubernetes liveness probes
+**How it works:**
+- Executes `SELECT 1` query to verify database connectivity
+- Returns HTTP 200 if database is reachable
+- Returns HTTP 503 if database connection fails
+- Uses Rack 3-compatible lowercase headers
+
+**Use this endpoint with:**
+- Kamal healthcheck configuration
+- Docker/Kubernetes liveness and readiness probes
 - Load balancer health checks
-- Monitoring systems
+- External monitoring systems (Pingdom, UptimeRobot, etc.)
 
 ---
 

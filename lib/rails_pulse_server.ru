@@ -48,7 +48,7 @@ else
   end
 
   # Establish database connection
-  RailsPulse::Base.establish_connection(db_config)
+  RailsPulse::ApplicationRecord.establish_connection(db_config)
 
   puts "Dashboard ready on port #{ENV.fetch('PORT', 3001)}"
   puts "=" * 80
