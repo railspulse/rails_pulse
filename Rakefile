@@ -340,14 +340,14 @@ task :test_release do
   # Step 8: Run full test matrix with system tests
   current_step += 1
   begin
-    puts "\n[#{current_step}/#{total_steps}] Running full test suite..."
+    puts "\n[#{current_step}/#{total_steps}] Running full test matrix with system tests..."
     puts "-" * 70
-    sh "rake test"
-    puts "✅ Test suite passed!"
+    sh "BROWSER=true rake test_matrix"
+    puts "✅ Test matrix passed!"
   rescue => e
-    puts "❌ Test suite failed!"
+    puts "❌ Test matrix failed!"
     puts "   Error: #{e.message}"
-    failed_tasks << "test_suite"
+    failed_tasks << "test_matrix"
   end
 
   # Print final results
