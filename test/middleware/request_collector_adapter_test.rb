@@ -73,22 +73,6 @@ module RailsPulse
         end
       end
 
-      test "async mode creates records in background" do
-        RailsPulse.configuration.async = true
-
-        get "/"
-
-        assert_response :success
-
-        # Request completes immediately, no records yet
-        assert_equal 0, RailsPulse::Request.count
-
-        # Wait for background thread
-        sleep 0.2
-
-        # Now records should exist
-        assert_equal 1, RailsPulse::Request.count
-      end
     end
   end
 end

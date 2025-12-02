@@ -58,6 +58,13 @@ RailsPulse.configure do |config|
 end
 ```
 
+**Important:** When `mount_dashboard = false`, you should also remove (or comment out) the `mount RailsPulse::Engine` line from your `config/routes.rb` to prevent the engine from being accessible through your main app. The `mount_dashboard` setting controls whether RailsPulse initializes dashboard-related middleware and assets, while the routes mounting controls URL accessibility.
+
+```ruby
+# config/routes.rb - Comment this out for standalone mode
+# mount RailsPulse::Engine => "/rails_pulse"
+```
+
 **Standalone Server:**
 
 The standalone server can run from either:

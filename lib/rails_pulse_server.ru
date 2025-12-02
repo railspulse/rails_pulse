@@ -26,8 +26,9 @@ else
     db_yml = YAML.load_file("config/database.yml", aliases: true)
     rails_env = ENV.fetch("RAILS_ENV", "production")
 
-    if db_yml.dig(rails_env, "rails_pulse")
-      db_yml.dig(rails_env, "rails_pulse")
+    rails_pulse_config = db_yml.dig(rails_env, "rails_pulse")
+    if rails_pulse_config
+      rails_pulse_config
     else
       puts "WARNING: No 'rails_pulse' database found in config/database.yml, using primary connection"
       db_yml[rails_env]
@@ -94,7 +95,9 @@ end
 # Add session middleware for the dashboard
 use Rack::Session::Cookie,
   key: "rails_pulse_session",
-  secret: ENV.fetch("SECRET_KEY_BASE", SecureRandom.hex(32)),
+  secret: ENV.fetch("SECRET_KEY_BASE") do
+    raise "SECRET_KEY_BASE environment variable must be set for standalone dashboard"
+  end,
   same_site: :lax,
   max_age: 86400  # 1 day
 

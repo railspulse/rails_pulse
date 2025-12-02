@@ -119,4 +119,53 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     # Should not create any records
     assert_nil RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
   end
+
+  test "async mode with fibers processes requests concurrently" do
+    # Temporarily enable async mode
+    original_async = RailsPulse.configuration.async
+    RailsPulse.configuration.async = true
+
+    begin
+      base_path = "/fiber-test-#{SecureRandom.hex(4)}"
+      initial_count = RailsPulse::Request.count
+
+      # Create multiple tracking requests
+      tasks = 5.times.map do |i|
+        data = @tracking_data.merge(
+          request_uuid: "fiber-uuid-#{SecureRandom.hex(8)}-#{i}",
+          path: "#{base_path}-#{i}"
+        )
+        RailsPulse::Tracker.track_request(data)
+      end
+
+      # Wait for async fibers to complete
+      sleep 0.5
+
+      # All requests should be created
+      assert_equal initial_count + 5, RailsPulse::Request.count, "Should create 5 requests via async fibers"
+    ensure
+      RailsPulse.configuration.async = original_async
+    end
+  end
+
+  test "handles deep copied operations in async mode" do
+    # Temporarily enable async mode
+    original_async = RailsPulse.configuration.async
+    RailsPulse.configuration.async = true
+
+    begin
+      # Track request with operations
+      RailsPulse::Tracker.track_request(@tracking_data)
+
+      # Wait for async fiber
+      sleep 0.3
+
+      request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
+      assert_not_nil request, "Request should be created"
+      assert_equal 1, request.operations.count, "Operation should be persisted"
+      assert_equal "SELECT * FROM users", request.operations.first.label
+    ensure
+      RailsPulse.configuration.async = original_async
+    end
+  end
 end

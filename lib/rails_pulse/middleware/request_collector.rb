@@ -44,6 +44,8 @@ module RailsPulse
         duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
 
         # Collect all tracking data
+        # Deep copy operations array to prevent race condition in async mode
+        operations = RequestStore.store[:rails_pulse_operations] || []
         tracking_data = {
           method: req.request_method,
           path: req.path,
@@ -53,7 +55,7 @@ module RailsPulse
           request_uuid: req.uuid,
           controller_action: controller_action,
           occurred_at: occurred_at,
-          operations: RequestStore.store[:rails_pulse_operations] || []
+          operations: operations.map(&:dup)
         }
 
         # Send to tracker (non-blocking if async mode enabled)

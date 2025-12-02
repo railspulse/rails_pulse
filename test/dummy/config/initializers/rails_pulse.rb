@@ -6,6 +6,9 @@ RailsPulse.configure do |config|
   # Enable or disable Rails Pulse
   config.enabled = true
 
+  # Use synchronous tracking in test environment for predictable test behavior
+  config.async = false if Rails.env.test?
+
   # ====================================================================================================
   #                                         DASHBOARD CONFIGURATION
   # ====================================================================================================

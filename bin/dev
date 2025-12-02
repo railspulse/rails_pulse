@@ -118,10 +118,9 @@ if [ "$STANDALONE_DASHBOARD" = true ]; then
   exec bundle exec rackup lib/rails_pulse_server.ru -p 3001 -o 0.0.0.0
 
 else
-  # Embedded dashboard mode with async tracking
-  echo "📊 Mode: EMBEDDED DASHBOARD"
-  echo "   - Async tracking (fiber-based, ~0.1ms overhead)"
-  echo "   - Dashboard available at /rails_pulse"
+  # Embedded dashboard mode
+  echo "📊 Starting RailsPulse dashboard (embedded mode)"
+  echo "   Dashboard available at /rails_pulse"
   echo ""
   echo "🌐 Starting Rails server..."
   cd "$DUMMY_DIR"
