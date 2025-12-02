@@ -93,11 +93,14 @@ class DashboardApp
 end
 
 # Add session middleware for the dashboard
+# Require SECRET_KEY_BASE for security
+secret_key = ENV.fetch("SECRET_KEY_BASE") do
+  raise "SECRET_KEY_BASE environment variable must be set for standalone dashboard"
+end
+
 use Rack::Session::Cookie,
   key: "rails_pulse_session",
-  secret: ENV.fetch("SECRET_KEY_BASE") do
-    raise "SECRET_KEY_BASE environment variable must be set for standalone dashboard"
-  end,
+  secret: secret_key,
   same_site: :lax,
   max_age: 86400  # 1 day
 

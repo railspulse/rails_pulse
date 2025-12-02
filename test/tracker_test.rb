@@ -161,6 +161,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
       sleep 0.3
 
       request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
+
       assert_not_nil request, "Request should be created"
       assert_equal 1, request.operations.count, "Operation should be persisted"
       assert_equal "SELECT * FROM users", request.operations.first.label

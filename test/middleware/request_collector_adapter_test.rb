@@ -72,7 +72,6 @@ module RailsPulse
           end
         end
       end
-
     end
   end
 end
