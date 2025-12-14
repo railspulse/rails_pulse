@@ -28,7 +28,7 @@ module RailsPulse
           trend_icon, trend_amount = trend_for(current_runs, previous_runs)
 
           grouped_runs = base_query
-            .group_by_day(:period_start, time_zone: "UTC")
+            .group_by_date(:period_start)
             .sum(:count)
 
           {

@@ -24,7 +24,6 @@ gem "rubocop-minitest", require: false
 gem "brakeman", require: false
 
 gem "css-zero"
-gem "groupdate", ">= 6.5.1"
 gem "importmap-rails"
 gem "ransack"
 gem "turbo-rails"

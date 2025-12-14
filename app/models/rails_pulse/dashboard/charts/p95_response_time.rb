@@ -23,9 +23,8 @@ module RailsPulse
             )
 
           actual_data = summaries
-            .group_by_day(:period_start, time_zone: Time.zone)
+            .group_by_date(:period_start)
             .average(:p95_duration)
-            .transform_keys { |date| date.to_date }
             .transform_values { |avg| avg&.round(0) || 0 }
 
           # Fill in all dates with zero values for missing days

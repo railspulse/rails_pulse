@@ -39,7 +39,7 @@ module RailsPulse
 
           # Sparkline data by day with zero-filled days over the last 14 days
           grouped_daily = base_query
-            .group_by_day(:period_start, time_zone: "UTC")
+            .group_by_date(:period_start)
             .sum(:count)
 
           start_day = 2.weeks.ago.beginning_of_day.to_date

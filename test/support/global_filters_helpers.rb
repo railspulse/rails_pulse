@@ -22,6 +22,8 @@ module GlobalFiltersHelpers
     sleep 0.3
 
     within(".dialog__content") do
+      # Wait for button to be ready
+      assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
       click_button "Apply Filters"
     end
 
@@ -32,6 +34,8 @@ module GlobalFiltersHelpers
     open_global_filters_modal
 
     within(".dialog__content") do
+      # Wait for button to be ready
+      assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
       select threshold, from: "performance_threshold"
       click_button "Apply Filters"
     end
@@ -68,9 +72,14 @@ module GlobalFiltersHelpers
       sleep 1 # Give more time for flatpickr to process and update
     end
 
-    # Wait for modal to be fully visible
+    # Wait for modal to be fully visible and button to be ready
     within(".dialog__content") do
+      # Explicitly wait for the Apply Filters button to be visible and enabled
+      assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
+
       select threshold, from: "performance_threshold" if threshold
+
+      # Click the button
       click_button "Apply Filters"
     end
 
@@ -81,6 +90,8 @@ module GlobalFiltersHelpers
     open_global_filters_modal
 
     within(".dialog__content") do
+      # Wait for button to be ready (Clear is a button element, not input)
+      assert_selector "button[type='submit']", text: "Clear", wait: 5
       click_button "Clear"
     end
 
@@ -144,9 +155,9 @@ module GlobalFiltersHelpers
       # Find the checkbox by its id (tag_<name>)
       checkbox_id = "tag_#{tag_name.parameterize.underscore}"
       find("##{checkbox_id}").click
-    end
 
-    within(".dialog__content") do
+      # Wait for button to be ready
+      assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
       click_button "Apply Filters"
     end
 

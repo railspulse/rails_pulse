@@ -38,11 +38,11 @@ module RailsPulse
           trend_icon, trend_amount = trend_for(current_average, previous_average)
 
           grouped_weighted = base_query
-            .group_by_day(:period_start, time_zone: "UTC")
+            .group_by_date(:period_start)
             .sum(Arel.sql("avg_duration * count"))
 
           grouped_counts = base_query
-            .group_by_day(:period_start, time_zone: "UTC")
+            .group_by_date(:period_start)
             .sum(:count)
 
           sparkline_data = sparkline_from_averages(grouped_weighted, grouped_counts)

@@ -41,12 +41,13 @@ module RailsPulse
           trend_amount = previous_period_avg.zero? ? "0%" : "#{percentage}%"
 
           # Sparkline data by day with zero-filled days over the last 14 days
+          # Use database-agnostic date grouping (works regardless of ActiveRecord.default_timezone)
           grouped_weighted = base_query
-            .group_by_day(:period_start, time_zone: "UTC")
+            .group_by_date(:period_start)
             .sum(Arel.sql("avg_duration * count"))
 
           grouped_counts = base_query
-            .group_by_day(:period_start, time_zone: "UTC")
+            .group_by_date(:period_start)
             .sum(:count)
 
           start_day = 2.weeks.ago.beginning_of_day.to_date

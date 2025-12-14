@@ -38,11 +38,11 @@ module RailsPulse
           trend_icon, trend_amount = trend_for(current_rate, previous_rate)
 
           grouped_errors = base_query
-            .group_by_day(:period_start, time_zone: "UTC")
+            .group_by_date(:period_start)
             .sum(:error_count)
 
           grouped_counts = base_query
-            .group_by_day(:period_start, time_zone: "UTC")
+            .group_by_date(:period_start)
             .sum(:count)
 
           sparkline_data = sparkline_from_failure_rates(grouped_errors, grouped_counts)

@@ -4,12 +4,12 @@ require "rails_pulse/middleware/asset_server"
 require "rails_pulse/subscribers/operation_subscriber"
 require "rails_pulse/job_run_collector"
 require "rails_pulse/active_job_extensions"
+require "rails_pulse/extensions/active_record"
 require "request_store"
 require "rack/static"
 require "ransack"
 require "pagy"
 require "turbo-rails"
-require "groupdate"
 
 module RailsPulse
   class Engine < ::Rails::Engine
@@ -82,9 +82,8 @@ module RailsPulse
 
     initializer "rails_pulse.timezone" do
       # Configure Rails Pulse to always use UTC for consistent time operations
-      # This prevents Groupdate timezone mismatch errors across different host applications
       # Note: We don't set Time.zone_default as it would affect the entire application
-      # Instead, we explicitly use time_zone: "UTC" in all groupdate calls
+      # Our custom group_by_date extension works regardless of ActiveRecord.default_timezone
     end
 
     initializer "rails_pulse.configure_logger", before: :initialize_logger do
