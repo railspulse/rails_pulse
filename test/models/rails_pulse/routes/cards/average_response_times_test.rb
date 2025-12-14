@@ -35,6 +35,7 @@ module RailsPulse
           # Should not raise an error
           assert_nothing_raised do
             result = card.to_metric_card
+
             assert_not_nil result
             assert_equal "average_response_times", result[:id]
           end
@@ -55,6 +56,7 @@ module RailsPulse
           # Groupdate::Error (ActiveRecord.default_timezone must be :utc to use Groupdate)
           assert_nothing_raised do
             result = card.to_metric_card
+
             assert_not_nil result
             assert_equal "average_response_times", result[:id]
           end
