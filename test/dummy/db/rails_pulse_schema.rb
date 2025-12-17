@@ -39,8 +39,8 @@ RailsPulse::Schema = lambda do |connection|
 
   unless connection.table_exists?(:rails_pulse_queries)
     connection.create_table :rails_pulse_queries do |t|
-      t.string :hashed_sql, limit: 32, null: false, comment: "MD5 hash of normalized SQL for indexing"
-      t.text :normalized_sql, null: false, comment: "Normalized SQL query string (e.g., SELECT * FROM users WHERE id = ?)"
+      t.string :hashed_sql, limit: 32, null: false, comment: "MD5 hash of normalized SQL for fast lookups and uniqueness"
+      t.text :normalized_sql, null: false, comment: "Full normalized SQL query string (e.g., SELECT * FROM users WHERE id = ?)"
       t.datetime :analyzed_at, comment: "When query analysis was last performed"
       t.text :explain_plan, comment: "EXPLAIN output from actual SQL execution"
       t.text :issues, comment: "JSON array of detected performance issues"
@@ -211,5 +211,6 @@ RailsPulse::Schema = lambda do |connection|
   end
 end
 
-# In test/dummy, the schema is loaded explicitly by the install migration
-# DO NOT auto-execute here to avoid double execution
+if defined?(RailsPulse::ApplicationRecord)
+  RailsPulse::Schema.call(RailsPulse::ApplicationRecord.connection)
+end

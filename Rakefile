@@ -43,6 +43,21 @@ task :verify_dummy_migrations do
   end
 end
 
+desc "Sync Rails Pulse schema to test/dummy app"
+task :sync_test_schema do
+  require "fileutils"
+
+  source = "db/rails_pulse_schema.rb"
+  dest = "test/dummy/db/rails_pulse_schema.rb"
+
+  if File.exist?(source)
+    FileUtils.cp(source, dest)
+    puts "✅ Synced schema: #{source} → #{dest}"
+  else
+    puts "⚠️  Source schema not found: #{source}"
+  end
+end
+
 desc "Setup database for testing"
 task :test_setup do
   database = ENV['DB'] || 'sqlite3'
@@ -55,6 +70,9 @@ task :test_setup do
   puts
 
   begin
+    # Sync schema file from gem to test/dummy
+    Rake::Task[:sync_test_schema].invoke
+
     # Remove schema.rb to ensure clean migration
     schema_file = "test/dummy/db/schema.rb"
     if File.exist?(schema_file)
@@ -138,6 +156,10 @@ task :test_setup_for_version, [ :database, :rails_version ] do |t, args|
   puts
 
   begin
+    # Sync schema file from gem to test/dummy
+    Rake::Task[:sync_test_schema].reenable
+    Rake::Task[:sync_test_schema].invoke
+
     # Remove schema.rb to ensure clean migration
     schema_file = "test/dummy/db/schema.rb"
     if File.exist?(schema_file)
@@ -239,9 +261,21 @@ task :test_release do
 
   failed_tasks = []
   current_step = 0
-  total_steps = 9
+  total_steps = 11
 
-  # Step 1: Verify dummy migrations
+  # Step 1: Sync test schema
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Syncing test schema..."
+    puts "-" * 70
+    Rake::Task[:sync_test_schema].invoke
+  rescue => e
+    puts "❌ Schema sync failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "sync_test_schema"
+  end
+
+  # Step 2: Verify dummy migrations
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Verifying dummy app migrations..."
@@ -253,7 +287,7 @@ task :test_release do
     failed_tasks << "verify_dummy_migrations"
   end
 
-  # Step 2: Git status check
+  # Step 3: Git status check
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Checking git status..."
@@ -273,7 +307,7 @@ task :test_release do
     puts "⚠️  Warning: Could not check git status (#{e.message})"
   end
 
-  # Step 3: RuboCop linting
+  # Step 5: RuboCop linting
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running RuboCop linting..."
@@ -286,7 +320,7 @@ task :test_release do
     failed_tasks << "rubocop"
   end
 
-  # Step 4: Brakeman security scan
+  # Step 6: Brakeman security scan
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running Brakeman security scanner..."
@@ -298,7 +332,7 @@ task :test_release do
     failed_tasks << "brakeman"
   end
 
-  # Step 5: Install Node dependencies
+  # Step 7: Install Node dependencies
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Installing Node dependencies..."
@@ -311,7 +345,7 @@ task :test_release do
     failed_tasks << "npm_install"
   end
 
-  # Step 6: Build and verify assets
+  # Step 8: Build and verify assets
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Building production assets..."
@@ -333,7 +367,7 @@ task :test_release do
     failed_tasks << "npm_build"
   end
 
-  # Step 7: Verify gem builds
+  # Step 9: Verify gem builds
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Verifying gem builds correctly..."
@@ -351,7 +385,7 @@ task :test_release do
     failed_tasks << "gem_build"
   end
 
-  # Step 8: Run generator tests
+  # Step 10: Run generator tests
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running generator tests..."
@@ -364,7 +398,7 @@ task :test_release do
     failed_tasks << "test_generators"
   end
 
-  # Step 9: Run full test matrix with system tests
+  # Step 11: Run full test matrix with system tests
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running full test matrix with system tests..."

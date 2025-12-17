@@ -226,6 +226,9 @@ The schema file (`db/rails_pulse_schema.rb`) is designed for **fresh installatio
 **Why this matters:**
 The schema file represents the "ideal final state" for new installations. For existing installations, **you must use incremental migrations** to modify table structure.
 
+**How it works with migrations:**
+The install migration (created by `rails generate rails_pulse:install`) loads and executes the schema file. This provides a clean, single-migration installation for new users while maintaining a schema file as the source of truth. The migration uses `Rails.root.join("db/rails_pulse_schema.rb")` to locate the schema file that was copied to your app during installation.
+
 **Example - Adding a new column:**
 
 When adding a new feature that requires a database column:
@@ -260,9 +263,17 @@ When adding a new feature that requires a database column:
    ```
 
 This approach ensures:
-- **Fresh installations** get the complete schema with all columns
+- **Fresh installations** get the complete schema with all columns (via install migration loading schema file)
 - **Existing installations** get the incremental migration to add the column
 - **Safety** - the schema file never modifies existing tables
+- **Single source of truth** - the schema file shows the current complete structure
+
+**Test/Dummy App Setup:**
+For Rails engine development (like Rails Pulse itself), the test/dummy app needs both:
+1. The schema file at `test/dummy/db/rails_pulse_schema.rb` (synced from gem's `db/rails_pulse_schema.rb`)
+2. The install migration at `test/dummy/db/migrate/TIMESTAMP_install_rails_pulse_tables.rb`
+
+The `rake sync_test_schema` task keeps the test schema in sync with the gem schema. This runs automatically before test setup.
 
 ### Benefits
 
