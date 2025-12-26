@@ -297,7 +297,69 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     assert_includes current_url, "q%5Bs%5D", "Sort parameter should be preserved during column selection"
   end
 
+  test "chart x-axis labels show properly formatted dates" do
+    visit_rails_pulse_path page_path
+
+    assert_selector "#{chart_selector}[data-chart-rendered='true']", wait: 10
+
+    x_axis_labels = extract_chart_x_axis_labels
+    current_month = Time.current.strftime("%b")
+
+    assert_operator x_axis_labels.length, :>, 0,
+      "Chart should have x-axis labels"
+
+    # Verify no labels show "Invalid Date"
+    invalid_labels = x_axis_labels.select { |label| label.to_s.include?("Invalid Date") }
+
+    assert_equal 0, invalid_labels.length,
+      "Found #{invalid_labels.length} x-axis labels showing 'Invalid Date': #{invalid_labels.inspect}"
+
+    # Verify labels match expected format (time HH:00 or date Mon DD)
+    valid_labels = x_axis_labels.select do |label|
+      label.to_s.match?(/^\d{1,2}:\d{2}$/) || label.to_s.match?(/^[A-Z][a-z]{2}\s+\d{1,2}$/)
+    end
+
+    assert_operator valid_labels.length, :>, 0,
+      "Should have at least one properly formatted date/time label. Found: #{x_axis_labels.inspect}"
+
+    # Verify at least one label is from current month (ensuring dates are recent, not from 1970)
+    has_current_month = x_axis_labels.any? { |label| label.to_s.include?(current_month) }
+
+    assert has_current_month,
+      "At least one label should be from current month (#{current_month}). Found: #{x_axis_labels.inspect}"
+  end
+
   private
+
+  def extract_chart_x_axis_labels
+    result = page.execute_script("
+      var chartElement = document.querySelector('#{chart_selector}');
+      if (!chartElement) return { error: 'Chart not found' };
+
+      var chartInstance = echarts.getInstanceByDom(chartElement);
+      if (!chartInstance) return { error: 'Chart instance not found' };
+
+      var option = chartInstance.getOption();
+      var xAxisData = option.xAxis[0].data;
+      var formatter = option.xAxis[0].axisLabel?.formatter;
+      var labels = [];
+
+      xAxisData.forEach(function(value) {
+        var label;
+        if (formatter && typeof formatter === 'function') {
+          label = formatter(value);
+        } else {
+          label = String(value);
+        }
+        labels.push(label);
+      });
+
+      return { labels: labels };
+    ")
+
+    assert result["labels"], "Should have labels from chart: #{result.inspect}"
+    result["labels"]
+  end
 
   def test_column_sorting(column_config)
     column_name = column_config[:name]
