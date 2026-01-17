@@ -173,8 +173,7 @@ module RailsPulse
           say "\nMigrations copied successfully!", :green
           say "\nNext steps:", :green
           say "1. Run migrations for the rails_pulse database:"
-          say "   rails db:migrate (will run migrations for all databases)"
-          say "   OR manually run the migration files in db/rails_pulse_migrate/"
+          say "   rails db:migrate:rails_pulse"
           say "2. Restart your Rails server"
         else
           # Fall back to detecting missing columns
@@ -203,8 +202,7 @@ module RailsPulse
 
               Next steps:
               1. Run migrations for the rails_pulse database:
-                 rails db:migrate (will run migrations for all databases)
-                 OR manually run the migration files in db/rails_pulse_migrate/
+                 rails db:migrate:rails_pulse
               2. Restart your Rails server
 
               This migration will add: #{missing_columns.keys.join(', ')}
