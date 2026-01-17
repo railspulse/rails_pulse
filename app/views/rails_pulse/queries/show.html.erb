@@ -26,7 +26,7 @@
       </div>
     <% end %>
 
-    <% if @has_data %>
+    <% unless turbo_frame_request? %>
       <% if @chart_data && @chart_data.values.any? { |v| v > 0 } %>
         <div
           class="chart-container chart-container--slim"
@@ -52,14 +52,16 @@
           ) %>
         </div>
       <% end %>
+    <% end %>
 
-      <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
+    <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
+      <% if @table_data && @table_data.any? %>
         <%= render 'rails_pulse/queries/show_table' %>
+      <% else %>
+        <%= render 'rails_pulse/components/empty_state',
+            title: 'No query responses found for the selected filters.',
+            description: 'Try adjusting your time range or filters to see results.' %>
       <% end %>
-    <% else %>
-      <%= render 'rails_pulse/components/empty_state',
-          title: 'No query responses found for the selected filters.',
-          description: 'Try adjusting your time range or filters to see results.' %>
     <% end %>
   <% end %>
 </div>
