@@ -213,20 +213,35 @@ export default class extends Controller {
         return value
       },
 
-      // Date only
+      // Date only (formatted as "Mon DD" to match Rails Pulse formatters)
       'date': (value) => {
         if (typeof value === 'number' || typeof value === 'string') {
-          const date = new Date(value)
-          return date.toLocaleDateString()
+          // Convert to number if string
+          const numValue = typeof value === 'string' ? parseInt(value) : value
+          const date = new Date(numValue)
+
+          if (isNaN(date.getTime())) {
+            return value.toString()
+          }
+
+          return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
         }
         return value
       },
 
-      // Time only
+      // Time only (formatted as "HH:00" to match Rails Pulse formatters)
       'time': (value) => {
         if (typeof value === 'number' || typeof value === 'string') {
-          const date = new Date(value)
-          return date.toLocaleTimeString()
+          // Convert to number if string
+          const numValue = typeof value === 'string' ? parseInt(value) : value
+          const date = new Date(numValue)
+
+          const hours = date.getHours()
+          if (isNaN(hours)) {
+            return value.toString()
+          }
+
+          return hours.toString().padStart(2, '0') + ':00'
         }
         return value
       },
@@ -248,21 +263,12 @@ export default class extends Controller {
       }
     }
 
-    // Try to match the formatter string to a known safe pattern
-    for (const [key, formatter] of Object.entries(SAFE_FORMATTERS)) {
-      if (formatterString.includes(key) ||
-          formatterString.includes(key.replace('_', ''))) {
-        return formatter
-      }
-    }
+    // IMPORTANT: Check for SPECIFIC patterns FIRST before generic keyword matching
+    // The order matters! More specific patterns should be checked before generic ones.
 
-    // Check for specific safe patterns in the function string
-    if (formatterString.includes('toFixed(2)') && formatterString.includes('ms')) {
-      return SAFE_FORMATTERS.duration_ms
-    }
-
-    if (formatterString.includes('toLocaleString')) {
-      return SAFE_FORMATTERS.number_delimited
+    // Check for specific function calls that uniquely identify the formatter type
+    if (formatterString.includes('getHours')) {
+      return SAFE_FORMATTERS.time
     }
 
     if (formatterString.includes('toLocaleDateString')) {
@@ -273,8 +279,25 @@ export default class extends Controller {
       return SAFE_FORMATTERS.time
     }
 
+    if (formatterString.includes('toLocaleString')) {
+      return SAFE_FORMATTERS.number_delimited
+    }
+
+    if (formatterString.includes('toFixed(2)') && formatterString.includes('ms')) {
+      return SAFE_FORMATTERS.duration_ms
+    }
+
+    // Try to match the formatter string to a known safe pattern by key name
+    // This is less specific and should come after the function call checks above
+    for (const [key, formatter] of Object.entries(SAFE_FORMATTERS)) {
+      if (formatterString.includes(key) ||
+          formatterString.includes(key.replace('_', ''))) {
+        return formatter
+      }
+    }
+
     // Default: return a safe identity function that just returns the value
-    console.warn('[RailsPulse] Unknown formatter pattern, using identity function:', formatterString)
+    console.warn('[RailsPulse] Unknown formatter pattern, using identity function:', formatterString.substring(0, 100))
     return (value) => value
   }
 

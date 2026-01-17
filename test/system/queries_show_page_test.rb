@@ -226,7 +226,12 @@ class QueriesShowPageTest < SharedIndexPageTest
 
     # Check if turbo frame exists with better wait handling
     unless has_selector?("turbo-frame#index_table", wait: 5)
-      # Check if this is an empty state scenario (which is valid for some filters)
+      flunk "Could not find turbo-frame#index_table"
+    end
+
+    # Check within turbo frame for either table or empty state
+    within("turbo-frame#index_table") do
+      # Check if empty state is showing
       if has_selector?("img[src*='search.svg']", wait: 2)
         # Empty state is showing - this might be expected for critical filter
         if expected_data && expected_data.empty?
@@ -237,22 +242,7 @@ class QueriesShowPageTest < SharedIndexPageTest
         end
       end
 
-      # Try direct table validation as fallback for the main operations table
-      # Use a more specific selector to target the operations table, not locations table
-      if has_selector?("table.table tbody tr", wait: 3)
-        # Find the first table with data (should be operations table)
-        first_table_rows = first("table.table tbody").all("tr")
-        if first_table_rows.any?
-          validate_query_show_operations_table(first_table_rows, expected_data, filter_applied)
-          return
-        end
-      end
-
-      flunk "Could not find table data for validation"
-    end
-
-    # Normal path: validate within turbo frame
-    within("turbo-frame#index_table") do
+      # Otherwise expect table data
       assert_selector "table tbody tr", wait: 5
       table_rows = all("table tbody tr")
 

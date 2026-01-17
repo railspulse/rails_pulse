@@ -4,14 +4,14 @@ module RailsPulse
       if time_diff_hours <= 25
         <<~JS
           function(value) {
-            const date = new Date(value * 1000);
+            const date = new Date(value);
             return date.getHours().toString().padStart(2, '0') + ':00';
           }
         JS
       else
         <<~JS
           function(value) {
-            const date = new Date(value * 1000);
+            const date = new Date(value);
             return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
           }
         JS
@@ -23,7 +23,7 @@ module RailsPulse
         <<~JS
           function(params) {
             const data = params[0];
-            const date = new Date(data.axisValue * 1000);
+            const date = new Date(data.axisValue);
             const dateString = date.getHours().toString().padStart(2, '0') + ':00';
             return `${dateString} <br /> ${data.marker} ${parseInt(data.data)} ms`;
           }
@@ -32,7 +32,7 @@ module RailsPulse
         <<~JS
           function(params) {
             const data = params[0];
-            const date = new Date(data.axisValue * 1000);
+            const date = new Date(data.axisValue);
             const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             return `${dateString} <br /> ${data.marker} ${parseInt(data.data)} ms`;
           }

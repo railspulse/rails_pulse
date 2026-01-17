@@ -215,9 +215,9 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     validate_chart_data(chart_selector, expected_data: default_data, filter_applied: "Default")
     validate_table_data(page_type: page_type, expected_data: default_data, filter_applied: "Default")
 
-    # Apply zoom parameters
-    zoom_start = 2.5.hours.ago.to_i
-    zoom_end = 1.5.hours.ago.to_i
+    # Apply zoom parameters (in milliseconds, matching JavaScript behavior)
+    zoom_start = (2.5.hours.ago.to_i * 1000)
+    zoom_end = (1.5.hours.ago.to_i * 1000)
 
     zoom_params = {
       "zoom_start_time" => zoom_start.to_s,
@@ -303,7 +303,6 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     assert_selector "#{chart_selector}[data-chart-rendered='true']", wait: 10
 
     x_axis_labels = extract_chart_x_axis_labels
-    current_month = Time.current.strftime("%b")
 
     assert_operator x_axis_labels.length, :>, 0,
       "Chart should have x-axis labels"
@@ -315,18 +314,31 @@ class SharedIndexPageTest < ApplicationSystemTestCase
       "Found #{invalid_labels.length} x-axis labels showing 'Invalid Date': #{invalid_labels.inspect}"
 
     # Verify labels match expected format (time HH:00 or date Mon DD)
-    valid_labels = x_axis_labels.select do |label|
-      label.to_s.match?(/^\d{1,2}:\d{2}$/) || label.to_s.match?(/^[A-Z][a-z]{2}\s+\d{1,2}$/)
-    end
+    time_labels = x_axis_labels.select { |label| label.to_s.match?(/^\d{1,2}:\d{2}$/) }
+    date_labels = x_axis_labels.select { |label| label.to_s.match?(/^[A-Z][a-z]{2}\s+\d{1,2}$/) }
 
-    assert_operator valid_labels.length, :>, 0,
+    assert_operator time_labels.length + date_labels.length, :>, 0,
       "Should have at least one properly formatted date/time label. Found: #{x_axis_labels.inspect}"
 
-    # Verify at least one label is from current month (ensuring dates are recent, not from 1970)
-    has_current_month = x_axis_labels.any? { |label| label.to_s.include?(current_month) }
+    # If showing dates (not times), verify at least one is from current month
+    # This ensures dates are recent (not from 1970) when using date-based grouping
+    if date_labels.any?
+      current_month = Time.current.strftime("%b")
+      has_current_month = date_labels.any? { |label| label.include?(current_month) }
 
-    assert has_current_month,
-      "At least one label should be from current month (#{current_month}). Found: #{x_axis_labels.inspect}"
+      assert has_current_month,
+        "At least one date label should be from current month (#{current_month}). Found: #{date_labels.inspect}"
+    end
+
+    # If showing times (not dates), verify they are valid 24-hour format
+    if time_labels.any?
+      time_labels.each do |label|
+        hour = label.split(":").first.to_i
+
+        assert hour >= 0 && hour <= 23,
+          "Time label should have valid hour (0-23), got: #{label}"
+      end
+    end
   end
 
   private
