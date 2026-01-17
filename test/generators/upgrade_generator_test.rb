@@ -139,24 +139,6 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
     end
   end
 
-  test "reports up to date when no new migrations and no missing columns" do
-    File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
-
-    # Count migrations before running generator
-    migrations_before = Dir.glob(File.join(destination_root, "db/migrate/*_*.rb")).length
-
-    mock_complete_tables do
-      run_generator
-    end
-
-    # Count migrations after - should be same (no new migrations created)
-    migrations_after = Dir.glob(File.join(destination_root, "db/migrate/*_*.rb")).length
-
-    # Note: Due to schema having many columns, an upgrade migration may be created
-    # The important test is that existing migrations are not overwritten
-    # assert_equal migrations_before, migrations_after, "No new migrations should be created when up to date"
-  end
-
   test "separate database generates migration for missing columns" do
     File.write(File.join(destination_root, "config/database.yml"), separate_database_yml)
 

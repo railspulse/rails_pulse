@@ -24,10 +24,12 @@ module RailsPulse
             .transform_keys(&:to_i)
 
           # Pad missing data points with zeros
+          # Convert timestamps to milliseconds for JavaScript Date compatibility
           step = @period_type == :hour ? 1.hour : 1.day
           data = {}
           (@start_time.to_i..@end_time.to_i).step(step) do |timestamp|
-            data[timestamp.to_i] = summaries[timestamp.to_i].to_f.round(2)
+            # Multiply by 1000 to convert Unix seconds to JavaScript milliseconds
+            data[timestamp.to_i * 1000] = summaries[timestamp.to_i].to_f.round(2)
           end
           data
         end

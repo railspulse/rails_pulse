@@ -64,12 +64,6 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Route.unstub(:find_or_create_by)
   end
 
-  test "logs errors when tracking fails" do
-    skip "Logger test requires mocha setup in test environment"
-    # This test verifies that errors are logged but not raised
-    # The actual logging is tested in integration tests
-  end
-
   test "healthy? returns true when database is connected" do
     assert_predicate RailsPulse::Tracker, :healthy?, "Tracker should be healthy when DB is connected"
   end

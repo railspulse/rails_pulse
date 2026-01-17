@@ -33,17 +33,21 @@ module ZoomRangeConcern
   private
 
   def normalize_column_time(column_time, main_start_time, main_end_time)
+    # Convert from JavaScript milliseconds to Unix seconds
+    # Chart data uses milliseconds (timestamp * 1000), so divide by 1000 to get seconds
+    column_time_seconds = column_time / 1000
+
     # Determine period type based on main time range (same logic as ChartTableConcern)
     time_diff_hours = (main_end_time - main_start_time) / 3600.0
 
     if time_diff_hours <= 25
       # Hourly period - normalize to beginning/end of hour
-      column_time_obj = Time.zone&.at(column_time) || Time.at(column_time)
+      column_time_obj = Time.zone&.at(column_time_seconds) || Time.at(column_time_seconds)
       start_time = column_time_obj&.beginning_of_hour || column_time_obj
       end_time = column_time_obj&.end_of_hour || column_time_obj
     else
       # Daily period - normalize to beginning/end of day
-      column_time_obj = Time.zone&.at(column_time) || Time.at(column_time)
+      column_time_obj = Time.zone&.at(column_time_seconds) || Time.at(column_time_seconds)
       start_time = column_time_obj&.beginning_of_day || column_time_obj
       end_time = column_time_obj&.end_of_day || column_time_obj
     end
@@ -52,16 +56,21 @@ module ZoomRangeConcern
   end
 
   def normalize_zoom_times(start_time, end_time)
-    time_diff = (end_time - start_time) / 3600.0
+    # Convert from JavaScript milliseconds to Unix seconds
+    # Chart data uses milliseconds (timestamp * 1000), so divide by 1000 to get seconds
+    start_time_seconds = start_time / 1000
+    end_time_seconds = end_time / 1000
+
+    time_diff = (end_time_seconds - start_time_seconds) / 3600.0
 
     if time_diff <= 25
-      start_time_obj = Time.zone&.at(start_time) || Time.at(start_time)
-      end_time_obj = Time.zone&.at(end_time) || Time.at(end_time)
+      start_time_obj = Time.zone&.at(start_time_seconds) || Time.at(start_time_seconds)
+      end_time_obj = Time.zone&.at(end_time_seconds) || Time.at(end_time_seconds)
       start_time = start_time_obj&.beginning_of_hour || start_time_obj
       end_time = end_time_obj&.end_of_hour || end_time_obj
     else
-      start_time_obj = Time.zone&.at(start_time) || Time.at(start_time)
-      end_time_obj = Time.zone&.at(end_time) || Time.at(end_time)
+      start_time_obj = Time.zone&.at(start_time_seconds) || Time.at(start_time_seconds)
+      end_time_obj = Time.zone&.at(end_time_seconds) || Time.at(end_time_seconds)
       start_time = start_time_obj&.beginning_of_day || start_time_obj
       end_time = end_time_obj&.end_of_day || end_time_obj
     end

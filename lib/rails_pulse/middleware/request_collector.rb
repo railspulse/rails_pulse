@@ -31,8 +31,8 @@ module RailsPulse
           return result
         end
 
-        # Clear any previous request data
-        RequestStore.store[:rails_pulse_request_id] = nil
+        # Clear any previous request data and set a placeholder ID
+        RequestStore.store[:rails_pulse_request_id] = SecureRandom.uuid
         RequestStore.store[:rails_pulse_operations] = []
 
         start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)

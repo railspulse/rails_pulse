@@ -41,14 +41,12 @@ module RailsPulse
 
       test "middleware passes complete tracking data to tracker" do
         captured_data = nil
+        original_method = RailsPulse::Tracker.method(:track_request)
 
         # Intercept the tracker's track_request to see what data it receives
-        RailsPulse::Tracker.singleton_class.class_eval do
-          alias_method :original_track_request, :track_request
-          define_method(:track_request) do |data|
-            captured_data = data
-            original_track_request(data)
-          end
+        RailsPulse::Tracker.define_singleton_method(:track_request) do |data|
+          captured_data = data
+          original_method.call(data)
         end
 
         begin
@@ -66,10 +64,7 @@ module RailsPulse
           assert_kind_of Array, captured_data[:operations]
         ensure
           # Restore original method
-          RailsPulse::Tracker.singleton_class.class_eval do
-            alias_method :track_request, :original_track_request
-            remove_method :original_track_request
-          end
+          RailsPulse::Tracker.define_singleton_method(:track_request, original_method)
         end
       end
     end
