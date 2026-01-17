@@ -28,8 +28,8 @@ class OptimizeRailsPulseIndexes < ActiveRecord::Migration[7.0]
     end
 
     # Summaries table - remove 1 redundant index
-    if index_exists?(:rails_pulse_summaries, [:summarizable_type, :summarizable_id], name: "index_rails_pulse_summaries_on_summarizable")
-      remove_index :rails_pulse_summaries, [:summarizable_type, :summarizable_id], name: :index_rails_pulse_summaries_on_summarizable, **index_options
+    if index_exists?(:rails_pulse_summaries, [ :summarizable_type, :summarizable_id ], name: "index_rails_pulse_summaries_on_summarizable")
+      remove_index :rails_pulse_summaries, [ :summarizable_type, :summarizable_id ], name: :index_rails_pulse_summaries_on_summarizable, **index_options
     end
 
     # Add missing indexes for better query performance
@@ -68,8 +68,8 @@ class OptimizeRailsPulseIndexes < ActiveRecord::Migration[7.0]
       add_index :rails_pulse_requests, :route_id, name: :index_rails_pulse_requests_on_route_id, **index_options
     end
 
-    unless index_exists?(:rails_pulse_summaries, [:summarizable_type, :summarizable_id], name: "index_rails_pulse_summaries_on_summarizable")
-      add_index :rails_pulse_summaries, [:summarizable_type, :summarizable_id], name: :index_rails_pulse_summaries_on_summarizable, **index_options
+    unless index_exists?(:rails_pulse_summaries, [ :summarizable_type, :summarizable_id ], name: "index_rails_pulse_summaries_on_summarizable")
+      add_index :rails_pulse_summaries, [ :summarizable_type, :summarizable_id ], name: :index_rails_pulse_summaries_on_summarizable, **index_options
     end
 
     # Remove the added indexes
