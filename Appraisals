@@ -7,3 +7,8 @@ appraise "rails-8-0" do
   gem "rails", "~> 8.0.0"
   gem "pagy", "~> 43.0.0pre"  # Test with Pagy 43 (Method API)
 end
+
+appraise "rails-8-1" do
+  gem "rails", "~> 8.1.0"
+  gem "pagy", "~> 43.0.0pre"  # Test with Pagy 43 (Method API)
+end

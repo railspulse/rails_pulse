@@ -32,4 +32,6 @@ Gem::Specification.new do |spec|
   spec.add_dependency "async", "~> 2.0"
 
   spec.add_development_dependency "rails-controller-testing", ">= 1.0"
+  spec.add_development_dependency "minitest", ">= 5.0"
+  spec.add_development_dependency "ostruct"
 end

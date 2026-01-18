@@ -1,7 +1,6 @@
 require "test_helper"
 require "generators/rails_pulse/upgrade_generator"
 require_relative "../support/generator_test_helpers"
-require "minitest/mock"
 require "ostruct"
 
 class UpgradeGeneratorTest < Rails::Generators::TestCase
@@ -25,25 +24,23 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
     File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
 
     output = mock_tables_exist do
-      run_generator
+      run_generator([], {})
     end
 
     assert_match(/Detected database setup: single/, output)
   end
 
-  test "detects separate database setup from database.yml" do
+test "detects separate database setup from database.yml" do
     File.write(File.join(destination_root, "config/database.yml"), separate_database_yml)
 
-    output = mock_tables_exist do
-      run_generator [ "--database=separate" ]
-    end
+    output = run_generator([], { database: "separate" })
 
     assert_match(/Detected database setup: separate/, output)
   end
 
   test "detects schema_only when schema exists but no tables" do
     output = mock_no_tables_exist do
-      run_generator
+      run_generator([], {})
     end
 
     assert_match(/schema detected but no tables found/, output)
@@ -54,7 +51,7 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
 
     assert_raises SystemExit do
       mock_no_tables_exist do
-        run_generator
+        run_generator([], {})
       end
     end
   end
@@ -66,7 +63,7 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
     create_gem_migration("add_new_feature", "20251019000000")
 
     output = mock_tables_exist do
-      run_generator
+      run_generator([], {})
     end
 
     assert_match(/Found 1 new migration/, output)
@@ -79,7 +76,7 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
     create_gem_migration("add_feature_two", "20251019000001")
 
     output = mock_tables_exist do
-      run_generator
+      run_generator([], {})
     end
 
     assert_match(/Found 2 new migration/, output)
@@ -99,7 +96,7 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
     )
 
     mock_tables_exist do
-      run_generator
+      run_generator([], {})
     end
 
     # File should not be overwritten - verify content is unchanged
@@ -109,14 +106,14 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
     end
   end
 
-  # Separate Database Migration Copying Tests
+# Separate Database Migration Copying Tests
 
-  test "separate database upgrade copies migrations to rails_pulse_migrate" do
+test "separate database upgrade copies migrations to rails_pulse_migrate" do
     File.write(File.join(destination_root, "config/database.yml"), separate_database_yml)
     create_gem_migration("add_new_feature", "20251019000000")
 
     output = mock_tables_exist do
-      run_generator [ "--database=separate" ]
+      run_generator([], { database: "separate" })
     end
 
     assert_match(/Found 1 new migration/, output)
@@ -130,7 +127,7 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
     File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
 
     output = mock_tables_with_missing_columns do
-      run_generator
+      run_generator([], {})
     end
 
     assert_match(/Creating upgrade migration for missing columns/, output)
@@ -143,7 +140,7 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
     File.write(File.join(destination_root, "config/database.yml"), separate_database_yml)
 
     output = mock_tables_with_missing_columns do
-      run_generator [ "--database=separate" ]
+      run_generator([], { database: "separate" })
     end
 
     assert_migration "db/rails_pulse_migrate/upgrade_rails_pulse_tables.rb" do |content|
@@ -175,9 +172,10 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
       ]
     end
 
-    ActiveRecord::Base.stub :connection, connection do
-      yield if block_given?
-    end
+    ActiveRecord::Base.stubs(:connection).returns(connection)
+    result = yield if block_given?
+    ActiveRecord::Base.unstub(:connection)
+    result
   end
 
   def mock_no_tables_exist
@@ -187,9 +185,10 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
       false
     end
 
-    ActiveRecord::Base.stub :connection, connection do
-      yield if block_given?
-    end
+    ActiveRecord::Base.stubs(:connection).returns(connection)
+    result = yield if block_given?
+    ActiveRecord::Base.unstub(:connection)
+    result
   end
 
   def mock_tables_with_missing_columns
@@ -211,9 +210,10 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
       ]
     end
 
-    ActiveRecord::Base.stub :connection, connection do
-      yield if block_given?
-    end
+    ActiveRecord::Base.stubs(:connection).returns(connection)
+    result = yield if block_given?
+    ActiveRecord::Base.unstub(:connection)
+    result
   end
 
   def mock_complete_tables
@@ -236,8 +236,9 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
       ]
     end
 
-    ActiveRecord::Base.stub :connection, connection do
-      yield if block_given?
-    end
+    ActiveRecord::Base.stubs(:connection).returns(connection)
+    result = yield if block_given?
+    ActiveRecord::Base.unstub(:connection)
+    result
   end
 end
