@@ -29,7 +29,8 @@
 - [ ] New tests added for new functionality
 - [ ] Manual testing completed
 - [ ] Tested across multiple databases (SQLite, PostgreSQL, MySQL)
-- [ ] Tested across multiple Rails versions (7.2, 8.0)
+- [ ] Tested with Appraisals across all Rails versions
+- [ ] Tested across multiple Rails versions (7.2, 8.0, 8.1)
 
 ## Breaking Changes
 
@@ -53,7 +54,8 @@
 - [ ] No new warnings or errors introduced
 - [ ] Tests added/updated and passing
 - [ ] Changes work with all supported databases
-- [ ] Changes work with all supported Rails versions
+- [ ] Changes work with all supported Rails versions (7.2, 8.0, 8.1)
+- [ ] Appraisals configuration updated if Rails version support changed
 - [ ] Asset changes compiled and included (if applicable)
 
 ## Additional Notes
