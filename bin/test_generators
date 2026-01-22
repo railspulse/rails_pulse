@@ -173,9 +173,9 @@ class GeneratorTester
         # Run migration
         run_command "bin/rails db:migrate RAILS_ENV=test"
 
-        # Verify column added
+        # Verify column added (use lines.last to ignore Ruby warnings)
         result = run_command("bin/rails runner -e test \"puts RailsPulse::Route.column_names.include?('test_column')\"", capture: true)
-        if result.strip == "true"
+        if result.lines.last&.strip == "true"
           pass "Upgrade migration applied successfully"
         else
           fail "Upgrade migration did not apply correctly"
@@ -280,7 +280,8 @@ class GeneratorTester
         capture: true
       )
 
-      if result.strip == "true"
+      # Use lines.last to ignore any Ruby warnings in the output
+      if result.lines.last&.strip == "true"
         pass description
       else
         fail "#{description} - Tables do not exist"
