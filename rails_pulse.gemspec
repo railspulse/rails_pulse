@@ -24,7 +24,7 @@ Gem::Specification.new do |spec|
   end
 
   spec.bindir = "exe"
-  spec.executables = ["rails_pulse_server"]
+  spec.executables = [ "rails_pulse_server" ]
 
   spec.add_dependency "rails", ">= 7.1.0", "< 9.0.0"
   spec.add_dependency "css-zero", "~> 1.1", ">= 1.1.4"
