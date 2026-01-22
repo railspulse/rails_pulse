@@ -1,6 +1,8 @@
 # frozen_string_literal: true
 
 class OptimizeRailsPulseIndexes < ActiveRecord::Migration[7.0]
+  disable_ddl_transaction!
+
   def up
     # Remove redundant indexes that are covered by composite indexes
     # These were identified by PgHero as being redundant
