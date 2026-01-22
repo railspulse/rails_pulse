@@ -20,8 +20,11 @@ Gem::Specification.new do |spec|
   spec.metadata["source_code_uri"] = "https://github.com/railspulse/rails_pulse"
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
-    Dir["{app,config,db,lib,public}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
+    Dir["{app,config,db,exe,lib,public}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
   end
+
+  spec.bindir = "exe"
+  spec.executables = ["rails_pulse_server"]
 
   spec.add_dependency "rails", ">= 7.1.0", "< 9.0.0"
   spec.add_dependency "css-zero", "~> 1.1", ">= 1.1.4"

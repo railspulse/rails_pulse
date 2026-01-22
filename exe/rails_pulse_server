@@ -1,0 +1,25 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+require "bundler/setup"
+
+# Find the rackup file within the gem
+gem_root = File.expand_path("..", __dir__)
+rackup_file = File.join(gem_root, "lib", "rails_pulse_server.ru")
+
+unless File.exist?(rackup_file)
+  abort "Error: Could not find rails_pulse_server.ru at #{rackup_file}"
+end
+
+# Default port
+port = ENV.fetch("PORT", "3001")
+
+# Build rackup command with any passed arguments
+# If no -p/--port specified, use default
+args = ARGV.dup
+unless args.any? { |arg| arg.start_with?("-p") || arg == "--port" }
+  args.unshift("-p", port)
+end
+
+# Execute rackup with the server file
+exec("rackup", rackup_file, *args)
