@@ -189,7 +189,7 @@ end
 desc "Test all database and Rails version combinations"
 task :test_matrix do
   databases = %w[sqlite3 postgresql mysql2]
-  rails_versions = %w[rails-7-2 rails-8-0]
+  rails_versions = %w[rails-7-2 rails-8-0 rails-8-1]
 
   failed_combinations = []
   total_combinations = databases.size * rails_versions.size

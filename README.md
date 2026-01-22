@@ -6,9 +6,9 @@
   **Real-time performance monitoring and debugging for Rails applications**
 
   ![Gem Version](https://img.shields.io/gem/v/rails_pulse)
-  ![Rails Version](https://img.shields.io/badge/Rails-7.2+-blue)
+  ![Rails Version](https://img.shields.io/badge/Rails-7.2+-8.1-blue)
   ![License](https://img.shields.io/badge/License-MIT-green)
-  ![Ruby Version](https://img.shields.io/badge/Ruby-3.3+-red)
+  ![Ruby Version](https://img.shields.io/badge/Ruby-3.0+-red)
 </div>
 
 ---
@@ -786,7 +786,7 @@ rails test:matrix
 
 This command tests all combinations locally:
 - **Databases**: SQLite3, PostgreSQL, MySQL2 (local testing only)
-- **Rails versions**: 7.2, 8.0
+- **Rails versions**: 7.2, 8.0, 8.1
 
 **Note**: CI only tests SQLite3 + PostgreSQL for reliability. MySQL is available for local testing but excluded from CI due to flakiness.
 
@@ -840,7 +840,7 @@ DB=mysql2 FORCE_DB_CONFIG=true rails test:all
 
 GitHub Actions CI automatically tests:
 - **Databases**: SQLite3, PostgreSQL only (MySQL excluded for reliability)
-- **Rails versions**: 7.2, 8.0
+- **Rails versions**: 7.2, 8.0, 8.1
 - **Environment**: Uses memory SQLite and PostgreSQL service
 
 **Local vs CI differences**:
