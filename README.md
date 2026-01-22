@@ -684,12 +684,12 @@ For production environments, you can run the Rails Pulse dashboard as a standalo
 ```bash
 # Option 1: Set DATABASE_URL environment variable (recommended for production)
 export DATABASE_URL="postgresql://user:pass@host/db"
-bundle exec rackup lib/rails_pulse_server.ru -p 3001
+bundle exec rails_pulse_server
 
 # Option 2: Use config/database.yml (recommended for development)
 # Looks for 'rails_pulse' connection, falls back to primary
 # No environment variable needed - automatically reads from config/database.yml
-bundle exec rackup lib/rails_pulse_server.ru -p 3001
+bundle exec rails_pulse_server
 ```
 
 **Healthcheck Endpoint:**
@@ -726,7 +726,7 @@ curl http://localhost:3001/health
      rails_pulse:
        image: your-app-image  # Same image as your main app
        host: your-server
-       cmd: bundle exec rackup lib/rails_pulse_server.ru -p 3001
+       cmd: bundle exec rails_pulse_server
        env:
          clear:
            DATABASE_URL: "postgresql://user:pass@host/db"

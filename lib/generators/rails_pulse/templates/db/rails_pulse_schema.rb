@@ -35,6 +35,7 @@ RailsPulse::Schema = lambda do |connection|
     end
 
     connection.add_index :rails_pulse_routes, [ :method, :path ], unique: true, name: "index_rails_pulse_routes_on_method_and_path"
+    connection.add_index :rails_pulse_routes, :path, name: "index_rails_pulse_routes_on_path"
   end
 
   unless connection.table_exists?(:rails_pulse_queries)
@@ -121,7 +122,7 @@ RailsPulse::Schema = lambda do |connection|
     connection.create_table :rails_pulse_operations do |t|
       t.references :request, null: true, foreign_key: { to_table: :rails_pulse_requests }, comment: "Link to the request"
       t.references :job_run, null: true, foreign_key: { to_table: :rails_pulse_job_runs }, comment: "Link to a background job execution"
-      t.references :query, foreign_key: { to_table: :rails_pulse_queries }, index: true, comment: "Link to the normalized SQL query"
+      t.references :query, foreign_key: { to_table: :rails_pulse_queries }, index: false, comment: "Link to the normalized SQL query"
       t.string :operation_type, null: false, comment: "Type of operation (e.g., database, view, gem_call)"
       t.string :label, null: false, comment: "Descriptive name (e.g., SELECT FROM users WHERE id = 1, render layout)"
       t.decimal :duration, precision: 15, scale: 6, null: false, comment: "Operation duration in milliseconds"
@@ -132,7 +133,6 @@ RailsPulse::Schema = lambda do |connection|
     end
 
     connection.add_index :rails_pulse_operations, :operation_type, name: "index_rails_pulse_operations_on_operation_type"
-    connection.add_index :rails_pulse_operations, :occurred_at, name: "index_rails_pulse_operations_on_occurred_at"
     connection.add_index :rails_pulse_operations, [ :query_id, :occurred_at ], name: "index_rails_pulse_operations_on_query_and_time"
     connection.add_index :rails_pulse_operations, [ :query_id, :duration, :occurred_at ], name: "index_rails_pulse_operations_query_performance"
     connection.add_index :rails_pulse_operations, [ :occurred_at, :duration, :operation_type ], name: "index_rails_pulse_operations_on_time_duration_type"
@@ -152,7 +152,7 @@ RailsPulse::Schema = lambda do |connection|
       t.string :period_type, null: false, comment: "Aggregation period type: hour, day, week, month"
 
       # Polymorphic association to handle both routes and queries
-      t.references :summarizable, polymorphic: true, null: false, index: true, comment: "Link to Route or Query"
+      t.references :summarizable, polymorphic: true, null: false, index: false, comment: "Link to Route or Query"
       # This creates summarizable_type (e.g., 'RailsPulse::Route', 'RailsPulse::Query')
       # and summarizable_id (route_id or query_id)
 
@@ -184,6 +184,8 @@ RailsPulse::Schema = lambda do |connection|
             name: "idx_pulse_summaries_unique"
     connection.add_index :rails_pulse_summaries, [ :period_type, :period_start ], name: "index_rails_pulse_summaries_on_period"
     connection.add_index :rails_pulse_summaries, :created_at, name: "index_rails_pulse_summaries_on_created_at"
+    connection.add_index :rails_pulse_summaries, :summarizable_id, name: "index_rails_pulse_summaries_on_summarizable_id"
+    connection.add_index :rails_pulse_summaries, :period_start, name: "index_rails_pulse_summaries_on_period_start"
   end
 
   # Add indexes to existing tables for efficient aggregation
@@ -191,16 +193,8 @@ RailsPulse::Schema = lambda do |connection|
     connection.add_index :rails_pulse_requests, [ :created_at, :route_id ], name: "idx_requests_for_aggregation"
   end
 
-  unless connection.index_exists?(:rails_pulse_requests, :created_at, name: "idx_requests_created_at")
-    connection.add_index :rails_pulse_requests, :created_at, name: "idx_requests_created_at"
-  end
-
   unless connection.index_exists?(:rails_pulse_operations, [ :created_at, :query_id ], name: "idx_operations_for_aggregation")
     connection.add_index :rails_pulse_operations, [ :created_at, :query_id ], name: "idx_operations_for_aggregation"
-  end
-
-  unless connection.index_exists?(:rails_pulse_operations, :created_at, name: "idx_operations_created_at")
-    connection.add_index :rails_pulse_operations, :created_at, name: "idx_operations_created_at"
   end
 
   # Log successful creation
