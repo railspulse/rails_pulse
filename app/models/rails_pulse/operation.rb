@@ -90,9 +90,6 @@ module RailsPulse
       self.query = RailsPulse::Query.find_or_create_by(hashed_sql: hashed) do |q|
         q.normalized_sql = normalized
       end
-    rescue NameError => e
-      # SqlQueryNormalizer might not be loaded yet - skip query normalization
-      Rails.logger.warn("[RailsPulse] Skipping query normalization: #{e.message}")
     end
 
     # Normalize SQL query using the dedicated service

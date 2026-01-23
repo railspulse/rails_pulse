@@ -1,3 +1,5 @@
+require "ostruct"
+
 module RailsPulse
   module Adapters
     class JobWrapper

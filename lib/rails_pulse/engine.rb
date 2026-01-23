@@ -16,13 +16,23 @@ module RailsPulse
   autoload :SqlQueryNormalizer, File.expand_path("../../app/services/rails_pulse/sql_query_normalizer", __dir__)
   autoload :SummaryService, File.expand_path("../../app/services/rails_pulse/summary_service", __dir__)
   autoload :QueryAnalysisService, File.expand_path("../../app/services/rails_pulse/query_analysis_service", __dir__)
-  
+
+  # Analysis services
+  module Analysis
+    autoload :BacktraceAnalyzer, File.expand_path("../../app/services/rails_pulse/analysis/backtrace_analyzer", __dir__)
+    autoload :BaseAnalyzer, File.expand_path("../../app/services/rails_pulse/analysis/base_analyzer", __dir__)
+    autoload :ExplainPlanAnalyzer, File.expand_path("../../app/services/rails_pulse/analysis/explain_plan_analyzer", __dir__)
+    autoload :IndexRecommendationEngine, File.expand_path("../../app/services/rails_pulse/analysis/index_recommendation_engine", __dir__)
+    autoload :NPlusOneDetector, File.expand_path("../../app/services/rails_pulse/analysis/n_plus_one_detector", __dir__)
+    autoload :QueryCharacteristicsAnalyzer, File.expand_path("../../app/services/rails_pulse/analysis/query_characteristics_analyzer", __dir__)
+    autoload :SuggestionGenerator, File.expand_path("../../app/services/rails_pulse/analysis/suggestion_generator", __dir__)
+  end
+
   class Engine < ::Rails::Engine
     isolate_namespace RailsPulse
 
     # Tell Zeitwerk to ignore services directory since we manually autoload them
-    config.before_configuration do
-      # Ignore services from Zeitwerk to avoid conflicts with manual autoloading
+    initializer "rails_pulse.ignore_services", before: :set_autoload_paths do
       Rails.autoloaders.main.ignore(root.join("app/services")) if Rails.respond_to?(:autoloaders)
     end
 
