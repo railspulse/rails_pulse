@@ -5,7 +5,7 @@ source "https://rubygems.org"
 gem "puma"
 gem "sqlite3"
 gem "pg"
-gem "dotenv-rails", groups: [ :development, :test ]
+gem "dotenv-rails", groups: [:development, :test]
 gem "rubocop-rails-omakase", require: false
 gem "rubocop-minitest", require: false
 gem "brakeman", require: false
@@ -28,7 +28,6 @@ group :test do
   gem "factory_bot_rails"
   gem "faker"
   gem "minitest-reporters"
-  gem "minitest"
   gem "mocha"
   gem "pry-byebug"
   gem "selenium-webdriver"
