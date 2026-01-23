@@ -11,11 +11,11 @@ module RailsPulse
           payload = job_data.payload_object
           arguments = if payload.respond_to?(:args)
                         payload.args
-                      elsif payload.respond_to?(:arguments)
+          elsif payload.respond_to?(:arguments)
                         payload.arguments
-                      else
+          else
                         []
-                      end
+          end
 
           job_wrapper = RailsPulse::Adapters::JobWrapper.new(
             job_id: job_data.id.to_s,
