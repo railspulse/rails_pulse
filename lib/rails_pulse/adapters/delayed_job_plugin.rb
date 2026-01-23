@@ -1,3 +1,5 @@
+require_relative "job_wrapper"
+
 module RailsPulse
   module Adapters
     class DelayedJobPlugin < Delayed::Plugin
@@ -6,11 +8,20 @@ module RailsPulse
           next block.call(worker, job_data) unless RailsPulse.configuration.enabled
           next block.call(worker, job_data) unless RailsPulse.configuration.track_jobs
 
-          job_wrapper = JobWrapper.new(
+          payload = job_data.payload_object
+          arguments = if payload.respond_to?(:args)
+                        payload.args
+                      elsif payload.respond_to?(:arguments)
+                        payload.arguments
+                      else
+                        []
+                      end
+
+          job_wrapper = RailsPulse::Adapters::JobWrapper.new(
             job_id: job_data.id.to_s,
-            class_name: job_data.payload_object.class.name,
+            class_name: payload.class.name,
             queue_name: job_data.queue,
-            arguments: job_data.payload_object.args,
+            arguments: arguments,
             enqueued_at: job_data.created_at,
             executions: job_data.attempts
           )

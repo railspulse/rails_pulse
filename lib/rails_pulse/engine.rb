@@ -12,8 +12,19 @@ require "pagy"
 require "turbo-rails"
 
 module RailsPulse
+  # Manually load services to avoid Zeitwerk autoload issues
+  autoload :SqlQueryNormalizer, File.expand_path("../../app/services/rails_pulse/sql_query_normalizer", __dir__)
+  autoload :SummaryService, File.expand_path("../../app/services/rails_pulse/summary_service", __dir__)
+  autoload :QueryAnalysisService, File.expand_path("../../app/services/rails_pulse/query_analysis_service", __dir__)
+  
   class Engine < ::Rails::Engine
     isolate_namespace RailsPulse
+
+    # Tell Zeitwerk to ignore services directory since we manually autoload them
+    config.before_configuration do
+      # Ignore services from Zeitwerk to avoid conflicts with manual autoloading
+      Rails.autoloaders.main.ignore(root.join("app/services")) if Rails.respond_to?(:autoloaders)
+    end
 
     # Load Rake tasks
     rake_tasks do
