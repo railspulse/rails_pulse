@@ -312,10 +312,14 @@ module RailsPulse
       end
 
       def get_gem_migrations
-        gem_migrations_path = File.expand_path("../../../db/rails_pulse_migrate", __dir__)
-        return [] unless File.directory?(gem_migrations_path)
+        path = gem_migrations_path
+        return [] unless File.directory?(path)
 
-        Dir.glob("#{gem_migrations_path}/*.rb").map { |f| File.basename(f) }
+        Dir.glob("#{path}/*.rb").map { |f| File.basename(f) }
+      end
+
+      def gem_migrations_path
+        File.expand_path("../../../db/rails_pulse_migrate", __dir__)
       end
 
       def get_user_migrations(directory)
@@ -329,7 +333,6 @@ module RailsPulse
       end
 
       def copy_gem_migration_to(migration_name, destination)
-        gem_migrations_path = File.expand_path("../../../db/rails_pulse_migrate", __dir__)
         source_file = File.join(gem_migrations_path, migration_name)
         destination_file = File.join(destination, migration_name)
 

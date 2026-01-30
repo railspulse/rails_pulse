@@ -7,15 +7,23 @@ class UpgradeGeneratorTest < Rails::Generators::TestCase
   include GeneratorTestHelpers
 
   tests RailsPulse::Generators::UpgradeGenerator
-  destination File.expand_path("../tmp/generator_test", __dir__)
+
+  def destination_root
+    # Use test-specific directory to avoid parallel test interference
+    @destination_root ||= File.expand_path("../tmp/upgrade_generator_test/#{name}", __dir__)
+  end
 
   setup do
     prepare_destination
     setup_test_app_with_schema
+
+    # Stub the generator to use test-specific gem migrations path
+    RailsPulse::Generators::UpgradeGenerator.any_instance.stubs(:gem_migrations_path).returns(gem_migrations_path)
   end
 
   teardown do
     FileUtils.rm_rf(gem_migrations_path)
+    RailsPulse::Generators::UpgradeGenerator.any_instance.unstub(:gem_migrations_path)
   end
 
   # Database Detection Tests
@@ -155,21 +163,17 @@ test "separate database upgrade copies migrations to rails_pulse_migrate" do
   def mock_tables_exist
     # Create a simple object that has tables with all columns including tags
     connection = Object.new
+    schema = complete_schema_columns
 
     def connection.table_exists?(_table)
       true
     end
 
-    def connection.columns(_table)
-      # Return complete columns INCLUDING tags so no columns are detected as missing
-      [
-        OpenStruct.new(name: "id"),
-        OpenStruct.new(name: "method"),
-        OpenStruct.new(name: "path"),
-        OpenStruct.new(name: "tags"),
-        OpenStruct.new(name: "created_at"),
-        OpenStruct.new(name: "updated_at")
-      ]
+    # Return columns based on the specific table being queried
+    connection.define_singleton_method(:columns) do |table|
+      table_name = table.to_s.to_sym
+      columns = schema[table_name] || []
+      columns.map { |col| OpenStruct.new(name: col) }
     end
 
     ActiveRecord::Base.stubs(:connection).returns(connection)
@@ -194,20 +198,17 @@ test "separate database upgrade copies migrations to rails_pulse_migrate" do
   def mock_tables_with_missing_columns
     # Create a simple object that has tables but missing tag columns
     connection = Object.new
+    schema = schema_without_tags
 
     def connection.table_exists?(_table)
       true
     end
 
-    def connection.columns(_table)
-      # Return columns WITHOUT tags
-      [
-        OpenStruct.new(name: "id"),
-        OpenStruct.new(name: "method"),
-        OpenStruct.new(name: "path"),
-        OpenStruct.new(name: "created_at"),
-        OpenStruct.new(name: "updated_at")
-      ]
+    # Return columns based on the specific table being queried (without tags)
+    connection.define_singleton_method(:columns) do |table|
+      table_name = table.to_s.to_sym
+      columns = schema[table_name] || []
+      columns.map { |col| OpenStruct.new(name: col) }
     end
 
     ActiveRecord::Base.stubs(:connection).returns(connection)
@@ -219,21 +220,17 @@ test "separate database upgrade copies migrations to rails_pulse_migrate" do
   def mock_complete_tables
     # Create a simple object that has complete tables with tags
     connection = Object.new
+    schema = complete_schema_columns
 
     def connection.table_exists?(_table)
       true
     end
 
-    def connection.columns(_table)
-      # Return columns INCLUDING tags
-      [
-        OpenStruct.new(name: "id"),
-        OpenStruct.new(name: "method"),
-        OpenStruct.new(name: "path"),
-        OpenStruct.new(name: "tags"),
-        OpenStruct.new(name: "created_at"),
-        OpenStruct.new(name: "updated_at")
-      ]
+    # Return columns based on the specific table being queried
+    connection.define_singleton_method(:columns) do |table|
+      table_name = table.to_s.to_sym
+      columns = schema[table_name] || []
+      columns.map { |col| OpenStruct.new(name: col) }
     end
 
     ActiveRecord::Base.stubs(:connection).returns(connection)

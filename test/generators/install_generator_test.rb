@@ -6,7 +6,11 @@ class InstallGeneratorTest < Rails::Generators::TestCase
   include GeneratorTestHelpers
 
   tests RailsPulse::Generators::InstallGenerator
-  destination File.expand_path("../tmp/generator_test", __dir__)
+
+  def destination_root
+    # Use test-specific directory to avoid parallel test interference
+    @destination_root ||= File.expand_path("../tmp/install_generator_test/#{name}", __dir__)
+  end
 
   setup do
     prepare_destination
