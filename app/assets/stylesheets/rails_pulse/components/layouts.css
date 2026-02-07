@@ -5,7 +5,7 @@
   grid-template-rows: auto 1fr;
   block-size: 100dvh;
 
-  @media (width >= 48rem) {
+  @media (min-width: 48rem) {
     --sidebar-border-width: var(--border);
     --sidebar-padding: var(--size-2);
     --sidebar-width: var(--max-i-3xs);

@@ -25,7 +25,7 @@
     font-weight: 500;
   }
 
-  @media (width >= 40rem) {
+  @media (min-width: 40rem) {
     column-gap: var(--size-2);
   }
 }
