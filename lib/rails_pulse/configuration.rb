@@ -27,8 +27,9 @@ module RailsPulse
                   :capture_job_arguments,
                   :mount_dashboard,
                   :logger,
-                  :async,
-                  :service_level_objective
+                   :async,
+                   :service_level_objective,
+                   :query_service_level_objective
 
     def initialize
       @enabled = true
@@ -79,6 +80,7 @@ module RailsPulse
 
       # Service Level Objective (default: nil = no SLO configured)
       @service_level_objective = nil
+      @query_service_level_objective = nil
 
       validate_configuration!
     end
@@ -107,6 +109,7 @@ module RailsPulse
       validate_dashboard_settings!
       validate_tracking_settings!
       validate_service_level_objective_settings!
+      validate_query_service_level_objective_settings!
     end
 
     # Revalidate configuration after changes
@@ -248,6 +251,29 @@ module RailsPulse
 
       unless target.is_a?(Numeric) && target >= 0 && target <= 100
         raise ArgumentError, "service_level_objective[:target] must be a number between 0 and 100, got #{target}"
+      end
+    end
+
+    def validate_query_service_level_objective_settings!
+      return if @query_service_level_objective.nil?
+
+      unless @query_service_level_objective.is_a?(Hash)
+        raise ArgumentError, "query_service_level_objective must be a hash with :threshold and :target keys, got #{@query_service_level_objective.class}"
+      end
+
+      unless @query_service_level_objective.key?(:threshold) && @query_service_level_objective.key?(:target)
+        raise ArgumentError, "query_service_level_objective must contain both :threshold and :target keys"
+      end
+
+      threshold = @query_service_level_objective[:threshold]
+      target = @query_service_level_objective[:target]
+
+      unless threshold.is_a?(Numeric) && threshold > 0
+        raise ArgumentError, "query_service_level_objective[:threshold] must be a positive number, got #{threshold}"
+      end
+
+      unless target.is_a?(Numeric) && target >= 0 && target <= 100
+        raise ArgumentError, "query_service_level_objective[:target] must be a number between 0 and 100, got #{target}"
       end
     end
 

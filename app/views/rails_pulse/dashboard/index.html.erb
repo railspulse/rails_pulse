@@ -41,18 +41,17 @@
       title: 'Query Performance',
       card_classes: 'b-full',
       help_heading: 'Query Performance',
-      help_text: 'This panel measures the 95th percentile response time in milliseconds for queries in your application. This represents the query performance below which 95% of queries fall, indicating the upper-bound performance for most database operations.',
+      help_text: 'This panel shows the 95th and 99th percentile query execution times in milliseconds for all database queries. These percentiles represent the upper bounds that 95% and 99% of queries fall below, respectively. When a Service Level Objective is configured, a dashed red line shows the performance threshold.',
       actions: [{ url: queries_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
     } do %>
       <% if @p95_response_time_chart_data.present? %>
         <div class="chart-container chart-container--slim">
           <%= render_stimulus_chart(
             @p95_response_time_chart_data,
-            type: 'bar',
-            code: false,
+            type: 'line',
             id: "dashboard_p95_response_time_chart",
             height: "100%",
-            options: bar_chart_options(
+            options: line_chart_options(
               units: "ms"
             )
           ) %>
