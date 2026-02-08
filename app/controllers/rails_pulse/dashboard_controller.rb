@@ -11,7 +11,7 @@ module RailsPulse
       @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
 
       # Generate chart data for inline rendering
-      @average_response_time_chart_data = RailsPulse::Dashboard::Charts::AverageResponseTime.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_chart_data
+      @response_time_percentiles_chart_data = RailsPulse::Dashboard::Charts::ResponseTimePercentiles.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_chart_data
       @p95_response_time_chart_data = RailsPulse::Dashboard::Charts::P95ResponseTime.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_chart_data
 
       # Generate table data for inline rendering

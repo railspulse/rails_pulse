@@ -12,20 +12,20 @@
 <div class="row">
   <div class="grid-item">
     <%= render 'rails_pulse/components/panel', {
-      title: 'Average Response Time',
+      title: 'Response Time Percentiles',
       card_classes: 'b-full',
-      help_heading: 'Average Response Time',
-      help_text: 'This panel measures the average server-side response time in milliseconds for all HTTP requests processed by your application. This is the time it takes from the server receiving a request until the request is returned to the client in milliseconds.',
+      help_heading: 'Response Time Percentiles',
+      help_text: 'This panel shows the 95th and 99th percentile response times in milliseconds for all HTTP requests. These percentiles represent the upper bounds that 95% and 99% of requests fall below, respectively. When a Service Level Objective is configured, a dashed red line shows the performance threshold.',
       actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
     } do %>
-      <% if @average_response_time_chart_data.present? %>
+      <% if @response_time_percentiles_chart_data.present? %>
         <div class="chart-container chart-container--slim">
           <%= render_stimulus_chart(
-            @average_response_time_chart_data,
-            type: 'bar',
-            id: "dashboard_average_response_time_chart",
+            @response_time_percentiles_chart_data,
+            type: 'line',
+            id: "dashboard_response_time_percentiles_chart",
             height: "100%",
-            options: bar_chart_options(
+            options: line_chart_options(
               units: "ms"
             )
           ) %>

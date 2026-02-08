@@ -1,7 +1,7 @@
 PATH
   remote: ../..
   specs:
-    rails_pulse (0.2.5.pre.4)
+    rails_pulse (0.2.5.pre.10)
       async (~> 2.0)
       css-zero (~> 1.1, >= 1.1.4)
       pagy (>= 8, < 44)

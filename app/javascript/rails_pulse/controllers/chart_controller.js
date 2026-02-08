@@ -95,48 +95,69 @@ export default class extends Controller {
   setChartData(config) {
     const data = this.dataValue
 
-    // Extract labels and values
-    const labels = Object.keys(data).map(k => {
-      const num = Number(k)
-      return isNaN(num) ? k : num
-    })
+    // Check if data is in multi-series format (has labels and series keys)
+    if (data && typeof data === 'object' && data.labels && data.series) {
+      // Multi-series format
+      config.xAxis = config.xAxis || {}
+      config.xAxis.type = 'category'
+      config.xAxis.data = data.labels
 
-    const values = Object.values(data).map(v => {
-      if (typeof v === 'object' && v !== null) {
-        return v.value !== undefined ? v.value : v
-      }
-      return v
-    })
+      // Set yAxis
+      config.yAxis = config.yAxis || {}
+      config.yAxis.type = 'value'
 
-    // Set xAxis data
-    config.xAxis = config.xAxis || {}
-    config.xAxis.type = 'category'
-    config.xAxis.data = labels
-
-    // Set yAxis
-    config.yAxis = config.yAxis || {}
-    config.yAxis.type = 'value'
-
-    // Set series data
-    if (Array.isArray(config.series)) {
-      // If series is already an array, update first series
-      config.series[0] = config.series[0] || {}
-      config.series[0].type = this.typeValue
-      config.series[0].data = values
-    } else if (config.series && typeof config.series === 'object') {
-      // If series is a single object (from helper), convert to array
-      const seriesConfig = { ...config.series }
-      config.series = [{
-        type: this.typeValue,
-        data: values,
-        ...seriesConfig
-      }]
+      // Set series data from provided series array
+      config.series = data.series.map((seriesData) => {
+        return {
+          type: this.typeValue,
+          ...seriesData
+        }
+      })
     } else {
-      // No series provided, create default
-      config.series = [{
-        type: this.typeValue,
-        data: values
-      }]
+      // Single-series format (backward compatibility)
+      // Extract labels and values
+      const labels = Object.keys(data).map(k => {
+        const num = Number(k)
+        return isNaN(num) ? k : num
+      })
+
+      const values = Object.values(data).map(v => {
+        if (typeof v === 'object' && v !== null) {
+          return v.value !== undefined ? v.value : v
+        }
+        return v
+      })
+
+      // Set xAxis data
+      config.xAxis = config.xAxis || {}
+      config.xAxis.type = 'category'
+      config.xAxis.data = labels
+
+      // Set yAxis
+      config.yAxis = config.yAxis || {}
+      config.yAxis.type = 'value'
+
+      // Set series data
+      if (Array.isArray(config.series)) {
+        // If series is already an array, update first series
+        config.series[0] = config.series[0] || {}
+        config.series[0].type = this.typeValue
+        config.series[0].data = values
+      } else if (config.series && typeof config.series === 'object') {
+        // If series is a single object (from helper), convert to array
+        const seriesConfig = { ...config.series }
+        config.series = [{
+          type: this.typeValue,
+          data: values,
+          ...seriesConfig
+        }]
+      } else {
+        // No series provided, create default
+        config.series = [{
+          type: this.typeValue,
+          data: values
+        }]
+      }
     }
   }
 

@@ -27,7 +27,8 @@ module RailsPulse
                   :capture_job_arguments,
                   :mount_dashboard,
                   :logger,
-                  :async
+                  :async,
+                  :service_level_objective
 
     def initialize
       @enabled = true
@@ -76,6 +77,9 @@ module RailsPulse
       # Tracking mode settings
       @async = true
 
+      # Service Level Objective (default: nil = no SLO configured)
+      @service_level_objective = nil
+
       validate_configuration!
     end
 
@@ -102,6 +106,7 @@ module RailsPulse
       validate_job_settings!
       validate_dashboard_settings!
       validate_tracking_settings!
+      validate_service_level_objective_settings!
     end
 
     # Revalidate configuration after changes
@@ -220,6 +225,29 @@ module RailsPulse
     def validate_tracking_settings!
       unless [ true, false ].include?(@async)
         raise ArgumentError, "async must be true or false, got #{@async}"
+      end
+    end
+
+    def validate_service_level_objective_settings!
+      return if @service_level_objective.nil?
+
+      unless @service_level_objective.is_a?(Hash)
+        raise ArgumentError, "service_level_objective must be a hash with :threshold and :target keys, got #{@service_level_objective.class}"
+      end
+
+      unless @service_level_objective.key?(:threshold) && @service_level_objective.key?(:target)
+        raise ArgumentError, "service_level_objective must contain both :threshold and :target keys"
+      end
+
+      threshold = @service_level_objective[:threshold]
+      target = @service_level_objective[:target]
+
+      unless threshold.is_a?(Numeric) && threshold > 0
+        raise ArgumentError, "service_level_objective[:threshold] must be a positive number, got #{threshold}"
+      end
+
+      unless target.is_a?(Numeric) && target >= 0 && target <= 100
+        raise ArgumentError, "service_level_objective[:target] must be a number between 0 and 100, got #{target}"
       end
     end
 
