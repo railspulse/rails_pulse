@@ -17,7 +17,7 @@
   }
 
   tr:hover {
-    background-color: rgb(from var(--color-border-light) r g b / .5);
+    background-color: rgba(0, 0, 0, 0.05);
   }
 
   th {
@@ -45,7 +45,7 @@
   }
 
   tfoot {
-    background-color: rgb(from var(--color-border-light) r g b / .5);
+    background-color: rgba(0, 0, 0, 0.05);
     border-block-start-width: var(--border);
     font-weight: var(--font-medium);
   }

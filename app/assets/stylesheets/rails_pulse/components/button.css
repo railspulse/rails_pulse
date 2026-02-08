@@ -1,6 +1,6 @@
 .btn {
   --btn-background: var(--color-bg);
-  --hover-color: oklch(from var(--btn-background) calc(l * .95) c h);
+  --hover-color: rgba(0, 0, 0, 0.05);
 
   align-items: center;
   background-color: var(--btn-background);

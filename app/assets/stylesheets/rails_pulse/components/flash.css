@@ -2,7 +2,7 @@
   align-items: center;
   animation: appear-then-fade 4s 300ms both;
   backdrop-filter: var(--blur-sm) var(--contrast-75);
-  background-color: var(--flash-background, rgb(from var(--color-text) r g b / .65));
+  background-color: var(--flash-background, rgba(0, 0, 0, 0.65));
   border-radius: var(--rounded-full);
   color: var(--flash-color, var(--color-text-reversed));
   column-gap: var(--size-2);
