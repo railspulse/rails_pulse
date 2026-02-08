@@ -27,11 +27,11 @@ module RailsPulse
             .select(
               "rails_pulse_summaries.summarizable_id as route_id",
               "rails_pulse_routes.path",
-              "SUM(rails_pulse_summaries.avg_duration * rails_pulse_summaries.count) / SUM(rails_pulse_summaries.count) as avg_duration",
+              "MAX(rails_pulse_summaries.p95_duration) as p95_duration",
               "SUM(rails_pulse_summaries.count) as request_count",
               "MAX(rails_pulse_summaries.period_end) as last_seen"
             )
-            .order("avg_duration DESC")
+            .order("p95_duration DESC")
             .limit(5)
 
           # Build data rows
@@ -40,7 +40,7 @@ module RailsPulse
               route_path: record.path,
               route_id: record.route_id,
               route_link: RailsPulse::Engine.routes.url_helpers.route_path(record.route_id),
-              average_time: record.avg_duration.to_f.round(0),
+              p95_time: record.p95_duration.to_f.round(0),
               request_count: record.request_count,
               last_request: time_ago_in_words(record.last_seen)
             }
@@ -50,7 +50,7 @@ module RailsPulse
           {
             columns: [
               { field: :route_path, label: "Route", link_to: :route_link, class: "w-48", cell_class: "truncate-cell" },
-              { field: :average_time, label: "Average Time", class: "w-32" },
+              { field: :p95_time, label: "P95 Time", class: "w-32" },
               { field: :request_count, label: "Requests", class: "w-24" },
               { field: :last_request, label: "Last Request", class: "w-32" }
             ],

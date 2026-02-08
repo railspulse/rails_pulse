@@ -27,11 +27,11 @@ module RailsPulse
             .select(
               "rails_pulse_summaries.summarizable_id as query_id",
               "rails_pulse_queries.normalized_sql",
-              "SUM(rails_pulse_summaries.avg_duration * rails_pulse_summaries.count) / SUM(rails_pulse_summaries.count) as avg_duration",
+              "MAX(rails_pulse_summaries.p95_duration) as p95_duration",
               "SUM(rails_pulse_summaries.count) as request_count",
               "MAX(rails_pulse_summaries.period_end) as last_seen"
             )
-            .order("avg_duration DESC")
+            .order("p95_duration DESC")
             .limit(5)
 
           # Build data rows
@@ -40,7 +40,7 @@ module RailsPulse
               query_text: truncate_query(record.normalized_sql),
               query_id: record.query_id,
               query_link: RailsPulse::Engine.routes.url_helpers.query_path(record.query_id),
-              average_time: record.avg_duration.to_f.round(0),
+              p95_time: record.p95_duration.to_f.round(0),
               request_count: record.request_count,
               last_request: time_ago_in_words(record.last_seen)
             }
@@ -50,7 +50,7 @@ module RailsPulse
           {
             columns: [
               { field: :query_text, label: "Query", link_to: :query_link, class: "w-auto" },
-              { field: :average_time, label: "Average Time", class: "w-32" },
+              { field: :p95_time, label: "P95 Time", class: "w-32" },
               { field: :request_count, label: "Requests", class: "w-24" },
               { field: :last_request, label: "Last Request", class: "w-32" }
             ],

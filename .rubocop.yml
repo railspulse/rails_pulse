@@ -8,6 +8,7 @@ AllCops:
   NewCops: enable
   SuggestExtensions: false
   Exclude:
+    - 'tmp/**/*'
     - 'test/dummy/db/schema.rb'
     - 'test/dummy/db/rails_pulse_schema.rb'
     - 'lib/generators/rails_pulse/templates/migrations/*.rb'

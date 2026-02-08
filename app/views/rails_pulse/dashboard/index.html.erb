@@ -66,7 +66,7 @@
     <%= render 'rails_pulse/components/panel', {
       title: 'Slowest Routes This Week',
       help_heading: 'Slowest Routes',
-      help_text: 'This panel shows the slowest routes in your application this week, including average response time and total request count.',
+      help_text: 'This panel shows the slowest routes in your application this week, including P95 response time and total request count.',
       actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
       card_classes: 'table-container'
     } do %>
@@ -78,7 +78,7 @@
     <%= render 'rails_pulse/components/panel', {
       title: 'Slowest Queries This Week',
       help_heading: 'Slowest Queries',
-      help_text: 'This panel shows the slowest database queries in your application this week, including average execution time and when they were last seen.',
+      help_text: 'This panel shows the slowest database queries in your application this week, including P95 execution time and when they were last seen.',
       actions: [{ url: queries_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
       card_classes: 'table-container'
     } do %>
