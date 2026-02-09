@@ -4,7 +4,8 @@
   { field: :runs_count, label: 'Total Runs', class: 'w-28' },
   { field: :failures_count, label: 'Failures', class: 'w-24' },
   { field: :retries_count, label: 'Retries', class: 'w-24' },
-  { field: :avg_duration, label: 'Avg Duration', class: 'w-32' },
+  { field: :p95_duration, label: 'P95 Duration', class: 'w-32' },
+  { field: :p99_duration, label: 'P99 Duration', class: 'w-32' },
   { field: nil, label: 'Tags', class: 'w-32', sortable: false }
 ] %>
 
@@ -30,7 +31,10 @@
           <%= number_with_delimiter(job.retries_count) %>
         </td>
         <td>
-          <%= number_to_human(job.avg_duration || 0, units: { unit: "ms", thousand: "s" }, precision: 2) %>
+          <%= number_to_human(job.p95_duration || 0, units: { unit: "ms", thousand: "s" }, precision: 2) %>
+        </td>
+        <td>
+          <%= number_to_human(job.p99_duration || 0, units: { unit: "ms", thousand: "s" }, precision: 2) %>
         </td>
         <td>
           <%= display_tag_badges(job) %>

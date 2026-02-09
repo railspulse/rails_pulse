@@ -85,6 +85,8 @@ RailsPulse::Schema = lambda do |connection|
       t.integer :failures_count, null: false, default: 0, comment: "Cache of failed runs"
       t.integer :retries_count, null: false, default: 0, comment: "Cache of retried runs"
       t.decimal :avg_duration, precision: 15, scale: 6, comment: "Average duration in milliseconds"
+      t.decimal :p95_duration, precision: 15, scale: 6, comment: "95th percentile duration in milliseconds"
+      t.decimal :p99_duration, precision: 15, scale: 6, comment: "99th percentile duration in milliseconds"
       t.text :tags, comment: "JSON array of tags"
       t.timestamps
     end

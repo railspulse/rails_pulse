@@ -13,7 +13,7 @@ module RailsPulse
     validates :name, presence: true, uniqueness: true
 
     def self.ransackable_attributes(auth_object = nil)
-      %w[id name queue_name runs_count failures_count retries_count avg_duration]
+      %w[id name queue_name runs_count failures_count retries_count avg_duration p95_duration p99_duration]
     end
 
     def self.ransackable_associations(auth_object = nil)

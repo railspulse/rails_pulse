@@ -22,7 +22,7 @@
     </div>
   <% end %>
 
-  <% if @jobs.any? %>
+  <% if @table_data && @table_data.any? %>
     <%= turbo_frame_tag :index_table do %>
       <%= render 'rails_pulse/jobs/table' %>
     <% end %>
