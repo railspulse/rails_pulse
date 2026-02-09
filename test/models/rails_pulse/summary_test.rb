@@ -38,8 +38,8 @@ class RailsPulse::SummaryTest < ActiveSupport::TestCase
 
   test "should include ransackable attributes" do
     expected_attributes = %w[
-      period_start period_end avg_duration min_duration max_duration count error_count
-      requests_per_minute error_rate_percentage route_path_cont
+      period_start period_end avg_duration min_duration max_duration p95_duration p99_duration
+      count error_count requests_per_minute error_rate_percentage route_path_cont
       execution_count total_time_consumed normalized_sql
       summarizable_id summarizable_type
     ]

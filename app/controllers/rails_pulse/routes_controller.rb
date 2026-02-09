@@ -84,7 +84,7 @@ module RailsPulse
     end
 
     def default_table_sort
-      show_action? ? "occurred_at desc" : "avg_duration desc"
+      show_action? ? "occurred_at desc" : "p95_duration desc"
     end
 
     def build_table_results

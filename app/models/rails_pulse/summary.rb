@@ -98,8 +98,8 @@ module RailsPulse
     # Ransack configuration
     def self.ransackable_attributes(auth_object = nil)
       %w[
-        period_start period_end avg_duration min_duration max_duration count error_count
-        requests_per_minute error_rate_percentage route_path_cont
+        period_start period_end avg_duration min_duration max_duration p95_duration p99_duration
+        count error_count requests_per_minute error_rate_percentage route_path_cont
         execution_count total_time_consumed normalized_sql
         summarizable_id summarizable_type
       ]
@@ -145,6 +145,14 @@ module RailsPulse
 
     ransacker :max_duration_sort do
       Arel.sql("MAX(rails_pulse_summaries.max_duration)")
+    end
+
+    ransacker :p95_duration_sort do
+      Arel.sql("AVG(rails_pulse_summaries.p95_duration)")
+    end
+
+    ransacker :p99_duration_sort do
+      Arel.sql("AVG(rails_pulse_summaries.p99_duration)")
     end
 
     ransacker :count_sort do

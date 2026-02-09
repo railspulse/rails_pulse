@@ -59,7 +59,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     # For index action
     controller.stubs(:action_name).returns("index")
 
-    assert_equal "avg_duration desc", controller.send(:default_table_sort)
+    assert_equal "p95_duration desc", controller.send(:default_table_sort)
 
     # For show action
     controller.stubs(:action_name).returns("show")
