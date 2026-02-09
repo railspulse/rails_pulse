@@ -27,11 +27,11 @@ class RequestsIndexPageTest < ApplicationSystemTestCase
     # Wait for page to load
     assert_selector "table tbody tr", wait: 5
 
-    # Test Average Response Time card
-    within("#average_response_times") do
+    # Test 95th Percentile Response Time card
+    within("#percentile_response_times") do
       card_text = text.upcase
 
-      assert_match(/AVERAGE RESPONSE TIME/, card_text)
+      assert_match(/95TH PERCENTILE RESPONSE TIME/, card_text)
       assert_match(/\d+(\.\d+)?\s*ms/, text)
     end
 

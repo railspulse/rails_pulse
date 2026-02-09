@@ -14,13 +14,13 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     assert_current_path "/rails_pulse/"
 
     # Verify the essential elements of the dashboard
-    assert_text "AVERAGE RESPONSE TIME"
-    assert_text "95TH PERCENTILE RESPONSE TIME"
+    assert_text "RESPONSE TIME PERCENTILES"
+    assert_text "QUERY PERFORMANCE"
     assert_text "REQUEST COUNT TOTAL"
     assert_text "ERROR RATE PER ROUTE"
 
     # Verify charts are displayed
-    assert_selector "#dashboard_average_response_time_chart"
+    assert_selector "#dashboard_response_time_percentiles_chart"
     assert_selector "#dashboard_p95_response_time_chart"
 
     # Verify table panels are displayed
@@ -32,14 +32,11 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     visit_rails_pulse_path "/"
 
     # Wait for page to load
-    assert_text "AVERAGE RESPONSE TIME", wait: 5
+    assert_text "95TH PERCENTILE RESPONSE TIME", wait: 5
 
     # Test that all expected metric card titles and values are present
-    assert_text "AVERAGE RESPONSE TIME"
-    assert_match(/\d+\s*ms/, page.text, "Should show average response time in ms")
-
     assert_text "95TH PERCENTILE RESPONSE TIME"
-    assert_match(/\d+\s*ms/, page.text, "Should show 95th percentile time in ms")
+    assert_match(/\d+\s*ms/, page.text, "Should show 95th percentile response time in ms")
 
     assert_text "REQUEST COUNT TOTAL"
     assert_match(/\d+(\.\d+)?\s*\/\s*(min|day)/, page.text, "Should show request count per minute or per day")
@@ -48,16 +45,17 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     assert_match(/\d+(\.\d+)?%/, page.text, "Should show error rate as percentage")
   end
 
-  def test_average_response_time_chart_displays_correctly
+  def test_response_time_percentiles_chart_displays_correctly
     visit_rails_pulse_path "/"
 
-    # Verify chart element exists
-    assert_selector "#dashboard_average_response_time_chart", wait: 5
+    # Verify Response Time Percentiles panel and chart exist
+    assert_text "RESPONSE TIME PERCENTILES", wait: 5
+    assert_selector "#dashboard_response_time_percentiles_chart", wait: 5
 
     # Validate chart data accuracy using helper method
     # We created fast (200ms), slow (800ms), and critical (4000ms) routes
     validate_dashboard_chart_data(
-      "#dashboard_average_response_time_chart",
+      "#dashboard_response_time_percentiles_chart",
       expected_min_value: 200,
       expected_max_value: 5000,
       data_type: "response time"

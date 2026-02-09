@@ -11,7 +11,7 @@ class RoutesIndexPageTest < SharedIndexPageTest
   end
 
   def chart_selector
-    "#average_response_times_chart"
+    "#response_time_percentiles_chart"
   end
 
   def performance_filter_options
@@ -55,12 +55,6 @@ class RoutesIndexPageTest < SharedIndexPageTest
 
   def metric_card_selectors
     {
-      "#average_response_times" => {
-        title_regex: /AVERAGE RESPONSE TIME/,
-        title_message: "Average response time card should have correct title",
-        value_regex: /\d+(\.\d+)?\s*ms/,
-        value_message: "Average response time should show ms value"
-      },
       "#percentile_response_times" => {
         title_regex: /95TH PERCENTILE RESPONSE TIME/,
         title_message: "95th percentile card should have correct title",
@@ -85,13 +79,13 @@ class RoutesIndexPageTest < SharedIndexPageTest
   def sortable_columns
     [
       {
-        name: "Average Response Time",
-        index: 1,
+        name: "P95",
+        index: 2,
         value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
       },
       {
-        name: "Max Response Time",
-        index: 2,
+        name: "P99",
+        index: 3,
         value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
       }
     ]

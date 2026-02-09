@@ -24,7 +24,7 @@ module RailsPulse
           assert_kind_of Hash, card_data
           assert_equal "jobs_p95_duration", card_data[:id]
           assert_equal "jobs", card_data[:context]
-          assert_equal "P95 Duration", card_data[:title]
+          assert_equal "95th Percentile Response Time", card_data[:title]
           assert card_data.key?(:summary)
           assert card_data.key?(:chart_data)
           assert card_data.key?(:trend_icon)
@@ -38,7 +38,7 @@ module RailsPulse
           assert_kind_of Hash, card_data
           assert_equal "jobs_p95_duration", card_data[:id]
           assert_equal "jobs", card_data[:context]
-          assert_equal "P95 Duration", card_data[:title]
+          assert_equal "95th Percentile Response Time", card_data[:title]
         end
 
         test "calculates weighted P95 duration" do

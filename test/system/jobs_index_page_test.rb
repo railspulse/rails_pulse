@@ -13,7 +13,7 @@ class JobsIndexPageTest < ApplicationSystemTestCase
     assert_current_path "/rails_pulse/jobs"
     assert_selector "#jobs_total_runs", wait: 5
     assert_selector "#jobs_failure_rate"
-    assert_selector "#jobs_average_duration"
+    assert_selector "#jobs_p95_duration"
 
     within("table tbody") do
       assert_text @report_job.name

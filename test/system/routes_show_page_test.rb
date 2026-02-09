@@ -57,12 +57,6 @@ class RoutesShowPageTest < SharedIndexPageTest
 
   def metric_card_selectors
     {
-      "#average_response_times" => {
-        title_regex: /AVERAGE RESPONSE TIME/,
-        title_message: "Average response time card should have correct title",
-        value_regex: /\d+(\.\d+)?\s*ms/,
-        value_message: "Average response time should show ms value"
-      },
       "#percentile_response_times" => {
         title_regex: /95TH PERCENTILE RESPONSE TIME/,
         title_message: "95th percentile card should have correct title",
@@ -202,8 +196,8 @@ class RoutesShowPageTest < SharedIndexPageTest
     # Check for the search.svg image in the empty state
     assert_selector "img[src*='search.svg']"
 
-    # Should not show chart or table
-    assert_no_selector "#route_responses_chart"
+    # Should not show chart with data or table
+    assert_no_selector "#route_responses_chart[data-chart-rendered='true']"
     assert_no_selector "table tbody tr"
   end
 

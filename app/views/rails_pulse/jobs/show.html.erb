@@ -4,7 +4,7 @@
   <div class="row">
     <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @total_runs_metric_card } %>
     <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @failure_rate_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_duration_metric_card } %>
+    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @p95_duration_metric_card } %>
   </div>
 <% end %>
 

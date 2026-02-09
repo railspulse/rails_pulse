@@ -151,17 +151,24 @@ module RailsPulse
 
       # Initialize zoom range if zoom parameters are provided
       if zoom_start.present? && zoom_end.present? && chart_data.present?
-        # Find closest matching timestamps in the actual chart data
-        # Chart data is a hash like: { 1234567890 => { value: 123.45 } }
-        chart_timestamps = chart_data.keys
+        # Handle both old format { timestamp => value } and new format { labels: [...], series: [...] }
+        chart_timestamps = if chart_data.is_a?(Hash) && chart_data[:labels].present?
+          # New multi-series chart format - labels are timestamps in milliseconds
+          chart_data[:labels]
+        elsif chart_data.is_a?(Hash)
+          # Old format - keys are timestamps
+          chart_data.keys.select { |k| k.is_a?(Numeric) }
+        else
+          []
+        end
 
         # Convert zoom parameters to integers (timestamps)
         zoom_start_int = zoom_start.respond_to?(:to_i) ? zoom_start.to_i : zoom_start
         zoom_end_int = zoom_end.respond_to?(:to_i) ? zoom_end.to_i : zoom_end
 
         if chart_timestamps.any?
-          closest_start = chart_timestamps.min_by { |ts| (ts - zoom_start_int).abs }
-          closest_end = chart_timestamps.min_by { |ts| (ts - zoom_end_int).abs }
+          closest_start = chart_timestamps.min_by { |ts| (ts.to_i - zoom_start_int.to_i).abs }
+          closest_end = chart_timestamps.min_by { |ts| (ts.to_i - zoom_end_int.to_i).abs }
 
           # Find the array indices of these timestamps
           start_index = chart_timestamps.index(closest_start)

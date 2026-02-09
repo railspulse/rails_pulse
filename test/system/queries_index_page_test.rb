@@ -20,9 +20,9 @@ class QueriesIndexPageTest < SharedIndexPageTest
 
     assert_selector "table tbody tr", wait: 3
 
-    # Test Average Query Time column sorting
+    # Test P95 column sorting
     within("table thead") do
-      click_link "Average Query Time"
+      click_link "P95"
     end
 
     assert_selector "table tbody tr", wait: 3
@@ -44,7 +44,7 @@ class QueriesIndexPageTest < SharedIndexPageTest
     assert_selector "img[src*='search.svg']"
 
     # Should not show chart or table
-    assert_no_selector "#average_query_times_chart"
+    assert_no_selector "#query_performance_chart"
     assert_no_selector "table tbody tr"
   end
 
@@ -136,7 +136,7 @@ class QueriesIndexPageTest < SharedIndexPageTest
   end
 
   def chart_selector
-    "#average_query_times_chart"
+    "#query_performance_chart"
   end
 
   def performance_filter_options
@@ -184,12 +184,6 @@ class QueriesIndexPageTest < SharedIndexPageTest
 
   def metric_card_selectors
     {
-      "#average_query_times" => {
-        title_regex: /AVERAGE QUERY TIME/,
-        title_message: "Average query time card should have correct title",
-        value_regex: /\d+(\.\d+)?\s*ms/,
-        value_message: "Average query time should show ms value"
-      },
       "#percentile_query_times" => {
         title_regex: /95TH PERCENTILE QUERY TIME/,
         title_message: "95th percentile card should have correct title",
@@ -208,8 +202,13 @@ class QueriesIndexPageTest < SharedIndexPageTest
   def sortable_columns
     [
       {
-        name: "Average Query Time",
+        name: "P95",
         index: 2,
+        value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
+      },
+      {
+        name: "P99",
+        index: 3,
         value_extractor: ->(text) { text.gsub(/[^\d.]/, "").to_f }
       },
       {

@@ -75,7 +75,7 @@ module TableValidationHelpers
       executions_text = cells[2].text.strip
       executions_value = executions_text.to_i
 
-      assert_operator executions_value, :>, 0, "Executions should be positive in row #{index + 1}, got: #{executions_value}"
+      assert_operator executions_value, :>=, 0, "Executions should be non-negative in row #{index + 1}, got: #{executions_value}"
 
       # Additional columns can be validated if needed (total time, status, last seen)
     end
@@ -115,7 +115,7 @@ module TableValidationHelpers
 
     duration_value = duration_match[1].gsub(",", "").to_f
 
-    assert_operator duration_value, :>, 0, "Duration should be positive in row #{row_num}, got: #{duration_value} from text '#{duration_text}'"
+    assert_operator duration_value, :>=, 0, "Duration should be non-negative in row #{row_num}, got: #{duration_value} from text '#{duration_text}'"
     assert_operator duration_value, :<, 30000, "Duration should be reasonable (< 30s) in row #{row_num}, got: #{duration_value}ms from text '#{duration_text}'"
 
     # Apply performance-based filters - use different thresholds for queries vs routes

@@ -97,7 +97,7 @@ module ChartValidationHelpers
     series_data.each do |series|
       # Series name might be empty for single-series charts
       assert series.key?("name"), "Series should have a name key (even if empty)"
-      assert_equal "bar", series["type"], "Response time chart should use bar type"
+      assert_includes [ "bar", "line" ], series["type"], "Chart should use bar or line type, got: #{series["type"]}"
       assert_kind_of Array, series["data"], "Series data should be an array"
       assert_operator series["data"].length, :>, 0, "Series should contain data points"
     end

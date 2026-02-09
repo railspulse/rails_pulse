@@ -32,22 +32,21 @@
       <% end %>
 
       <% unless turbo_frame_request? %>
-        <% if @chart_data && @chart_data.values.any? { |v| v > 0 } %>
+        <% has_chart_data = @chart_data.is_a?(Hash) && @chart_data[:series].present? && @chart_data[:series].any? { |s| !s[:name].to_s.include?("Service Level Objective") && s[:data].present? && s[:data].any? { |v| v.to_f > 0 } } %>
+        <% if has_chart_data %>
           <div
             class="chart-container chart-container--slim"
             data-rails-pulse--index-target="chart"
           >
             <%= render_stimulus_chart(
               @chart_data,
-            type: 'bar',
+              type: 'line',
               code: false,
               id: "route_responses_chart",
               height: "100%",
-              options: bar_chart_options(
+              options: line_chart_options(
                 units: "ms",
                 zoom: true,
-                chart_start: 0,
-                chart_end: @chart_data.length - 1,
                 xaxis_formatter: @xaxis_formatter,
                 tooltip_formatter: @tooltip_formatter,
                 zoom_start: @zoom_start,

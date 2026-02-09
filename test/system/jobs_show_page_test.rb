@@ -19,7 +19,7 @@ class JobsShowPageTest < ApplicationSystemTestCase
 
     assert_selector "#jobs_total_runs", wait: 5
     assert_selector "#jobs_failure_rate"
-    assert_selector "#jobs_average_duration"
+    assert_selector "#jobs_p95_duration"
     assert_selector "table tbody tr", minimum: 1
 
     latest_run = @job.runs.order(occurred_at: :desc).first
