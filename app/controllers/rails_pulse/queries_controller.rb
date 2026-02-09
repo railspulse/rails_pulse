@@ -60,7 +60,7 @@ module RailsPulse
     end
 
     def chart_class
-      Queries::Charts::AverageQueryTimes
+      Queries::Charts::QueryPerformance
     end
 
     def chart_options

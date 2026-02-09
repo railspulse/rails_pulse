@@ -33,7 +33,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
   test "uses correct chart class" do
     controller = RailsPulse::QueriesController.new
 
-    assert_equal RailsPulse::Queries::Charts::AverageQueryTimes, controller.send(:chart_class)
+    assert_equal RailsPulse::Queries::Charts::QueryPerformance, controller.send(:chart_class)
   end
 
   test "show_action method works correctly" do

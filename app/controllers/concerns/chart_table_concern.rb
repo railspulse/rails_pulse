@@ -78,7 +78,15 @@ module ChartTableConcern
   end
 
   def has_meaningful_data?
-    has_chart_data = @chart_data && @chart_data.values.any? { |v| v > 0 }
+    has_chart_data = if @chart_data.is_a?(Hash) && @chart_data.key?(:series)
+                       # New multi-series chart format (line charts)
+                       @chart_data[:series].any? { |series| series[:data].any? { |v| v > 0 } }
+    elsif @chart_data.is_a?(Hash)
+                       # Old simple hash format (bar charts)
+                       @chart_data.values.any? { |v| v.is_a?(Numeric) && v > 0 }
+    else
+                       false
+    end
     has_table_data = @table_data && @table_data.any?
     has_chart_data || has_table_data
   end

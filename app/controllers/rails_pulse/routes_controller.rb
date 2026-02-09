@@ -39,7 +39,7 @@ module RailsPulse
     end
 
     def chart_class
-      Routes::Charts::AverageResponseTimes
+      Routes::Charts::ResponseTimePercentiles
     end
 
     def chart_options

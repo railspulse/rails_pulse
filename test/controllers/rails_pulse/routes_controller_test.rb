@@ -50,7 +50,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
   test "uses correct chart class" do
     controller = RailsPulse::RoutesController.new
 
-    assert_equal RailsPulse::Routes::Charts::AverageResponseTimes, controller.send(:chart_class)
+    assert_equal RailsPulse::Routes::Charts::ResponseTimePercentiles, controller.send(:chart_class)
   end
 
   test "default table sort" do
