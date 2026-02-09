@@ -164,7 +164,7 @@ module RailsPulse
       # Pass the job to scope the cards to the current job on the show page
       @total_runs_metric_card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job).to_metric_card
       @failure_rate_metric_card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job).to_metric_card
-      @average_duration_metric_card = RailsPulse::Jobs::Cards::AverageDuration.new(job: @job).to_metric_card
+      @p95_duration_metric_card = RailsPulse::Jobs::Cards::P95Duration.new(job: @job).to_metric_card
     end
   end
 end
