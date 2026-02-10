@@ -305,7 +305,7 @@ GEM
       activerecord (>= 7.2)
       activesupport (>= 7.2)
       i18n
-    rdoc (7.1.0)
+    rdoc (7.2.0)
       erb
       psych (>= 4.0.0)
       tsort
