@@ -81,6 +81,34 @@ module RailsPulse
       assert_equal "boom", job_run.error_message
     end
 
+    test "track handles job retries with same job_id" do
+      job_id = SecureRandom.uuid
+      first_job = FakeJob.new(job_id: job_id, executions: 1)
+
+      RailsPulse::JobRunCollector.track(first_job) do
+        # First execution succeeds
+      end
+
+      first_run = RailsPulse::JobRun.find_by(run_id: job_id)
+
+      assert_equal "success", first_run.status
+      assert_equal 1, first_run.attempts
+
+      retry_job = FakeJob.new(job_id: job_id, executions: 2)
+
+      assert_no_difference -> { RailsPulse::JobRun.count } do
+        RailsPulse::JobRunCollector.track(retry_job) do
+          # Retry execution
+        end
+      end
+
+      retry_run = RailsPulse::JobRun.find_by(run_id: job_id)
+
+      assert_equal "success", retry_run.status
+      assert_equal 2, retry_run.attempts
+      assert_equal first_run.id, retry_run.id
+    end
+
     test "active job integration wraps perform now" do
       klass = Class.new(ActiveJob::Base) do
         queue_as :default
