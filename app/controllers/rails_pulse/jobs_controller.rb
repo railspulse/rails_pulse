@@ -20,9 +20,7 @@ module RailsPulse
       # Apply tag filters from session
       base_query = apply_tag_filters(@ransack_query.result)
 
-      @pagy, @jobs = pagy(base_query.order(runs_count: :desc),
-                          **pagy_options(session_pagination_limit),
-                          overflow: :last_page)
+      @pagination, @jobs = paginate(base_query.order(runs_count: :desc), limit: session_pagination_limit)
       @table_data = @jobs
       @available_queues = RailsPulse::Job.distinct.pluck(:queue_name).compact.sort
     end
@@ -56,9 +54,7 @@ module RailsPulse
       # Apply tag filters from session
       base_query = apply_tag_filters(@ransack_query.result)
 
-      @pagy, @recent_runs = pagy(base_query,
-                                  **pagy_options(session_pagination_limit),
-                                  overflow: :last_page)
+      @pagination, @recent_runs = paginate(base_query, limit: session_pagination_limit)
       @table_data = @recent_runs
     end
 

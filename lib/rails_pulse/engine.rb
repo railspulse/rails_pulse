@@ -8,7 +8,6 @@ require "rails_pulse/extensions/active_record"
 require "request_store"
 require "rack/static"
 require "ransack"
-require "pagy"
 require "turbo-rails"
 
 module RailsPulse

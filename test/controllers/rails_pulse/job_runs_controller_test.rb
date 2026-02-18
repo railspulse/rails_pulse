@@ -15,10 +15,7 @@ class RailsPulse::JobRunsControllerTest < ActionDispatch::IntegrationTest
   test "controller includes required concerns" do
     assert_includes RailsPulse::JobRunsController.included_modules, TagFilterConcern
 
-    # Check for Pagy module (Backend in 8.x, Method in 43+)
-    pagy_module = defined?(Pagy::Method) ? Pagy::Method : Pagy::Backend
-
-    assert_includes RailsPulse::JobRunsController.included_modules, pagy_module
+    assert RailsPulse::JobRunsController.private_instance_methods(true).include?(:paginate)
   end
 
   test "controller has index and show actions" do
@@ -35,7 +32,7 @@ class RailsPulse::JobRunsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_not_nil assigns(:job)
     assert_not_nil assigns(:ransack_query)
-    assert_not_nil assigns(:pagy)
+    assert_not_nil assigns(:pagination)
     assert_not_nil assigns(:runs)
     assert_not_nil assigns(:table_data)
     assert_equal @job, assigns(:job)
@@ -78,11 +75,11 @@ class RailsPulse::JobRunsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.job_runs_path(@job), params: { limit: 10 }
 
     assert_response :success
-    pagy = assigns(:pagy)
+    pagination = assigns(:pagination)
     runs = assigns(:runs)
 
     # Should have pagination set up correctly
-    assert_not_nil pagy
+    assert_not_nil pagination
     assert_operator runs.size, :<=, 10
   end
 

@@ -3,8 +3,6 @@ PATH
   specs:
     rails_pulse (0.2.5.pre.10)
       async (~> 2.0)
-      css-zero (~> 1.1, >= 1.1.4)
-      pagy (>= 8, < 44)
       rails (>= 7.1.0, < 9.0.0)
       ransack (~> 4.0)
       request_store (~> 1.5)
@@ -219,7 +217,6 @@ GEM
     nokogiri (1.18.9-x86_64-linux-musl)
       racc (~> 1.4)
     ostruct (0.6.3)
-    pagy (8.6.3)
     parallel (1.27.0)
     parser (3.3.8.0)
       ast (~> 2.4.1)
@@ -403,7 +400,6 @@ DEPENDENCIES
   mocha
   mysql2
   ostruct
-  pagy (~> 8.6)
   pg
   pry-byebug
   puma

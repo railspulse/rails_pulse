@@ -1,12 +1,5 @@
 module RailsPulse
   class ApplicationController < ActionController::Base
-    # Support both Pagy 8.x (Backend) and Pagy 43+ (Method)
-    if defined?(Pagy::Method)
-      include Pagy::Method
-    else
-      include Pagy::Backend
-    end
-
     before_action :authenticate_rails_pulse_user!
     before_action :set_show_non_tagged_default
     helper_method :session_global_filters, :session_disabled_tags
@@ -153,14 +146,12 @@ module RailsPulse
       session[:show_non_tagged] = true if session[:show_non_tagged].nil?
     end
 
-    # Returns Pagy options hash with correct parameter name for current version
-    # Pagy 8.x uses 'items:', Pagy 43+ uses 'limit:'
-    def pagy_options(count)
-      if defined?(Pagy::Method)
-        { limit: count }  # Pagy 43+
-      else
-        { items: count }  # Pagy 8.x
-      end
+    def paginate(collection, limit:)
+      page    = [params[:page].to_i, 1].max
+      raw     = collection.count(:all)
+      count   = raw.is_a?(Hash) ? raw.size : raw
+      records = collection.offset((page - 1) * limit).limit(limit)
+      [RailsPulse::Paginator.new(count: count, page: page, limit: limit), records]
     end
   end
 end

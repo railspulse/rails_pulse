@@ -3,7 +3,6 @@ PATH
   specs:
     rails_pulse (0.2.5.pre.10)
       async (~> 2.0)
-      pagy (>= 8, < 44)
       rails (>= 7.1.0, < 9.0.0)
       ransack (~> 4.0)
       request_store (~> 1.5)
@@ -218,7 +217,6 @@ GEM
     nokogiri (1.18.9-x86_64-linux-musl)
       racc (~> 1.4)
     ostruct (0.6.3)
-    pagy (8.6.3)
     parallel (1.27.0)
     parser (3.3.8.0)
       ast (~> 2.4.1)
@@ -292,9 +290,10 @@ GEM
       activerecord (>= 6.1.5)
       activesupport (>= 6.1.5)
       i18n
-    rdoc (6.14.2)
+    rdoc (7.2.0)
       erb
       psych (>= 4.0.0)
+      tsort
     regexp_parser (2.10.0)
     reline (0.6.2)
       io-console (~> 0.5)
@@ -409,7 +408,6 @@ DEPENDENCIES
   mocha
   mysql2
   ostruct
-  pagy (>= 8, < 44)
   pg
   pry-byebug
   puma

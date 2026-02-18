@@ -3,8 +3,6 @@ PATH
   specs:
     rails_pulse (0.2.5.pre.10)
       async (~> 2.0)
-      css-zero (~> 1.1, >= 1.1.4)
-      pagy (>= 8, < 44)
       rails (>= 7.1.0, < 9.0.0)
       ransack (~> 4.0)
       request_store (~> 1.5)
@@ -219,9 +217,6 @@ GEM
     nokogiri (1.18.9-x86_64-linux-musl)
       racc (~> 1.4)
     ostruct (0.6.3)
-    pagy (43.0.0.rc4)
-      json
-      yaml
     parallel (1.27.0)
     parser (3.3.8.0)
       ast (~> 2.4.1)
@@ -375,7 +370,6 @@ GEM
     websocket-extensions (0.1.5)
     xpath (3.2.0)
       nokogiri (~> 1.8)
-    yaml (0.4.0)
     zeitwerk (2.7.3)
 
 PLATFORMS
@@ -407,7 +401,6 @@ DEPENDENCIES
   mocha
   mysql2
   ostruct
-  pagy (~> 43.0.0pre)
   pg
   pry-byebug
   puma

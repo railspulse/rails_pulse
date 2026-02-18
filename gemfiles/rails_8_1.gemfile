@@ -5,7 +5,7 @@ source "https://rubygems.org"
 gem "puma"
 gem "sqlite3"
 gem "pg"
-gem "dotenv-rails", groups: [ :development, :test ]
+gem "dotenv-rails", groups: [:development, :test]
 gem "rubocop-rails-omakase", require: false
 gem "rubocop-minitest", require: false
 gem "brakeman", require: false
@@ -13,7 +13,6 @@ gem "css-zero"
 gem "importmap-rails"
 gem "ransack"
 gem "turbo-rails"
-gem "pagy", "~> 43.0.0pre"
 gem "request_store"
 gem "rails", "~> 8.1.0"
 
