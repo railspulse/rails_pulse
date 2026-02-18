@@ -7,6 +7,7 @@ gem "puma"
 
 gem "sqlite3"
 gem "pg"
+gem "mysql2"
 
 # Load environment variables from .env file
 gem "dotenv-rails", groups: [ :development, :test ]
