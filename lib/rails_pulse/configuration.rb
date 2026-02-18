@@ -75,8 +75,6 @@ module RailsPulse
 
       # Tracking mode settings
       @async = true
-
-      validate_configuration!
     end
 
     # Get all routes to ignore, including asset patterns if track_assets is false
@@ -102,11 +100,6 @@ module RailsPulse
       validate_job_settings!
       validate_dashboard_settings!
       validate_tracking_settings!
-    end
-
-    # Revalidate configuration after changes
-    def revalidate!
-      validate_configuration!
     end
 
     private
@@ -160,14 +153,10 @@ module RailsPulse
 
     def validate_authentication_settings!
       if @authentication_enabled && @authentication_method.nil?
-        if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
-          RailsPulse.logger.warn "Authentication is enabled but no authentication method is configured. This will deny all access."
-        else
-          puts "RailsPulse: Authentication is enabled but no authentication method is configured. This will deny all access."
-        end
+        RailsPulse.logger.warn "Authentication is enabled but no authentication method is configured. This will deny all access."
       end
 
-      if @authentication_method && ![ Proc, Symbol, String, NilClass ].include?(@authentication_method.class)
+      if @authentication_method && ![ Proc, Symbol, String ].include?(@authentication_method.class)
         raise ArgumentError, "authentication_method must be a Proc, Symbol, String, or nil, got #{@authentication_method.class}"
       end
     end
