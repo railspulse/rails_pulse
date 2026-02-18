@@ -27,13 +27,13 @@ Gem::Specification.new do |spec|
   spec.executables = [ "rails_pulse_server" ]
 
   spec.add_dependency "rails", ">= 7.1.0", "< 9.0.0"
-  spec.add_dependency "css-zero", "~> 1.1", ">= 1.1.4"
   spec.add_dependency "turbo-rails", "~> 2.0.11"
   spec.add_dependency "request_store", "~> 1.5"
   spec.add_dependency "ransack", "~> 4.0"
   spec.add_dependency "pagy", ">= 8", "< 44"
   spec.add_dependency "async", "~> 2.0"
 
+  spec.add_development_dependency "css-zero", "~> 1.1", ">= 1.1.4"
   spec.add_development_dependency "rails-controller-testing", ">= 1.0"
   spec.add_development_dependency "minitest", ">= 5.0"
   spec.add_development_dependency "ostruct"
