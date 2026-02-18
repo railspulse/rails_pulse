@@ -9,5 +9,4 @@ Rails.application.routes.draw do
   get "search", to: "home#search"
   get "api_simple", to: "home#api_simple"
   get "api_complex", to: "home#api_complex"
-  get "chartkick_demo", to: "home#chartkick_demo"
 end
