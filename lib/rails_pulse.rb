@@ -16,7 +16,7 @@ module RailsPulse
     end
 
     def logger
-      @logger ||= ActiveSupport::TaggedLogging.new(Rails.logger).tagged('RailsPulse')
+      @logger ||= ActiveSupport::TaggedLogging.new(Rails.logger).tagged("RailsPulse")
     end
 
     def clear_metric_cache!

@@ -151,11 +151,11 @@ module RailsPulse
     end
 
     def paginate(collection, limit:)
-      page    = [params[:page].to_i, 1].max
+      page    = [ params[:page].to_i, 1 ].max
       raw     = collection.count(:all)
       count   = raw.is_a?(Hash) ? raw.size : raw
       records = collection.offset((page - 1) * limit).limit(limit)
-      [RailsPulse::Paginator.new(count: count, page: page, limit: limit), records]
+      [ RailsPulse::Paginator.new(count: count, page: page, limit: limit), records ]
     end
   end
 end

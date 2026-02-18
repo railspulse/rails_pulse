@@ -4,7 +4,7 @@ class RailsPulse::TaggableTest < ActiveSupport::TestCase
   setup do
     @exact    = RailsPulse::Route.create!(method: "GET", path: "/taggable_test/exact",    tags: '["api"]')
     @extended = RailsPulse::Route.create!(method: "GET", path: "/taggable_test/extended", tags: '["api_internal"]')
-    @untagged = RailsPulse::Route.create!(method: "GET", path: "/taggable_test/untagged", tags: '[]')
+    @untagged = RailsPulse::Route.create!(method: "GET", path: "/taggable_test/untagged", tags: "[]")
   end
 
   # with_tag

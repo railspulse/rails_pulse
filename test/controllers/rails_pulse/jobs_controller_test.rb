@@ -17,7 +17,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_includes RailsPulse::JobsController.included_modules, TagFilterConcern
     assert_includes RailsPulse::JobsController.included_modules, TimeRangeConcern
 
-    assert RailsPulse::JobsController.private_instance_methods(true).include?(:paginate)
+    assert_includes RailsPulse::JobsController.private_instance_methods(true), :paginate
   end
 
   test "controller has index and show actions" do

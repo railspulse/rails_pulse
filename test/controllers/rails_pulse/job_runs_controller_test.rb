@@ -15,7 +15,7 @@ class RailsPulse::JobRunsControllerTest < ActionDispatch::IntegrationTest
   test "controller includes required concerns" do
     assert_includes RailsPulse::JobRunsController.included_modules, TagFilterConcern
 
-    assert RailsPulse::JobRunsController.private_instance_methods(true).include?(:paginate)
+    assert_includes RailsPulse::JobRunsController.private_instance_methods(true), :paginate
   end
 
   test "controller has index and show actions" do

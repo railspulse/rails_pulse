@@ -9,7 +9,7 @@ module RailsPulse
     end
 
     def last
-      [(count.to_f / limit).ceil, 1].max
+      [ (count.to_f / limit).ceil, 1 ].max
     end
 
     def previous
