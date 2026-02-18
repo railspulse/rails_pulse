@@ -21,30 +21,30 @@ module RailsPulse
         end
       end
     rescue => e
-      Rails.logger.error "[RailsPulse] Summary job failed: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
+      RailsPulse.logger.error "Summary job failed: #{e.message}"
+      RailsPulse.logger.error e.backtrace.join("\n")
       raise
     end
 
     private
 
     def process_hourly_summary(hour)
-      Rails.logger.info "[RailsPulse] Processing hourly summary for #{hour}"
+      RailsPulse.logger.info "Processing hourly summary for #{hour}"
       SummaryService.new("hour", hour).perform
     end
 
     def process_daily_summary(date)
-      Rails.logger.info "[RailsPulse] Processing daily summary for #{date}"
+      RailsPulse.logger.info "Processing daily summary for #{date}"
       SummaryService.new("day", date).perform
     end
 
     def process_weekly_summary(week_start)
-      Rails.logger.info "[RailsPulse] Processing weekly summary for week starting #{week_start}"
+      RailsPulse.logger.info "Processing weekly summary for week starting #{week_start}"
       SummaryService.new("week", week_start).perform
     end
 
     def process_monthly_summary(month_start)
-      Rails.logger.info "[RailsPulse] Processing monthly summary for month starting #{month_start}"
+      RailsPulse.logger.info "Processing monthly summary for month starting #{month_start}"
       SummaryService.new("month", month_start).perform
     end
   end

@@ -16,7 +16,7 @@ module RailsPulse
       period_end = Summary.calculate_period_end(period_type, end_date)
 
       while current <= period_end
-        Rails.logger.info "[RailsPulse] Backfilling #{period_type} summary for #{current}"
+        RailsPulse.logger.info "Backfilling #{period_type} summary for #{current}"
 
         SummaryService.new(period_type, current).perform
 

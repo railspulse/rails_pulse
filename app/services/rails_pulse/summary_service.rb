@@ -10,7 +10,7 @@ module RailsPulse
     end
 
     def perform
-      Rails.logger.info "[RailsPulse] Starting #{period_type} summary for #{start_time}"
+      RailsPulse.logger.info "Starting #{period_type} summary for #{start_time}"
 
       ActiveRecord::Base.transaction do
         aggregate_requests  # Overall system metrics
@@ -19,9 +19,9 @@ module RailsPulse
         aggregate_jobs      # Per-job metrics
       end
 
-      Rails.logger.info "[RailsPulse] Completed #{period_type} summary"
+      RailsPulse.logger.info "Completed #{period_type} summary"
     rescue => e
-      Rails.logger.error "[RailsPulse] Summary failed: #{e.message}"
+      RailsPulse.logger.error "Summary failed: #{e.message}"
       raise
     end
 

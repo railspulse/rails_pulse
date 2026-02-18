@@ -32,7 +32,7 @@ module RailsPulse
           }
         end
       rescue => e
-        Rails.logger.error("[QueryAnalysis] Analysis failed for query #{@query.id}: #{e.message}")
+        logger.error("[QueryAnalysis] Analysis failed for query #{@query.id}: #{e.message}")
 
         respond_to do |format|
           format.turbo_stream {

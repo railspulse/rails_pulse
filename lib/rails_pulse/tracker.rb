@@ -70,12 +70,9 @@ module RailsPulse
       end
 
       def log_error(error, retry_count = 0)
-        logger = RailsPulse.configuration.logger
-        return unless logger
-
         retry_info = retry_count > 0 ? " (after #{retry_count} retries)" : ""
-        logger.error("[RailsPulse] Failed to persist tracking data#{retry_info}: #{error.message}")
-        logger.error(error.backtrace.join("\n")) if logger.debug?
+        RailsPulse.logger.error("Failed to persist tracking data#{retry_info}: #{error.message}")
+        RailsPulse.logger.error(error.backtrace.join("\n")) if RailsPulse.logger.debug?
       end
     end
   end

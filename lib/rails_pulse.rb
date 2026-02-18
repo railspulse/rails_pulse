@@ -15,6 +15,10 @@ module RailsPulse
       configuration.validate_configuration!
     end
 
+    def logger
+      @logger ||= ActiveSupport::TaggedLogging.new(Rails.logger).tagged('RailsPulse')
+    end
+
     def clear_metric_cache!
       Rails.cache.delete_matched("rails_pulse_metric*")
     end
@@ -23,10 +27,10 @@ module RailsPulse
       # Pre-warm cache for common metrics
       [ :average_response_times, :percentile_response_times, :request_count_totals, :error_rate_per_route ].each do |metric|
         begin
-          Rails.logger.info "Warming cache for metric: #{metric}"
+          logger.info "Warming cache for metric: #{metric}"
           # This would trigger cache generation by making the request
         rescue => e
-          Rails.logger.error "Failed to warm cache for #{metric}: #{e.message}"
+          logger.error "Failed to warm cache for #{metric}: #{e.message}"
         end
       end
     end

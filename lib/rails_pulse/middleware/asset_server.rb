@@ -11,7 +11,6 @@ module RailsPulse
       }.freeze
 
       def initialize(app, root, options = {})
-        @logger = Rails.logger if defined?(Rails)
         # Rack::Static expects (app, options) where options[:root] is the root path
         options = options.merge(root: root) if root.is_a?(String) || root.is_a?(Pathname)
         super(app, options)
@@ -24,7 +23,7 @@ module RailsPulse
         end
 
         # Log asset requests for debugging
-        @logger&.debug "[Rails Pulse] Asset request: #{env['PATH_INFO']}"
+        RailsPulse.logger.debug "Asset request: #{env['PATH_INFO']}"
 
         # Set proper MIME type based on file extension
         set_content_type(env)
@@ -36,14 +35,14 @@ module RailsPulse
           # Add immutable cache headers for successful responses
           if status == 200
             headers.merge!(cache_headers)
-            @logger&.debug "[Rails Pulse] Asset served successfully: #{env['PATH_INFO']}"
+            RailsPulse.logger.debug "Asset served successfully: #{env['PATH_INFO']}"
           elsif status == 404
-            log_missing_asset(env["PATH_INFO"]) if @logger
+            log_missing_asset(env["PATH_INFO"])
           end
 
           [ status, headers, body ]
         rescue => e
-          log_asset_error(env["PATH_INFO"], e) if @logger
+          log_asset_error(env["PATH_INFO"], e)
           @app.call(env)
         end
       end
@@ -72,12 +71,12 @@ module RailsPulse
       end
 
       def log_missing_asset(path)
-        @logger.warn "[Rails Pulse] Asset not found: #{path}"
+        RailsPulse.logger.warn "Asset not found: #{path}"
       end
 
       def log_asset_error(path, error)
-        @logger.error "[Rails Pulse] Error serving asset #{path}: #{error.message}"
-        @logger.error error.backtrace.join("\n") if @logger.debug?
+        RailsPulse.logger.error "Error serving asset #{path}: #{error.message}"
+        RailsPulse.logger.error error.backtrace.join("\n") if RailsPulse.logger.debug?
       end
     end
   end
