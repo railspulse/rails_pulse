@@ -41,7 +41,7 @@ module RailsPulse
             end
           end
         rescue => e
-          Rails.logger.warn("[ExplainPlanAnalyzer] EXPLAIN failed for query #{query.id}: #{e.message}")
+          RailsPulse.logger.warn("[ExplainPlanAnalyzer] EXPLAIN failed for query #{query.id}: #{e.message}")
           nil
         end
       end

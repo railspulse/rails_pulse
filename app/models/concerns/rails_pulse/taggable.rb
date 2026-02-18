@@ -14,11 +14,11 @@ module RailsPulse
       # Note: LIKE patterns are sanitized to prevent SQL injection via wildcards
       scope :with_tag, ->(tag) {
         sanitized_tag = sanitize_sql_like(tag.to_s, "\\")
-        where("#{table_name}.tags LIKE ?", "%#{sanitized_tag}%")
+        where("#{table_name}.tags LIKE ?", "%\"#{sanitized_tag}\"%")
       }
       scope :without_tag, ->(tag) {
         sanitized_tag = sanitize_sql_like(tag.to_s, "\\")
-        where.not("#{table_name}.tags LIKE ?", "%#{sanitized_tag}%")
+        where.not("#{table_name}.tags LIKE ?", "%\"#{sanitized_tag}\"%")
       }
       scope :with_tags, -> { where("#{table_name}.tags IS NOT NULL AND #{table_name}.tags != '[]'") }
     end

@@ -32,7 +32,7 @@ module RailsPulse
           }
         end
       rescue => e
-        Rails.logger.error("[QueryAnalysis] Analysis failed for query #{@query.id}: #{e.message}")
+        logger.error("[QueryAnalysis] Analysis failed for query #{@query.id}: #{e.message}")
 
         respond_to do |format|
           format.turbo_stream {
@@ -163,7 +163,7 @@ module RailsPulse
       table_results = build_table_results
       handle_pagination
 
-      @pagy, @table_data = pagy(table_results, **pagy_options(session_pagination_limit))
+      @pagination, @table_data = paginate(table_results, limit: session_pagination_limit)
     end
 
     def handle_pagination

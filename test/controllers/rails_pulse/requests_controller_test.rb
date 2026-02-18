@@ -87,7 +87,7 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     # ChartTableConcern should set up these variables
     assert_not_nil assigns(:chart_data)
     assert_not_nil assigns(:table_data)
-    assert_not_nil assigns(:pagy)
+    assert_not_nil assigns(:pagination)
   end
 
   test "index action with ransack search by status" do
@@ -124,10 +124,10 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.requests_path, params: { limit: 5 }
 
     assert_response :success
-    pagy = assigns(:pagy)
+    pagination = assigns(:pagination)
     requests = assigns(:table_data)
 
-    assert_not_nil pagy
+    assert_not_nil pagination
     assert_operator requests.size, :<=, 5
   end
 

@@ -1,12 +1,5 @@
 module RailsPulse
   class ApplicationController < ActionController::Base
-    # Support both Pagy 8.x (Backend) and Pagy 43+ (Method)
-    if defined?(Pagy::Method)
-      include Pagy::Method
-    else
-      include Pagy::Backend
-    end
-
     before_action :authenticate_rails_pulse_user!
     before_action :set_show_non_tagged_default
     helper_method :session_global_filters, :session_disabled_tags
@@ -66,6 +59,10 @@ module RailsPulse
 
     private
 
+    def logger
+      RailsPulse.logger
+    end
+
     def authenticate_rails_pulse_user!
       return unless RailsPulse.configuration.authentication_enabled
 
@@ -83,15 +80,15 @@ module RailsPulse
         if respond_to?(method_name, true)
           send(method_name)
         else
-          Rails.logger.error "RailsPulse: Authentication method '#{method_name}' not found"
+          logger.error "RailsPulse: Authentication method '#{method_name}' not found"
           render plain: "Authentication configuration error", status: :internal_server_error
         end
       else
-        Rails.logger.error "RailsPulse: Invalid authentication method type: #{RailsPulse.configuration.authentication_method.class}"
+        logger.error "RailsPulse: Invalid authentication method type: #{RailsPulse.configuration.authentication_method.class}"
         render plain: "Authentication configuration error", status: :internal_server_error
       end
     rescue StandardError => e
-      Rails.logger.warn "RailsPulse authentication failed: #{e.message}"
+      logger.warn "RailsPulse authentication failed: #{e.message}"
       redirect_to RailsPulse.configuration.authentication_redirect_path
     end
 
@@ -102,7 +99,7 @@ module RailsPulse
         expected_password = ENV.fetch("RAILS_PULSE_PASSWORD", nil)
 
         if expected_password.nil?
-          Rails.logger.error "RailsPulse: No authentication method configured and RAILS_PULSE_PASSWORD not set. Access denied."
+          logger.error "RailsPulse: No authentication method configured and RAILS_PULSE_PASSWORD not set. Access denied."
           false
         else
           username == expected_username && password == expected_password
@@ -144,7 +141,7 @@ module RailsPulse
 
       thresholds[threshold.to_sym]
     rescue StandardError => e
-      Rails.logger.warn "Failed to get performance threshold: #{e.message}"
+      logger.warn "Failed to get performance threshold: #{e.message}"
       nil
     end
 
@@ -153,14 +150,12 @@ module RailsPulse
       session[:show_non_tagged] = true if session[:show_non_tagged].nil?
     end
 
-    # Returns Pagy options hash with correct parameter name for current version
-    # Pagy 8.x uses 'items:', Pagy 43+ uses 'limit:'
-    def pagy_options(count)
-      if defined?(Pagy::Method)
-        { limit: count }  # Pagy 43+
-      else
-        { items: count }  # Pagy 8.x
-      end
+    def paginate(collection, limit:)
+      page    = [ params[:page].to_i, 1 ].max
+      raw     = collection.count(:all)
+      count   = raw.is_a?(Hash) ? raw.size : raw
+      records = collection.offset((page - 1) * limit).limit(limit)
+      [ RailsPulse::Paginator.new(count: count, page: page, limit: limit), records ]
     end
   end
 end

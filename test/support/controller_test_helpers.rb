@@ -94,10 +94,10 @@ module ControllerTestHelpers
   def assert_paginated_response(expected_total: nil)
     assert_successful_response
     if expected_total
-      assigns_pagy = assigns(:pagy)
+      assigns_pagination = assigns(:pagination)
 
-      assert_not_nil assigns_pagy, "Expected @pagy to be assigned"
-      assert_equal expected_total, assigns_pagy.count if assigns_pagy.respond_to?(:count)
+      assert_not_nil assigns_pagination, "Expected @pagination to be assigned"
+      assert_equal expected_total, assigns_pagination.count if assigns_pagination.respond_to?(:count)
     end
   end
 end

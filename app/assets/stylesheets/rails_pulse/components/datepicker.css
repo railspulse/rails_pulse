@@ -1,5 +1,3 @@
-@import url("https://esm.sh/flatpickr@4.6.13/dist/flatpickr.min.css");
-
 .flatpickr-calendar {
   --calendar-size: 250px;
   --container-size: 220px;

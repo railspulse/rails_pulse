@@ -17,10 +17,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_includes RailsPulse::JobsController.included_modules, TagFilterConcern
     assert_includes RailsPulse::JobsController.included_modules, TimeRangeConcern
 
-    # Check for Pagy module (Backend in 8.x, Method in 43+)
-    pagy_module = defined?(Pagy::Method) ? Pagy::Method : Pagy::Backend
-
-    assert_includes RailsPulse::JobsController.included_modules, pagy_module
+    assert_includes RailsPulse::JobsController.private_instance_methods(true), :paginate
   end
 
   test "controller has index and show actions" do
@@ -50,7 +47,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_not_nil assigns(:ransack_query)
-    assert_not_nil assigns(:pagy)
+    assert_not_nil assigns(:pagination)
     assert_not_nil assigns(:jobs)
     assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:available_queues)
@@ -94,10 +91,10 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.jobs_path, params: { limit: 10 }
 
     assert_response :success
-    pagy = assigns(:pagy)
+    pagination = assigns(:pagination)
     jobs = assigns(:jobs)
 
-    assert_not_nil pagy
+    assert_not_nil pagination
     assert_operator jobs.size, :<=, 10
   end
 
@@ -134,7 +131,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_not_nil assigns(:job)
     assert_not_nil assigns(:ransack_query)
-    assert_not_nil assigns(:pagy)
+    assert_not_nil assigns(:pagination)
     assert_not_nil assigns(:recent_runs)
     assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:selected_time_range)
@@ -195,10 +192,10 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.job_path(@job), params: { limit: 10 }
 
     assert_response :success
-    pagy = assigns(:pagy)
+    pagination = assigns(:pagination)
     runs = assigns(:recent_runs)
 
-    assert_not_nil pagy
+    assert_not_nil pagination
     assert_operator runs.size, :<=, 10
   end
 
