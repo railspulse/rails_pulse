@@ -12,9 +12,7 @@ gem "dotenv-rails", groups: [ :development, :test ]
 gem "rails_pulse", path: "../.."
 
 gem "puma", "6.6.0"
-gem "lucide-rails", "0.5.1"
 gem "css-zero", "1.1.5"
-gem "groupdate"
 
 group :development, :test do
   gem "pry-byebug"

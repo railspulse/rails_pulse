@@ -100,7 +100,6 @@ GEM
       metrics (~> 0.12)
       traces (~> 0.18)
     base64 (0.3.0)
-    benchmark-ips (2.14.0)
     bigdecimal (4.0.1)
     brakeman (7.1.2)
       racc
@@ -180,7 +179,6 @@ GEM
       net-smtp
     marcel (1.1.0)
     matrix (0.4.3)
-    memory_profiler (1.1.0)
     method_source (1.1.0)
     metrics (0.15.0)
     mini_mime (1.1.5)
@@ -360,7 +358,6 @@ GEM
     sqlite3 (2.9.0-x86_64-linux-gnu)
     sqlite3 (2.9.0-x86_64-linux-musl)
     stringio (3.2.0)
-    test-prof (1.5.0)
     thor (1.5.0)
     timecop (0.9.10)
     timeout (0.6.0)
@@ -399,7 +396,6 @@ PLATFORMS
 
 DEPENDENCIES
   appraisal
-  benchmark-ips
   brakeman
   capybara
   css-zero
@@ -409,7 +405,6 @@ DEPENDENCIES
   factory_bot_rails
   faker
   importmap-rails
-  memory_profiler
   minitest (>= 5.0)
   minitest-reporters
   mocha
@@ -427,7 +422,6 @@ DEPENDENCIES
   selenium-webdriver
   shoulda-matchers
   sqlite3
-  test-prof
   timecop
   turbo-rails
 

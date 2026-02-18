@@ -29,7 +29,6 @@ group :test do
   gem "pry-byebug"
   gem "selenium-webdriver"
   gem "shoulda-matchers"
-  gem "test-prof"
   gem "timecop"
 end
 
@@ -43,7 +42,5 @@ group :development do
 end
 
 group :development, :test do
-  gem "benchmark-ips"
-  gem "memory_profiler"
   gem "debug"
 end
