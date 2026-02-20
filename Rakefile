@@ -261,9 +261,22 @@ task :test_release do
 
   failed_tasks = []
   current_step = 0
-  total_steps = 11
+  total_steps = 12
 
-  # Step 1: Sync test schema
+  # Step 1: Update appraisal gemfiles
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Updating appraisal gemfiles..."
+    puts "-" * 70
+    sh "bundle exec appraisal install"
+    puts "✅ Appraisal gemfiles updated!"
+  rescue => e
+    puts "❌ Appraisal update failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "appraisal_install"
+  end
+
+  # Step 3: Sync test schema
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Syncing test schema..."
@@ -275,7 +288,7 @@ task :test_release do
     failed_tasks << "sync_test_schema"
   end
 
-  # Step 2: Verify dummy migrations
+  # Step 4: Verify dummy migrations
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Verifying dummy app migrations..."
@@ -287,7 +300,7 @@ task :test_release do
     failed_tasks << "verify_dummy_migrations"
   end
 
-  # Step 3: Git status check
+  # Step 5: Git status check
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Checking git status..."
@@ -307,7 +320,7 @@ task :test_release do
     puts "⚠️  Warning: Could not check git status (#{e.message})"
   end
 
-  # Step 5: RuboCop linting
+  # Step 6: RuboCop linting
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running RuboCop linting..."
