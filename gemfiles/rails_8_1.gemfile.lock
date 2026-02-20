@@ -1,7 +1,7 @@
 PATH
   remote: ..
   specs:
-    rails_pulse (0.2.5.pre.10)
+    rails_pulse (0.2.5.pre.11)
       async (~> 2.0)
       rails (>= 7.1.0, < 9.0.0)
       ransack (~> 4.0)
@@ -191,6 +191,8 @@ GEM
       ruby-progressbar
     mocha (3.0.1)
       ruby2_keywords (>= 0.0.5)
+    mysql2 (0.5.7)
+      bigdecimal
     net-imap (0.6.2)
       date
       net-protocol
@@ -408,6 +410,7 @@ DEPENDENCIES
   minitest (>= 5.0)
   minitest-reporters
   mocha
+  mysql2
   ostruct
   pg
   pry-byebug

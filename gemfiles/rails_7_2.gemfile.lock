@@ -186,6 +186,8 @@ GEM
       ruby-progressbar
     mocha (2.7.1)
       ruby2_keywords (>= 0.0.5)
+    mysql2 (0.5.7)
+      bigdecimal
     net-imap (0.5.10)
       date
       net-protocol
@@ -390,6 +392,7 @@ DEPENDENCIES
   minitest (>= 5.0)
   minitest-reporters
   mocha
+  mysql2
   ostruct
   pg
   pry-byebug
