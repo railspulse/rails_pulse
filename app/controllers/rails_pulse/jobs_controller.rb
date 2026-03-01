@@ -16,11 +16,11 @@ module RailsPulse
       setup_metric_cards
 
       @ransack_query = RailsPulse::Job.ransack(params[:q])
+      @ransack_query.sorts = "runs_count desc" if @ransack_query.sorts.empty?
 
       # Apply tag filters from session
       base_query = apply_tag_filters(@ransack_query.result)
 
-      @ransack_query.sorts = "runs_count desc" if @ransack_query.sorts.empty?
       @pagination, @jobs = paginate(base_query, limit: session_pagination_limit)
       @table_data = @jobs
 
