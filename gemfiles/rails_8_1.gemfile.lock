@@ -1,10 +1,8 @@
 PATH
   remote: ..
   specs:
-    rails_pulse (0.2.5.pre.10)
+    rails_pulse (0.2.5.pre.12)
       async (~> 2.0)
-      css-zero (~> 1.1, >= 1.1.4)
-      pagy (>= 8, < 44)
       rails (>= 7.1.0, < 9.0.0)
       ransack (~> 4.0)
       request_store (~> 1.5)
@@ -102,7 +100,6 @@ GEM
       metrics (~> 0.12)
       traces (~> 0.18)
     base64 (0.3.0)
-    benchmark-ips (2.14.0)
     bigdecimal (4.0.1)
     brakeman (7.1.2)
       racc
@@ -118,7 +115,6 @@ GEM
       rack-test (>= 0.6.3)
       regexp_parser (>= 1.5, < 3.0)
       xpath (~> 3.2)
-    chartkick (5.2.1)
     coderay (1.1.3)
     concurrent-ruby (1.3.6)
     connection_pool (3.0.2)
@@ -183,7 +179,6 @@ GEM
       net-smtp
     marcel (1.1.0)
     matrix (0.4.3)
-    memory_profiler (1.1.0)
     method_source (1.1.0)
     metrics (0.15.0)
     mini_mime (1.1.5)
@@ -225,9 +220,6 @@ GEM
     nokogiri (1.19.0-x86_64-linux-musl)
       racc (~> 1.4)
     ostruct (0.6.3)
-    pagy (43.0.7)
-      json
-      yaml
     parallel (1.27.0)
     parser (3.3.10.1)
       ast (~> 2.4.1)
@@ -368,7 +360,6 @@ GEM
     sqlite3 (2.9.0-x86_64-linux-gnu)
     sqlite3 (2.9.0-x86_64-linux-musl)
     stringio (3.2.0)
-    test-prof (1.5.0)
     thor (1.5.0)
     timecop (0.9.10)
     timeout (0.6.0)
@@ -391,7 +382,6 @@ GEM
     websocket-extensions (0.1.5)
     xpath (3.2.0)
       nokogiri (~> 1.8)
-    yaml (0.4.0)
     zeitwerk (2.7.4)
 
 PLATFORMS
@@ -408,10 +398,8 @@ PLATFORMS
 
 DEPENDENCIES
   appraisal
-  benchmark-ips
   brakeman
   capybara
-  chartkick
   css-zero
   database_cleaner-active_record
   debug
@@ -419,13 +407,11 @@ DEPENDENCIES
   factory_bot_rails
   faker
   importmap-rails
-  memory_profiler
   minitest (>= 5.0)
   minitest-reporters
   mocha
   mysql2
   ostruct
-  pagy (~> 43.0.0pre)
   pg
   pry-byebug
   puma
@@ -439,7 +425,6 @@ DEPENDENCIES
   selenium-webdriver
   shoulda-matchers
   sqlite3
-  test-prof
   timecop
   turbo-rails
 

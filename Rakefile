@@ -87,7 +87,8 @@ task :test_setup do
 
     when 'mysql2', 'mysql'
       puts "🐬 Setting up MySQL database..."
-      sh "DB=mysql2 RAILS_ENV=test rails db:drop db:create db:migrate"
+      mysql_password = ENV.fetch("MYSQL_PASSWORD", "")
+      sh "DB=mysql2 MYSQL_PASSWORD=#{mysql_password} RAILS_ENV=test rails db:drop db:create db:migrate"
 
     when 'postgresql', 'postgres'
       puts "🐘 Setting up PostgreSQL database..."
@@ -225,7 +226,7 @@ task :test_matrix do
           sh "BROWSER=#{ENV['BROWSER']} rails test #{test_paths}"
         else
           # Use appraisal with specific database
-          sh "DB=#{database} BROWSER=#{ENV['BROWSER']} bundle exec appraisal #{rails_version} rails test #{test_paths}"
+          sh "DB=#{database} MYSQL_PASSWORD=#{ENV.fetch('MYSQL_PASSWORD', '')} BROWSER=#{ENV['BROWSER']} bundle exec appraisal #{rails_version} rails test #{test_paths}"
         end
 
         puts "✅ PASSED: #{database} + #{rails_version}"
