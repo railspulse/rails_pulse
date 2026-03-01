@@ -35,11 +35,13 @@ module RailsPulse
         jobs_with_percentiles.sort_by { |j| -j.runs_count }
       end
 
-      # Paginate after sorting using Pagy with array
+      # Paginate after sorting using custom Paginator with array
       limit = session_pagination_limit || 20
+      page  = [ params[:page].to_i, 1 ].max
 
-      @pagy = Pagy.new(count: sorted_jobs.size, limit: limit, page: params[:page])
-      @table_data = sorted_jobs[@pagy.offset, @pagy.items] || []
+      @pagination = RailsPulse::Paginator.new(count: sorted_jobs.size, limit: limit, page: page)
+      offset      = (@pagination.page - 1) * @pagination.limit
+      @table_data = sorted_jobs[offset, @pagination.limit] || []
       @jobs = @table_data  # For backward compatibility with tests and views
 
       @available_queues = RailsPulse::Job.distinct.pluck(:queue_name).compact.sort
