@@ -23,6 +23,10 @@ class ActiveSupport::TestCase
   # Disable when BROWSER is set to avoid multiple browser windows
   parallelize(workers: ENV["BROWSER"] ? 0 : :number_of_processors)
 
+  parallelize_setup do |worker|
+    require "mocha/minitest"
+  end
+
   # Use Rails' built-in transactional cleanup
   self.use_transactional_tests = true
 

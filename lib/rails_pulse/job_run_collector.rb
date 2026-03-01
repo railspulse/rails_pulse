@@ -47,7 +47,7 @@ module RailsPulse
         begin
           save_operations(job_run)
         rescue => e
-          Rails.logger.error "[RailsPulse] Failed to persist job operations: #{e.class} - #{e.message}"
+          RailsPulse.logger.error "Failed to persist job operations: #{e.class} - #{e.message}"
         ensure
           RequestStore.store[:rails_pulse_job_run_id] = previous_job_run_id
           RequestStore.store[:rails_pulse_operations] = previous_operations
@@ -85,9 +85,11 @@ module RailsPulse
       end
 
       def create_job_run(job, active_job, adapter, occurred_at)
-        RailsPulse::JobRun.create!(
+        run_id = active_job.job_id || SecureRandom.uuid
+
+        job_run = RailsPulse::JobRun.find_or_initialize_by(run_id: run_id)
+        job_run.assign_attributes(
           job: job,
-          run_id: active_job.job_id || SecureRandom.uuid,
           status: initial_status_for(active_job),
           enqueued_at: safe_timestamp(active_job.try(:enqueued_at)),
           occurred_at: occurred_at,
@@ -95,6 +97,8 @@ module RailsPulse
           adapter: adapter,
           arguments: serialized_arguments(active_job)
         )
+        job_run.save!
+        job_run
       end
 
       def serialized_arguments(active_job)
@@ -102,7 +106,7 @@ module RailsPulse
 
         Array(active_job.arguments).to_json
       rescue StandardError => e
-        Rails.logger.debug "[RailsPulse] Unable to serialize job arguments: #{e.class} - #{e.message}"
+        RailsPulse.logger.debug "Unable to serialize job arguments: #{e.class} - #{e.message}"
         nil
       end
 
@@ -126,7 +130,7 @@ module RailsPulse
             RailsPulse::Operation.create!(operation_data)
           end
         rescue => e
-          Rails.logger.error "[RailsPulse] Failed to save job operation: #{e.class} - #{e.message}"
+          RailsPulse.logger.error "Failed to save job operation: #{e.class} - #{e.message}"
         end
       ensure
         RequestStore.store[:rails_pulse_operations] = nil

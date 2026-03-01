@@ -3,16 +3,16 @@ module RailsPulse
     def perform
       return unless RailsPulse.configuration.archiving_enabled
 
-      Rails.logger.info "[RailsPulse::CleanupJob] Starting scheduled cleanup"
+      RailsPulse.logger.info "[CleanupJob] Starting scheduled cleanup"
 
       stats = CleanupService.perform
 
-      Rails.logger.info "[RailsPulse::CleanupJob] Cleanup completed - #{stats[:total_deleted]} records deleted"
+      RailsPulse.logger.info "[CleanupJob] Cleanup completed - #{stats[:total_deleted]} records deleted"
 
       stats
     rescue => e
-      Rails.logger.error "[RailsPulse::CleanupJob] Cleanup failed: #{e.message}"
-      Rails.logger.error e.backtrace.join("\n")
+      RailsPulse.logger.error "[CleanupJob] Cleanup failed: #{e.message}"
+      RailsPulse.logger.error e.backtrace.join("\n")
       raise
     end
   end

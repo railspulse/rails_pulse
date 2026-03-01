@@ -171,19 +171,6 @@ class BaseChartTest < ActiveSupport::TestCase
     Time.zone = original_zone
   end
 
-  # Benchmark chart generation performance
-  def benchmark_chart_generation(chart_instance, max_time_ms: 100)
-    start_time = Time.current
-    data = chart_instance.to_chart_data
-    end_time = Time.current
-
-    execution_time_ms = ((end_time - start_time) * 1000).round(2)
-
-    assert_operator execution_time_ms, :<=, max_time_ms, "Chart generation took #{execution_time_ms}ms, expected <= #{max_time_ms}ms"
-
-    data
-  end
-
   private
 
   def cleanup_chart_test_data

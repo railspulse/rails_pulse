@@ -16,7 +16,7 @@ module RailsPulse
     def perform
       return unless cleanup_enabled?
 
-      Rails.logger.info "[RailsPulse] Starting data cleanup..."
+      RailsPulse.logger.info "Starting data cleanup..."
 
       perform_time_based_cleanup
       perform_count_based_cleanup
@@ -35,7 +35,7 @@ module RailsPulse
       return unless @config.full_retention_period
 
       cutoff_time = @config.full_retention_period.ago
-      Rails.logger.info "[RailsPulse] Time-based cleanup: removing records older than #{cutoff_time}"
+      RailsPulse.logger.info "Time-based cleanup: removing records older than #{cutoff_time}"
 
       # Clean up in order that respects foreign key constraints
       @stats[:time_based][:operations] = cleanup_operations_by_time(cutoff_time)
@@ -49,7 +49,7 @@ module RailsPulse
     def perform_count_based_cleanup
       return unless @config.max_table_records&.any?
 
-      Rails.logger.info "[RailsPulse] Count-based cleanup: enforcing table record limits"
+      RailsPulse.logger.info "Count-based cleanup: enforcing table record limits"
 
       # Clean up in order that respects foreign key constraints
       @stats[:count_based][:operations] = cleanup_operations_by_count
@@ -266,18 +266,18 @@ module RailsPulse
       total_count_based = @stats[:count_based].values.sum
       @stats[:total_deleted] = total_time_based + total_count_based
 
-      Rails.logger.info "[RailsPulse] Cleanup completed:"
-      Rails.logger.info "  Time-based: #{total_time_based} records deleted"
-      Rails.logger.info "  Count-based: #{total_count_based} records deleted"
-      Rails.logger.info "  Total: #{@stats[:total_deleted]} records deleted"
+      RailsPulse.logger.info "Cleanup completed:"
+      RailsPulse.logger.info "  Time-based: #{total_time_based} records deleted"
+      RailsPulse.logger.info "  Count-based: #{total_count_based} records deleted"
+      RailsPulse.logger.info "  Total: #{@stats[:total_deleted]} records deleted"
 
       if @stats[:total_deleted] > 0
-        Rails.logger.info "  Breakdown:"
+        RailsPulse.logger.info "  Breakdown:"
         @stats[:time_based].each do |table, count|
-          Rails.logger.info "    #{table} (time): #{count}" if count > 0
+          RailsPulse.logger.info "    #{table} (time): #{count}" if count > 0
         end
         @stats[:count_based].each do |table, count|
-          Rails.logger.info "    #{table} (count): #{count}" if count > 0
+          RailsPulse.logger.info "    #{table} (count): #{count}" if count > 0
         end
       end
     end

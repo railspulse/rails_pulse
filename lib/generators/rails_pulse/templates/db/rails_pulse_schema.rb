@@ -1,6 +1,6 @@
 # Rails Pulse Database Schema
 # This file contains the complete schema for Rails Pulse tables
-# Load with: rails db:schema:load:rails_pulse or db:prepare
+# Load with: rails db:schema:load_rails_pulse or db:prepare
 
 RailsPulse::Schema = lambda do |connection|
   adapter = connection.adapter_name.downcase

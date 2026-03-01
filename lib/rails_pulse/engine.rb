@@ -8,7 +8,6 @@ require "rails_pulse/extensions/active_record"
 require "request_store"
 require "rack/static"
 require "ransack"
-require "pagy"
 require "turbo-rails"
 
 module RailsPulse
@@ -105,12 +104,6 @@ module RailsPulse
       # Configure Rails Pulse to always use UTC for consistent time operations
       # Note: We don't set Time.zone_default as it would affect the entire application
       # Our custom group_by_date extension works regardless of ActiveRecord.default_timezone
-    end
-
-    initializer "rails_pulse.configure_logger", before: :initialize_logger do
-      RailsPulse.configure do |config|
-        config.logger ||= Rails.logger
-      end
     end
 
     # CSP helper methods

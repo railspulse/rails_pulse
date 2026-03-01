@@ -43,7 +43,6 @@
   - [Database Configuration](#database-configuration)
   - [Schema Loading](#schema-loading)
 - [Performance Impact](#performance-impact)
-  - [Running Performance Benchmarks](#running-performance-benchmarks)
 - [Standalone Dashboard Deployment](#standalone-dashboard-deployment)
 - [Testing](#testing)
 - [Technology Stack](#technology-stack)
@@ -647,28 +646,6 @@ Rails Pulse uses **fiber-based async tracking** for minimal performance overhead
 - **Thread safety:** Proper connection pooling with isolated database connections
 
 This is handled automatically and requires no configuration.
-
-### Running Performance Benchmarks
-
-Rails Pulse includes built-in benchmarking tools. To use them:
-
-```ruby
-# Add to your Gemfile (development/test group)
-gem 'benchmark-ips'
-gem 'memory_profiler'
-```
-
-```bash
-bundle install
-
-# Run all benchmarks
-bundle exec rake rails_pulse:benchmark:all
-
-# Run specific benchmarks
-bundle exec rake rails_pulse:benchmark:memory
-bundle exec rake rails_pulse:benchmark:request_overhead
-bundle exec rake rails_pulse:benchmark:middleware
-```
 
 ## Standalone Dashboard Deployment
 

@@ -112,11 +112,6 @@ module RailsPulse
       validate_query_service_level_objective_settings!
     end
 
-    # Revalidate configuration after changes
-    def revalidate!
-      validate_configuration!
-    end
-
     private
 
     def validate_thresholds!
@@ -168,15 +163,10 @@ module RailsPulse
 
     def validate_authentication_settings!
       if @authentication_enabled && @authentication_method.nil?
-        # Use Rails.logger if available, otherwise fall back to puts (for asset precompilation)
-        if Rails.logger
-          Rails.logger.warn "RailsPulse: Authentication is enabled but no authentication method is configured. This will deny all access."
-        else
-          puts "RailsPulse: Authentication is enabled but no authentication method is configured. This will deny all access."
-        end
+        RailsPulse.logger.warn "Authentication is enabled but no authentication method is configured. This will deny all access."
       end
 
-      if @authentication_method && ![ Proc, Symbol, String, NilClass ].include?(@authentication_method.class)
+      if @authentication_method && ![ Proc, Symbol, String ].include?(@authentication_method.class)
         raise ArgumentError, "authentication_method must be a Proc, Symbol, String, or nil, got #{@authentication_method.class}"
       end
     end

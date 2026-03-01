@@ -48,7 +48,7 @@ module RailsPulse
               end
             end
           rescue => e
-            Rails.logger.debug "[RailsPulse] Could not resolve controller source location: #{e.class} - #{e.message}"
+            RailsPulse.logger.debug "Could not resolve controller source location: #{e.class} - #{e.message}"
           end
           nil
         end
@@ -111,7 +111,7 @@ module RailsPulse
             next if payload[:name] == "SCHEMA"
             capture_operation(name, start, finish, payload, "sql", :sql)
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in SQL subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in SQL subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -120,7 +120,7 @@ module RailsPulse
           begin
             capture_operation(name, start, finish, payload, "controller", :controller)
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in controller subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in controller subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -129,7 +129,7 @@ module RailsPulse
           begin
             capture_operation(name, start, finish, payload, "template", :template)
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in template subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in template subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -138,7 +138,7 @@ module RailsPulse
           begin
             capture_operation(name, start, finish, payload, "partial", :partial)
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in partial subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in partial subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -147,7 +147,7 @@ module RailsPulse
           begin
             capture_operation(name, start, finish, payload, "layout", :template)
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in layout subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in layout subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -156,7 +156,7 @@ module RailsPulse
           begin
             capture_operation(name, start, finish, payload, "cache_read", :cache)
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in cache_read subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in cache_read subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -164,7 +164,7 @@ module RailsPulse
           begin
             capture_operation(name, start, finish, payload, "cache_write", :cache)
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in cache_write subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in cache_write subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -190,7 +190,7 @@ module RailsPulse
               RequestStore.store[:rails_pulse_operations] << operation_data
             end
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in HTTP subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in HTTP subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -216,7 +216,7 @@ module RailsPulse
               RequestStore.store[:rails_pulse_operations] << operation_data
             end
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in job subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in job subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -225,7 +225,7 @@ module RailsPulse
           begin
             capture_operation(name, start, finish, payload, "collection", :template)
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in collection subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in collection subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -251,7 +251,7 @@ module RailsPulse
               RequestStore.store[:rails_pulse_operations] << operation_data
             end
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in mailer subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in mailer subscriber: #{e.class} - #{e.message}"
           end
         end
 
@@ -277,7 +277,7 @@ module RailsPulse
               RequestStore.store[:rails_pulse_operations] << operation_data
             end
           rescue => e
-            Rails.logger.error "[RailsPulse] Exception in storage subscriber: #{e.class} - #{e.message}"
+            RailsPulse.logger.error "Exception in storage subscriber: #{e.class} - #{e.message}"
           end
         end
       end
