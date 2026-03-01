@@ -29,8 +29,7 @@
     <% end %>
 
     <% unless turbo_frame_request? %>
-      <% has_chart_data = @chart_data.is_a?(Hash) && @chart_data[:series].present? && @chart_data[:series].any? { |s| !s[:name].to_s.include?("Service Level Objective") && s[:data].present? && s[:data].any? { |v| v.to_f > 0 } } %>
-      <% if has_chart_data %>
+      <% if @chart_data && @chart_data[:series].present? %>
         <div
           class="chart-container chart-container--slim"
           data-rails-pulse--index-target="chart"

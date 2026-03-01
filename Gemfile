@@ -12,7 +12,6 @@ gem "mysql2"
 # Load environment variables from .env file
 gem "dotenv-rails", groups: [ :development, :test ]
 
-gem "css-zero"
 gem "importmap-rails"
 gem "ransack"
 gem "turbo-rails"

@@ -82,6 +82,10 @@ module RailsPulse
       @service_level_objective = nil
       @query_service_level_objective = nil
 
+      # Validate defaults eagerly so that a misconfigured initializer raises at
+      # boot time rather than at the first request. All SLO defaults are nil so
+      # validation short-circuits harmlessly here; it becomes meaningful when
+      # RailsPulse.configure yields and sets real values.
       validate_configuration!
     end
 

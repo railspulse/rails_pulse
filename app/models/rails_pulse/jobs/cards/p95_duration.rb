@@ -50,7 +50,7 @@ module RailsPulse
           {
             id: "jobs_p95_duration",
             context: "jobs",
-            title: "95th Percentile Response Time",
+            title: "95th Percentile Duration",
             summary: format_duration(p95_duration),
             chart_data: sparkline_data,
             trend_icon: trend_icon,
