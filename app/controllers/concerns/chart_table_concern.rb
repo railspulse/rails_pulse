@@ -78,14 +78,14 @@ module ChartTableConcern
 
   def has_meaningful_data?
     has_chart_data = if @chart_data.is_a?(Hash) && @chart_data.key?(:series)
-                       # New multi-series chart format (line charts)
-                       # Exclude SLO series as it always has positive threshold values
-                       @chart_data[:series].any? { |series| !series[:name].to_s.include?("Service Level Objective") && series[:data].any? { |v| v.to_f > 0 } }
+      # New multi-series chart format (line charts)
+      # Exclude SLO series as it always has positive threshold values
+      @chart_data[:series].any? { |series| !series[:name].to_s.include?("Service Level Objective") && series[:data].any? { |v| v.to_f > 0 } }
     elsif @chart_data.is_a?(Hash)
-                       # Old simple hash format (bar charts)
-                       @chart_data.values.any? { |v| v.is_a?(Numeric) && v > 0 }
+      # Old simple hash format (bar charts)
+      @chart_data.values.any? { |v| v.is_a?(Numeric) && v > 0 }
     else
-                       false
+      false
     end
     has_table_data = @table_data && @table_data.any?
     has_chart_data || has_table_data

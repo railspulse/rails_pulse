@@ -48,7 +48,7 @@ module RailsPulse
           end
 
           # Convert to final values (weighted averages) and pad missing data
-          step = @period_type == :hour ? 3600 : 86400
+          step = @period_type.to_s == "hour" ? 3600 : 86400
           daily_data = {}
           (@start_time.to_i..@end_time.to_i).step(step) do |timestamp|
             if raw_data[timestamp]

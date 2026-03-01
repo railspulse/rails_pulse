@@ -27,9 +27,9 @@ module RailsPulse
                   :capture_job_arguments,
                   :mount_dashboard,
                   :logger,
-                   :async,
-                   :service_level_objective,
-                   :query_service_level_objective
+                  :async,
+                  :service_level_objective,
+                  :query_service_level_objective
 
     def initialize
       @enabled = true
