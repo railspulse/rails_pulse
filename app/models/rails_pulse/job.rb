@@ -41,13 +41,19 @@ module RailsPulse
           ((previous_average * previous_total) + duration) / (previous_total + 1)
         end
 
-        updates = { avg_duration: new_average }
-        if run.failure_like_status?
-          updates[:failures_count] = failures_count + 1
-        end
-        if run.status == "retried"
-          updates[:retries_count] = retries_count + 1
-        end
+        recent_durations = runs.where.not(duration: nil)
+                               .order(occurred_at: :desc)
+                               .limit(100)
+                               .pluck(:duration)
+                               .sort
+
+        updates = {
+          avg_duration: new_average,
+          p95_duration: calculate_percentile(recent_durations, 0.95),
+          p99_duration: calculate_percentile(recent_durations, 0.99)
+        }
+        updates[:failures_count] = failures_count + 1 if run.failure_like_status?
+        updates[:retries_count] = retries_count + 1 if run.status == "retried"
 
         update!(updates)
       end
@@ -80,6 +86,23 @@ module RailsPulse
 
     def to_breadcrumb
       name
+    end
+
+    private
+
+    def calculate_percentile(sorted_values, percentile)
+      return 0.0 if sorted_values.empty?
+
+      n = sorted_values.length
+      index = (percentile * (n - 1)).floor
+      next_index = [ (percentile * (n - 1)).ceil, n - 1 ].min
+
+      if index == next_index
+        sorted_values[index]
+      else
+        fraction = (percentile * (n - 1)) - index
+        sorted_values[index] + (fraction * (sorted_values[next_index] - sorted_values[index]))
+      end
     end
   end
 end
