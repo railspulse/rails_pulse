@@ -40,7 +40,7 @@
     <% end %>
 
     <% if @has_data %>
-      <% if @chart_data && @chart_data[:series].present? %>
+      <% if @has_chart_data %>
         <div
           class="chart-container chart-container--slim"
           data-rails-pulse--index-target="chart"

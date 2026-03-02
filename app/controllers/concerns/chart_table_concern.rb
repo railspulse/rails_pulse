@@ -19,6 +19,7 @@ module ChartTableConcern
       # Setup chart data first using original time range (no sorting from table)
       setup_chart_data(ransack_params)
       setup_chart_formatters
+      @has_chart_data = meaningful_chart_data?
     end
 
     # Setup table data using zoom parameters if present, otherwise use chart parameters
@@ -74,6 +75,15 @@ module ChartTableConcern
 
   def group_by
     @time_diff_hours <= 25 ? :group_by_hour : :group_by_day
+  end
+
+  def meaningful_chart_data?
+    return false unless @chart_data.is_a?(Hash) && @chart_data.key?(:series)
+
+    @chart_data[:series].any? { |series|
+      !series[:name].to_s.include?("Service Level Objective") &&
+        series[:data].any? { |v| v.to_f > 0 }
+    }
   end
 
   def has_meaningful_data?
