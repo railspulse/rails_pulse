@@ -399,22 +399,19 @@ DEPENDENCIES
   minitest (>= 5.0)
   minitest-reporters
   mocha
-  mysql2
+  mysql2 (~> 0.5)
   ostruct
-  pg
+  pg (>= 1.1)
   pry-byebug
   puma
   rails-controller-testing (>= 1.0)
   rails_pulse!
-  ransack
-  request_store
   rubocop-minitest
   rubocop-rails-omakase
   selenium-webdriver
   shoulda-matchers
-  sqlite3
+  sqlite3 (>= 1.4)
   timecop
-  turbo-rails
 
 BUNDLED WITH
    2.6.2

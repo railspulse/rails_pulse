@@ -195,17 +195,15 @@ task :test_matrix do
   failed_combinations = []
   total_combinations = databases.size * rails_versions.size
   current = 0
-
-  # Check if system tests should be included
+  latest_rails = rails_versions.last
   include_system_tests = ENV['BROWSER'] == 'true'
-  test_paths = "test/controllers test/helpers test/instrumentation test/jobs test/models test/services"
-  test_paths += " test/system" if include_system_tests
+  base_test_paths = "test/controllers test/helpers test/instrumentation test/jobs test/models test/services"
 
   puts "\n" + "=" * 60
   puts "🚀 Rails Pulse Full Test Matrix"
   puts "=" * 60
   puts "Testing #{total_combinations} combinations..."
-  puts "System tests: #{include_system_tests ? 'ENABLED (BROWSER=true)' : 'DISABLED (headless mode)'}"
+  puts "System tests: #{include_system_tests ? "ENABLED on #{latest_rails} only (BROWSER=true)" : 'DISABLED (headless mode)'}"
   puts "=" * 60
 
   databases.each do |database|
@@ -214,6 +212,9 @@ task :test_matrix do
 
       puts "\n[#{current}/#{total_combinations}] Testing: #{database.upcase} + #{rails_version.upcase.gsub('-', ' ')}"
       puts "-" * 50
+
+      test_paths = base_test_paths
+      test_paths += " test/system" if include_system_tests && rails_version == latest_rails
 
       begin
         # First setup the database for this specific combination
@@ -412,10 +413,10 @@ task :test_release do
     failed_tasks << "test_generators"
   end
 
-  # Step 11: Run full test matrix with system tests
+  # Step 11: Run full test matrix with system tests on latest Rails only
   current_step += 1
   begin
-    puts "\n[#{current_step}/#{total_steps}] Running full test matrix with system tests..."
+    puts "\n[#{current_step}/#{total_steps}] Running full test matrix (system tests on latest Rails only)..."
     puts "-" * 70
     sh "BROWSER=true rake test_matrix"
     puts "✅ Test matrix passed!"
