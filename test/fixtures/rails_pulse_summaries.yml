@@ -5,8 +5,26 @@ route_summary_1:
   period_type: "hour"
   count: 150
   avg_duration: 180.5
+  p95_duration: 350.0
+  p99_duration: 520.0
   created_at: <%= 1.hour.ago %>
   updated_at: <%= 1.hour.ago %>
+
+route_summary_api_users_day:
+  summarizable: api_users (RailsPulse::Route)
+  period_start: <%= Time.current.beginning_of_day %>
+  period_end: <%= Time.current.end_of_day %>
+  period_type: "day"
+  count: 120
+  avg_duration: 2200.0
+  min_duration: 150.5
+  max_duration: 4800.0
+  p95_duration: 3800.0
+  p99_duration: 4500.0
+  error_count: 6
+  success_count: 114
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
 
 route_summary_2:
   summarizable: api_posts (RailsPulse::Route)
