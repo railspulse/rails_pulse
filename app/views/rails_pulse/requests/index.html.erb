@@ -1,14 +1,13 @@
 <%= render 'rails_pulse/components/page_header', show_active_filters: true %>
 
 <% unless turbo_frame_request? %>
-  <div class="row">
-    <% @requests_over_threshold_metric_cards.each do |card_data| %>
-      <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: card_data } %>
-    <% end %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_response_times_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @request_count_totals_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @error_rate_per_route_metric_card } %>
-  </div>
+  <% metric_cards = [
+    *@requests_over_threshold_metric_cards,
+    @percentile_response_times_metric_card,
+    @request_count_totals_metric_card,
+    @error_rate_per_route_metric_card
+  ].compact %>
+  <%= render 'rails_pulse/components/metric_strip', metrics_data: metric_cards %>
 <% end %>
 
 <%= render 'rails_pulse/components/panel', { title: 'Requests', } do %>

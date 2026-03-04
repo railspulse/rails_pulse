@@ -63,11 +63,15 @@ module RailsPulse
       end
 
       def cache_headers
-        {
-          "Cache-Control" => "public, max-age=31536000, immutable",
-          "Vary" => "Accept-Encoding",
-          "Expires" => (Time.now + 1.year).httpdate
-        }
+        if defined?(Rails) && Rails.env.development?
+          { "Cache-Control" => "no-cache, no-store, must-revalidate", "Pragma" => "no-cache" }
+        else
+          {
+            "Cache-Control" => "public, max-age=31536000, immutable",
+            "Vary" => "Accept-Encoding",
+            "Expires" => (Time.now + 1.year).httpdate
+          }
+        end
       end
 
       def log_missing_asset(path)

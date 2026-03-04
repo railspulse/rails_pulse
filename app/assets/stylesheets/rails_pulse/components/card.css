@@ -6,6 +6,100 @@
   box-shadow: var(--shadow-sm);
 }
 
+/* Metric strip — single card with vertical dividers between metrics */
+.metric-strip {
+  padding: 0;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden; /* keeps border-radius intact at edges */
+}
+
+.metric-strip__section {
+  flex: 1;
+  min-width: 0;
+  padding: var(--size-5) var(--size-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-2);
+}
+
+.metric-strip__section + .metric-strip__section {
+  border-left: 1px solid var(--color-border);
+}
+
+.metric-strip__title {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.metric-strip__chart {
+  width: 100%;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.metric-strip__trend {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.metric-strip__trend-badge {
+  flex-shrink: 0;
+}
+
+.metric-strip__trend-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+/* 2-column grid on tablet */
+@media (max-width: 768px) {
+  .metric-strip {
+    flex-wrap: wrap;
+  }
+
+  .metric-strip__section {
+    flex: 0 0 50%;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+    box-sizing: border-box;
+  }
+
+  .metric-strip__section:nth-child(1),
+  .metric-strip__section:nth-child(2) {
+    border-top: none;
+  }
+
+  .metric-strip__section:nth-child(odd) {
+    border-right: 1px solid var(--color-border);
+  }
+
+  /* Orphan last item goes full width with no right border */
+  .metric-strip__section:last-child:nth-child(odd) {
+    flex: 0 0 100%;
+    border-right: none;
+  }
+}
+
+/* Single column on small screens */
+@media (max-width: 480px) {
+  .metric-strip__section {
+    flex: 0 0 100%;
+    border-right: none;
+    border-left: none;
+    border-top: 1px solid var(--color-border);
+  }
+
+  .metric-strip__section:nth-child(1) {
+    border-top: none;
+  }
+}
+
 .card-selectable {
   background-color: var(--color-bg);
   border-radius: var(--rounded-xl);

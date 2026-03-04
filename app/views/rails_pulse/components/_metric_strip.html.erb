@@ -1,0 +1,40 @@
+<%
+  metrics_data ||= []
+%>
+<div class="card metric-strip">
+  <% metrics_data.each do |data| %>
+    <%
+      trend_icon = data[:trend_icon]
+      chart_color = case trend_icon
+      when "trending-up"   then "#dc2626"
+      when "trending-down" then "#16a34a"
+      else                      "#ffc91f"
+      end
+
+      chart_options = sparkline_chart_options.deep_merge(
+        color: [chart_color],
+        series: { itemStyle: { color: chart_color } }
+      )
+
+      badge = case trend_icon
+      when "trending-up"   then "badge--negative-inverse"
+      when "trending-down" then "badge--positive-inverse"
+      else                      "badge--primary-inverse"
+      end
+    %>
+    <div class="metric-strip__section">
+      <h2 class="metric-strip__title font-semibold uppercase text-xs" title="<%= data[:title] %>"><%= data[:title] %></h2>
+      <h4 class="text-xl font-bold"><%= data[:summary] %></h4>
+      <div class="metric-strip__chart">
+        <%= render_stimulus_chart data[:chart_data], type: 'bar', height: "100%", options: chart_options %>
+      </div>
+      <div class="metric-strip__trend">
+        <span class="badge <%= badge %> badge--trend metric-strip__trend-badge p-0">
+          <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
+          <span class="badge__trend-amount"><%= data[:trend_amount] %></span>
+        </span>
+        <p class="metric-strip__trend-label mis-2 text-subtle text-xs" title="Week over week">Week over week</p>
+      </div>
+    </div>
+  <% end %>
+</div>

@@ -58,7 +58,7 @@ module RailsPulse
           {
             id: "percentile_response_times",
             context: "routes",
-            title: "95th Percentile Response Time",
+            title: "P95 Response Time",
             summary: "#{p95_response_time} ms",
             chart_data: sparkline_data,
             trend_icon: trend_icon,

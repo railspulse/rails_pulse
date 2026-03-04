@@ -47,8 +47,9 @@
       flex: none;
   }
 
-  /* Tables should stack in single column on mobile */
-  .row:has(.table-container) > * {
+  /* Tables and chart panels should stack in single column on tablet */
+  .row:has(.table-container) > *,
+  .row:has(.chart-container) > * {
       flex: 0 0 100%;
   }
 
