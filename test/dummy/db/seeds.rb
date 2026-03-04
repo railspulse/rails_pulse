@@ -219,34 +219,33 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
     end
     occurred_at = rand(5.weeks.ago..Time.current)
 
-    # Determine performance characteristics based on route (web app durations)
+    # Determine performance characteristics based on route (well-running app)
     base_duration = case route.path
     when "/"
-      rand(80..250)   # Homepage with multiple queries
+      rand(45..110)   # Homepage — fast with good caching and indexes
     when "/fast"
-      rand(15..45)    # Fast endpoint
+      rand(5..18)     # Optimised endpoint, minimal queries
     when "/slow"
-      rand(450..1800) # Slow endpoint with complex queries
+      rand(190..460)  # Known slow endpoint — complex report, shown for monitoring value
     when "/error_prone"
-      rand(35..800)   # Variable performance
+      rand(20..90)    # Variable but not terrible
     when "/search"
-      rand(85..350)   # Search varies by complexity
+      rand(50..160)   # Search with proper indexes
     when "/api_simple"
-      rand(25..75)    # Simple API
+      rand(8..28)     # Lightweight API
     when "/api_complex"
-      rand(250..900)  # Complex API with aggregations
+      rand(90..220)   # Complex API, well optimised
     else
-      # Handle long paths with specific performance characteristics to ensure display on dashboard
       if route.path.include?("/rails/active_storage/")
-        rand(300..800)  # Active Storage operations can be slow
+        rand(70..180)   # Active Storage, good CDN setup
       elsif route.path.include?("/api/v2/organizations/")
-        rand(150..400)  # Complex nested API operations
+        rand(60..160)   # Nested API, solid query plan
       elsif route.path.include?("/webhooks/")
-        rand(200..600)  # Webhook processing
+        rand(35..110)   # Webhook processing
       elsif route.path.include?("/admin/system/configuration/")
-        rand(400..1200) # Admin configuration operations
+        rand(110..280)  # Admin config — heavier but not on the critical path
       else
-        rand(35..250)   # Standard CRUD operations
+        rand(15..65)    # Standard CRUD
       end
     end
 
@@ -254,17 +253,17 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
     duration = base_duration + rand(-base_duration * 0.3..base_duration * 0.5)
     duration = [ duration, 10 ].max # Minimum 10ms
 
-    # Apply 50% slowdown during the performance issue period
+    # 3× slowdown during the performance incident — creates a visible but short-lived spike
     if occurred_at >= slowdown_start && occurred_at <= slowdown_end
-      duration *= 1.5
+      duration *= 3.0
     end
 
     # Determine if this is an error (higher chance for error_prone route)
     is_error = case route.path
     when "/error_prone"
-      rand < 0.15 # 15% error rate
+      rand < 0.04 # 4% error rate — flaky but not broken
     else
-      rand < 0.02 # 2% error rate for other routes
+      rand < 0.005 # 0.5% error rate for healthy routes
     end
 
     status = if is_error
@@ -307,11 +306,11 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
 
       operation_duration = case operation_type
       when "sql"
-        rand(5..200) # 5ms to 200ms for SQL
+        rand(1..35) # Fast queries — well-indexed, proper limits
       when "template"
-        rand(10..100) # 10ms to 100ms for rendering
+        rand(5..40)  # Lean templates
       when "controller"
-        duration # Controller time is total time
+        duration     # Controller time is total request time
       end
 
       # Assign query for SQL operations - bias towards complex queries for more interesting analysis
@@ -478,81 +477,81 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
     {
       name: "UserMailerJob",
       queue_name: "mailers",
-      base_duration: 150,
-      variance: 100,
-      error_rate: 0.02,
+      base_duration: 80,
+      variance: 40,
+      error_rate: 0.01,   # 1% — reliable mailer
       runs_per_day: 50
     },
     {
       name: "DataExportJob",
       queue_name: "default",
-      base_duration: 2500,
-      variance: 1500,
-      error_rate: 0.08,
+      base_duration: 1200,
+      variance: 500,
+      error_rate: 0.03,   # 3% — occasional data issues
       runs_per_day: 12
     },
     {
       name: "ImageProcessingJob",
       queue_name: "media",
-      base_duration: 800,
-      variance: 400,
-      error_rate: 0.05,
+      base_duration: 500,
+      variance: 200,
+      error_rate: 0.02,   # 2% — rare corrupt uploads
       runs_per_day: 35
     },
     {
       name: "ReportGeneratorJob",
       queue_name: "reports",
-      base_duration: 5000,
-      variance: 3000,
-      error_rate: 0.10,
+      base_duration: 3000,
+      variance: 1200,
+      error_rate: 0.03,   # 3% — occasional timeout on large datasets
       runs_per_day: 8
     },
     {
       name: "CacheWarmingJob",
       queue_name: "default",
-      base_duration: 450,
-      variance: 200,
-      error_rate: 0.01,
+      base_duration: 250,
+      variance: 80,
+      error_rate: 0.005,  # 0.5% — very reliable
       runs_per_day: 100
     },
     {
       name: "CleanupJob",
       queue_name: "maintenance",
-      base_duration: 1200,
-      variance: 600,
-      error_rate: 0.03,
+      base_duration: 800,
+      variance: 300,
+      error_rate: 0.01,   # 1% — stable maintenance job
       runs_per_day: 4
     },
     {
       name: "NotificationJob",
       queue_name: "notifications",
-      base_duration: 200,
-      variance: 150,
-      error_rate: 0.04,
+      base_duration: 100,
+      variance: 50,
+      error_rate: 0.02,   # 2% — push/email delivery failures
       runs_per_day: 80
     },
     {
       name: "AnalyticsJob",
       queue_name: "analytics",
-      base_duration: 3500,
-      variance: 2000,
-      error_rate: 0.06,
+      base_duration: 2000,
+      variance: 700,
+      error_rate: 0.02,   # 2% — well-tuned queries
       runs_per_day: 6
     },
     {
       name: "WebhookDeliveryJob",
       queue_name: "webhooks",
-      base_duration: 350,
-      variance: 250,
-      error_rate: 0.15,
+      base_duration: 180,
+      variance: 100,
+      error_rate: 0.05,   # 5% — third-party endpoints occasionally fail
       runs_per_day: 45
     },
     {
       name: "ImportJob",
       queue_name: "imports",
-      base_duration: 8000,
-      variance: 5000,
-      error_rate: 0.12,
+      base_duration: 4000,
+      variance: 1500,
+      error_rate: 0.04,   # 4% — bad input data occasionally
       runs_per_day: 3
     }
   ]
@@ -684,11 +683,11 @@ if ENV["GENERATE_HISTORICAL_DATA"] == "true"
 
           operation_duration = case operation_type
           when "sql"
-            rand(10..300)
+            rand(2..50)
           when "template"
-            rand(50..150)
+            rand(10..60)
           when "controller"
-            rand(20..100)
+            rand(10..50)
           end
 
           # Assign query for SQL operations

@@ -39,6 +39,20 @@
   flex-shrink: 0;
 }
 
+.metric-strip__all-clear {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
+  color: #10b981;
+  font-size: var(--text-sm);
+}
+
+.metric-strip__all-clear-icon {
+  color: #10b981;
+  flex-shrink: 0;
+}
+
 .metric-strip__trend {
   display: flex;
   align-items: center;

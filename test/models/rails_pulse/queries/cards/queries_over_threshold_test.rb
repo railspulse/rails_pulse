@@ -95,7 +95,7 @@ module RailsPulse
           RailsPulse.configuration.query_service_level_objectives = [ { percentile: 95, threshold: 100 } ]
           threshold = 100
 
-          # Previous week: 50% over threshold (p50 = threshold)
+          # Previous week: p95 above threshold — all traffic failing SLO
           7.times do |i|
             period_start = (@now - (i + 7).days).beginning_of_day
             RailsPulse::Summary.create!(
@@ -104,14 +104,14 @@ module RailsPulse
               period_start: period_start,
               period_end: period_start.end_of_day,
               count: 100,
-              p50_duration: threshold,
+              p50_duration: threshold * 0.6,
               p95_duration: threshold * 1.5,
               p99_duration: threshold * 2.0,
               avg_duration: threshold * 0.8
             )
           end
 
-          # Current week: Only 25% over threshold (p50 below threshold)
+          # Current week: p95 below threshold — no traffic failing SLO
           7.times do |i|
             period_start = (@now - i.days).beginning_of_day
             RailsPulse::Summary.create!(
@@ -120,10 +120,10 @@ module RailsPulse
               period_start: period_start,
               period_end: period_start.end_of_day,
               count: 100,
-              p50_duration: threshold * 0.8,
-              p95_duration: threshold * 1.1,
-              p99_duration: threshold * 1.3,
-              avg_duration: threshold * 0.6
+              p50_duration: threshold * 0.4,
+              p95_duration: threshold * 0.8,
+              p99_duration: threshold * 0.9,
+              avg_duration: threshold * 0.5
             )
           end
 

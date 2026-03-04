@@ -20,10 +20,17 @@
     %>
     <div class="metric-strip__section">
       <h2 class="metric-strip__title font-semibold uppercase text-xs" title="<%= data[:title] %>"><%= data[:title] %></h2>
-      <h4 class="text-xl font-bold"><%= data[:summary] %></h4>
-      <div class="metric-strip__chart">
-        <%= render_stimulus_chart data[:chart_data], type: 'bar', height: "100%", options: chart_options %>
-      </div>
+      <% if data[:all_clear] %>
+        <div class="metric-strip__all-clear">
+          <%= rails_pulse_icon "shield-check", height: "18px", width: "18px", class: "metric-strip__all-clear-icon" %>
+          <span class="font-semibold">Under SLO</span>
+        </div>
+      <% else %>
+        <h4 class="text-xl font-bold"><%= data[:summary] %></h4>
+        <div class="metric-strip__chart">
+          <%= render_stimulus_chart data[:chart_data], type: 'bar', height: "100%", options: chart_options %>
+        </div>
+      <% end %>
       <div class="metric-strip__trend">
         <span class="badge <%= badge %> badge--trend metric-strip__trend-badge p-0">
           <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>

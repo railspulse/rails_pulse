@@ -65,7 +65,7 @@ module RailsPulse
           p95_series = data[:series].find { |s| s[:name] == "P95" }
 
           assert_equal "line", p95_series[:type]
-          assert_equal "#10b981", p95_series[:color]
+          assert_equal RailsPulse::ChartColors::P95, p95_series[:color]
           assert_kind_of Array, p95_series[:data]
         end
 
@@ -160,7 +160,7 @@ module RailsPulse
           assert_equal 2, slo_series.length
           p95_slo = slo_series.find { |s| s[:name].include?("P95") }
           p99_slo = slo_series.find { |s| s[:name].include?("P99") }
-          assert_equal "#10b981", p95_slo[:color]
+          assert_equal RailsPulse::ChartColors::P95, p95_slo[:color]
           assert_equal "#3b82f6", p99_slo[:color]
         ensure
           RailsPulse.configuration.query_service_level_objectives = original_config
