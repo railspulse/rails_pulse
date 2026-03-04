@@ -49,6 +49,7 @@ module RailsPulse
 
           {
             id: "jobs_failure_rate",
+            chart_color: RailsPulse::ChartColors::DEFAULT,
             context: "jobs",
             title: "Failure Rate",
             summary: "#{format_percentage(failure_rate, 1)}",

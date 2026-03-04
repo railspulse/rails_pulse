@@ -57,6 +57,7 @@ module RailsPulse
 
           {
             id: "percentile_response_times",
+            chart_color: RailsPulse::ChartColors::P95,
             context: "routes",
             title: "P95 Response Time",
             summary: "#{p95_response_time} ms",

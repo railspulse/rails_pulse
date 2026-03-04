@@ -79,6 +79,7 @@ module RailsPulse
             title: "P#{percentile} #{base_card_title}",
             summary: "#{overall_percentage}%",
             chart_data: sparkline_data,
+            chart_color: percentile == 95 ? RailsPulse::ChartColors::P95 : RailsPulse::ChartColors::P99,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: "Compared to last week"

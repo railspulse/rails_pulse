@@ -61,7 +61,7 @@ module RailsPulse
             name: "P95",
             data: p95_data,
             type: "line",
-            color: "#10b981"  # green
+            color: RailsPulse::ChartColors::P95
           }
 
           # Add P99 series (blue)
@@ -70,13 +70,13 @@ module RailsPulse
             name: "P99",
             data: p99_data,
             type: "line",
-            color: "#3b82f6"  # blue
+            color: RailsPulse::ChartColors::P99
           }
 
           # Add Service Level Objective series if configured
           slo_configs = RailsPulse.configuration.service_level_objectives
           slo_configs.each do |slo|
-            color = slo[:percentile] == 95 ? "#10b981" : "#3b82f6"
+            color = slo[:percentile] == 95 ? RailsPulse::ChartColors::P95 : RailsPulse::ChartColors::P99
             series.unshift({
               name: "P#{slo[:percentile]} SLO (#{slo[:threshold]}ms)",
               data: Array.new(labels.length, slo[:threshold]),

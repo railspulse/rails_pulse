@@ -69,6 +69,7 @@ module RailsPulse
 
           {
             id: "request_count_totals",
+            chart_color: RailsPulse::ChartColors::DEFAULT,
             context: "routes",
             title: "Request Count Total",
             summary: summary,

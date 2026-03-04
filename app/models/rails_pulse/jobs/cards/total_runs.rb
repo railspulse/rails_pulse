@@ -33,6 +33,7 @@ module RailsPulse
 
           {
             id: "jobs_total_runs",
+            chart_color: RailsPulse::ChartColors::DEFAULT,
             context: "jobs",
             title: "Job Runs",
             summary: "#{format_number(total_runs)} runs",

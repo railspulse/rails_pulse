@@ -60,6 +60,7 @@ module RailsPulse
 
           {
             id: "error_rate_per_route",
+            chart_color: RailsPulse::ChartColors::DEFAULT,
             context: "routes",
             title: "Error Rate Per Route",
             summary: "#{overall_error_rate}%",

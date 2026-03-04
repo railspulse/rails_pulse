@@ -5,11 +5,7 @@
   <% metrics_data.each do |data| %>
     <%
       trend_icon = data[:trend_icon]
-      chart_color = case trend_icon
-      when "trending-up"   then "#dc2626"
-      when "trending-down" then "#16a34a"
-      else                      "#ffc91f"
-      end
+      chart_color = data[:chart_color] || RailsPulse::ChartColors::DEFAULT
 
       chart_options = sparkline_chart_options.deep_merge(
         color: [chart_color],

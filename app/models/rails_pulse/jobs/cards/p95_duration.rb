@@ -49,6 +49,7 @@ module RailsPulse
 
           {
             id: "jobs_p95_duration",
+            chart_color: RailsPulse::ChartColors::P95,
             context: "jobs",
             title: "95th Percentile Duration",
             summary: format_duration(p95_duration),

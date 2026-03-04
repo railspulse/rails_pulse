@@ -57,6 +57,7 @@ module RailsPulse
 
           {
             id: "percentile_query_times",
+            chart_color: RailsPulse::ChartColors::P95,
             context: "queries",
             title: "95th Percentile Query Time",
             summary: "#{p95_query_time} ms",

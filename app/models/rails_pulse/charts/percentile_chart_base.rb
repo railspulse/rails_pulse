@@ -71,7 +71,7 @@ module RailsPulse
           name: "P95",
           data: p95_data,
           type: "line",
-          color: "#10b981"  # green
+          color: RailsPulse::ChartColors::P95
         }
 
         p99_data = daily_data.values.map { |data| data[:p99] }
@@ -79,12 +79,12 @@ module RailsPulse
           name: "P99",
           data: p99_data,
           type: "line",
-          color: "#3b82f6"  # blue
+          color: RailsPulse::ChartColors::P99
         }
 
         slo_configs = RailsPulse.configuration.public_send(slo_config_key)
         slo_configs.each do |slo|
-          color = slo[:percentile] == 95 ? "#10b981" : "#3b82f6"
+          color = slo[:percentile] == 95 ? RailsPulse::ChartColors::P95 : RailsPulse::ChartColors::P99
           series.unshift({
             name: "P#{slo[:percentile]} SLO (#{slo[:threshold]}ms)",
             data: Array.new(labels.length, slo[:threshold]),
