@@ -12,7 +12,8 @@ export default class extends Controller {
   pendingRequestTimeout = null;
   pendingRequestData = null;
   selectedColumnIndex = null;
-  originalSeriesOption = null;
+  zrClickHandler = null;
+  highlightBarName = '__rp_col_bg__';
 
   connect() {
     // Listen for the custom event 'stimulus:echarts:rendered' to set up the chart.
@@ -32,6 +33,16 @@ export default class extends Controller {
       this.chartTarget.removeEventListener('mouseup', this.handleChartMouseUp);
     }
     document.removeEventListener('mouseup', this.handleDocumentMouseUp);
+
+    // Remove ZRender handlers
+    try {
+      if (this.chart && this.zrClickHandler) {
+        this.chart.getZr().off('click', this.zrClickHandler)
+      }
+      if (this.chart && this.zrMouseMoveHandler) {
+        this.chart.getZr().off('mousemove', this.zrMouseMoveHandler)
+      }
+    } catch (e) { /* chart may already be disposed */ }
 
     // Clear any pending timeout
     if (this.pendingRequestTimeout) {
@@ -69,8 +80,8 @@ export default class extends Controller {
 
     this.visibleData = this.getVisibleData();
 
-    // Store the original series configuration BEFORE any modifications
-    this.storeOriginalSeriesOption();
+    // Add the dedicated background-highlight bar series before setting up listeners
+    this.setupHighlightSeries();
 
     this.setupChartEventListeners();
     this.setupDone = true;
@@ -110,10 +121,34 @@ export default class extends Controller {
     };
     document.addEventListener('mouseup', this.handleDocumentMouseUp);
 
-    // Add click event handler for bar chart columns
-    this.chart.on('click', (params) => {
-      this.handleColumnClick(params);
-    });
+    // Use ZRender (the underlying canvas renderer) to catch clicks anywhere in the
+    // chart grid — not just on data point markers — then map the pixel position back
+    // to an x-axis category index so any click in a column triggers filtering.
+    this.zrClickHandler = (params) => {
+      const dataCoord = this.chart.convertFromPixel(
+        { seriesIndex: 0 },
+        [params.offsetX, params.offsetY]
+      )
+      if (!dataCoord) return // click was outside the grid area
+
+      const dataIndex = Math.round(dataCoord[0])
+      const option = this.chart.getOption()
+      if (!option.xAxis?.[0]?.data) return
+      if (dataIndex < 0 || dataIndex >= option.xAxis[0].data.length) return
+
+      this.handleColumnClick({ dataIndex })
+    }
+    this.chart.getZr().on('click', this.zrClickHandler)
+
+    // Show a pointer cursor when hovering over the clickable grid area.
+    this.zrMouseMoveHandler = (params) => {
+      const dataCoord = this.chart.convertFromPixel(
+        { seriesIndex: 0 },
+        [params.offsetX, params.offsetY]
+      )
+      this.chart.getZr().setCursorStyle(dataCoord ? 'pointer' : 'default')
+    }
+    this.chart.getZr().on('mousemove', this.zrMouseMoveHandler)
   }
 
   // This returns the visible data from the chart based on the current zoom level.
@@ -343,83 +378,79 @@ export default class extends Controller {
     }
   }
 
-  highlightColumn(selectedIndex) {
+  // Add a bar series on a hidden secondary y-axis (range 0–1) to use as a column
+  // background highlight. markArea on a category axis with timestamp data is
+  // unreliable — it looks up values rather than treating integers as indices, so a
+  // dedicated bar series is the only dependable approach.
+  setupHighlightSeries() {
     try {
-      const option = this.chart.getOption();
-      if (!option.series || !option.series[0] || !option.series[0].data) {
-        return;
-      }
-
-      const seriesData = option.series[0].data;
-
-      // Instead of changing data structure, modify the series itemStyle
-      const currentOption = this.chart.getOption();
-
-      // Get the default color from the chart theme
-      const defaultColor = currentOption.color?.[0] || '#5470c6'; // ECharts default blue
+      const option = this.chart.getOption()
+      const xAxisLength = option.xAxis?.[0]?.data?.length || 0
+      const existingYAxes = Array.isArray(option.yAxis) ? option.yAxis : [option.yAxis || {}]
 
       this.chart.setOption({
-        series: [{
-          data: seriesData, // Keep original data format for tooltips
-          itemStyle: {
-            color: (params) => {
-              return params.dataIndex === selectedIndex ? defaultColor : '#cccccc';
-            }
+        yAxis: [
+          ...existingYAxes,
+          // Hidden secondary axis: bar value of 1 = full chart height
+          { show: false, position: 'right', min: 0, max: 1 }
+        ],
+        series: [
+          ...(option.series || []),
+          {
+            name: this.highlightBarName,
+            type: 'bar',
+            yAxisIndex: existingYAxes.length,
+            barWidth: '100%',
+            itemStyle: { color: 'rgba(0, 0, 0, 0)', borderWidth: 0 },
+            data: Array(xAxisLength).fill(null),
+            silent: true,
+            z: 0,
+            animation: false,
+            legendHoverLink: false,
+            tooltip: { show: false }
           }
-        }]
-      });
+        ]
+      })
     } catch (error) {
-      console.error('Error highlighting column:', error);
+      console.error('Error setting up highlight series:', error)
     }
   }
 
-  storeOriginalSeriesOption() {
+  highlightColumn(selectedIndex) {
     try {
-      const option = this.chart.getOption();
-      if (option.series && option.series[0]) {
-        // Deep clone the original series configuration to restore later
-        const originalSeries = JSON.parse(JSON.stringify(option.series[0]));
+      const option = this.chart.getOption()
+      const xAxisLength = option.xAxis?.[0]?.data?.length
+      if (!xAxisLength || selectedIndex < 0 || selectedIndex >= xAxisLength) return
 
-        // Ensure we don't store any column selection modifications
-        // Remove any custom itemStyle that might have color functions
-        if (originalSeries.itemStyle && typeof originalSeries.itemStyle.color === 'function') {
-          delete originalSeries.itemStyle.color;
-        }
+      const barData = Array(xAxisLength).fill(null)
+      barData[selectedIndex] = 1
 
-        this.originalSeriesOption = originalSeries;
-      }
+      this.chart.setOption({
+        series: option.series.map(s =>
+          s.name === this.highlightBarName
+            ? { itemStyle: { color: 'rgba(128, 128, 128, 0.2)', borderWidth: 0 }, data: barData }
+            : {}
+        )
+      })
     } catch (error) {
-      console.error('Error storing original series option:', error);
+      console.error('Error highlighting column:', error)
     }
   }
 
   resetColumnColors() {
     try {
-      if (!this.originalSeriesOption) {
-        console.warn('No original series option stored, cannot reset properly');
-        return;
-      }
-
-      const option = this.chart.getOption();
-      const seriesData = option.series[0].data;
-
-      // Restore original series configuration but keep current data
-      const restoredOption = {
-        ...this.originalSeriesOption,
-        data: seriesData // Keep current data to preserve tooltips
-      };
-
-      // Explicitly set color back to default yellow theme color
-      if (!restoredOption.itemStyle) {
-        restoredOption.itemStyle = {};
-      }
-      restoredOption.itemStyle.color = '#ffc91f'; // Default yellow from railspulse theme
+      const option = this.chart.getOption()
+      const xAxisLength = option.xAxis?.[0]?.data?.length || 0
 
       this.chart.setOption({
-        series: [restoredOption]
-      }, false); // Use replace mode to ensure clean state
+        series: option.series.map(s =>
+          s.name === this.highlightBarName
+            ? { itemStyle: { color: 'rgba(0, 0, 0, 0)', borderWidth: 0 }, data: Array(xAxisLength).fill(null) }
+            : {}
+        )
+      })
     } catch (error) {
-      console.error('Error resetting column colors:', error);
+      console.error('Error resetting column highlight:', error)
     }
   }
 
