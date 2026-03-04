@@ -2,8 +2,8 @@
 
 <% unless turbo_frame_request? %>
   <div class="row">
-    <% if @requests_over_threshold_metric_card.present? %>
-      <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @requests_over_threshold_metric_card } %>
+    <% @requests_over_threshold_metric_cards.each do |card_data| %>
+      <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: card_data } %>
     <% end %>
     <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_response_times_metric_card } %>
     <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @request_count_totals_metric_card } %>

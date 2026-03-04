@@ -16,33 +16,55 @@ module RailsPulse
           @now = Time.current
         end
 
-        test "returns nil when service_level_objective is not configured" do
-          original_config = RailsPulse.configuration.service_level_objective
-          RailsPulse.configuration.service_level_objective = nil
+        test "returns empty array when service_level_objectives is not configured" do
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = []
 
-          result = @card.to_metric_card
+          result = @card.to_metric_cards
 
-          assert_nil result
+          assert_equal [], result
         ensure
-          RailsPulse.configuration.service_level_objective = original_config
+          RailsPulse.configuration.service_level_objectives = original_config
         end
 
-        test "returns metric card when service_level_objective is configured" do
-          result = @card.to_metric_card
+        test "returns metric cards when service_level_objectives is configured" do
+          result = @card.to_metric_cards
 
-          assert_kind_of Hash, result
-          assert_equal "requests_over_threshold", result[:id]
-          assert_equal "routes", result[:context]
-          assert_equal "Requests Over Threshold", result[:title]
-          assert result.key?(:summary)
-          assert result.key?(:chart_data)
-          assert result.key?(:trend_icon)
-          assert result.key?(:trend_amount)
-          assert result.key?(:trend_text)
+          assert_kind_of Array, result
+          assert_not_empty result
+          result.each do |card|
+            assert_kind_of Hash, card
+            assert_match(/requests_over_threshold_p\d+/, card[:id])
+            assert_equal "routes", card[:context]
+            assert_match(/P\d+ Requests Over Threshold/, card[:title])
+            assert card.key?(:summary)
+            assert card.key?(:chart_data)
+            assert card.key?(:trend_icon)
+            assert card.key?(:trend_amount)
+            assert card.key?(:trend_text)
+          end
+        end
+
+        test "returns one card per configured SLO" do
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [
+            { percentile: 95, threshold: 200 },
+            { percentile: 99, threshold: 500 }
+          ]
+
+          result = @card.to_metric_cards
+
+          assert_equal 2, result.length
+          assert_equal "requests_over_threshold_p95", result[0][:id]
+          assert_equal "P95 Requests Over Threshold", result[0][:title]
+          assert_equal "requests_over_threshold_p99", result[1][:id]
+          assert_equal "P99 Requests Over Threshold", result[1][:title]
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
         end
 
         test "calculates percentage over threshold from summary data" do
-          threshold = RailsPulse.configuration.service_level_objective[:threshold]
+          threshold = RailsPulse.configuration.service_level_objectives.first[:threshold]
 
           7.times do |i|
             period_start = (@now - i.days).beginning_of_day
@@ -59,14 +81,19 @@ module RailsPulse
             )
           end
 
-          result = @card.to_metric_card
+          result = @card.to_metric_cards
 
-          assert_predicate result[:summary], :present?
-          assert_match(/\d+\.?\d*%/, result[:summary])
+          assert_not_empty result
+          result.each do |card|
+            assert_predicate card[:summary], :present?
+            assert_match(/\d+\.?\d*%/, card[:summary])
+          end
         end
 
         test "compares current week vs previous week for trend" do
-          threshold = RailsPulse.configuration.service_level_objective[:threshold]
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [ { percentile: 95, threshold: 500 } ]
+          threshold = 500
 
           # Previous week: 50% over threshold (p50 = threshold)
           7.times do |i|
@@ -100,14 +127,17 @@ module RailsPulse
             )
           end
 
-          result = @card.to_metric_card
+          result = @card.to_metric_cards
 
-          assert_equal "trending-down", result[:trend_icon]
-          assert_predicate result[:trend_amount], :present?
+          assert_equal 1, result.length
+          assert_equal "trending-down", result.first[:trend_icon]
+          assert_predicate result.first[:trend_amount], :present?
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
         end
 
         test "generates sparkline data for last 14 days" do
-          threshold = RailsPulse.configuration.service_level_objective[:threshold]
+          threshold = RailsPulse.configuration.service_level_objectives.first[:threshold]
 
           14.times do |i|
             period_start = (@now - i.days).beginning_of_day
@@ -124,25 +154,31 @@ module RailsPulse
             )
           end
 
-          result = @card.to_metric_card
+          result = @card.to_metric_cards
 
-          assert_kind_of Hash, result[:chart_data]
-          assert_operator result[:chart_data].keys.size, :>=, 14
-          assert result[:chart_data].values.all? { |v| v.key?(:value) }
+          assert_not_empty result
+          result.each do |card|
+            assert_kind_of Hash, card[:chart_data]
+            assert_operator card[:chart_data].keys.size, :>=, 14
+            assert card[:chart_data].values.all? { |v| v.key?(:value) }
+          end
         end
 
         test "handles empty data gracefully" do
           RailsPulse::Summary.where(summarizable: @route, summarizable_type: "RailsPulse::Route").delete_all
 
-          result = @card.to_metric_card
+          result = @card.to_metric_cards
 
-          assert_equal "0%", result[:summary]
-          assert_equal "move-right", result[:trend_icon]
-          assert_equal "0%", result[:trend_amount]
+          assert_not_empty result
+          result.each do |card|
+            assert_equal "0%", card[:summary]
+            assert_equal "move-right", card[:trend_icon]
+            assert_equal "0%", card[:trend_amount]
+          end
         end
 
         test "calculates for all routes when route is nil (index page)" do
-          threshold = RailsPulse.configuration.service_level_objective[:threshold]
+          threshold = RailsPulse.configuration.service_level_objectives.first[:threshold]
 
           RailsPulse::Summary.where(summarizable: [ @route, @route2 ], summarizable_type: "RailsPulse::Route").delete_all
 
@@ -172,11 +208,153 @@ module RailsPulse
             )
           end
 
-          result = @index_card.to_metric_card
+          result = @index_card.to_metric_cards
 
-          assert_kind_of Hash, result
-          assert_equal "requests_over_threshold", result[:id]
-          assert_predicate result[:summary], :present?
+          assert_kind_of Array, result
+          assert_not_empty result
+          result.each do |card|
+            assert_match(/requests_over_threshold_p\d+/, card[:id])
+            assert_predicate card[:summary], :present?
+          end
+        end
+
+        # Division-by-zero guard tests
+
+        test "handles p95_duration equal to p50_duration without error" do
+          threshold = 300
+
+          RailsPulse::Summary.create!(
+            summarizable: @route,
+            period_type: "day",
+            period_start: @now.beginning_of_day,
+            period_end: @now.end_of_day,
+            count: 100,
+            p50_duration: 400,
+            p95_duration: 400,  # equal to p50 — division by zero guard
+            p99_duration: 600,
+            avg_duration: 350
+          )
+
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [ { percentile: 95, threshold: threshold } ]
+
+          result = @card.to_metric_cards
+
+          assert_not_empty result
+          assert_match(/\d+\.?\d*%/, result.first[:summary])
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
+        end
+
+        test "handles p99_duration equal to p95_duration without error" do
+          threshold = 450
+
+          RailsPulse::Summary.create!(
+            summarizable: @route,
+            period_type: "day",
+            period_start: @now.beginning_of_day,
+            period_end: @now.end_of_day,
+            count: 100,
+            p50_duration: 300,
+            p95_duration: 500,
+            p99_duration: 500,  # equal to p95 — division by zero guard
+            avg_duration: 350
+          )
+
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [ { percentile: 99, threshold: threshold } ]
+
+          result = @card.to_metric_cards
+
+          assert_not_empty result
+          assert_match(/\d+\.?\d*%/, result.first[:summary])
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
+        end
+
+        test "handles max_duration equal to p99_duration without error" do
+          threshold = 600
+
+          RailsPulse::Summary.create!(
+            summarizable: @route,
+            period_type: "day",
+            period_start: @now.beginning_of_day,
+            period_end: @now.end_of_day,
+            count: 100,
+            p50_duration: 200,
+            p95_duration: 400,
+            p99_duration: 500,
+            max_duration: 500,  # equal to p99 — no requests above threshold
+            avg_duration: 300
+          )
+
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [ { percentile: 99, threshold: threshold } ]
+
+          result = @card.to_metric_cards
+
+          assert_not_empty result
+          assert_equal "0.0%", result.first[:summary]
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
+        end
+
+        test "returns zero (not negative) when max_duration is between p99 and threshold" do
+          # Bug scenario: p99 < max_duration < threshold
+          # Previously produced negative ratio and negative count
+          threshold = 600
+
+          RailsPulse::Summary.create!(
+            summarizable: @route,
+            period_type: "day",
+            period_start: @now.beginning_of_day,
+            period_end: @now.end_of_day,
+            count: 100,
+            p50_duration: 200,
+            p95_duration: 400,
+            p99_duration: 500,
+            max_duration: 550,  # between p99 (500) and threshold (600)
+            avg_duration: 300
+          )
+
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [ { percentile: 99, threshold: threshold } ]
+
+          result = @card.to_metric_cards
+
+          assert_not_empty result
+          percentage = result.first[:summary].to_f
+          assert_operator percentage, :>=, 0, "Percentage should not be negative"
+          assert_equal "0.0%", result.first[:summary]
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
+        end
+
+        test "handles all percentiles at zero without error" do
+          threshold = 100
+
+          RailsPulse::Summary.create!(
+            summarizable: @route,
+            period_type: "day",
+            period_start: @now.beginning_of_day,
+            period_end: @now.end_of_day,
+            count: 100,
+            p50_duration: 0,
+            p95_duration: 0,
+            p99_duration: 0,
+            max_duration: 0,
+            avg_duration: 0
+          )
+
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [ { percentile: 95, threshold: threshold } ]
+
+          result = @card.to_metric_cards
+
+          assert_not_empty result
+          assert_match(/\d+\.?\d*%/, result.first[:summary])
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
         end
       end
     end

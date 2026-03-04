@@ -8,11 +8,11 @@ module RailsPulse
 
         private
 
-        def slo_config_key = :query_service_level_objective
+        def slo_config_key = :query_service_level_objectives
         def summarizable_type = "RailsPulse::Query"
-        def card_id = "queries_over_threshold"
+        def base_card_id = "queries_over_threshold"
+        def base_card_title = "Queries Over Threshold"
         def card_context = "queries"
-        def card_title = "Queries Over Threshold"
       end
     end
   end

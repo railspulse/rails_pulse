@@ -60,8 +60,8 @@ module RailsPulse
               "rails_pulse_routes.tags",
               "AVG(rails_pulse_summaries.avg_duration) as avg_duration",
               "MAX(rails_pulse_summaries.max_duration) as max_duration",
-              "AVG(rails_pulse_summaries.p95_duration) as p95_duration",
-              "AVG(rails_pulse_summaries.p99_duration) as p99_duration",
+              "SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0) as p95_duration",
+              "SUM(rails_pulse_summaries.p99_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0) as p99_duration",
               "SUM(rails_pulse_summaries.count) as count",
               "SUM(rails_pulse_summaries.error_count) as error_count",
               "SUM(rails_pulse_summaries.success_count) as success_count"
@@ -79,9 +79,9 @@ module RailsPulse
             when "max_duration_sort"
               grouped_query = grouped_query.order(Arel.sql("MAX(rails_pulse_summaries.max_duration)").send(direction))
             when "p95_duration_sort"
-              grouped_query = grouped_query.order(Arel.sql("AVG(rails_pulse_summaries.p95_duration)").send(direction))
+              grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0)").send(direction))
             when "p99_duration_sort"
-              grouped_query = grouped_query.order(Arel.sql("AVG(rails_pulse_summaries.p99_duration)").send(direction))
+              grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.p99_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0)").send(direction))
             when "count_sort", "request_count_sort"
               grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.count)").send(direction))
             when "requests_per_minute"
@@ -92,7 +92,7 @@ module RailsPulse
               grouped_query = grouped_query.order(Arel.sql("rails_pulse_routes.path").send(direction))
             else
               # Unknown sort field, fallback to default
-              grouped_query = grouped_query.order(Arel.sql("AVG(rails_pulse_summaries.p95_duration)").desc)
+              grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0)").desc)
             end
           else
             # Apply default sort when no explicit sort is provided (matches controller default_table_sort)

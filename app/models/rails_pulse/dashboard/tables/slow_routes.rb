@@ -27,7 +27,7 @@ module RailsPulse
             .select(
               "rails_pulse_summaries.summarizable_id as route_id",
               "rails_pulse_routes.path",
-              "MAX(rails_pulse_summaries.p95_duration) as p95_duration",
+              "SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0) as p95_duration",
               "SUM(rails_pulse_summaries.count) as request_count",
               "MAX(rails_pulse_summaries.period_end) as last_seen"
             )

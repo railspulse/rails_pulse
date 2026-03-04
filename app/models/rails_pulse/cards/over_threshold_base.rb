@@ -7,17 +7,14 @@ module RailsPulse
         @show_non_tagged = show_non_tagged
       end
 
-      def to_metric_card
-        slo_config = RailsPulse.configuration.public_send(slo_config_key)
+      def to_metric_cards
+        slo_configs = RailsPulse.configuration.public_send(slo_config_key)
+        return [] if slo_configs.empty?
 
-        # Return nil if no SLO is configured (card will be hidden)
-        return nil unless slo_config
-
-        threshold = slo_config[:threshold]
         last_7_days = 7.days.ago.beginning_of_day
         previous_7_days = 14.days.ago.beginning_of_day
 
-        # Query summaries for last 14 days
+        # Query summaries once for all SLOs
         base_query = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
           .where(
@@ -29,63 +26,64 @@ module RailsPulse
 
         summaries = base_query.to_a
 
-        # Calculate metrics
-        current_metrics = calculate_period_metrics(summaries, last_7_days, Time.current, threshold)
-        previous_metrics = calculate_period_metrics(summaries, previous_7_days, last_7_days, threshold)
-
-        # Calculate overall percentage
-        total_over = current_metrics[:total_over] + previous_metrics[:total_over]
-        total_count = current_metrics[:total_count] + previous_metrics[:total_count]
-        overall_percentage = total_count > 0 ? (total_over.to_f / total_count * 100).round(1) : 0
-
-        # Calculate trend
-        current_percentage = current_metrics[:total_count] > 0 ?
-          (current_metrics[:total_over].to_f / current_metrics[:total_count] * 100) : 0
-        previous_percentage = previous_metrics[:total_count] > 0 ?
-          (previous_metrics[:total_over].to_f / previous_metrics[:total_count] * 100) : 0
-
-        percentage_diff = previous_percentage.zero? ? 0 :
-          ((current_percentage - previous_percentage) / previous_percentage * 100).abs.round(1)
-
-        trend_icon = percentage_diff < 0.1 ? "move-right" :
-          current_percentage < previous_percentage ? "trending-down" : "trending-up"
-        trend_amount = previous_percentage.zero? ? "0%" : "#{percentage_diff}%"
-
-        # Build sparkline data (last 14 days)
         start_day = 2.weeks.ago.beginning_of_day.to_date
         end_day = Time.current.to_date
 
-        sparkline_data = {}
-        (start_day..end_day).each do |day|
-          day_summaries = summaries.select { |s| s.period_start.to_date == day }
+        slo_configs.map do |slo|
+          threshold = slo[:threshold]
+          percentile = slo[:percentile]
 
-          total_over_day = 0
-          total_count_day = 0
+          current_metrics = calculate_period_metrics(summaries, last_7_days, Time.current, threshold)
+          previous_metrics = calculate_period_metrics(summaries, previous_7_days, last_7_days, threshold)
 
-          day_summaries.each do |summary|
-            count = summary.count || 0
-            over_count = estimate_over_threshold(summary, threshold)
-            total_over_day += over_count
-            total_count_day += count
+          total_over = current_metrics[:total_over] + previous_metrics[:total_over]
+          total_count = current_metrics[:total_count] + previous_metrics[:total_count]
+          overall_percentage = total_count > 0 ? (total_over.to_f / total_count * 100).round(1) : 0
+
+          current_percentage = current_metrics[:total_count] > 0 ?
+            (current_metrics[:total_over].to_f / current_metrics[:total_count] * 100) : 0
+          previous_percentage = previous_metrics[:total_count] > 0 ?
+            (previous_metrics[:total_over].to_f / previous_metrics[:total_count] * 100) : 0
+
+          percentage_diff = previous_percentage.zero? ? 0 :
+            ((current_percentage - previous_percentage) / previous_percentage * 100).abs.round(1)
+
+          trend_icon = percentage_diff < 0.1 ? "move-right" :
+            current_percentage < previous_percentage ? "trending-down" : "trending-up"
+          trend_amount = previous_percentage.zero? ? "0%" : "#{percentage_diff}%"
+
+          sparkline_data = {}
+          (start_day..end_day).each do |day|
+            day_summaries = summaries.select { |s| s.period_start.to_date == day }
+
+            total_over_day = 0
+            total_count_day = 0
+
+            day_summaries.each do |summary|
+              count = summary.count || 0
+              over_count = estimate_over_threshold(summary, threshold)
+              total_over_day += over_count
+              total_count_day += count
+            end
+
+            percentage = total_count_day > 0 ?
+              (total_over_day.to_f / total_count_day * 100).round(1) : 0
+
+            label = day.strftime("%b %-d")
+            sparkline_data[label] = { value: percentage }
           end
 
-          percentage = total_count_day > 0 ?
-            (total_over_day.to_f / total_count_day * 100).round(1) : 0
-
-          label = day.strftime("%b %-d")
-          sparkline_data[label] = { value: percentage }
+          {
+            id: "#{base_card_id}_p#{percentile}",
+            context: card_context,
+            title: "P#{percentile} #{base_card_title}",
+            summary: "#{overall_percentage}%",
+            chart_data: sparkline_data,
+            trend_icon: trend_icon,
+            trend_amount: trend_amount,
+            trend_text: "Compared to last week"
+          }
         end
-
-        {
-          id: card_id,
-          context: card_context,
-          title: card_title,
-          summary: "#{overall_percentage}%",
-          chart_data: sparkline_data,
-          trend_icon: trend_icon,
-          trend_amount: trend_amount,
-          trend_text: "Compared to last week"
-        }
       end
 
       private
@@ -124,12 +122,14 @@ module RailsPulse
         elsif threshold <= p95
           # Between 5% and 50% are over threshold
           # Linear interpolation between p50 (50%) and p95 (5%)
+          return (count * 0.50).round if (p95 - p50).zero?
           ratio = (p95 - threshold).to_f / (p95 - p50)
           percentage = 0.05 + (0.45 * ratio)
           (count * percentage).round
         elsif threshold <= p99
           # Between 1% and 5% are over threshold
           # Linear interpolation between p95 (5%) and p99 (1%)
+          return (count * 0.05).round if (p99 - p95).zero?
           ratio = (p99 - threshold).to_f / (p99 - p95)
           percentage = 0.01 + (0.04 * ratio)
           (count * percentage).round
@@ -137,21 +137,18 @@ module RailsPulse
           # Less than 1% are over threshold
           # Assume linear drop-off after p99
           max_duration = summary.max_duration || p99
-          if max_duration > threshold
-            ratio = (max_duration - threshold).to_f / (max_duration - p99)
-            (count * 0.01 * ratio).round
-          else
-            0
-          end
+          return 0 if max_duration <= threshold
+          ratio = (max_duration - threshold).to_f / (max_duration - p99)
+          (count * 0.01 * ratio).round
         end
       end
 
       # Abstract methods — must be implemented by subclasses
       def slo_config_key = raise(NotImplementedError)
       def summarizable_type = raise(NotImplementedError)
-      def card_id = raise(NotImplementedError)
+      def base_card_id = raise(NotImplementedError)
+      def base_card_title = raise(NotImplementedError)
       def card_context = raise(NotImplementedError)
-      def card_title = raise(NotImplementedError)
     end
   end
 end

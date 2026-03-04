@@ -124,8 +124,8 @@ module RailsPulse
         end
 
         test "includes SLO series when configured" do
-          # Skip if no SLO configured
-          skip unless RailsPulse.configuration.service_level_objective
+          # Skip if no SLOs configured
+          skip if RailsPulse.configuration.service_level_objectives.empty?
 
           chart = ResponseTimePercentiles.new(
             ransack_query: @ransack_query,
@@ -137,7 +137,33 @@ module RailsPulse
           data = chart.to_chart_data
           series_names = data[:series].map { |s| s[:name] }
 
-          assert series_names.any? { |name| name.include?("Service Level Objective") }
+          assert series_names.any? { |name| name.match?(/P\d+ SLO \(\d+ms\)/) }
+        end
+
+        test "renders one SLO line per configured SLO entry" do
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [
+            { percentile: 95, threshold: 200 },
+            { percentile: 99, threshold: 500 }
+          ]
+
+          chart = ResponseTimePercentiles.new(
+            ransack_query: @ransack_query,
+            period_type: :day,
+            start_time: @start_time,
+            end_time: @end_time
+          )
+
+          data = chart.to_chart_data
+          slo_series = data[:series].select { |s| s[:name].match?(/P\d+ SLO/) }
+
+          assert_equal 2, slo_series.length
+          p95_slo = slo_series.find { |s| s[:name].include?("P95") }
+          p99_slo = slo_series.find { |s| s[:name].include?("P99") }
+          assert_equal "#10b981", p95_slo[:color]
+          assert_equal "#3b82f6", p99_slo[:color]
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
         end
       end
     end

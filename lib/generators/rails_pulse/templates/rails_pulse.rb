@@ -37,20 +37,25 @@ RailsPulse.configure do |config|
   #                                        SERVICE LEVEL OBJECTIVES (SLO)
   # ====================================================================================================
   # Define Service Level Objectives to visualize performance targets on the dashboard.
-  # These SLOs appear as threshold lines on the performance charts.
+  # These SLOs appear as dashed threshold lines on the performance charts, color-matched
+  # to their percentile series (green for P95, blue for P99).
   #
   # SLO Configuration:
-  #   :threshold - Maximum acceptable response time in milliseconds
-  #   :target    - Target percentage of requests that should meet the threshold
-  #
-  # Example: P95 response time should be under 500ms for 99% of requests
+  #   :percentile - Must be 95 or 99 (binds to the matching chart series)
+  #   :threshold  - Maximum acceptable response time in milliseconds
 
   # SLO for HTTP request response times (shown on Response Time Percentiles chart)
-  # config.service_level_objective = { threshold: 500, target: 99 }
+  # config.service_level_objectives = [
+  #   { percentile: 95, threshold: 200 },
+  #   { percentile: 99, threshold: 500 }
+  # ]
 
   # SLO for database query execution times (shown on Query Performance chart)
   # Query SLOs should typically be 5-10x stricter than request SLOs
-  # config.query_service_level_objective = { threshold: 100, target: 99 }
+  # config.query_service_level_objectives = [
+  #   { percentile: 95, threshold: 50 },
+  #   { percentile: 99, threshold: 100 }
+  # ]
 
   # ====================================================================================================
   #                                               FILTERING

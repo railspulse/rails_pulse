@@ -9,7 +9,7 @@ module RailsPulse
         private
 
         def summarizable_type = "RailsPulse::Route"
-        def slo_config_key = :service_level_objective
+        def slo_config_key = :service_level_objectives
       end
     end
   end

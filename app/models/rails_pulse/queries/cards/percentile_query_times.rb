@@ -22,10 +22,13 @@ module RailsPulse
             )
           base_query = base_query.where(summarizable_id: @query.id) if @query
 
+          last7 = last_7_days.strftime("%Y-%m-%d %H:%M:%S")
+          prev7 = previous_7_days.strftime("%Y-%m-%d %H:%M:%S")
+
           metrics = base_query.select(
-            "AVG(p95_duration) AS overall_p95",
-            "AVG(CASE WHEN period_start >= '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN p95_duration ELSE NULL END) AS current_p95",
-            "AVG(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN p95_duration ELSE NULL END) AS previous_p95"
+            "SUM(p95_duration * count) / NULLIF(SUM(count), 0) AS overall_p95",
+            "SUM(CASE WHEN period_start >= '#{last7}' THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= '#{last7}' THEN count ELSE 0 END), 0) AS current_p95",
+            "SUM(CASE WHEN period_start >= '#{prev7}' AND period_start < '#{last7}' THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= '#{prev7}' AND period_start < '#{last7}' THEN count ELSE 0 END), 0) AS previous_p95"
           ).take
 
           # Calculate metrics from single query result
@@ -38,16 +41,16 @@ module RailsPulse
           trend_amount = previous_period_p95.zero? ? "0%" : "#{percentage}%"
 
           # Sparkline data by day with zero-filled days over the last 14 days
-          grouped_daily = base_query
-            .group_by_date(:period_start)
-            .average(:p95_duration)
+          weighted_sums = base_query.group_by_date(:period_start).sum("p95_duration * count")
+          daily_counts = base_query.group_by_date(:period_start).sum(:count)
 
           start_day = 2.weeks.ago.beginning_of_day.to_date
           end_day = Time.current.to_date
 
           sparkline_data = {}
           (start_day..end_day).each do |day|
-            avg = grouped_daily[day]&.round(0) || 0
+            total_count = daily_counts[day].to_i
+            avg = total_count > 0 ? (weighted_sums[day].to_f / total_count).round(0) : 0
             label = day.strftime("%b %-d")
             sparkline_data[label] = { value: avg }
           end

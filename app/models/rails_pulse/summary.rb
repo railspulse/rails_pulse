@@ -148,11 +148,11 @@ module RailsPulse
     end
 
     ransacker :p95_duration_sort do
-      Arel.sql("AVG(rails_pulse_summaries.p95_duration)")
+      Arel.sql("SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0)")
     end
 
     ransacker :p99_duration_sort do
-      Arel.sql("AVG(rails_pulse_summaries.p99_duration)")
+      Arel.sql("SUM(rails_pulse_summaries.p99_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0)")
     end
 
     ransacker :count_sort do

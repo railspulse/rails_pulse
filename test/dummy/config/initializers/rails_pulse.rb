@@ -110,18 +110,22 @@ RailsPulse.configure do |config|
   # When configured, performance charts will display threshold lines showing
   # whether your application is meeting its performance targets.
   #
-  # Format: { threshold: <ms>, target: <percentage> }
+  # Format: array of { percentile: <95 or 99>, threshold: <ms> }
+  #   - percentile: must be 95 or 99 (binds to the matching chart series)
   #   - threshold: latency ceiling in milliseconds (horizontal line on chart)
-  #   - target: percentage of requests/queries that must complete under threshold (for display)
   #
   # SLO for HTTP request response times (shown on Response Time Percentiles chart)
-  # Example: 99% of requests should complete within 500ms
-  config.service_level_objective = { threshold: 500, target: 99 }
+  config.service_level_objectives = [
+    { percentile: 95, threshold: 200 },
+    { percentile: 99, threshold: 500 }
+  ]
 
   # SLO for database query execution times (shown on Query Performance chart)
   # Query SLOs should typically be 5-10x stricter than request SLOs
-  # Example: 99% of queries should complete within 100ms
-  config.query_service_level_objective = { threshold: 100, target: 99 }
+  config.query_service_level_objectives = [
+    { percentile: 95, threshold: 50 },
+    { percentile: 99, threshold: 100 }
+  ]
 
   # ====================================================================================================
   #                                            BACKGROUND JOBS

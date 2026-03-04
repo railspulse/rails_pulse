@@ -8,11 +8,11 @@ module RailsPulse
 
         private
 
-        def slo_config_key = :service_level_objective
+        def slo_config_key = :service_level_objectives
         def summarizable_type = "RailsPulse::Route"
-        def card_id = "requests_over_threshold"
+        def base_card_id = "requests_over_threshold"
+        def base_card_title = "Requests Over Threshold"
         def card_context = "routes"
-        def card_title = "Requests Over Threshold"
       end
     end
   end

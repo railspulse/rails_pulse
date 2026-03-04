@@ -74,15 +74,15 @@ module RailsPulse
           }
 
           # Add Service Level Objective series if configured
-          slo_config = RailsPulse.configuration.service_level_objective
-          if slo_config
-            slo_data = Array.new(labels.length, slo_config[:threshold])
+          slo_configs = RailsPulse.configuration.service_level_objectives
+          slo_configs.each do |slo|
+            color = slo[:percentile] == 95 ? "#10b981" : "#3b82f6"
             series.unshift({
-              name: "Service Level Objective (#{slo_config[:threshold]}ms)",
-              data: slo_data,
+              name: "P#{slo[:percentile]} SLO (#{slo[:threshold]}ms)",
+              data: Array.new(labels.length, slo[:threshold]),
               type: "line",
               lineStyle: { type: "dashed", width: 2 },
-              color: "#ef4444",
+              color: color,
               symbol: "none"
             })
           end

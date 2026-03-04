@@ -28,8 +28,8 @@ module RailsPulse
                   :mount_dashboard,
                   :logger,
                   :async,
-                  :service_level_objective,
-                  :query_service_level_objective
+                  :service_level_objectives,
+                  :query_service_level_objectives
 
     def initialize
       @enabled = true
@@ -78,9 +78,9 @@ module RailsPulse
       # Tracking mode settings
       @async = true
 
-      # Service Level Objective (default: nil = no SLO configured)
-      @service_level_objective = nil
-      @query_service_level_objective = nil
+      # Service Level Objectives (default: [] = no SLOs configured)
+      @service_level_objectives = []
+      @query_service_level_objectives = []
 
       # Validate defaults eagerly so that a misconfigured initializer raises at
       # boot time rather than at the first request. All SLO defaults are nil so
@@ -112,8 +112,8 @@ module RailsPulse
       validate_job_settings!
       validate_dashboard_settings!
       validate_tracking_settings!
-      validate_service_level_objective_settings!
-      validate_query_service_level_objective_settings!
+      validate_service_level_objectives_settings!
+      validate_query_service_level_objectives_settings!
     end
 
     private
@@ -225,49 +225,44 @@ module RailsPulse
       end
     end
 
-    def validate_service_level_objective_settings!
-      return if @service_level_objective.nil?
-
-      unless @service_level_objective.is_a?(Hash)
-        raise ArgumentError, "service_level_objective must be a hash with :threshold and :target keys, got #{@service_level_objective.class}"
+    def validate_service_level_objectives_settings!
+      unless @service_level_objectives.is_a?(Array)
+        raise ArgumentError, "service_level_objectives must be an array, got #{@service_level_objectives.class}"
       end
 
-      unless @service_level_objective.key?(:threshold) && @service_level_objective.key?(:target)
-        raise ArgumentError, "service_level_objective must contain both :threshold and :target keys"
-      end
-
-      threshold = @service_level_objective[:threshold]
-      target = @service_level_objective[:target]
-
-      unless threshold.is_a?(Numeric) && threshold > 0
-        raise ArgumentError, "service_level_objective[:threshold] must be a positive number, got #{threshold}"
-      end
-
-      unless target.is_a?(Numeric) && target >= 0 && target <= 100
-        raise ArgumentError, "service_level_objective[:target] must be a number between 0 and 100, got #{target}"
+      @service_level_objectives.each do |slo|
+        validate_slo_entry!(slo, "service_level_objectives")
       end
     end
 
-    def validate_query_service_level_objective_settings!
-      return if @query_service_level_objective.nil?
-
-      unless @query_service_level_objective.is_a?(Hash)
-        raise ArgumentError, "query_service_level_objective must be a hash with :threshold and :target keys, got #{@query_service_level_objective.class}"
+    def validate_query_service_level_objectives_settings!
+      unless @query_service_level_objectives.is_a?(Array)
+        raise ArgumentError, "query_service_level_objectives must be an array, got #{@query_service_level_objectives.class}"
       end
 
-      unless @query_service_level_objective.key?(:threshold) && @query_service_level_objective.key?(:target)
-        raise ArgumentError, "query_service_level_objective must contain both :threshold and :target keys"
+      @query_service_level_objectives.each do |slo|
+        validate_slo_entry!(slo, "query_service_level_objectives")
+      end
+    end
+
+    def validate_slo_entry!(slo, config_name)
+      unless slo.is_a?(Hash)
+        raise ArgumentError, "#{config_name} entries must be hashes with :percentile and :threshold keys, got #{slo.class}"
       end
 
-      threshold = @query_service_level_objective[:threshold]
-      target = @query_service_level_objective[:target]
+      unless slo.key?(:percentile) && slo.key?(:threshold)
+        raise ArgumentError, "#{config_name} entries must contain both :percentile and :threshold keys"
+      end
+
+      percentile = slo[:percentile]
+      threshold = slo[:threshold]
+
+      unless [ 95, 99 ].include?(percentile)
+        raise ArgumentError, "#{config_name} entry :percentile must be 95 or 99, got #{percentile}"
+      end
 
       unless threshold.is_a?(Numeric) && threshold > 0
-        raise ArgumentError, "query_service_level_objective[:threshold] must be a positive number, got #{threshold}"
-      end
-
-      unless target.is_a?(Numeric) && target >= 0 && target <= 100
-        raise ArgumentError, "query_service_level_objective[:target] must be a number between 0 and 100, got #{target}"
+        raise ArgumentError, "#{config_name} entry :threshold must be a positive number, got #{threshold}"
       end
     end
 
