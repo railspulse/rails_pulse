@@ -160,6 +160,7 @@ module RailsPulse
           assert_equal 2, slo_series.length
           p95_slo = slo_series.find { |s| s[:name].include?("P95") }
           p99_slo = slo_series.find { |s| s[:name].include?("P99") }
+
           assert_equal RailsPulse::ChartColors::P95, p95_slo[:color]
           assert_equal "#3b82f6", p99_slo[:color]
         ensure

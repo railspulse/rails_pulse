@@ -22,7 +22,7 @@ module RailsPulse
 
           result = @card.to_metric_cards
 
-          assert_equal [], result
+          assert_empty result
         ensure
           RailsPulse.configuration.service_level_objectives = original_config
         end
@@ -324,6 +324,7 @@ module RailsPulse
 
           assert_not_empty result
           percentage = result.first[:summary].to_f
+
           assert_operator percentage, :>=, 0, "Percentage should not be negative"
           assert_equal "0.0%", result.first[:summary]
         ensure
