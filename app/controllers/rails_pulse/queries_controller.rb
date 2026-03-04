@@ -108,6 +108,10 @@ module RailsPulse
       end
     end
 
+    def default_time_range_key
+      :last_week
+    end
+
     def default_table_sort
       "period_start desc"
     end

@@ -122,6 +122,10 @@ module RailsPulse
       end
     end
 
+    def default_time_range_key
+      :last_week
+    end
+
     def duration_field
       :avg_duration
     end

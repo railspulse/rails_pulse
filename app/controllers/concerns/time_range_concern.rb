@@ -11,10 +11,15 @@ module TimeRangeConcern
     ].freeze)
   end
 
+  def default_time_range_key
+    :last_day
+  end
+
   def setup_time_range
-    start_time = 1.day.ago
+    default_key = default_time_range_key
+    start_time = default_key == :last_week ? 1.week.ago : 1.day.ago
     end_time = Time.zone.now
-    selected_time_range = :last_day
+    selected_time_range = default_key
 
     ransack_params = params[:q] || {}
 
