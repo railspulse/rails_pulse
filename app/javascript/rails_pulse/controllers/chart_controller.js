@@ -11,11 +11,14 @@ export default class extends Controller {
   connect() {
     this.initializeChart()
     this.handleColorSchemeChange = this.onColorSchemeChange.bind(this)
+    this.handleSeriesToggle = this.onSeriesToggle.bind(this)
     document.addEventListener('rails-pulse:color-scheme-changed', this.handleColorSchemeChange)
+    document.addEventListener('rails-pulse:toggle-series', this.handleSeriesToggle)
   }
 
   disconnect() {
     document.removeEventListener('rails-pulse:color-scheme-changed', this.handleColorSchemeChange)
+    document.removeEventListener('rails-pulse:toggle-series', this.handleSeriesToggle)
     this.disposeChart()
   }
 
@@ -88,6 +91,11 @@ export default class extends Controller {
 
     // Set data (xAxis and series)
     this.setChartData(config)
+
+    // Add hidden legend so series can be toggled programmatically via dispatchAction
+    if (!config.legend) {
+      config.legend = { show: false }
+    }
 
     return config
   }
@@ -355,6 +363,20 @@ export default class extends Controller {
       const config = this.buildChartConfig()
       this.chart.setOption(config, true) // true = not merge
     }
+  }
+
+  // Series toggle — dispatched from series_toggle_controller
+  // Toggles all series whose name starts with seriesName (e.g. "P95" matches "P95" and "P95 SLO (200ms)")
+  onSeriesToggle({ detail: { chartId, seriesName } }) {
+    if (chartId !== this.element.id || !this.chart) return
+
+    const allNames = (this.dataValue?.series || []).map(s => s.name).filter(Boolean)
+    const matches = allNames.filter(name => name.startsWith(seriesName))
+    const namesToToggle = matches.length > 0 ? matches : [seriesName]
+
+    namesToToggle.forEach(name => {
+      this.chart.dispatchAction({ type: 'legendToggleSelect', name })
+    })
   }
 
   // Color scheme management

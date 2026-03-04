@@ -22,7 +22,8 @@ import ExpandableRowsController from "./controllers/expandable_rows_controller";
 import CollapsibleController from "./controllers/collapsible_controller";
 import TableSortController from "./controllers/table_sort_controller";
 import GlobalFiltersController from "./controllers/global_filters_controller";
-import CustomRangeController from "./controllers/custom_range_controller";
+import CustomRangeController from "./controllers/custom_range_controller"
+import SeriesToggleController from "./controllers/series_toggle_controller";
 
 const application = Application.start();
 
@@ -54,6 +55,7 @@ application.register("rails-pulse--collapsible", CollapsibleController);
 application.register("rails-pulse--table-sort", TableSortController);
 application.register("rails-pulse--global-filters", GlobalFiltersController);
 application.register("rails-pulse--custom-range", CustomRangeController);
+application.register("rails-pulse--series-toggle", SeriesToggleController);
 
 // Ensure Turbo Frames are loaded after page load
 document.addEventListener('DOMContentLoaded', () => {

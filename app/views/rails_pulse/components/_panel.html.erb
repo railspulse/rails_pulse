@@ -6,6 +6,8 @@
   actions ||= nil
   card_classes ||= ""
   content_partial ||= nil
+  series_toggles ||= []
+  series_toggles_chart_id ||= nil
 %>
 <div class="card <%= card_classes %>">
   <div class="flex flex-col b-full">
@@ -13,7 +15,18 @@
       <% if title %>
         <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs"><%= title %></h2>
       <% end %>
-      <div class="flex gap items-center">
+      <div class="panel-icon-bar flex gap items-center">
+        <% series_toggles.each do |toggle| %>
+          <button
+            class="series-toggle"
+            style="color: <%= toggle[:color] %>"
+            data-active="true"
+            data-controller="rails-pulse--series-toggle"
+            data-rails-pulse--series-toggle-series-name-value="<%= toggle[:name] %>"
+            data-rails-pulse--series-toggle-chart-id-value="<%= series_toggles_chart_id %>"
+            data-action="click->rails-pulse--series-toggle#toggle"
+          ><%= toggle[:name] %></button>
+        <% end %>
         <% if help_heading %>
           <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-start">
             <a href="#"

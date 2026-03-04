@@ -16,7 +16,14 @@
   data-rails-pulse--index-chart-id-value="route_responses_chart"
 >
   <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', { title: 'Route Requests', } do %>
+    <%= render 'rails_pulse/components/panel', {
+      title: 'Route Requests',
+      series_toggles: [
+        { name: "P95", color: RailsPulse::ChartColors::P95 },
+        { name: "P99", color: RailsPulse::ChartColors::P99 }
+      ],
+      series_toggles_chart_id: "route_responses_chart"
+    } do %>
       <%= search_form_for @ransack_query, url: route_path(@route), class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
         <div class="flex items-center grow gap">
           <%= time_range_selector(form, time_range_options: RailsPulse::RoutesController::TIME_RANGE_OPTIONS, selected_time_range: @selected_time_range) %>

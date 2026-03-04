@@ -15,6 +15,11 @@
     <%= render 'rails_pulse/components/panel', {
       title: 'Response Time Percentiles',
       card_classes: 'b-full',
+      series_toggles: [
+        { name: "P95", color: RailsPulse::ChartColors::P95 },
+        { name: "P99", color: RailsPulse::ChartColors::P99 }
+      ],
+      series_toggles_chart_id: "dashboard_response_time_percentiles_chart",
       help_heading: 'Response Time Percentiles',
       help_text: 'This panel shows the 95th and 99th percentile response times in milliseconds for all HTTP requests. These percentiles represent the upper bounds that 95% and 99% of requests fall below, respectively. When a Service Level Objective is configured, a dashed red line shows the performance threshold.',
       actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
@@ -39,6 +44,11 @@
     <%= render 'rails_pulse/components/panel', {
       title: 'Query Performance',
       card_classes: 'b-full',
+      series_toggles: [
+        { name: "P95", color: RailsPulse::ChartColors::P95 },
+        { name: "P99", color: RailsPulse::ChartColors::P99 }
+      ],
+      series_toggles_chart_id: "dashboard_p95_response_time_chart",
       help_heading: 'Query Performance',
       help_text: 'This panel shows the 95th and 99th percentile query execution times in milliseconds for all database queries. These percentiles represent the upper bounds that 95% and 99% of queries fall below, respectively. When a Service Level Objective is configured, a dashed red line shows the performance threshold.',
       actions: [{ url: queries_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]

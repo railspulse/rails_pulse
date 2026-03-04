@@ -17,6 +17,11 @@
   <%= render 'rails_pulse/components/panel', {
     title: 'Response Time Percentiles',
     card_classes: 'b-full',
+    series_toggles: [
+      { name: "P95", color: RailsPulse::ChartColors::P95 },
+      { name: "P99", color: RailsPulse::ChartColors::P99 }
+    ],
+    series_toggles_chart_id: "response_time_percentiles_chart",
     help_heading: 'Response Time Percentiles',
     help_text: 'This panel shows the 95th and 99th percentile response times in milliseconds for all HTTP requests. These percentiles represent the upper bounds that 95% and 99% of requests fall below, respectively. When a Service Level Objective is configured, a dashed red line shows the performance threshold.'
   } do %>

@@ -16,6 +16,11 @@
   <%= render 'rails_pulse/components/panel', {
     title: 'Query Performance',
     card_classes: 'b-full',
+    series_toggles: [
+      { name: "P95", color: RailsPulse::ChartColors::P95 },
+      { name: "P99", color: RailsPulse::ChartColors::P99 }
+    ],
+    series_toggles_chart_id: "query_performance_chart",
     help_heading: 'Query Performance',
     help_text: 'This panel shows the 95th and 99th percentile query execution times in milliseconds for all database queries. These percentiles represent the upper bounds that 95% and 99% of queries fall below, respectively. When a Service Level Objective is configured, a dashed red line shows the performance threshold.'
   } do %>

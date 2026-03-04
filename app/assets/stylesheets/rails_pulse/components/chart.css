@@ -1,3 +1,33 @@
+.panel-icon-bar > a,
+.panel-icon-bar > div {
+  display: flex;
+  align-items: center;
+}
+
+.panel-icon-bar > div > a {
+  display: flex;
+  align-items: center;
+}
+
+.series-toggle {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 5px;
+  border: 2px solid currentColor;
+  font-size: 0.7em;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  cursor: pointer;
+  background: transparent;
+  transition: opacity 0.15s;
+  line-height: 1;
+}
+
+.series-toggle[data-active="false"] {
+  opacity: 0.3;
+}
+
 .chart-container {
   width: 100%;
   aspect-ratio: 4 / 2;
