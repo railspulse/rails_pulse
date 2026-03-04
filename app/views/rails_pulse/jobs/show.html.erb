@@ -1,11 +1,8 @@
 <%= render 'rails_pulse/components/page_header', taggable: @job, show_active_filters: true %>
 
 <% unless turbo_frame_request? %>
-  <div class="row">
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @total_runs_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @failure_rate_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @p95_duration_metric_card } %>
-  </div>
+  <% metric_cards = [@total_runs_metric_card, @failure_rate_metric_card, @p95_duration_metric_card].compact %>
+  <%= render 'rails_pulse/components/metric_strip', metrics_data: metric_cards %>
 <% end %>
 
 <%= render 'rails_pulse/components/panel', { title: 'Job Runs' } do %>
