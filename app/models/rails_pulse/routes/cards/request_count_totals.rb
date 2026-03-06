@@ -33,9 +33,16 @@ module RailsPulse
           current_period_count = metrics.current_count || 0
           previous_period_count = metrics.previous_count || 0
 
-          percentage = previous_period_count.zero? ? 0 : ((previous_period_count - current_period_count) / previous_period_count.to_f * 100).abs.round(1)
-          trend_icon = percentage < 0.1 ? "move-right" : current_period_count < previous_period_count ? "trending-down" : "trending-up"
-          trend_amount = previous_period_count.zero? ? "0%" : "#{percentage}%"
+          has_data = total_request_count > 0
+
+          if has_data
+            percentage = previous_period_count.zero? ? 0 : ((previous_period_count - current_period_count) / previous_period_count.to_f * 100).abs.round(1)
+            trend_icon = percentage < 0.1 ? "move-right" : current_period_count < previous_period_count ? "trending-down" : "trending-up"
+            trend_amount = previous_period_count.zero? ? "0%" : "#{percentage}%"
+          else
+            trend_icon = "move-right"
+            trend_amount = "—"
+          end
 
           # Sparkline data by day with zero-filled days over the last 14 days
           grouped_daily = base_query
@@ -53,18 +60,22 @@ module RailsPulse
           end
 
           # Calculate appropriate rate display based on frequency
-          total_minutes = 2.weeks / 1.minute.to_f
-          requests_per_minute = total_request_count.to_f / total_minutes
+          if has_data
+            total_minutes = 2.weeks / 1.minute.to_f
+            requests_per_minute = total_request_count.to_f / total_minutes
 
-          # Choose appropriate time unit for display
-          if requests_per_minute >= 1
-            summary = "#{requests_per_minute.round(2)} / min"
-          elsif requests_per_minute * 60 >= 1
-            requests_per_hour = requests_per_minute * 60
-            summary = "#{requests_per_hour.round(2)} / hour"
+            # Choose appropriate time unit for display
+            if requests_per_minute >= 1
+              summary = "#{requests_per_minute.round(2)} / min"
+            elsif requests_per_minute * 60 >= 1
+              requests_per_hour = requests_per_minute * 60
+              summary = "#{requests_per_hour.round(2)} / hour"
+            else
+              requests_per_day = requests_per_minute * 60 * 24
+              summary = "#{requests_per_day.round(2)} / day"
+            end
           else
-            requests_per_day = requests_per_minute * 60 * 24
-            summary = "#{requests_per_day.round(2)} / day"
+            summary = "—"
           end
 
           {

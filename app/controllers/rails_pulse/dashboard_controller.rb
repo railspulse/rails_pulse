@@ -1,6 +1,9 @@
 module RailsPulse
   class DashboardController < ApplicationController
     def index
+      # Check if there's any data for onboarding message
+      @has_any_data = RailsPulse::Summary.exists? || RailsPulse::Request.exists?
+
       # Get tag filter values from session
       disabled_tags = session_disabled_tags
       show_non_tagged = session[:show_non_tagged] != false

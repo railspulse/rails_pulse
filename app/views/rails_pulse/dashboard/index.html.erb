@@ -1,3 +1,11 @@
+<% unless @has_any_data %>
+<div class="card" style="border-left: 3px solid var(--color-accent)">
+  <h2>Rails Pulse is installed and listening</h2>
+  <p>Make some requests to your app to start seeing performance data.
+     Metrics, charts, and slow route analysis will populate automatically.</p>
+</div>
+<% end %>
+
 <div class="flex justify-end">
   <%= render 'rails_pulse/components/active_filters' %>
 </div>
@@ -24,7 +32,7 @@
       help_text: 'This panel shows the 95th and 99th percentile response times in milliseconds for all HTTP requests. These percentiles represent the upper bounds that 95% and 99% of requests fall below, respectively. When a Service Level Objective is configured, a dashed red line shows the performance threshold.',
       actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
     } do %>
-      <% if @response_time_percentiles_chart_data.present? %>
+      <% if @response_time_percentiles_chart_data %>
         <div class="chart-container chart-container--slim">
           <%= render_stimulus_chart(
             @response_time_percentiles_chart_data,
@@ -36,6 +44,10 @@
             )
           ) %>
         </div>
+      <% else %>
+        <%= render 'rails_pulse/components/empty_state',
+          title: "No data yet",
+          description: "Response times will appear here as your app receives traffic." %>
       <% end %>
     <% end %>
   </div>
@@ -53,7 +65,7 @@
       help_text: 'This panel shows the 95th and 99th percentile query execution times in milliseconds for all database queries. These percentiles represent the upper bounds that 95% and 99% of queries fall below, respectively. When a Service Level Objective is configured, a dashed red line shows the performance threshold.',
       actions: [{ url: queries_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
     } do %>
-      <% if @p95_response_time_chart_data.present? %>
+      <% if @p95_response_time_chart_data %>
         <div class="chart-container chart-container--slim">
           <%= render_stimulus_chart(
             @p95_response_time_chart_data,
@@ -65,6 +77,10 @@
             )
           ) %>
         </div>
+      <% else %>
+        <%= render 'rails_pulse/components/empty_state',
+          title: "No data yet",
+          description: "Query performance data will appear here as your app receives traffic." %>
       <% end %>
     <% end %>
   </div>

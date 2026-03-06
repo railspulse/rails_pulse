@@ -35,13 +35,20 @@ module RailsPulse
           current_period_errors = metrics.current_errors || 0
           previous_period_errors = metrics.previous_errors || 0
 
+          has_data = total_requests > 0
+
           # Calculate overall error rate percentage
-          overall_error_rate = total_requests > 0 ? (total_errors.to_f / total_requests * 100).round(2) : 0
+          overall_error_rate = has_data ? (total_errors.to_f / total_requests * 100).round(2) : 0
 
           # Calculate trend
-          percentage = previous_period_errors.zero? ? 0 : ((previous_period_errors - current_period_errors) / previous_period_errors.to_f * 100).abs.round(1)
-          trend_icon = percentage < 0.1 ? "move-right" : current_period_errors < previous_period_errors ? "trending-down" : "trending-up"
-          trend_amount = previous_period_errors.zero? ? "0%" : "#{percentage}%"
+          if has_data
+            percentage = previous_period_errors.zero? ? 0 : ((previous_period_errors - current_period_errors) / previous_period_errors.to_f * 100).abs.round(1)
+            trend_icon = percentage < 0.1 ? "move-right" : current_period_errors < previous_period_errors ? "trending-down" : "trending-up"
+            trend_amount = previous_period_errors.zero? ? "0%" : "#{percentage}%"
+          else
+            trend_icon = "move-right"
+            trend_amount = "—"
+          end
 
           # Sparkline data by day with zero-filled days over the last 14 days
           grouped_daily = base_query
@@ -63,7 +70,7 @@ module RailsPulse
             chart_color: RailsPulse::ChartColors::DEFAULT,
             context: "routes",
             title: "Error Rate Per Route",
-            summary: "#{overall_error_rate}%",
+            summary: has_data ? "#{overall_error_rate}%" : "—",
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,

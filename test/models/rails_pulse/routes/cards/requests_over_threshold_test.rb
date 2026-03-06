@@ -171,9 +171,9 @@ module RailsPulse
 
           assert_not_empty result
           result.each do |card|
-            assert_equal "0%", card[:summary]
+            assert_equal "—", card[:summary]
             assert_equal "move-right", card[:trend_icon]
-            assert_equal "0%", card[:trend_amount]
+            assert_equal "—", card[:trend_amount]
           end
         end
 

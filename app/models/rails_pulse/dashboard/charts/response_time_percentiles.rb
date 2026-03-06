@@ -22,6 +22,8 @@ module RailsPulse
               period_start: start_date.beginning_of_day..end_date.end_of_day
             )
 
+          return nil if summaries.empty?
+
           # Group by day and calculate weighted percentiles
           daily_data = {}
           summaries.each do |summary|

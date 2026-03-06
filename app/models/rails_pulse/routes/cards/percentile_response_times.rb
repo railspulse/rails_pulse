@@ -28,7 +28,8 @@ module RailsPulse
           metrics = base_query.select(
             "SUM(p95_duration * count) / NULLIF(SUM(count), 0) AS overall_p95",
             "SUM(CASE WHEN period_start >= '#{last7}' THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= '#{last7}' THEN count ELSE 0 END), 0) AS current_p95",
-            "SUM(CASE WHEN period_start >= '#{prev7}' AND period_start < '#{last7}' THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= '#{prev7}' AND period_start < '#{last7}' THEN count ELSE 0 END), 0) AS previous_p95"
+            "SUM(CASE WHEN period_start >= '#{prev7}' AND period_start < '#{last7}' THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= '#{prev7}' AND period_start < '#{last7}' THEN count ELSE 0 END), 0) AS previous_p95",
+            "SUM(count) AS total_count"
           ).take
 
           # Calculate metrics from single query result
@@ -36,9 +37,16 @@ module RailsPulse
           current_period_p95 = metrics.current_p95 || 0
           previous_period_p95 = metrics.previous_p95 || 0
 
-          percentage = previous_period_p95.zero? ? 0 : ((previous_period_p95 - current_period_p95) / previous_period_p95 * 100).abs.round(1)
-          trend_icon = percentage < 0.1 ? "move-right" : current_period_p95 < previous_period_p95 ? "trending-down" : "trending-up"
-          trend_amount = previous_period_p95.zero? ? "0%" : "#{percentage}%"
+          has_data = metrics.total_count.to_i > 0
+
+          if has_data
+            percentage = previous_period_p95.zero? ? 0 : ((previous_period_p95 - current_period_p95) / previous_period_p95 * 100).abs.round(1)
+            trend_icon = percentage < 0.1 ? "move-right" : current_period_p95 < previous_period_p95 ? "trending-down" : "trending-up"
+            trend_amount = previous_period_p95.zero? ? "0%" : "#{percentage}%"
+          else
+            trend_icon = "move-right"
+            trend_amount = "—"
+          end
 
           # Sparkline data by day with zero-filled days over the last 14 days
           weighted_sums = base_query.group_by_date(:period_start).sum("p95_duration * count")
@@ -60,7 +68,7 @@ module RailsPulse
             chart_color: RailsPulse::ChartColors::P95,
             context: "routes",
             title: "P95 Response Time",
-            summary: "#{p95_response_time} ms",
+            summary: has_data ? "#{p95_response_time} ms" : "—",
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,

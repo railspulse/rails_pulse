@@ -69,12 +69,25 @@ module RailsPulse
           end
 
           all_clear = total_count > 0 && total_over == 0
+          has_data = total_count > 0
+
+          if has_data
+            percentage_diff = previous_percentage.zero? ? 0 :
+              ((current_percentage - previous_percentage) / previous_percentage * 100).abs.round(1)
+
+            trend_icon = percentage_diff < 0.1 ? "move-right" :
+              current_percentage < previous_percentage ? "trending-down" : "trending-up"
+            trend_amount = previous_percentage.zero? ? "0%" : "#{percentage_diff}%"
+          else
+            trend_icon = "move-right"
+            trend_amount = "—"
+          end
 
           {
             id: "#{base_card_id}_p#{percentile}",
             context: card_context,
             title: "P#{percentile} #{base_card_title}",
-            summary: "#{overall_percentage}%",
+            summary: has_data ? "#{overall_percentage}%" : "—",
             all_clear: all_clear,
             chart_data: sparkline_data,
             chart_color: percentile == 95 ? RailsPulse::ChartColors::P95 : RailsPulse::ChartColors::P99,
