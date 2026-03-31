@@ -6,17 +6,14 @@ const postcss = require('postcss');
 const autoprefixer = require('autoprefixer');
 const cssnano = require('cssnano');
 const { glob } = require('glob');
+const { ROOT_DIR, ENABLE_SOURCE_MAPS, OUTPUT_DIRS, ASSETS_DIR } = require('./build-config');
 
-// Configuration
-const ENABLE_SOURCE_MAPS = process.env.RAILS_PULSE_SOURCE_MAPS === 'true';
-const ROOT_DIR = path.dirname(__dirname);
-const OUTPUT_DIR = path.join(ROOT_DIR, 'public', 'rails-pulse-assets');
-const ASSETS_DIR = path.join(ROOT_DIR, 'app', 'assets', 'stylesheets');
-
-// Ensure output directory exists
-if (!fs.existsSync(OUTPUT_DIR)) {
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-}
+// Ensure all output directories exist
+OUTPUT_DIRS.forEach(output => {
+  if (!fs.existsSync(output.css)) {
+    fs.mkdirSync(output.css, { recursive: true });
+  }
+});
 
 async function buildCSS() {
 
@@ -75,26 +72,27 @@ async function buildCSS() {
 
     const result = await postcss(postcssPlugins).process(cssContent, {
       from: 'rails-pulse.css',
-      to: path.join(OUTPUT_DIR, 'rails-pulse.css'),
+      to: 'rails-pulse.css',
       map: ENABLE_SOURCE_MAPS ? {
         inline: false,
         sourcesContent: true
       } : false
     });
 
-    // Write CSS file
-    const outputPath = path.join(OUTPUT_DIR, 'rails-pulse.css');
-    fs.writeFileSync(outputPath, result.css);
+    // Write CSS file to all output directories
+    OUTPUT_DIRS.forEach(output => {
+      const outputPath = path.join(output.css, 'rails-pulse.css');
+      fs.writeFileSync(outputPath, result.css);
 
-    // Write source map if enabled
-    if (ENABLE_SOURCE_MAPS && result.map) {
-      const mapPath = path.join(OUTPUT_DIR, 'rails-pulse.css.map');
-      fs.writeFileSync(mapPath, result.map.toString());
-      console.log(`🗺️  CSS source map: ${path.relative(ROOT_DIR, mapPath)}`);
-    }
+      // Write source map if enabled
+      if (ENABLE_SOURCE_MAPS && result.map) {
+        const mapPath = path.join(output.css, 'rails-pulse.css.map');
+        fs.writeFileSync(mapPath, result.map.toString());
+      }
 
-    const stats = fs.statSync(outputPath);
-    console.log(`✅ CSS bundle: ${path.relative(ROOT_DIR, outputPath)} (${(stats.size / 1024).toFixed(1)}KB)`);
+      const stats = fs.statSync(outputPath);
+      console.log(`✅ CSS → ${output.name}: ${path.relative(ROOT_DIR, outputPath)} (${(stats.size / 1024).toFixed(1)}KB)`);
+    });
 
   } catch (error) {
     console.error('❌ CSS build failed:', error);

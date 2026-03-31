@@ -3,11 +3,9 @@
 const fs = require('fs');
 const path = require('path');
 const { glob } = require('glob');
+const { ROOT_DIR, ENABLE_SOURCE_MAPS, OUTPUT_DIRS } = require('./build-config');
 
 // Configuration
-const ENABLE_SOURCE_MAPS = process.env.RAILS_PULSE_SOURCE_MAPS === 'true';
-const ROOT_DIR = path.dirname(__dirname);
-const OUTPUT_DIR = path.join(ROOT_DIR, 'public', 'rails-pulse-assets');
 const VIEWS_DIR = path.join(ROOT_DIR, 'app', 'views');
 
 // Icons used by Rails Pulse (from analysis of views)
@@ -61,10 +59,12 @@ const ICON_MAPPINGS = {
   'trending-#{trend_direction}': null // This is dynamic ERB, skip it
 };
 
-// Ensure output directory exists
-if (!fs.existsSync(OUTPUT_DIR)) {
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-}
+// Ensure all output directories exist
+OUTPUT_DIRS.forEach(output => {
+  if (!fs.existsSync(output.js)) {
+    fs.mkdirSync(output.js, { recursive: true });
+  }
+});
 
 function extractSVGContent(iconName) {
   try {
@@ -232,30 +232,32 @@ async function buildIcons() {
 })();
 `;
 
-    // Write icons bundle
-    const outputPath = path.join(OUTPUT_DIR, 'rails-pulse-icons.js');
-    fs.writeFileSync(outputPath, jsContent);
+    // Write icons bundle to all output directories
+    OUTPUT_DIRS.forEach(output => {
+      const outputPath = path.join(output.js, 'rails-pulse-icons.js');
+      fs.writeFileSync(outputPath, jsContent);
 
-    const stats = fs.statSync(outputPath);
-    console.log(`✅ Icons bundle: ${path.relative(ROOT_DIR, outputPath)} (${(stats.size / 1024).toFixed(1)}KB)`);
+      const stats = fs.statSync(outputPath);
+      console.log(`✅ Icons → ${output.name}: ${path.relative(ROOT_DIR, outputPath)} (${(stats.size / 1024).toFixed(1)}KB)`);
+
+      // Generate source map if enabled
+      if (ENABLE_SOURCE_MAPS) {
+        const sourceMap = {
+          version: 3,
+          file: 'rails-pulse-icons.js',
+          sourceRoot: '',
+          sources: ['rails-pulse-icons.js'],
+          names: [],
+          mappings: '',
+          sourcesContent: [jsContent]
+        };
+
+        const mapPath = path.join(output.js, 'rails-pulse-icons.js.map');
+        fs.writeFileSync(mapPath, JSON.stringify(sourceMap, null, 2));
+      }
+    });
+
     console.log(`📦 Bundled ${Object.keys(iconBundle).length} icons:`, Object.keys(iconBundle).sort().join(', '));
-
-    // Generate source map if enabled
-    if (ENABLE_SOURCE_MAPS) {
-      const sourceMap = {
-        version: 3,
-        file: 'rails-pulse-icons.js',
-        sourceRoot: '',
-        sources: ['rails-pulse-icons.js'],
-        names: [],
-        mappings: '',
-        sourcesContent: [jsContent]
-      };
-
-      const mapPath = path.join(OUTPUT_DIR, 'rails-pulse-icons.js.map');
-      fs.writeFileSync(mapPath, JSON.stringify(sourceMap, null, 2));
-      console.log(`🗺️  Icons source map: ${path.relative(ROOT_DIR, mapPath)}`);
-    }
 
   } catch (error) {
     console.error('❌ Icons build failed:', error);

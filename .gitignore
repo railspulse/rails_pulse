@@ -1,6 +1,7 @@
 .DS_Store
 /.bundle/
 /.vscode/
+/.claude/
 /doc/
 /log/*.log
 /pkg/
@@ -36,6 +37,15 @@ yarn-error.log*
 !/public/rails-pulse-assets/*.css
 !/public/rails-pulse-assets/*.js
 !/public/rails-pulse-assets/*.map
+
+# Vendor assets for Sprockets/Propshaft integration
+!/vendor/assets/
+!/vendor/assets/stylesheets/
+!/vendor/assets/stylesheets/*.css
+!/vendor/assets/stylesheets/*.map
+!/vendor/assets/javascripts/
+!/vendor/assets/javascripts/*.js
+!/vendor/assets/javascripts/*.map
 
 # Test profiling and coverage files
 /test-prof/

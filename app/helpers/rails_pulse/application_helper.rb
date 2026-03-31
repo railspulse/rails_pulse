@@ -94,9 +94,19 @@ module RailsPulse
         RailsPulse::Engine.routes.url_helpers.respond_to?(method, include_private) || super
       end
 
-      # Generate asset paths that work with our custom asset serving
+      # Generate asset paths using Rails asset pipeline
+      # This allows assets to work with CDN, digests, and precompiled manifests
       def asset_path(asset_name)
-        "/rails-pulse-assets/#{asset_name}"
+        # Use the main application's asset_path helper to ensure we get
+        # the correct digested paths from the precompiled manifest
+        # Engine view contexts may not have access to the main manifest
+        begin
+          ActionController::Base.helpers.asset_path(asset_name)
+        rescue => e
+          # Fallback to direct path if asset pipeline is not available
+          Rails.logger.warn "[Rails Pulse] Asset pipeline not available for #{asset_name}: #{e.message}"
+          "/rails-pulse-assets/#{asset_name}"
+        end
       end
     end
 

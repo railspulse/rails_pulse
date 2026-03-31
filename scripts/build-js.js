@@ -3,18 +3,18 @@
 const fs = require('fs');
 const path = require('path');
 const esbuild = require('esbuild');
+const { ROOT_DIR, ENABLE_SOURCE_MAPS, OUTPUT_DIRS } = require('./build-config');
 
 // Configuration
-const ENABLE_SOURCE_MAPS = process.env.RAILS_PULSE_SOURCE_MAPS === 'true';
 const VERBOSE = process.env.RAILS_PULSE_VERBOSE === 'true';
-const ROOT_DIR = path.dirname(__dirname);
-const OUTPUT_DIR = path.join(ROOT_DIR, 'public', 'rails-pulse-assets');
 const JS_DIR = path.join(ROOT_DIR, 'app', 'javascript', 'rails_pulse');
 
-// Ensure output directory exists
-if (!fs.existsSync(OUTPUT_DIR)) {
-  fs.mkdirSync(OUTPUT_DIR, { recursive: true });
-}
+// Ensure all output directories exist
+OUTPUT_DIRS.forEach(output => {
+  if (!fs.existsSync(output.js)) {
+    fs.mkdirSync(output.js, { recursive: true });
+  }
+});
 
 async function buildJS() {
 
@@ -22,11 +22,10 @@ async function buildJS() {
     // Use application.js as the entry point
     const entryPath = path.join(JS_DIR, 'application.js');
 
-    // Build with esbuild
-    const buildOptions = {
+    // Build options shared for all outputs
+    const baseBuildOptions = {
       entryPoints: [entryPath],
       bundle: true,
-      outfile: path.join(OUTPUT_DIR, 'rails-pulse.js'),
       format: 'iife',
       target: 'es2020',
       minify: !ENABLE_SOURCE_MAPS,
@@ -40,23 +39,28 @@ async function buildJS() {
       }
     };
 
-    const result = await esbuild.build(buildOptions);
+    // Build to each output directory
+    for (const output of OUTPUT_DIRS) {
+      const outfile = path.join(output.js, 'rails-pulse.js');
 
-    // ECharts is now included in the bundle for full asset independence
+      const result = await esbuild.build({
+        ...baseBuildOptions,
+        outfile
+      });
 
-    if (VERBOSE) {
-      const outputPath = path.join(OUTPUT_DIR, 'rails-pulse.js');
-      const stats = fs.statSync(outputPath);
-      console.log(`✅ JavaScript bundle: ${path.relative(ROOT_DIR, outputPath)} (${(stats.size / 1024).toFixed(1)}KB)`);
+      const stats = fs.statSync(outfile);
+      console.log(`✅ JS → ${output.name}: ${path.relative(ROOT_DIR, outfile)} (${(stats.size / 1024).toFixed(1)}KB)`);
 
       if (ENABLE_SOURCE_MAPS) {
-        const mapPath = path.join(OUTPUT_DIR, 'rails-pulse.js.map');
+        const mapPath = path.join(output.js, 'rails-pulse.js.map');
         if (fs.existsSync(mapPath)) {
-          console.log(`🗺️  JavaScript source map: ${path.relative(ROOT_DIR, mapPath)}`);
+          if (VERBOSE) {
+            console.log(`🗺️  JS source map: ${path.relative(ROOT_DIR, mapPath)}`);
+          }
         }
       }
 
-      if (result.warnings.length > 0) {
+      if (VERBOSE && result.warnings.length > 0) {
         console.warn('⚠️  Build warnings:');
         result.warnings.forEach(warning => console.warn(`   ${warning.text}`));
       }
