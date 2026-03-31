@@ -6,7 +6,7 @@ gem "puma"
 gem "sqlite3"
 gem "pg"
 gem "mysql2"
-gem "dotenv-rails", groups: [ :development, :test ]
+gem "dotenv-rails", groups: [:development, :test]
 gem "css-zero"
 gem "importmap-rails"
 gem "ransack"
