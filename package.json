@@ -11,7 +11,7 @@
     "build:icons": "node scripts/build-icons.js",
     "watch": "node scripts/watch.js",
     "dev": "npm run watch",
-    "clean": "rimraf public/rails-pulse-assets/*.{css,js,map}"
+    "clean": "rimraf public/rails-pulse-assets/rails-pulse*.{css,js,map} vendor/assets/stylesheets/*.{css,map} vendor/assets/javascripts/*.{js,map}"
   },
   "devDependencies": {
     "@hotwired/stimulus": "^3.2.2",

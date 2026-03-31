@@ -20,7 +20,7 @@ Gem::Specification.new do |spec|
   spec.metadata["source_code_uri"] = "https://github.com/railspulse/rails_pulse"
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
-    Dir["{app,config,db,exe,lib,public}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
+    Dir["{app,config,db,exe,lib,public,vendor}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
   end
 
   spec.bindir = "exe"
