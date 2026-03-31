@@ -32,20 +32,20 @@ yarn-debug.log*
 yarn-error.log*
 
 # Built assets are included in the gem
-# Source maps are generated for development
+# Source maps are generated on-demand for development only (not committed)
 !/public/rails-pulse-assets/
 !/public/rails-pulse-assets/*.css
 !/public/rails-pulse-assets/*.js
-!/public/rails-pulse-assets/*.map
+public/rails-pulse-assets/*.map
 
 # Vendor assets for Sprockets/Propshaft integration
 !/vendor/assets/
 !/vendor/assets/stylesheets/
 !/vendor/assets/stylesheets/*.css
-!/vendor/assets/stylesheets/*.map
+vendor/assets/stylesheets/*.map
 !/vendor/assets/javascripts/
 !/vendor/assets/javascripts/*.js
-!/vendor/assets/javascripts/*.map
+vendor/assets/javascripts/*.map
 
 # Test profiling and coverage files
 /test-prof/
