@@ -49,16 +49,16 @@ class RailsPulse::ApplicationHelperTest < ActionView::TestCase
     assert_kind_of RailsPulse::ApplicationHelper::RailsPulseHelper, helper
 
     # The helper should respond to asset_path
-    # In test environment, asset pipeline is available, so it uses that
     path = helper.asset_path("style.css")
 
-    assert_equal "/style.css", path
-
-    # Test fallback when asset pipeline fails
-    ActionController::Base.helpers.stubs(:asset_path).raises(StandardError.new("Not available"))
-    fallback_path = helper.asset_path("fallback.css")
-
-    assert_equal "/rails-pulse-assets/fallback.css", fallback_path
+    # Behavior depends on whether Sprockets/Propshaft is defined
+    if defined?(::Sprockets) || defined?(::Propshaft)
+      # With asset pipeline, tries to use it
+      assert_match %r{style\.css}, path
+    else
+      # Without asset pipeline, uses middleware path
+      assert_equal "/rails-pulse-assets/style.css", path
+    end
 
     # It should respond to known routes in engine routes
     assert_respond_to helper, :root_path

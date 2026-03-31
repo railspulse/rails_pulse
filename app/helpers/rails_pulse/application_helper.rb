@@ -97,14 +97,20 @@ module RailsPulse
       # Generate asset paths using Rails asset pipeline
       # This allows assets to work with CDN, digests, and precompiled manifests
       def asset_path(asset_name)
-        # Use the main application's asset_path helper to ensure we get
-        # the correct digested paths from the precompiled manifest
-        # Engine view contexts may not have access to the main manifest
-        begin
-          ActionController::Base.helpers.asset_path(asset_name)
-        rescue => e
-          # Fallback to direct path if asset pipeline is not available
-          Rails.logger.warn "[Rails Pulse] Asset pipeline not available for #{asset_name}: #{e.message}"
+        # Only use asset pipeline if we have Sprockets/Propshaft configured
+        # Otherwise fall back to middleware serving
+        if defined?(::Sprockets) || defined?(::Propshaft)
+          # Use the main application's asset_path helper to ensure we get
+          # the correct digested paths from the precompiled manifest
+          begin
+            ActionController::Base.helpers.asset_path(asset_name)
+          rescue => e
+            # Fallback to direct path if asset pipeline is not available
+            Rails.logger.warn "[Rails Pulse] Asset pipeline error for #{asset_name}: #{e.message}"
+            "/rails-pulse-assets/#{asset_name}"
+          end
+        else
+          # No asset pipeline - use middleware serving
           "/rails-pulse-assets/#{asset_name}"
         end
       end
