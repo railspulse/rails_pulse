@@ -21,7 +21,7 @@
     <div class="metric-strip__section">
       <h2 class="metric-strip__title font-semibold uppercase text-xs" title="<%= data[:title] %>"><%= data[:title] %></h2>
       <% if data[:all_clear] %>
-        <div class="metric-strip__all-clear" style="color: <%= chart_color %>">
+        <div class="metric-strip__all-clear" style="color: var(--color-positive)">
           <%= rails_pulse_icon "shield-check", height: "18px", width: "18px", class: "metric-strip__all-clear-icon" %>
           <span class="font-semibold">Under SLO</span>
         </div>
