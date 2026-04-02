@@ -1,7 +1,7 @@
 PATH
   remote: ..
   specs:
-    rails_pulse (0.2.5.pre.12)
+    rails_pulse (0.2.5.pre.13)
       async (~> 2.0)
       rails (>= 7.1.0, < 9.0.0)
       ransack (~> 4.0)
@@ -104,6 +104,8 @@ GEM
     brakeman (7.1.2)
       racc
     builder (3.3.0)
+    byebug (13.0.0)
+      reline (>= 0.6.0)
     capybara (3.40.0)
       addressable
       matrix
@@ -113,6 +115,7 @@ GEM
       rack-test (>= 0.6.3)
       regexp_parser (>= 1.5, < 3.0)
       xpath (~> 3.2)
+    coderay (1.1.3)
     concurrent-ruby (1.3.6)
     connection_pool (3.0.2)
     console (1.34.2)
@@ -121,6 +124,10 @@ GEM
       json
     crass (1.0.6)
     css-zero (1.1.15)
+    database_cleaner-active_record (2.2.2)
+      activerecord (>= 5.a)
+      database_cleaner-core (~> 2.0)
+    database_cleaner-core (2.0.1)
     date (3.5.1)
     debug (1.11.1)
       irb (~> 1.10)
@@ -132,6 +139,13 @@ GEM
     drb (2.2.3)
     erb (6.0.1)
     erubi (1.13.1)
+    factory_bot (6.5.6)
+      activesupport (>= 6.1.0)
+    factory_bot_rails (6.5.1)
+      factory_bot (~> 6.5)
+      railties (>= 6.1.0)
+    faker (3.5.3)
+      i18n (>= 1.8.11, < 2)
     fiber-annotation (0.2.0)
     fiber-local (1.1.0)
       fiber-storage
@@ -165,6 +179,7 @@ GEM
       net-smtp
     marcel (1.1.0)
     matrix (0.4.3)
+    method_source (1.1.0)
     metrics (0.15.0)
     mini_mime (1.1.5)
     minitest (6.0.1)
@@ -220,6 +235,13 @@ GEM
       prettyprint
     prettyprint (0.2.0)
     prism (1.8.0)
+    pry (0.16.0)
+      coderay (~> 1.1)
+      method_source (~> 1.0)
+      reline (>= 0.6.0)
+    pry-byebug (3.12.0)
+      byebug (~> 13.0)
+      pry (>= 0.13, < 0.17)
     psych (5.3.1)
       date
       stringio
@@ -275,7 +297,7 @@ GEM
       activerecord (>= 7.2)
       activesupport (>= 7.2)
       i18n
-    rdoc (7.2.0)
+    rdoc (7.1.0)
       erb
       psych (>= 4.0.0)
       tsort
@@ -378,26 +400,33 @@ DEPENDENCIES
   appraisal
   brakeman
   capybara
-  css-zero (~> 1.1, >= 1.1.4)
+  css-zero
+  database_cleaner-active_record
   debug
   dotenv-rails
+  factory_bot_rails
+  faker
   importmap-rails
   minitest (>= 5.0)
   minitest-reporters
   mocha
-  mysql2 (~> 0.5)
+  mysql2
   ostruct
-  pg (>= 1.1)
+  pg
+  pry-byebug
   puma
   rails (~> 8.1.0)
   rails-controller-testing (>= 1.0)
   rails_pulse!
+  ransack
+  request_store
   rubocop-minitest
   rubocop-rails-omakase
   selenium-webdriver
   shoulda-matchers
-  sqlite3 (>= 1.4)
+  sqlite3
   timecop
+  turbo-rails
 
 BUNDLED WITH
    2.6.2

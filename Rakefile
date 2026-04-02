@@ -367,14 +367,39 @@ task :test_release do
     puts "-" * 70
     sh "npm run build"
 
-    # Verify assets were built
-    assets_dir = "public/rails-pulse-assets"
-    if Dir.exist?(assets_dir) && !Dir.empty?(assets_dir)
-      puts "✅ Assets built successfully!"
-      puts "   Location: #{assets_dir}"
+    # Verify assets were built in both locations
+    public_assets = "public/rails-pulse-assets"
+    vendor_css = "vendor/assets/stylesheets"
+    vendor_js = "vendor/assets/javascripts"
+
+    all_dirs_valid = true
+
+    if Dir.exist?(public_assets) && !Dir.empty?(public_assets)
+      puts "✅ Public assets built: #{public_assets}"
     else
-      puts "❌ Assets directory is missing or empty!"
-      failed_tasks << "asset_build_verification"
+      puts "❌ Public assets directory is missing or empty!"
+      failed_tasks << "public_assets_verification"
+      all_dirs_valid = false
+    end
+
+    if Dir.exist?(vendor_css) && !Dir.empty?(vendor_css)
+      puts "✅ Vendor CSS built: #{vendor_css}"
+    else
+      puts "❌ Vendor CSS directory is missing or empty!"
+      failed_tasks << "vendor_css_verification"
+      all_dirs_valid = false
+    end
+
+    if Dir.exist?(vendor_js) && !Dir.empty?(vendor_js)
+      puts "✅ Vendor JS built: #{vendor_js}"
+    else
+      puts "❌ Vendor JS directory is missing or empty!"
+      failed_tasks << "vendor_js_verification"
+      all_dirs_valid = false
+    end
+
+    if all_dirs_valid
+      puts "✅ All assets built successfully!"
     end
   rescue => e
     puts "❌ Asset building failed!"

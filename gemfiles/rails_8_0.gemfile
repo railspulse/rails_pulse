@@ -2,15 +2,27 @@
 
 source "https://rubygems.org"
 
+gem "puma"
+gem "sqlite3"
+gem "pg"
+gem "mysql2"
 gem "dotenv-rails", groups: [:development, :test]
+gem "css-zero"
+gem "importmap-rails"
+gem "ransack"
+gem "turbo-rails"
+gem "request_store"
 gem "rails", "~> 8.0.0"
 
 group :test do
   gem "appraisal"
-  gem "puma"
   gem "capybara"
+  gem "database_cleaner-active_record"
+  gem "factory_bot_rails"
+  gem "faker"
   gem "minitest-reporters"
   gem "mocha"
+  gem "pry-byebug"
   gem "selenium-webdriver"
   gem "shoulda-matchers"
   gem "timecop"

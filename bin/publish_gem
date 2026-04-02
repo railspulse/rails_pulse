@@ -40,10 +40,30 @@ echo -e "${BLUE}💎 Publishing Gem to RubyGems${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Check if assets are built
-ASSETS_DIR="public/rails-pulse-assets"
-if [ ! -d "$ASSETS_DIR" ] || [ -z "$(ls -A $ASSETS_DIR 2>/dev/null)" ]; then
-  echo -e "${YELLOW}⚠${NC}  Warning: Assets directory is empty or missing"
+# Check if assets are built in both locations
+PUBLIC_ASSETS="public/rails-pulse-assets"
+VENDOR_CSS="vendor/assets/stylesheets"
+VENDOR_JS="vendor/assets/javascripts"
+
+ASSETS_MISSING=false
+
+if [ ! -d "$PUBLIC_ASSETS" ] || [ -z "$(ls -A $PUBLIC_ASSETS 2>/dev/null)" ]; then
+  echo -e "${YELLOW}⚠${NC}  Warning: Public assets directory is empty or missing ($PUBLIC_ASSETS)"
+  ASSETS_MISSING=true
+fi
+
+if [ ! -d "$VENDOR_CSS" ] || [ -z "$(ls -A $VENDOR_CSS 2>/dev/null)" ]; then
+  echo -e "${YELLOW}⚠${NC}  Warning: Vendor CSS directory is empty or missing ($VENDOR_CSS)"
+  ASSETS_MISSING=true
+fi
+
+if [ ! -d "$VENDOR_JS" ] || [ -z "$(ls -A $VENDOR_JS 2>/dev/null)" ]; then
+  echo -e "${YELLOW}⚠${NC}  Warning: Vendor JS directory is empty or missing ($VENDOR_JS)"
+  ASSETS_MISSING=true
+fi
+
+if [ "$ASSETS_MISSING" = true ]; then
+  echo ""
   echo "Run 'npm run build' to build assets first"
   read -p "Continue anyway? [y/N]: " -n 1 -r
   echo
@@ -52,7 +72,9 @@ if [ ! -d "$ASSETS_DIR" ] || [ -z "$(ls -A $ASSETS_DIR 2>/dev/null)" ]; then
     exit 1
   fi
 else
-  echo -e "${GREEN}✓${NC} Assets found in $ASSETS_DIR"
+  echo -e "${GREEN}✓${NC} Assets found in $PUBLIC_ASSETS"
+  echo -e "${GREEN}✓${NC} Assets found in $VENDOR_CSS"
+  echo -e "${GREEN}✓${NC} Assets found in $VENDOR_JS"
 fi
 
 # Get version from version.rb (including pre-release suffix)

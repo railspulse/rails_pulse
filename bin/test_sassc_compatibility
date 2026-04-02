@@ -1,0 +1,94 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# Test script to verify Rails Pulse CSS compiles with SassC
+# This simulates what happens when Sprockets processes our CSS
+
+begin
+  require "sassc"
+rescue LoadError
+  puts "=" * 70
+  puts "❌ SassC gem not found"
+  puts "=" * 70
+  puts ""
+  puts "To test SassC compatibility, you need to install the sassc gem:"
+  puts ""
+  puts "  gem install sassc"
+  puts ""
+  puts "Or test in your host app with:"
+  puts ""
+  puts "  cd ~/studiosity/eureka"
+  puts "  bundle exec rake assets:precompile"
+  puts ""
+  exit 1
+end
+
+puts "=" * 70
+puts "🧪 Testing SassC Compatibility for Rails Pulse CSS"
+puts "=" * 70
+puts ""
+
+css_file = File.expand_path("../vendor/assets/stylesheets/rails-pulse.css", __dir__)
+
+unless File.exist?(css_file)
+  puts "❌ CSS file not found: #{css_file}"
+  puts ""
+  puts "Please run: npm run build"
+  exit 1
+end
+
+css_content = File.read(css_file)
+file_size = (css_content.bytesize / 1024.0).round(1)
+
+puts "📄 File: #{File.basename(css_file)}"
+puts "📦 Size: #{file_size}KB"
+puts ""
+
+# Try to compile with SassC (simulating Sprockets behavior)
+begin
+  puts "⚙️  Compiling with SassC..."
+
+  engine = SassC::Engine.new(css_content, {
+    syntax: :scss,
+    style: :compressed
+  })
+
+  result = engine.render
+  output_size = (result.bytesize / 1024.0).round(1)
+
+  puts "✅ CSS compiled successfully!"
+  puts "📦 Output size: #{output_size}KB"
+  puts ""
+  puts "=" * 70
+  puts "🎉 All SassC compatibility tests passed!"
+  puts "=" * 70
+  puts ""
+  puts "Your Rails Pulse CSS will work with Sprockets-based asset pipelines."
+
+rescue SassC::SyntaxError => e
+  puts "❌ SassC compilation failed!"
+  puts ""
+  puts "Error: #{e.message}"
+  puts ""
+
+  # Try to extract line info
+  if e.message =~ /on line (\d+)/
+    line_num = $1.to_i
+    puts "Problem area:"
+    lines = css_content.lines
+    start_line = [line_num - 3, 0].max
+    end_line = [line_num + 2, lines.length - 1].min
+
+    (start_line..end_line).each do |i|
+      marker = (i == line_num - 1) ? ">>> " : "    "
+      puts "#{marker}#{i + 1}: #{lines[i]}"
+    end
+  end
+
+  puts ""
+  puts "=" * 70
+  puts "⚠️  This CSS will NOT work with Sprockets!"
+  puts "=" * 70
+
+  exit 1
+end

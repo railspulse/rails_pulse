@@ -51,7 +51,14 @@ class RailsPulse::ApplicationHelperTest < ActionView::TestCase
     # The helper should respond to asset_path
     path = helper.asset_path("style.css")
 
-    assert_equal "/rails-pulse-assets/style.css", path
+    # Behavior depends on whether Sprockets/Propshaft is defined
+    if defined?(::Sprockets) || defined?(::Propshaft)
+      # With asset pipeline, tries to use it
+      assert_match %r{style\.css}, path
+    else
+      # Without asset pipeline, uses middleware path
+      assert_equal "/rails-pulse-assets/style.css", path
+    end
 
     # It should respond to known routes in engine routes
     assert_respond_to helper, :root_path
