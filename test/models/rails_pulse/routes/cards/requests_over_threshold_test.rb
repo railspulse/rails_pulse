@@ -64,7 +64,11 @@ module RailsPulse
         end
 
         test "calculates percentage over threshold from summary data" do
-          threshold = RailsPulse.configuration.service_level_objectives.first[:threshold]
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [ { percentile: 95, threshold: 200 } ]
+          threshold = 200
+
+          RailsPulse::Summary.where(summarizable: @route, period_type: "day").delete_all
 
           7.times do |i|
             period_start = (@now - i.days).beginning_of_day
@@ -88,12 +92,16 @@ module RailsPulse
             assert_predicate card[:summary], :present?
             assert_match(/\d+\.?\d*%/, card[:summary])
           end
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
         end
 
         test "compares current week vs previous week for trend" do
           original_config = RailsPulse.configuration.service_level_objectives
           RailsPulse.configuration.service_level_objectives = [ { percentile: 95, threshold: 500 } ]
           threshold = 500
+
+          RailsPulse::Summary.where(summarizable: @route, period_type: "day").delete_all
 
           # Previous week: p95 above threshold — all traffic failing SLO
           7.times do |i|
@@ -137,7 +145,11 @@ module RailsPulse
         end
 
         test "generates sparkline data for last 14 days" do
-          threshold = RailsPulse.configuration.service_level_objectives.first[:threshold]
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [ { percentile: 95, threshold: 200 } ]
+          threshold = 200
+
+          RailsPulse::Summary.where(summarizable: @route, period_type: "day").delete_all
 
           14.times do |i|
             period_start = (@now - i.days).beginning_of_day
@@ -162,6 +174,8 @@ module RailsPulse
             assert_operator card[:chart_data].keys.size, :>=, 14
             assert card[:chart_data].values.all? { |v| v.key?(:value) }
           end
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
         end
 
         test "handles empty data gracefully" do
@@ -223,6 +237,8 @@ module RailsPulse
         test "handles p95_duration equal to p50_duration without error" do
           threshold = 300
 
+          RailsPulse::Summary.where(summarizable: @route, period_type: "day", period_start: @now.beginning_of_day).delete_all
+
           RailsPulse::Summary.create!(
             summarizable: @route,
             period_type: "day",
@@ -249,6 +265,8 @@ module RailsPulse
         test "handles p99_duration equal to p95_duration without error" do
           threshold = 450
 
+          RailsPulse::Summary.where(summarizable: @route, period_type: "day", period_start: @now.beginning_of_day).delete_all
+
           RailsPulse::Summary.create!(
             summarizable: @route,
             period_type: "day",
@@ -274,6 +292,8 @@ module RailsPulse
 
         test "handles max_duration equal to p99_duration without error" do
           threshold = 600
+
+          RailsPulse::Summary.where(summarizable: @route, period_type: "day", period_start: @now.beginning_of_day).delete_all
 
           RailsPulse::Summary.create!(
             summarizable: @route,
@@ -304,6 +324,8 @@ module RailsPulse
           # Previously produced negative ratio and negative count
           threshold = 600
 
+          RailsPulse::Summary.where(summarizable: @route, period_type: "day", period_start: @now.beginning_of_day).delete_all
+
           RailsPulse::Summary.create!(
             summarizable: @route,
             period_type: "day",
@@ -333,6 +355,8 @@ module RailsPulse
 
         test "handles all percentiles at zero without error" do
           threshold = 100
+
+          RailsPulse::Summary.where(summarizable: @route, period_type: "day", period_start: @now.beginning_of_day).delete_all
 
           RailsPulse::Summary.create!(
             summarizable: @route,

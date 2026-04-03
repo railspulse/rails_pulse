@@ -17,7 +17,7 @@
     <%= stylesheet_link_tag :app %>
     <%= javascript_include_tag "https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.js" %>
     <%= javascript_include_tag "https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js" %>
-    <%= javascript_importmap_tags %>
+    <%= javascript_importmap_tags if defined?(Importmap) %>
   </head>
 
   <body>
