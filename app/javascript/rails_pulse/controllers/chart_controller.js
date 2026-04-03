@@ -131,7 +131,17 @@ export default class extends Controller {
 
       const values = Object.values(data).map(v => {
         if (typeof v === 'object' && v !== null) {
-          return v.value !== undefined ? v.value : v
+          // If object has value property, check if it has other properties too
+          if (v.value !== undefined) {
+            // If it has other properties (like itemStyle), return the whole object
+            const keys = Object.keys(v)
+            if (keys.length > 1 || (keys.length === 1 && keys[0] !== 'value')) {
+              return v
+            }
+            // Otherwise just return the value
+            return v.value
+          }
+          return v
         }
         return v
       })

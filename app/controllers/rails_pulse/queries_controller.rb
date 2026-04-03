@@ -8,6 +8,7 @@ module RailsPulse
     def index
       setup_metric_cards
       setup_chart_and_table_data
+      setup_database_load_chart
     end
 
     def show
@@ -144,6 +145,7 @@ module RailsPulse
 
       @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
       @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
+      @database_load_metric_card = RailsPulse::Queries::Cards::DatabaseLoad.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card if @query.nil?
     end
 
     def show_action?
@@ -181,6 +183,18 @@ module RailsPulse
 
     def set_query
       @query = Query.find(params[:id])
+    end
+
+    def setup_database_load_chart
+      return if turbo_frame_request?
+
+      disabled_tags = session_disabled_tags
+      show_non_tagged = session[:show_non_tagged] != false
+
+      @database_load_chart_data = RailsPulse::Queries::Charts::DatabaseLoad.new(
+        disabled_tags: disabled_tags,
+        show_non_tagged: show_non_tagged
+      ).to_chart_data
     end
   end
 end

@@ -3,7 +3,8 @@
 <% unless turbo_frame_request? %>
   <% metric_cards = [
     @percentile_query_times_metric_card,
-    @execution_rate_metric_card
+    @execution_rate_metric_card,
+    @database_load_metric_card
   ].compact %>
   <%= render 'rails_pulse/components/metric_strip', metrics_data: metric_cards %>
 <% end %>
@@ -70,3 +71,51 @@
     <% end %>
   <% end %>
 </div>
+
+<% if @database_load_chart_data %>
+  <div class="row">
+    <div class="grid-item">
+      <%= render 'rails_pulse/components/panel', {
+        title: 'Database Load',
+        card_classes: 'b-full',
+        help_heading: 'Database Load Over Time',
+        help_text: 'Shows the percentage of total response time spent in database queries each day over the last 2 weeks. Green (<25%) indicates a healthy application where Ruby/views are the primary bottleneck. Yellow (25-40%) is normal for data-heavy apps. Red (>40%) means your database is the bottleneck — focus optimization efforts on queries, indexes, and N+1 elimination.'
+      } do %>
+        <div class="chart-container chart-container--slim">
+          <%= render_stimulus_chart(
+            @database_load_chart_data,
+            type: 'bar',
+            height: "100%",
+            options: {
+              chart: { toolbar: { show: false } },
+              plotOptions: {
+                bar: {
+                  distributed: true,
+                  columnWidth: '80%'
+                }
+              },
+              dataLabels: { enabled: false },
+              legend: { show: false },
+              xaxis: {
+                labels: { rotate: -45 }
+              },
+              yaxis: {
+                min: 0,
+                max: 100,
+                labels: {
+                  formatter: "function(val) { return val.toFixed(0) + '%'; }"
+                },
+                title: { text: 'DB Load (%)' }
+              },
+              tooltip: {
+                y: {
+                  formatter: "function(val) { return val.toFixed(1) + '%'; }"
+                }
+              }
+            }
+          ) %>
+        </div>
+      <% end %>
+    </div>
+  </div>
+<% end %>

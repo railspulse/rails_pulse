@@ -161836,7 +161836,14 @@
         });
         const values = Object.values(data).map((v) => {
           if (typeof v === "object" && v !== null) {
-            return v.value !== void 0 ? v.value : v;
+            if (v.value !== void 0) {
+              const keys2 = Object.keys(v);
+              if (keys2.length > 1 || keys2.length === 1 && keys2[0] !== "value") {
+                return v;
+              }
+              return v.value;
+            }
+            return v;
           }
           return v;
         });
