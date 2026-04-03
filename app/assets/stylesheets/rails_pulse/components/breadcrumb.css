@@ -23,6 +23,7 @@
   span[aria-current="page"] {
     color: var(--color-text);
     font-weight: 500;
+    word-break: break-all;
   }
 
   @media (min-width: 40rem) {
