@@ -56,7 +56,9 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to previous week"
+            trend_text: "Compared to previous week",
+            help_heading: "Failure Rate",
+            help_text: "Percentage of job executions that raised an error over the last 14 days. A rising failure rate may indicate bugs, external dependency issues, or jobs receiving invalid data."
           }
         end
 

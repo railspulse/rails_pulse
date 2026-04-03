@@ -29,7 +29,8 @@ module RailsPulse
                   :logger,
                   :async,
                   :service_level_objectives,
-                  :query_service_level_objectives
+                  :query_service_level_objectives,
+                  :warn_on_stale_summaries
 
     def initialize
       @enabled = true
@@ -81,6 +82,9 @@ module RailsPulse
       # Service Level Objectives (default: [] = no SLOs configured)
       @service_level_objectives = []
       @query_service_level_objectives = []
+
+      # Show a warning banner when summaries haven't been generated recently
+      @warn_on_stale_summaries = true
 
       # Validate defaults eagerly so that a misconfigured initializer raises at
       # boot time rather than at the first request. All SLO defaults are nil so

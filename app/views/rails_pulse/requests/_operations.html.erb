@@ -1,4 +1,7 @@
-<%= render 'rails_pulse/components/panel', { title: 'Event Sequence ' } do %>
+<%= render 'rails_pulse/components/panel',
+      title: 'Operations',
+      help_heading: 'How to use this',
+      help_text: 'Sort by Impact to find your biggest wins. Click any row for details and optimisation suggestions. The same SQL appearing multiple times is an N+1 — fix with includes(). A single operation above 50% impact is your highest priority.' do %>
   <% if operations.any? %>
     <table class="table operations-table">
       <thead>
@@ -43,9 +46,9 @@
               </td>
 
               <td class="operations-event-cell">
-                <div
-                  class="operations-event"
-                  style="left: <%= bar.left_pct %>%; width: <%= bar.width_pct %>%; background-color: <%= event_color(bar.operation.operation_type) %>;">
+                <div class="flame-bar"
+                     style="left: <%= bar.left_pct %>%; width: <%= [bar.width_pct, 0.3].max %>%; background-color: <%= event_color(bar.operation.operation_type) %>;">
+                  <span class="flame-bar-label"><%= html_escape(bar.operation.label) %></span>
                 </div>
               </td>
 

@@ -11,17 +11,45 @@ class RequestsShowPageTest < ApplicationSystemTestCase
   def test_request_show_page_loads_and_displays_operations
     visit_rails_pulse_path "/requests/#{@users_request_1.id}"
 
-    # Should show request details
     assert_text @users_request_1.route.path_and_method
     assert_text "#{@users_request_1.duration.round(2)} ms"
 
-    # Should show operations table when operations exist
     assert_selector "table.operations-table"
     assert_selector "table tbody tr", minimum: 1
   end
 
+  def test_request_trace_panel_is_present
+    visit_rails_pulse_path "/requests/#{@users_request_1.id}"
+
+    assert_text "Request Trace"
+    assert_selector ".flame-trace"
+    assert_selector ".flame-bar", minimum: 1
+  end
+
+  def test_request_trace_shows_lane_labels
+    visit_rails_pulse_path "/requests/#{@users_request_1.id}"
+
+    # users_request_1 has controller and sql operations
+    assert_selector ".flame-lane-label", minimum: 1
+  end
+
+  def test_operations_panel_title_is_operations
+    visit_rails_pulse_path "/requests/#{@users_request_1.id}"
+
+    assert_text "Operations"
+    assert_no_text "Event Sequence"
+  end
+
+  def test_operations_table_timeline_uses_flame_bars
+    visit_rails_pulse_path "/requests/#{@users_request_1.id}"
+
+    # The timeline column in the Operations table should use flame-bar styling
+    within "table.operations-table" do
+      assert_selector ".flame-bar", minimum: 1
+    end
+  end
+
   def test_empty_state_displays_when_no_operations_exist
-    # Create a request without operations using direct record creation
     route_without_ops = RailsPulse::Route.create!(path: "/test/no-ops", method: "GET")
     request_without_operations = RailsPulse::Request.create!(
       route: route_without_ops,
@@ -35,17 +63,10 @@ class RequestsShowPageTest < ApplicationSystemTestCase
 
     visit_rails_pulse_path "/requests/#{request_without_operations.id}"
 
-    # Should show request details
     assert_text request_without_operations.route.path_and_method
-
-    # Should show empty state for operations
     assert_text "No operations found for this request."
     assert_text "This request may not have had any tracked operations."
-
-    # Check for the search.svg image in the empty state
     assert_selector "img[src*='search.svg']"
-
-    # Should not show operations table
     assert_no_selector "table.operations-table"
   end
 end

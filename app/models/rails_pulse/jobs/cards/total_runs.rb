@@ -40,7 +40,9 @@ module RailsPulse
             chart_data: sparkline_from(grouped_runs),
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to previous week"
+            trend_text: "Compared to previous week",
+            help_heading: "Job Runs",
+            help_text: "Total background job executions over the last 14 days. Includes all job classes and queues. Use this to understand job throughput and spot unexpected spikes or drops in processing volume."
           }
         end
       end

@@ -150,7 +150,7 @@ module RailsPulse
       @has_requests = RailsPulse::Request.exists?
       last_summary_at = RailsPulse::Summary.maximum(:updated_at)
       @has_summaries = last_summary_at.present?
-      @summaries_stale = @has_summaries && last_summary_at < 2.hours.ago
+      @summaries_stale = RailsPulse.configuration.warn_on_stale_summaries && @has_summaries && last_summary_at < 2.hours.ago
     end
 
     # Set default value for show_non_tagged if not already set

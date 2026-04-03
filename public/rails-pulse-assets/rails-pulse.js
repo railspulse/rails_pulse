@@ -163018,6 +163018,37 @@
     chartId: String
   });
 
+  // app/javascript/rails_pulse/controllers/flame_graph_controller.js
+  var flame_graph_controller_default = class extends Controller {
+    showTooltip(event) {
+      const bar = event.currentTarget;
+      const tooltip = this.tooltipTarget;
+      tooltip.querySelector("[data-flame-type]").textContent = bar.dataset.opType.replace(/_/g, " ");
+      tooltip.querySelector("[data-flame-label]").textContent = bar.dataset.opLabel;
+      tooltip.querySelector("[data-flame-duration]").textContent = bar.dataset.opDuration;
+      tooltip.querySelector("[data-flame-impact]").textContent = bar.dataset.opImpact;
+      tooltip.classList.remove("hidden");
+    }
+    moveTooltip(event) {
+      const tooltip = this.tooltipTarget;
+      if (tooltip.classList.contains("hidden"))
+        return;
+      const x = Math.min(event.clientX + 16, window.innerWidth - 320);
+      const y = Math.max(event.clientY - 80, 8);
+      tooltip.style.left = `${x}px`;
+      tooltip.style.top = `${y}px`;
+    }
+    hideTooltip() {
+      this.tooltipTarget.classList.add("hidden");
+    }
+    navigate(event) {
+      const url = event.currentTarget.dataset.opUrl;
+      if (url)
+        window.location.href = url;
+    }
+  };
+  __publicField(flame_graph_controller_default, "targets", ["tooltip"]);
+
   // app/javascript/rails_pulse/application.js
   var application = Application.start();
   application.debug = false;
@@ -163042,6 +163073,7 @@
   application.register("rails-pulse--global-filters", global_filters_controller_default);
   application.register("rails-pulse--custom-range", custom_range_controller_default);
   application.register("rails-pulse--series-toggle", series_toggle_controller_default);
+  application.register("rails-pulse--flame-graph", flame_graph_controller_default);
   document.addEventListener("DOMContentLoaded", () => {
     const frames = document.querySelectorAll("turbo-frame[src]:not([complete])");
     frames.forEach((frame) => {

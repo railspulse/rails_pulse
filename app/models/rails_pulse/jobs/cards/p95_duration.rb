@@ -56,7 +56,9 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to previous week"
+            trend_text: "Compared to previous week",
+            help_heading: "P95 Duration",
+            help_text: "The 95th percentile execution time — 95% of jobs complete faster than this. Weighted by job volume across all classes. A rising P95 indicates jobs are becoming slower, which may cause queue backlog."
           }
         end
 

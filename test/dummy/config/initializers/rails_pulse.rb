@@ -9,6 +9,9 @@ RailsPulse.configure do |config|
   # Use synchronous tracking in test environment for predictable test behavior
   config.async = false if Rails.env.test?
 
+  # Suppress stale summary warning in development (summary job isn't scheduled locally)
+  config.warn_on_stale_summaries = false if Rails.env.development?
+
   # ====================================================================================================
   #                                         DASHBOARD CONFIGURATION
   # ====================================================================================================
