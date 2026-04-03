@@ -1,11 +1,3 @@
-<% unless @has_any_data %>
-<div class="card" style="border-left: 3px solid var(--color-accent)">
-  <h2>Rails Pulse is installed and listening</h2>
-  <p>Make some requests to your app to start seeing performance data.
-     Metrics, charts, and slow route analysis will populate automatically.</p>
-</div>
-<% end %>
-
 <div class="flex justify-end">
   <%= render 'rails_pulse/components/active_filters' %>
 </div>

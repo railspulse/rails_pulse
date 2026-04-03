@@ -1,0 +1,79 @@
+<div class="setup-screen">
+  <div class="setup-screen__brand">
+    <%= image_tag rails_pulse.asset_path("rails-pulse-logo.png"),
+    width: 72,
+    height: 72,
+    alt: "Rails Pulse",
+    class: "setup-screen__logo" %>
+    <p class="setup-screen__brand-name">Rails Pulse</p>
+  </div>
+
+  <ul class="setup-todo">
+
+    <li class="setup-todo__item setup-todo__item--done">
+      <div class="setup-todo__icon setup-todo__icon--done">
+        <%= rails_pulse_icon "check", width: "14" %>
+      </div>
+      <div class="setup-todo__content">
+        <span class="setup-todo__label">Installed</span>
+      </div>
+    </li>
+
+    <li
+      class="setup-todo__item <%= @has_requests ? 'setup-todo__item--done' : 'setup-todo__item--active' %>"
+    >
+      <div
+        class="setup-todo__icon <%= @has_requests ? 'setup-todo__icon--done' : 'setup-todo__icon--active' %>"
+      >
+        <% if @has_requests %>
+          <%= rails_pulse_icon "check", width: "14" %>
+        <% else %>
+          2
+        <% end %>
+      </div>
+      <div class="setup-todo__content">
+        <span
+          class="setup-todo__label <%= 'setup-todo__label--active' unless @has_requests %>"
+        >Make requests to your app</span>
+        <% unless @has_requests %>
+          <p class="setup-todo__description">
+            Browse your app to start recording request data. While you wait,
+            set up the recurring jobs so summaries run automatically:
+          </p>
+          <code class="setup-banner__command"><span class="setup-banner__command-prefix"></span>
+            RailsPulse::SummaryJob.perform_later
+            <span class="setup-banner__command-prefix"># run hourly</span></code>
+          <code class="setup-banner__command"><span class="setup-banner__command-prefix"></span>
+            RailsPulse::CleanupJob.perform_later
+            <span class="setup-banner__command-prefix"># run daily</span></code>
+        <% end %>
+      </div>
+    </li>
+
+    <li class="setup-todo__item <%= 'setup-todo__item--active' if @has_requests %>">
+      <div
+        class="setup-todo__icon <%= 'setup-todo__icon--active' if @has_requests %>"
+      >3</div>
+      <div class="setup-todo__content">
+        <span
+          class="setup-todo__label <%= 'setup-todo__label--active' if @has_requests %>"
+        >Run summaries</span>
+        <% if @has_requests %>
+          <p class="setup-todo__description">
+            Generate summaries now to see your data immediately, or wait for
+            the scheduled job to run:
+          </p>
+          <code class="setup-banner__command"><span class="setup-banner__command-prefix">$</span>
+            bin/rails rails_pulse:backfill_summaries</code>
+        <% end %>
+      </div>
+    </li>
+
+  </ul>
+
+  <%= link_to "View installation docs →",
+  "https://railspulse.com/documentation/installation/",
+  class: "setup-screen__docs",
+  target: "_blank",
+  rel: "noopener" %>
+</div>

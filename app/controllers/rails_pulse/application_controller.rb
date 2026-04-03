@@ -2,6 +2,7 @@ module RailsPulse
   class ApplicationController < ActionController::Base
     before_action :authenticate_rails_pulse_user!
     before_action :set_show_non_tagged_default
+    before_action :set_onboarding_state
     helper_method :session_global_filters, :session_disabled_tags
 
     def set_pagination_limit(limit = nil)
@@ -143,6 +144,13 @@ module RailsPulse
     rescue StandardError => e
       logger.warn "Failed to get performance threshold: #{e.message}"
       nil
+    end
+
+    def set_onboarding_state
+      @has_requests = RailsPulse::Request.exists?
+      last_summary_at = RailsPulse::Summary.maximum(:updated_at)
+      @has_summaries = last_summary_at.present?
+      @summaries_stale = @has_summaries && last_summary_at < 2.hours.ago
     end
 
     # Set default value for show_non_tagged if not already set

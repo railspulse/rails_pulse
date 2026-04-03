@@ -7,6 +7,7 @@ module RailsPulse
         ".css" => "text/css",
         ".js" => "application/javascript",
         ".map" => "application/json",
+        ".png" => "image/png",
         ".svg" => "image/svg+xml"
       }.freeze
 

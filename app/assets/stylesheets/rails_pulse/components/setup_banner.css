@@ -1,0 +1,165 @@
+/* ---- Setup screen (full-page onboarding) ---- */
+
+.setup-screen {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-12);
+  padding-block: var(--size-20);
+}
+
+.setup-screen__brand {
+  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-4);
+}
+
+.setup-screen__logo {
+  border-radius: var(--rounded-xl);
+  filter: var(--color-filter-text);
+}
+
+.setup-screen__brand-name {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-bold);
+}
+
+.setup-screen__docs {
+  color: var(--color-link);
+  font-size: var(--text-base);
+}
+
+/* ---- Todo-style step list ---- */
+
+.setup-todo {
+  display: flex;
+  flex-direction: column;
+  list-style: none;
+  max-inline-size: 30rem;
+  inline-size: 100%;
+}
+
+.setup-todo__item {
+  align-items: flex-start;
+  display: flex;
+  gap: var(--size-4);
+  padding-block-end: var(--size-8);
+  position: relative;
+}
+
+.setup-todo__item:last-child {
+  padding-block-end: 0;
+}
+
+.setup-todo__item::before {
+  background-color: var(--color-border-dark);
+  block-size: calc(100% - var(--size-10));
+  content: '';
+  inline-size: 2px;
+  inset-block-start: var(--size-10);
+  inset-inline-start: calc(var(--size-5) - 1px);
+  position: absolute;
+}
+
+.setup-todo__item:last-child::before {
+  display: none;
+}
+
+.setup-todo__item--done::before {
+  background-color: var(--color-positive);
+}
+
+.setup-todo__icon {
+  align-items: center;
+  background-color: var(--color-bg);
+  block-size: var(--size-10);
+  border: 2px solid var(--color-border-dark);
+  border-radius: var(--rounded-full);
+  color: var(--color-text-subtle);
+  display: flex;
+  flex-shrink: 0;
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+  inline-size: var(--size-10);
+  justify-content: center;
+  position: relative;
+  z-index: 1;
+}
+
+.setup-todo__icon--done {
+  background-color: var(--color-positive);
+  border-color: var(--color-positive);
+  color: white;
+}
+
+.setup-todo__icon--active {
+  background-color: var(--color-link);
+  border-color: var(--color-link);
+  color: white;
+}
+
+.setup-todo__content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
+  padding-block-start: var(--size-2);
+}
+
+.setup-todo__label {
+  color: var(--color-text-subtle);
+  font-size: var(--text-base);
+}
+
+.setup-todo__label--active {
+  color: var(--color-text);
+  font-weight: var(--font-semibold);
+}
+
+.setup-todo__description {
+  color: var(--color-text-subtle);
+  font-size: var(--text-sm);
+  line-height: 1.6;
+}
+
+/* ---- Stale-jobs banner (shown inline above page content) ---- */
+
+.setup-banner {
+  background-color: var(--setup-banner-bg, var(--color-border-light));
+  border-left: var(--size-1) solid var(--setup-banner-accent, var(--color-border-dark));
+  border-radius: var(--rounded-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--size-3);
+  padding: var(--size-4) var(--size-5);
+}
+
+.setup-banner--negative {
+  --setup-banner-accent: var(--color-negative);
+  --setup-banner-bg: color-mix(in srgb, var(--color-negative) 8%, var(--color-bg));
+  --setup-banner-title-color: var(--color-negative);
+}
+
+.setup-banner__title {
+  color: var(--setup-banner-title-color, var(--color-text));
+  font-size: var(--text-base);
+  font-weight: var(--font-semibold);
+}
+
+.setup-banner__body {
+  font-size: var(--text-sm);
+}
+
+.setup-banner__command {
+  background-color: var(--color-primary);
+  border-radius: var(--rounded-md);
+  color: var(--color-text-reversed);
+  display: inline-block;
+  font-family: ui-monospace, monospace;
+  font-size: var(--text-sm);
+  padding: var(--size-2) var(--size-3);
+}
+
+.setup-banner__command-prefix {
+  opacity: 0.4;
+}
