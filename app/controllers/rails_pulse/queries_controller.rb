@@ -142,7 +142,6 @@ module RailsPulse
       disabled_tags = session_disabled_tags
       show_non_tagged = session[:show_non_tagged] != false
 
-      @queries_over_threshold_metric_cards = RailsPulse::Queries::Cards::QueriesOverThreshold.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_cards
       @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
       @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
     end

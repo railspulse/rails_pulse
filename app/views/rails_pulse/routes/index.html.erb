@@ -2,10 +2,10 @@
 
 <% unless turbo_frame_request? %>
   <% metric_cards = [
-    *@requests_over_threshold_metric_cards,
     @percentile_response_times_metric_card,
     @request_count_totals_metric_card,
-    @error_rate_per_route_metric_card
+    @error_rate_per_route_metric_card,
+    @client_error_rate_metric_card
   ].compact %>
   <%= render 'rails_pulse/components/metric_strip', metrics_data: metric_cards %>
 <% end %>

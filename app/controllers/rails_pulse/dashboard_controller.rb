@@ -5,10 +5,10 @@ module RailsPulse
       disabled_tags = session_disabled_tags
       show_non_tagged = session[:show_non_tagged] != false
 
-      @requests_over_threshold_metric_cards = RailsPulse::Routes::Cards::RequestsOverThreshold.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_cards
       @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
       @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
       @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
+      @client_error_rate_metric_card = RailsPulse::Routes::Cards::ClientErrorRate.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
 
       # Generate chart data for inline rendering
       @response_time_percentiles_chart_data = RailsPulse::Dashboard::Charts::ResponseTimePercentiles.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_chart_data

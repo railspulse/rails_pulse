@@ -64,7 +64,9 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week"
+            trend_text: "Compared to last week",
+            help_heading: "P95 Query Time",
+            help_text: "The 95th percentile database query duration — 95% of queries complete faster than this. Weighted by execution frequency across all queries. Slow queries are often caused by missing indexes or N+1 patterns."
           }
         end
       end

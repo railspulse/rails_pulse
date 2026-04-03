@@ -2,7 +2,6 @@
 
 <% unless turbo_frame_request? %>
   <% metric_cards = [
-    *@queries_over_threshold_metric_cards,
     @percentile_query_times_metric_card,
     @execution_rate_metric_card
   ].compact %>

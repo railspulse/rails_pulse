@@ -87,7 +87,9 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week"
+            trend_text: "Compared to last week",
+            help_heading: "Request Throughput",
+            help_text: "Total HTTP requests served over the last 14 days, expressed as an average rate. Use this to understand traffic patterns and capacity planning needs."
           }
         end
       end

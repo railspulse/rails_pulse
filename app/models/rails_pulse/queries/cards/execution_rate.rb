@@ -105,7 +105,9 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week"
+            trend_text: "Compared to last week",
+            help_heading: "Query Execution Rate",
+            help_text: "Total database queries executed over the last 14 days, expressed as an average rate. Spikes may indicate N+1 queries or inefficient data access patterns."
           }
         end
       end

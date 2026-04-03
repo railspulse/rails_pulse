@@ -19,7 +19,26 @@
       end
     %>
     <div class="metric-strip__section">
-      <h2 class="metric-strip__title font-semibold uppercase text-xs" title="<%= data[:title] %>"><%= data[:title] %></h2>
+      <div class="flex items-start justify-between gap-2">
+        <h2 class="metric-strip__title font-semibold uppercase text-xs" title="<%= data[:title] %>"><%= data[:title] %></h2>
+        <% if data[:help_heading] && data[:help_text] %>
+          <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-end" style="flex-shrink: 0;">
+            <a href="#"
+              data-rails-pulse--popover-target="button"
+              data-action="rails-pulse--popover#toggle"
+              data-popovertarget="popover"
+              style="display: block; line-height: 1;">
+              <%= rails_pulse_icon 'message-circle-question', height: "16px", width: "16px" %>
+            </a>
+            <div popover class="popover card" data-rails-pulse--popover-target="menu" style="max-width: 20rem">
+              <div class="flex flex-col">
+                <h3 class="font-semibold leading-none mbe-2 uppercase text-sm"><%= data[:help_heading] %></h3>
+                <p class="text-sm text-subtle"><%= data[:help_text] %></p>
+              </div>
+            </div>
+          </div>
+        <% end %>
+      </div>
       <% if data[:all_clear] %>
         <div class="metric-strip__all-clear" style="color: var(--color-positive)">
           <%= rails_pulse_icon "shield-check", height: "18px", width: "18px", class: "metric-strip__all-clear-icon" %>

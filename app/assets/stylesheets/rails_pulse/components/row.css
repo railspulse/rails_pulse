@@ -2,7 +2,7 @@
   display: flex;
   justify-content: space-between;
   width: 100%;
-  gap: var(--column-gap, 0.5rem);
+  gap: var(--size-4);
   align-items: stretch;
 }
 
@@ -29,7 +29,7 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
-      gap: 0.5rem;
+      gap: var(--size-4);
       align-items: flex-start;
   }
 

@@ -72,7 +72,9 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week"
+            trend_text: "Compared to last week",
+            help_heading: "P95 Response Time",
+            help_text: "The 95th percentile response time — 95% of requests are faster than this. Weighted by request volume across all routes. A rising P95 indicates increasing slowness affecting your users."
           }
         end
       end
