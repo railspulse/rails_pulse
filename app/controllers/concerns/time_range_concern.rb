@@ -6,6 +6,7 @@ module TimeRangeConcern
     const_set(:TIME_RANGE_OPTIONS, [
       [ "Last 24 hours", :last_day ],
       [ "Last Week", :last_week ],
+      [ "Last 2 Weeks", :last_two_weeks ],
       [ "Last Month", :last_month ],
       [ "Custom Range...", :custom ]
     ].freeze)
@@ -31,6 +32,7 @@ module TimeRangeConcern
         case selected_time_range.to_sym
         when :last_day then 1.day.ago
         when :last_week then 1.week.ago
+        when :last_two_weeks then 2.weeks.ago
         when :last_month then 1.month.ago
         else 1.day.ago # Default fallback
         end

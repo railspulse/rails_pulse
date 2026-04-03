@@ -3,10 +3,10 @@
 </div>
 
 <% metric_cards = [
-  @percentile_response_times_metric_card,
-  @request_count_totals_metric_card,
-  @error_rate_per_route_metric_card,
-  @client_error_rate_metric_card
+  @percentile_response_times_metric_card&.merge(link_url: routes_path(q: { s: "p95_duration_sort desc", period_start_range: :last_two_weeks })),
+  @request_count_totals_metric_card&.merge(link_url: routes_path(q: { s: "count_sort desc", period_start_range: :last_two_weeks })),
+  @error_rate_per_route_metric_card&.merge(link_url: routes_path(q: { s: "error_rate_percentage desc", period_start_range: :last_two_weeks })),
+  @client_error_rate_metric_card&.merge(link_url: routes_path(q: { s: "error_rate_percentage desc", period_start_range: :last_two_weeks }))
 ].compact %>
 <%= render 'rails_pulse/components/metric_strip', metrics_data: metric_cards %>
 

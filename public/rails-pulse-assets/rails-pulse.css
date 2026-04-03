@@ -1744,6 +1744,7 @@ body {
   border-left: 1px solid var(--color-border);
 }
 
+
 .metric-strip__title {
   overflow: hidden;
   text-overflow: ellipsis;
