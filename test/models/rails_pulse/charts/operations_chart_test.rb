@@ -18,9 +18,9 @@ module RailsPulse
         bar = OperationsChart::OperationBar.new(nil, 10.0, 5.0, 20.0, 1)
 
         assert_nil bar.operation
-        assert_equal 10.0, bar.duration
-        assert_equal 5.0,  bar.left_pct
-        assert_equal 20.0, bar.width_pct
+        assert_in_delta(10.0, bar.duration)
+        assert_in_delta(5.0, bar.left_pct)
+        assert_in_delta(20.0, bar.width_pct)
         assert_equal 1,    bar.depth
       end
 
@@ -48,12 +48,12 @@ module RailsPulse
       test "handles empty operations collection" do
         chart = OperationsChart.new([])
 
-        assert_equal [],  chart.bars
+        assert_empty chart.bars
         assert_equal 0,   chart.min_start
         assert_equal 1,   chart.max_end
         assert_equal 1,   chart.total_duration
         assert_equal 0,   chart.max_depth
-        assert_equal [],  chart.lane_labels
+        assert_empty chart.lane_labels
       end
 
       test "handles single operation" do
@@ -81,7 +81,7 @@ module RailsPulse
         ]
         chart = OperationsChart.new(ops)
 
-        assert_equal 5.0, chart.min_start
+        assert_in_delta(5.0, chart.min_start)
       end
 
       test "max_end equals largest start_time plus duration" do
@@ -91,7 +91,7 @@ module RailsPulse
         ]
         chart = OperationsChart.new(ops)
 
-        assert_equal 60.0, chart.max_end
+        assert_in_delta(60.0, chart.max_end)
       end
 
       test "total_duration spans min_start to max_end" do
@@ -101,7 +101,7 @@ module RailsPulse
         ]
         chart = OperationsChart.new(ops)
 
-        assert_equal 45.0, chart.total_duration  # 50 - 5
+        assert_in_delta(45.0, chart.total_duration)  # 50 - 5
       end
 
       test "duration on bar is rounded to whole milliseconds" do
