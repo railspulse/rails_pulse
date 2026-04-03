@@ -102,7 +102,6 @@ GEM
     brakeman (7.1.1)
       racc
     builder (3.3.0)
-    byebug (12.0.0)
     capybara (3.40.0)
       addressable
       matrix
@@ -112,7 +111,6 @@ GEM
       rack-test (>= 0.6.3)
       regexp_parser (>= 1.5, < 3.0)
       xpath (~> 3.2)
-    coderay (1.1.3)
     concurrent-ruby (1.3.5)
     connection_pool (2.5.3)
     console (1.34.2)
@@ -121,10 +119,6 @@ GEM
       json
     crass (1.0.6)
     css-zero (1.1.15)
-    database_cleaner-active_record (2.2.2)
-      activerecord (>= 5.a)
-      database_cleaner-core (~> 2.0)
-    database_cleaner-core (2.0.1)
     date (3.5.1)
     debug (1.11.0)
       irb (~> 1.10)
@@ -136,13 +130,6 @@ GEM
     drb (2.2.3)
     erb (6.0.1)
     erubi (1.13.1)
-    factory_bot (6.5.4)
-      activesupport (>= 6.1.0)
-    factory_bot_rails (6.5.0)
-      factory_bot (~> 6.5)
-      railties (>= 6.1.0)
-    faker (3.5.2)
-      i18n (>= 1.8.11, < 2)
     fiber-annotation (0.2.0)
     fiber-local (1.1.0)
       fiber-storage
@@ -175,7 +162,6 @@ GEM
       net-smtp
     marcel (1.0.4)
     matrix (0.4.3)
-    method_source (1.1.0)
     metrics (0.15.0)
     mini_mime (1.1.5)
     minitest (5.25.5)
@@ -227,12 +213,6 @@ GEM
       prettyprint
     prettyprint (0.2.0)
     prism (1.4.0)
-    pry (0.15.2)
-      coderay (~> 1.1)
-      method_source (~> 1.0)
-    pry-byebug (3.11.0)
-      byebug (~> 12.0)
-      pry (>= 0.13, < 0.16)
     psych (5.3.1)
       date
       stringio
@@ -390,11 +370,8 @@ DEPENDENCIES
   brakeman
   capybara
   css-zero (~> 1.1, >= 1.1.4)
-  database_cleaner-active_record
   debug
   dotenv-rails
-  factory_bot_rails
-  faker
   importmap-rails
   minitest (>= 5.0)
   minitest-reporters
@@ -402,7 +379,6 @@ DEPENDENCIES
   mysql2 (~> 0.5)
   ostruct
   pg (>= 1.1)
-  pry-byebug
   puma
   rails-controller-testing (>= 1.0)
   rails_pulse!
