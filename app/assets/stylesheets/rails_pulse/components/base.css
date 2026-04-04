@@ -5,6 +5,9 @@
   --color-text-reversed: white;
   --color-text-subtle: var(--zinc-500);
   --color-link: var(--blue-700);
+  /* Brand */
+  --color-brand: #ffc91f;
+
   /* Header tokens */
   --header-bg: #ffc91f;
   --header-link: black;

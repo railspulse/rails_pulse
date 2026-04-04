@@ -163049,6 +163049,33 @@
   };
   __publicField(flame_graph_controller_default, "targets", ["tooltip"]);
 
+  // app/javascript/rails_pulse/controllers/chart_switcher_controller.js
+  var chart_switcher_controller_default = class extends Controller {
+    connect() {
+      this.showSelected();
+    }
+    switch(event) {
+      this.selectedValue = event.currentTarget.dataset.chartType;
+      this.showSelected();
+    }
+    showSelected() {
+      const selected = this.selectedValue;
+      this.chartTargets.forEach((el) => {
+        el.style.display = el.dataset.chartType === selected ? "block" : "none";
+      });
+      this.buttonTargets.forEach((el) => {
+        el.dataset.active = el.dataset.chartType === selected ? "true" : "false";
+      });
+      this.toggleGroupTargets.forEach((el) => {
+        el.style.display = el.dataset.chartType === selected ? "flex" : "none";
+      });
+    }
+  };
+  __publicField(chart_switcher_controller_default, "targets", ["chart", "button", "toggleGroup"]);
+  __publicField(chart_switcher_controller_default, "values", {
+    selected: { type: String, default: "response_time" }
+  });
+
   // app/javascript/rails_pulse/application.js
   var application = Application.start();
   application.debug = false;
@@ -163074,6 +163101,7 @@
   application.register("rails-pulse--custom-range", custom_range_controller_default);
   application.register("rails-pulse--series-toggle", series_toggle_controller_default);
   application.register("rails-pulse--flame-graph", flame_graph_controller_default);
+  application.register("rails-pulse--chart-switcher", chart_switcher_controller_default);
   document.addEventListener("DOMContentLoaded", () => {
     const frames = document.querySelectorAll("turbo-frame[src]:not([complete])");
     frames.forEach((frame) => {

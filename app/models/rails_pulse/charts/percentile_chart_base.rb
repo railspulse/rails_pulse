@@ -52,11 +52,11 @@ module RailsPulse
           if raw_data[timestamp]
             count = raw_data[timestamp][:total_count]
             daily_data[timestamp] = {
-              p95: count > 0 ? (raw_data[timestamp][:total_weighted_p95] / count).round(0) : 0,
-              p99: count > 0 ? (raw_data[timestamp][:total_weighted_p99] / count).round(0) : 0
+              p95: count > 0 ? (raw_data[timestamp][:total_weighted_p95] / count).round(0) : nil,
+              p99: count > 0 ? (raw_data[timestamp][:total_weighted_p99] / count).round(0) : nil
             }
           else
-            daily_data[timestamp] = { p95: 0, p99: 0 }
+            daily_data[timestamp] = { p95: nil, p99: nil }
           end
         end
 
@@ -71,7 +71,7 @@ module RailsPulse
           name: "P95",
           data: p95_data,
           type: "line",
-          color: RailsPulse::ChartColors::P95
+          color: RailsPulse::ChartColors::P95,
         }
 
         p99_data = daily_data.values.map { |data| data[:p99] }

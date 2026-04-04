@@ -30,6 +30,30 @@ module RailsPulse
       @client_error_rate_metric_card = RailsPulse::Routes::Cards::ClientErrorRate.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
     end
 
+    # Override setup_chart_data to generate all 4 chart types
+    def setup_chart_data(ransack_params)
+      chart_ransack_params = build_chart_ransack_params(ransack_params)
+      chart_ransack_query = chart_model.ransack(chart_ransack_params)
+
+      common_options = {
+        ransack_query: chart_ransack_query,
+        period_type: period_type,
+        start_time: @start_time,
+        end_time: @end_time,
+        start_duration: @start_duration,
+        disabled_tags: session_disabled_tags,
+        show_non_tagged: session[:show_non_tagged] != false,
+        **chart_options
+      }
+
+      @response_time_chart_data = Routes::Charts::ResponseTimePercentiles.new(**common_options).to_chart_data
+      @request_volume_chart_data = Routes::Charts::RequestVolume.new(**common_options).to_chart_data
+      @error_rate_chart_data = Routes::Charts::ErrorRate.new(**common_options).to_chart_data
+
+      # Keep @chart_data for backward compatibility
+      @chart_data = @response_time_chart_data
+    end
+
     def chart_model
       Summary
     end
