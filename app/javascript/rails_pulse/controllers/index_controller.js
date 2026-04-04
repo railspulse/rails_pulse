@@ -14,8 +14,21 @@ export default class extends Controller {
   selectedColumnIndex = null;
   zrClickHandler = null;
   highlightBarName = '__rp_col_bg__';
+  charts = {};          // all chart instances keyed by container ID
+  chartSetup = {};      // tracks which charts have been fully set up
+  activeChartId = null; // ID of the currently active chart
 
   connect() {
+    // Respect chart_type URL param so the active chart's listeners are set up correctly on load
+    const urlParams = new URLSearchParams(window.location.search)
+    const chartType = urlParams.get('chart_type')
+    const chartTypeMap = {
+      response_time: 'response_time_percentiles_chart',
+      request_volume: 'request_volume_chart',
+      error_rate: 'error_rate_chart'
+    }
+    this.activeChartId = chartTypeMap[chartType] || this.chartIdValue
+
     // Listen for the custom event 'stimulus:echarts:rendered' to set up the chart.
     // This event is dispatched by the chart controller when the chart is ready.
     this.handleChartInitialized = this.onChartInitialized.bind(this);
@@ -28,9 +41,10 @@ export default class extends Controller {
     document.removeEventListener('stimulus:echarts:rendered', this.handleChartInitialized);
 
     // Remove chart event listeners if they exist
-    if (this.hasChartTarget && this.chartTarget) {
-      this.chartTarget.removeEventListener('mousedown', this.handleChartMouseDown);
-      this.chartTarget.removeEventListener('mouseup', this.handleChartMouseUp);
+    const activeContainer = this.getActiveChartContainer()
+    if (activeContainer) {
+      activeContainer.removeEventListener('mousedown', this.handleChartMouseDown);
+      activeContainer.removeEventListener('mouseup', this.handleChartMouseUp);
     }
     document.removeEventListener('mouseup', this.handleDocumentMouseUp);
 
@@ -52,29 +66,99 @@ export default class extends Controller {
 
   // After the chart is initialized, set up the event listeners and data tracking
   onChartInitialized(event) {
-    if (event.detail.containerId === this.chartIdValue) {
-      // Store the chart instance from the event
-      this.chart = event.detail.chart;
+    const { containerId, chart } = event.detail
+
+    // Store every chart instance as it renders
+    this.charts[containerId] = chart
+
+    // Only fully set up the initially active chart
+    if (containerId === this.activeChartId) {
+      this.chart = chart;
       this.setup();
     }
   }
 
-  setup() {
-    if (this.setupDone) {
-      return; // Prevent multiple setups
+  // Called when the chart switcher changes the active chart
+  handleChartSwitched(event) {
+    const { fromId, toId } = event.detail
+    if (!toId || toId === this.activeChartId) return
+
+    // Capture current zoom state before switching
+    const zoomState = this.captureZoomState()
+
+    // Tear down listeners from the outgoing chart
+    this.teardownActiveChartListeners()
+
+    // Switch active chart
+    this.activeChartId = toId
+    this.chart = this.charts[toId]
+
+    if (!this.chart) return // chart not initialized yet (shouldn't happen with zoom: false on hidden charts)
+
+    // Apply the same zoom to the new chart
+    if (zoomState) {
+      this.applyZoomState(zoomState)
     }
 
-    // We need both the chart target in DOM and the chart object from the event
-    let hasTarget = false;
+    if (!this.chartSetup[toId]) {
+      // First visit — full setup including highlight series
+      this.setup()
+    } else {
+      // Returning to a previously-set-up chart — re-attach listeners only
+      this.visibleData = this.getVisibleData()
+      this.setupChartEventListeners()
+    }
+  }
+
+  captureZoomState() {
+    if (!this.chart) return null
     try {
-      hasTarget = !!this.chartTarget;
+      const option = this.chart.getOption()
+      const dataZoom = option.dataZoom?.[1] || option.dataZoom?.[0]
+      if (!dataZoom) return null
+      return { startValue: dataZoom.startValue, endValue: dataZoom.endValue }
     } catch (e) {
-      hasTarget = false;
+      return null
+    }
+  }
+
+  applyZoomState(zoomState) {
+    if (!this.chart || zoomState.startValue === undefined || zoomState.endValue === undefined) return
+    try {
+      this.chart.dispatchAction({ type: 'dataZoom', startValue: zoomState.startValue, endValue: zoomState.endValue })
+      this.visibleData = this.getVisibleData()
+    } catch (e) {}
+  }
+
+  teardownActiveChartListeners() {
+    const container = this.getActiveChartContainer()
+    if (container) {
+      container.removeEventListener('mousedown', this.handleChartMouseDown)
+      container.removeEventListener('mouseup', this.handleChartMouseUp)
+    }
+    try {
+      if (this.chart) {
+        this.chart.off('datazoom')
+        if (this.zrClickHandler) this.chart.getZr().off('click', this.zrClickHandler)
+        if (this.zrMouseMoveHandler) this.chart.getZr().off('mousemove', this.zrMouseMoveHandler)
+      }
+    } catch (e) {}
+    this.zrClickHandler = null
+    this.zrMouseMoveHandler = null
+  }
+
+  getActiveChartContainer() {
+    return this.chartTargets.find(el => el.dataset.chartId === this.activeChartId) || null
+  }
+
+  setup() {
+    if (this.chartSetup[this.activeChartId]) {
+      return; // Prevent multiple setups for the same chart
     }
 
-    // Only proceed if we have BOTH the DOM target and the chart object
-    // (chart is set by onChartInitialized from the event)
-    if (!hasTarget || !this.chart) {
+    // We need both the chart container in DOM and the chart object
+    const container = this.getActiveChartContainer()
+    if (!container || !this.chart) {
       return;
     }
 
@@ -84,31 +168,32 @@ export default class extends Controller {
     this.setupHighlightSeries();
 
     this.setupChartEventListeners();
-    this.setupDone = true;
+    this.chartSetup[this.activeChartId] = true;
 
     // Mark the chart as fully rendered for testing
-    if (hasTarget) {
-      document.getElementById(this.chartIdValue)?.setAttribute('data-chart-rendered', 'true');
-    }
+    document.getElementById(this.activeChartId)?.setAttribute('data-chart-rendered', 'true');
 
-    // Initialize column selection from URL parameters after chart is fully ready
+    // Initialize zoom and column selection from URL parameters after chart is fully ready
     // This must come AFTER storing the original option to avoid storing modified state
+    this.initializeZoomFromUrl();
     this.initializeColumnSelectionFromUrl();
   }
 
   // Add some event listeners to the chart so we can track the zoom changes
   setupChartEventListeners() {
+    const container = this.getActiveChartContainer()
+
     // When clicking on the chart, we want to store the current visible data so we can compare it later
     this.handleChartMouseDown = () => {
       this.visibleData = this.getVisibleData();
     };
-    this.chartTarget.addEventListener('mousedown', this.handleChartMouseDown);
+    container.addEventListener('mousedown', this.handleChartMouseDown);
 
     // When releasing the mouse button, we want to check if the visible data has changed
     this.handleChartMouseUp = () => {
       this.handleZoomChange();
     };
-    this.chartTarget.addEventListener('mouseup', this.handleChartMouseUp);
+    container.addEventListener('mouseup', this.handleChartMouseUp);
 
     // When the chart is zoomed, we want to check if the visible data has changed
     this.chart.on('datazoom', () => {
@@ -308,8 +393,8 @@ export default class extends Controller {
           // CSP-safe content replacement using DOM methods
           this.replaceFrameContent(frame, responseFrame);
         } else {
-          // Fallback: parse the entire HTML response
-          this.replaceFrameContentFromHTML(frame, html);
+          // No turbo frame in response (e.g. no data for selected period) — clear the table
+          while (frame.firstChild) frame.removeChild(frame.firstChild);
         }
       }
     })
@@ -385,6 +470,12 @@ export default class extends Controller {
   setupHighlightSeries() {
     try {
       const option = this.chart.getOption()
+
+      // Bar charts don't use the highlight overlay series — adding a second bar series
+      // causes ECharts to shrink all bars. Bar charts have inherent column distinction.
+      const primaryType = option.series?.[0]?.type
+      if (primaryType === 'bar') return
+
       const xAxisLength = option.xAxis?.[0]?.data?.length || 0
       const existingYAxes = Array.isArray(option.yAxis) ? option.yAxis : [option.yAxis || {}]
 
@@ -422,16 +513,31 @@ export default class extends Controller {
       const xAxisLength = option.xAxis?.[0]?.data?.length
       if (!xAxisLength || selectedIndex < 0 || selectedIndex >= xAxisLength) return
 
-      const barData = Array(xAxisLength).fill(null)
-      barData[selectedIndex] = 1
+      const isPrimaryBar = option.series?.[0]?.type === 'bar'
 
-      this.chart.setOption({
-        series: option.series.map(s =>
-          s.name === this.highlightBarName
-            ? { itemStyle: { color: 'rgba(128, 128, 128, 0.2)', borderWidth: 0 }, data: barData }
-            : {}
-        )
-      })
+      if (isPrimaryBar) {
+        // For bar charts: dim non-selected bars by updating per-bar itemStyle opacity
+        this.chart.setOption({
+          series: option.series.slice(0, 1).map(s => ({
+            data: (s.data || []).map((val, i) => ({
+              value: typeof val === 'object' ? val.value : val,
+              itemStyle: { opacity: i === selectedIndex ? 1 : 0.25 }
+            }))
+          }))
+        })
+      } else {
+        // For line charts: use the hidden background bar series
+        const barData = Array(xAxisLength).fill(null)
+        barData[selectedIndex] = 1
+
+        this.chart.setOption({
+          series: option.series.map(s =>
+            s.name === this.highlightBarName
+              ? { itemStyle: { color: 'rgba(128, 128, 128, 0.2)', borderWidth: 0 }, data: barData }
+              : {}
+          )
+        })
+      }
     } catch (error) {
       console.error('Error highlighting column:', error)
     }
@@ -441,14 +547,27 @@ export default class extends Controller {
     try {
       const option = this.chart.getOption()
       const xAxisLength = option.xAxis?.[0]?.data?.length || 0
+      const isPrimaryBar = option.series?.[0]?.type === 'bar'
 
-      this.chart.setOption({
-        series: option.series.map(s =>
-          s.name === this.highlightBarName
-            ? { itemStyle: { color: 'rgba(0, 0, 0, 0)', borderWidth: 0 }, data: Array(xAxisLength).fill(null) }
-            : {}
-        )
-      })
+      if (isPrimaryBar) {
+        // Restore full opacity on all bars
+        this.chart.setOption({
+          series: option.series.slice(0, 1).map(s => ({
+            data: (s.data || []).map(val => ({
+              value: typeof val === 'object' ? val.value : val,
+              itemStyle: { opacity: 1 }
+            }))
+          }))
+        })
+      } else {
+        this.chart.setOption({
+          series: option.series.map(s =>
+            s.name === this.highlightBarName
+              ? { itemStyle: { color: 'rgba(0, 0, 0, 0)', borderWidth: 0 }, data: Array(xAxisLength).fill(null) }
+              : {}
+          )
+        })
+      }
     } catch (error) {
       console.error('Error resetting column highlight:', error)
     }
@@ -534,12 +653,34 @@ export default class extends Controller {
           // CSP-safe content replacement using DOM methods
           this.replaceFrameContent(frame, responseFrame);
         } else {
-          // Fallback: parse the entire HTML response
-          this.replaceFrameContentFromHTML(frame, html);
+          // No turbo frame in response (e.g. no data for selected period) — clear the table
+          while (frame.firstChild) frame.removeChild(frame.firstChild);
         }
       }
     })
     .catch(error => console.error('[IndexController] Column selection fetch error:', error));
+  }
+
+  initializeZoomFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search)
+    const zoomStartTime = urlParams.get('zoom_start_time')
+    const zoomEndTime = urlParams.get('zoom_end_time')
+    if (!zoomStartTime || !zoomEndTime) return
+
+    const option = this.chart.getOption()
+    if (!option.xAxis?.[0]?.data) return
+
+    const xAxisData = option.xAxis[0].data
+    const startMs = parseInt(zoomStartTime)
+    const endMs = parseInt(zoomEndTime)
+
+    const startIndex = xAxisData.reduce((best, ts, i) =>
+      Math.abs(parseInt(ts) - startMs) < Math.abs(parseInt(xAxisData[best]) - startMs) ? i : best, 0)
+    const endIndex = xAxisData.reduce((best, ts, i) =>
+      Math.abs(parseInt(ts) - endMs) < Math.abs(parseInt(xAxisData[best]) - endMs) ? i : best, 0)
+
+    this.chart.dispatchAction({ type: 'dataZoom', startValue: startIndex, endValue: endIndex })
+    this.visibleData = this.getVisibleData()
   }
 
   initializeColumnSelectionFromUrl() {

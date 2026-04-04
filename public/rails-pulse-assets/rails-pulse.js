@@ -162068,16 +162068,31 @@
       __publicField(this, "selectedColumnIndex", null);
       __publicField(this, "zrClickHandler", null);
       __publicField(this, "highlightBarName", "__rp_col_bg__");
+      __publicField(this, "charts", {});
+      // all chart instances keyed by container ID
+      __publicField(this, "chartSetup", {});
+      // tracks which charts have been fully set up
+      __publicField(this, "activeChartId", null);
     }
+    // ID of the currently active chart
     connect() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const chartType = urlParams.get("chart_type");
+      const chartTypeMap = {
+        response_time: "response_time_percentiles_chart",
+        request_volume: "request_volume_chart",
+        error_rate: "error_rate_chart"
+      };
+      this.activeChartId = chartTypeMap[chartType] || this.chartIdValue;
       this.handleChartInitialized = this.onChartInitialized.bind(this);
       document.addEventListener("stimulus:echarts:rendered", this.handleChartInitialized);
     }
     disconnect() {
       document.removeEventListener("stimulus:echarts:rendered", this.handleChartInitialized);
-      if (this.hasChartTarget && this.chartTarget) {
-        this.chartTarget.removeEventListener("mousedown", this.handleChartMouseDown);
-        this.chartTarget.removeEventListener("mouseup", this.handleChartMouseUp);
+      const activeContainer = this.getActiveChartContainer();
+      if (activeContainer) {
+        activeContainer.removeEventListener("mousedown", this.handleChartMouseDown);
+        activeContainer.removeEventListener("mouseup", this.handleChartMouseUp);
       }
       document.removeEventListener("mouseup", this.handleDocumentMouseUp);
       try {
@@ -162095,43 +162110,105 @@
     }
     // After the chart is initialized, set up the event listeners and data tracking
     onChartInitialized(event) {
-      if (event.detail.containerId === this.chartIdValue) {
-        this.chart = event.detail.chart;
+      const { containerId, chart } = event.detail;
+      this.charts[containerId] = chart;
+      if (containerId === this.activeChartId) {
+        this.chart = chart;
         this.setup();
       }
     }
+    // Called when the chart switcher changes the active chart
+    handleChartSwitched(event) {
+      const { fromId, toId } = event.detail;
+      if (!toId || toId === this.activeChartId)
+        return;
+      const zoomState = this.captureZoomState();
+      this.teardownActiveChartListeners();
+      this.activeChartId = toId;
+      this.chart = this.charts[toId];
+      if (!this.chart)
+        return;
+      if (zoomState) {
+        this.applyZoomState(zoomState);
+      }
+      if (!this.chartSetup[toId]) {
+        this.setup();
+      } else {
+        this.visibleData = this.getVisibleData();
+        this.setupChartEventListeners();
+      }
+    }
+    captureZoomState() {
+      if (!this.chart)
+        return null;
+      try {
+        const option = this.chart.getOption();
+        const dataZoom = option.dataZoom?.[1] || option.dataZoom?.[0];
+        if (!dataZoom)
+          return null;
+        return { startValue: dataZoom.startValue, endValue: dataZoom.endValue };
+      } catch (e2) {
+        return null;
+      }
+    }
+    applyZoomState(zoomState) {
+      if (!this.chart || zoomState.startValue === void 0 || zoomState.endValue === void 0)
+        return;
+      try {
+        this.chart.dispatchAction({ type: "dataZoom", startValue: zoomState.startValue, endValue: zoomState.endValue });
+        this.visibleData = this.getVisibleData();
+      } catch (e2) {
+      }
+    }
+    teardownActiveChartListeners() {
+      const container = this.getActiveChartContainer();
+      if (container) {
+        container.removeEventListener("mousedown", this.handleChartMouseDown);
+        container.removeEventListener("mouseup", this.handleChartMouseUp);
+      }
+      try {
+        if (this.chart) {
+          this.chart.off("datazoom");
+          if (this.zrClickHandler)
+            this.chart.getZr().off("click", this.zrClickHandler);
+          if (this.zrMouseMoveHandler)
+            this.chart.getZr().off("mousemove", this.zrMouseMoveHandler);
+        }
+      } catch (e2) {
+      }
+      this.zrClickHandler = null;
+      this.zrMouseMoveHandler = null;
+    }
+    getActiveChartContainer() {
+      return this.chartTargets.find((el) => el.dataset.chartId === this.activeChartId) || null;
+    }
     setup() {
-      if (this.setupDone) {
+      if (this.chartSetup[this.activeChartId]) {
         return;
       }
-      let hasTarget = false;
-      try {
-        hasTarget = !!this.chartTarget;
-      } catch (e2) {
-        hasTarget = false;
-      }
-      if (!hasTarget || !this.chart) {
+      const container = this.getActiveChartContainer();
+      if (!container || !this.chart) {
         return;
       }
       this.visibleData = this.getVisibleData();
       this.setupHighlightSeries();
       this.setupChartEventListeners();
-      this.setupDone = true;
-      if (hasTarget) {
-        document.getElementById(this.chartIdValue)?.setAttribute("data-chart-rendered", "true");
-      }
+      this.chartSetup[this.activeChartId] = true;
+      document.getElementById(this.activeChartId)?.setAttribute("data-chart-rendered", "true");
+      this.initializeZoomFromUrl();
       this.initializeColumnSelectionFromUrl();
     }
     // Add some event listeners to the chart so we can track the zoom changes
     setupChartEventListeners() {
+      const container = this.getActiveChartContainer();
       this.handleChartMouseDown = () => {
         this.visibleData = this.getVisibleData();
       };
-      this.chartTarget.addEventListener("mousedown", this.handleChartMouseDown);
+      container.addEventListener("mousedown", this.handleChartMouseDown);
       this.handleChartMouseUp = () => {
         this.handleZoomChange();
       };
-      this.chartTarget.addEventListener("mouseup", this.handleChartMouseUp);
+      container.addEventListener("mouseup", this.handleChartMouseUp);
       this.chart.on("datazoom", () => {
         this.handleZoomChange();
       });
@@ -162275,7 +162352,8 @@
           if (responseFrame) {
             this.replaceFrameContent(frame, responseFrame);
           } else {
-            this.replaceFrameContentFromHTML(frame, html);
+            while (frame.firstChild)
+              frame.removeChild(frame.firstChild);
           }
         }
       }).catch((error3) => console.error("[IndexController] Fetch error:", error3));
@@ -162333,6 +162411,9 @@
     setupHighlightSeries() {
       try {
         const option = this.chart.getOption();
+        const primaryType = option.series?.[0]?.type;
+        if (primaryType === "bar")
+          return;
         const xAxisLength = option.xAxis?.[0]?.data?.length || 0;
         const existingYAxes = Array.isArray(option.yAxis) ? option.yAxis : [option.yAxis || {}];
         this.chart.setOption({
@@ -162368,13 +162449,25 @@
         const xAxisLength = option.xAxis?.[0]?.data?.length;
         if (!xAxisLength || selectedIndex < 0 || selectedIndex >= xAxisLength)
           return;
-        const barData = Array(xAxisLength).fill(null);
-        barData[selectedIndex] = 1;
-        this.chart.setOption({
-          series: option.series.map(
-            (s) => s.name === this.highlightBarName ? { itemStyle: { color: "rgba(128, 128, 128, 0.2)", borderWidth: 0 }, data: barData } : {}
-          )
-        });
+        const isPrimaryBar = option.series?.[0]?.type === "bar";
+        if (isPrimaryBar) {
+          this.chart.setOption({
+            series: option.series.slice(0, 1).map((s) => ({
+              data: (s.data || []).map((val, i) => ({
+                value: typeof val === "object" ? val.value : val,
+                itemStyle: { opacity: i === selectedIndex ? 1 : 0.25 }
+              }))
+            }))
+          });
+        } else {
+          const barData = Array(xAxisLength).fill(null);
+          barData[selectedIndex] = 1;
+          this.chart.setOption({
+            series: option.series.map(
+              (s) => s.name === this.highlightBarName ? { itemStyle: { color: "rgba(128, 128, 128, 0.2)", borderWidth: 0 }, data: barData } : {}
+            )
+          });
+        }
       } catch (error3) {
         console.error("Error highlighting column:", error3);
       }
@@ -162383,11 +162476,23 @@
       try {
         const option = this.chart.getOption();
         const xAxisLength = option.xAxis?.[0]?.data?.length || 0;
-        this.chart.setOption({
-          series: option.series.map(
-            (s) => s.name === this.highlightBarName ? { itemStyle: { color: "rgba(0, 0, 0, 0)", borderWidth: 0 }, data: Array(xAxisLength).fill(null) } : {}
-          )
-        });
+        const isPrimaryBar = option.series?.[0]?.type === "bar";
+        if (isPrimaryBar) {
+          this.chart.setOption({
+            series: option.series.slice(0, 1).map((s) => ({
+              data: (s.data || []).map((val) => ({
+                value: typeof val === "object" ? val.value : val,
+                itemStyle: { opacity: 1 }
+              }))
+            }))
+          });
+        } else {
+          this.chart.setOption({
+            series: option.series.map(
+              (s) => s.name === this.highlightBarName ? { itemStyle: { color: "rgba(0, 0, 0, 0)", borderWidth: 0 }, data: Array(xAxisLength).fill(null) } : {}
+            )
+          });
+        }
       } catch (error3) {
         console.error("Error resetting column highlight:", error3);
       }
@@ -162440,10 +162545,28 @@
           if (responseFrame) {
             this.replaceFrameContent(frame, responseFrame);
           } else {
-            this.replaceFrameContentFromHTML(frame, html);
+            while (frame.firstChild)
+              frame.removeChild(frame.firstChild);
           }
         }
       }).catch((error3) => console.error("[IndexController] Column selection fetch error:", error3));
+    }
+    initializeZoomFromUrl() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const zoomStartTime = urlParams.get("zoom_start_time");
+      const zoomEndTime = urlParams.get("zoom_end_time");
+      if (!zoomStartTime || !zoomEndTime)
+        return;
+      const option = this.chart.getOption();
+      if (!option.xAxis?.[0]?.data)
+        return;
+      const xAxisData = option.xAxis[0].data;
+      const startMs = parseInt(zoomStartTime);
+      const endMs = parseInt(zoomEndTime);
+      const startIndex = xAxisData.reduce((best, ts, i) => Math.abs(parseInt(ts) - startMs) < Math.abs(parseInt(xAxisData[best]) - startMs) ? i : best, 0);
+      const endIndex = xAxisData.reduce((best, ts, i) => Math.abs(parseInt(ts) - endMs) < Math.abs(parseInt(xAxisData[best]) - endMs) ? i : best, 0);
+      this.chart.dispatchAction({ type: "dataZoom", startValue: startIndex, endValue: endIndex });
+      this.visibleData = this.getVisibleData();
     }
     initializeColumnSelectionFromUrl() {
       const urlParams = new URLSearchParams(window.location.search);
@@ -163052,11 +163175,36 @@
   // app/javascript/rails_pulse/controllers/chart_switcher_controller.js
   var chart_switcher_controller_default = class extends Controller {
     connect() {
+      const urlParams = new URLSearchParams(window.location.search);
+      const chartType = urlParams.get("chart_type");
+      if (chartType) {
+        this.selectedValue = chartType;
+      }
       this.showSelected();
+      this.syncHiddenInput();
     }
     switch(event) {
-      this.selectedValue = event.currentTarget.dataset.chartType;
+      const fromType = this.selectedValue;
+      const toType = event.currentTarget.dataset.chartType;
+      const fromContainer = this.chartTargets.find((el) => el.dataset.chartType === fromType);
+      const toContainer = this.chartTargets.find((el) => el.dataset.chartType === toType);
+      this.selectedValue = toType;
       this.showSelected();
+      const url = new URL(window.location.href);
+      url.searchParams.set("chart_type", toType);
+      window.history.replaceState({}, "", url);
+      this.syncHiddenInput();
+      this.dispatch("switched", {
+        detail: {
+          fromId: fromContainer?.dataset.chartId,
+          toId: toContainer?.dataset.chartId
+        }
+      });
+    }
+    syncHiddenInput() {
+      if (this.hasChartTypeInputTarget) {
+        this.chartTypeInputTarget.value = this.selectedValue;
+      }
     }
     showSelected() {
       const selected = this.selectedValue;
@@ -163071,7 +163219,7 @@
       });
     }
   };
-  __publicField(chart_switcher_controller_default, "targets", ["chart", "button", "toggleGroup"]);
+  __publicField(chart_switcher_controller_default, "targets", ["chart", "button", "toggleGroup", "chartTypeInput"]);
   __publicField(chart_switcher_controller_default, "values", {
     selected: { type: String, default: "response_time" }
   });

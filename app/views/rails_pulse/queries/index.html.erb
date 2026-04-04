@@ -1,12 +1,12 @@
-<%= render 'rails_pulse/components/page_header', show_active_filters: true %>
+<%= render "rails_pulse/components/page_header", show_active_filters: true %>
 
 <% unless turbo_frame_request? %>
   <% metric_cards = [
     @percentile_query_times_metric_card,
     @execution_rate_metric_card,
-    @database_load_metric_card
+    @database_load_metric_card,
   ].compact %>
-  <%= render 'rails_pulse/components/metric_strip', metrics_data: metric_cards %>
+  <%= render "rails_pulse/components/metric_strip", metrics_data: metric_cards %>
 <% end %>
 
 <div
@@ -14,7 +14,7 @@
   data-rails-pulse--index-chart-id-value="query_performance_chart"
 >
   <%= render 'rails_pulse/components/panel', {
-    title: 'Query Performance',
+    title: 'Queries',
     card_classes: 'b-full',
     series_toggles: [
       { name: "P95", color: RailsPulse::ChartColors::P95 },
@@ -26,13 +26,18 @@
   } do %>
     <%= search_form_for @ransack_query, url: queries_path, class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
       <div class="flex items-center grow gap">
-        <%= time_range_selector(form, time_range_options: RailsPulse::QueriesController::TIME_RANGE_OPTIONS, selected_time_range: @selected_time_range) %>
+        <%= time_range_selector(
+          form,
+          time_range_options: RailsPulse::QueriesController::TIME_RANGE_OPTIONS,
+          selected_time_range: @selected_time_range,
+        ) %>
         <%= form.select :avg_duration,
-          duration_options(:query),
-          { selected: @selected_response_range },
-          { class: "input" }
-        %>
-        <%= link_to "Reset", queries_path, class: "btn btn--borderless show@md" if params.has_key?(:q) %>
+                    duration_options(:query),
+                    { selected: @selected_response_range },
+                    { class: "input" } %>
+        <%= if params.has_key?(:q)
+          link_to "Reset", queries_path, class: "btn btn--borderless show@md"
+        end %>
         <%= form.submit "Search", class: "btn show@sm" %>
       </div>
     <% end %>
@@ -45,29 +50,30 @@
         >
           <%= render_stimulus_chart(
             @chart_data,
-            type: 'line',
+            type: "line",
             id: "query_performance_chart",
             height: "100%",
-            options: line_chart_options(
-              units: "ms",
-              zoom: true,
-              xaxis_formatter: @xaxis_formatter,
-              tooltip_formatter: @tooltip_formatter,
-              zoom_start: @zoom_start,
-              zoom_end: @zoom_end,
-              chart_data: @chart_data
-            )
+            options:
+              line_chart_options(
+                units: "ms",
+                zoom: true,
+                xaxis_formatter: @xaxis_formatter,
+                tooltip_formatter: @tooltip_formatter,
+                zoom_start: @zoom_start,
+                zoom_end: @zoom_end,
+                chart_data: @chart_data,
+              ),
           ) %>
         </div>
       <% end %>
 
       <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
-        <%= render 'rails_pulse/queries/table' %>
+        <%= render "rails_pulse/queries/table" %>
       <% end %>
     <% else %>
-      <%= render 'rails_pulse/components/empty_state',
-          title: 'No query data found for the selected filters.',
-          description: 'Try adjusting your time range or filters to see results.' %>
+      <%= render "rails_pulse/components/empty_state",
+      title: "No query data found for the selected filters.",
+      description: "Try adjusting your time range or filters to see results." %>
     <% end %>
   <% end %>
 </div>
@@ -84,35 +90,47 @@
         <div class="chart-container chart-container--slim">
           <%= render_stimulus_chart(
             @database_load_chart_data,
-            type: 'bar',
+            type: "bar",
             height: "100%",
             options: {
-              chart: { toolbar: { show: false } },
+              chart: {
+                toolbar: {
+                  show: false,
+                },
+              },
               plotOptions: {
                 bar: {
                   distributed: true,
-                  columnWidth: '80%'
-                }
+                  columnWidth: "80%",
+                },
               },
-              dataLabels: { enabled: false },
-              legend: { show: false },
+              dataLabels: {
+                enabled: false,
+              },
+              legend: {
+                show: false,
+              },
               xaxis: {
-                labels: { rotate: -45 }
+                labels: {
+                  rotate: -45,
+                },
               },
               yaxis: {
                 min: 0,
                 max: 100,
                 labels: {
-                  formatter: "function(val) { return val.toFixed(0) + '%'; }"
+                  formatter: "function(val) { return val.toFixed(0) + '%'; }",
                 },
-                title: { text: 'DB Load (%)' }
+                title: {
+                  text: "DB Load (%)",
+                },
               },
               tooltip: {
                 y: {
-                  formatter: "function(val) { return val.toFixed(1) + '%'; }"
-                }
-              }
-            }
+                  formatter: "function(val) { return val.toFixed(1) + '%'; }",
+                },
+              },
+            },
           ) %>
         </div>
       <% end %>
