@@ -62,16 +62,16 @@ class RoutesIndexPageTest < SharedIndexPageTest
         value_message: "95th percentile should show ms value"
       },
       "#request_count_totals" => {
-        title_regex: /REQUEST COUNT TOTAL/,
-        title_message: "Request count card should have correct title",
+        title_regex: /REQUEST RATE/,
+        title_message: "Request rate card should have correct title",
         value_regex: /\d+(\.\d+)?\s*\/\s*(min|hour|day)/,
         value_message: "Request count should show per minute, hour or per day value"
       },
-      "#error_rate_per_route" => {
-        title_regex: /ERROR RATE PER ROUTE/,
+      "#error_rates" => {
+        title_regex: /ERROR RATE/,
         title_message: "Error rate card should have correct title",
         value_regex: /\d+(\.\d+)?%/,
-        value_message: "Error rate should show percentage value"
+        value_message: "Error rates card should show a percentage value"
       }
     }
   end

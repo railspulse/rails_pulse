@@ -82,7 +82,7 @@ module RailsPulse
             id: "request_count_totals",
             chart_color: RailsPulse::ChartColors::DEFAULT,
             context: "routes",
-            title: "Request Count Total",
+            title: "Request Rate",
             summary: summary,
             chart_data: sparkline_data,
             trend_icon: trend_icon,

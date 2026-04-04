@@ -2,10 +2,9 @@
 
 <% unless turbo_frame_request? %>
   <% metric_cards = [
-    @percentile_response_times_metric_card,
-    @request_count_totals_metric_card,
-    @error_rate_per_route_metric_card,
-    @client_error_rate_metric_card,
+    @percentile_response_times_metric_card&.merge(link_url: routes_path(chart_type: "response_time")),
+    @request_count_totals_metric_card&.merge(link_url: routes_path(chart_type: "request_volume")),
+    @error_rates_metric_card&.merge(link_url: routes_path(chart_type: "error_rate")),
   ].compact %>
   <%= render "rails_pulse/components/metric_strip", metrics_data: metric_cards %>
 <% end %>
@@ -75,7 +74,7 @@
           data-chart-type="error_rate"
           data-rails-pulse--chart-switcher-target="button"
           data-action="click->rails-pulse--chart-switcher#switch"
-        >Error Rates</button>
+        >Error Rate</button>
         <%# P95/P99 toggles — only shown for Response Time %>
         <div
           data-rails-pulse--chart-switcher-target="toggleGroup"

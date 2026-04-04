@@ -18,7 +18,12 @@ module TimeRangeConcern
 
   def setup_time_range
     default_key = default_time_range_key
-    start_time = default_key == :last_week ? 1.week.ago : 1.day.ago
+    start_time = case default_key
+    when :last_week       then 1.week.ago
+    when :last_two_weeks  then 2.weeks.ago
+    when :last_month      then 1.month.ago
+    else                       1.day.ago
+    end
     end_time = Time.zone.now
     selected_time_range = default_key
 

@@ -26,8 +26,7 @@ module RailsPulse
 
       @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
       @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @client_error_rate_metric_card = RailsPulse::Routes::Cards::ClientErrorRate.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
+      @error_rates_metric_card = RailsPulse::Routes::Cards::ErrorRates.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
     end
 
     # Override setup_chart_data to generate all 4 chart types
@@ -147,7 +146,7 @@ module RailsPulse
     end
 
     def default_time_range_key
-      :last_week
+      :last_two_weeks
     end
 
     def duration_field

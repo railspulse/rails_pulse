@@ -21,7 +21,7 @@
     <div class="metric-strip__section" id="<%= data[:id] %>">
       <div class="flex items-start justify-between gap-2">
         <h2 class="metric-strip__title font-semibold uppercase text-xs" title="<%= data[:title] %>"><%= data[:title] %></h2>
-        <div class="flex items-center gap-1" style="flex-shrink: 0;">
+        <div class="flex items-center" style="flex-shrink: 0;">
           <% if data[:help_heading] && data[:help_text] %>
             <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-end">
               <a href="#"
@@ -40,7 +40,7 @@
             </div>
           <% end %>
           <% if data[:link_url] %>
-            <%= link_to data[:link_url], style: "display: block; line-height: 1;", title: "View details" do %>
+            <%= link_to data[:link_url], class: "mis-2", style: "display: block; line-height: 1;", title: "View details" do %>
               <%= rails_pulse_icon 'external-link', height: "16px", width: "16px" %>
             <% end %>
           <% end %>
@@ -62,7 +62,7 @@
           <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
           <span class="badge__trend-amount"><%= data[:trend_amount] %></span>
         </span>
-        <p class="metric-strip__trend-label mis-2 text-subtle text-xs" title="Week over week">Week over week</p>
+        <p class="metric-strip__trend-label mis-2 text-subtle text-xs"><%= data[:trend_text] || "Week over week" %></p>
       </div>
     </div>
   <% end %>
