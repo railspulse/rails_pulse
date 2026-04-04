@@ -20,141 +20,81 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
   end
 
-  # ── Zone 1 default state ────────────────────────────────────────────────────
+  # ── Default state ────────────────────────────────────────────────────────────
 
-  test "response time chart is visible and others are hidden by default" do
+  test "default state is correct" do
     assert_chart_container_visible(:response_time)
     assert_chart_container_hidden(:request_volume)
     assert_chart_container_hidden(:error_rate)
-  end
 
-  test "response time tab is active by default" do
     assert_tab_active(:response_time)
     assert_tab_inactive(:request_volume)
     assert_tab_inactive(:error_rate)
-  end
 
-  test "p95 p99 toggles are visible for response time by default" do
     assert_toggles_visible(:response_time)
     assert_toggles_hidden(:error_rate)
   end
 
   # ── Tab switching ────────────────────────────────────────────────────────────
 
-  test "switching to request volume shows that chart and hides others" do
+  test "switching tabs shows correct chart, updates active state and series toggles" do
+    # Switch to Request Volume
     click_tab(:request_volume)
     assert_selector "#request_volume_chart[data-chart-rendered='true']", wait: 10
 
     assert_chart_container_visible(:request_volume)
     assert_chart_container_hidden(:response_time)
     assert_chart_container_hidden(:error_rate)
-  end
+    assert_tab_active(:request_volume)
+    assert_tab_inactive(:response_time)
+    assert_toggles_hidden(:response_time)
+    assert_toggles_hidden(:error_rate)
 
-  test "switching to error rates shows that chart and hides others" do
+    # Switch to Error Rates
     click_tab(:error_rate)
     assert_selector "#error_rate_chart[data-chart-rendered='true']", wait: 10
 
     assert_chart_container_visible(:error_rate)
     assert_chart_container_hidden(:response_time)
     assert_chart_container_hidden(:request_volume)
-  end
-
-  test "active tab data-active attribute updates correctly on switch" do
-    click_tab(:request_volume)
-    sleep 0.3
-
-    assert_tab_active(:request_volume)
-    assert_tab_inactive(:response_time)
-    assert_tab_inactive(:error_rate)
-
-    click_tab(:error_rate)
-    sleep 0.3
-
     assert_tab_active(:error_rate)
-    assert_tab_inactive(:response_time)
     assert_tab_inactive(:request_volume)
-  end
-
-  # ── Contextual series toggles ────────────────────────────────────────────────
-
-  test "no series toggles are visible when request volume is active" do
-    click_tab(:request_volume)
-    sleep 0.3
-
-    assert_toggles_hidden(:response_time)
-    assert_toggles_hidden(:error_rate)
-  end
-
-  test "errors and client toggles appear when error rates is active" do
-    click_tab(:error_rate)
-    sleep 0.3
-
-    assert_toggles_visible(:error_rate)
-    assert_toggles_hidden(:response_time)
-  end
-
-  test "switching back to response time restores p95 p99 toggles" do
-    click_tab(:error_rate)
-    sleep 0.3
     assert_toggles_visible(:error_rate)
     assert_toggles_hidden(:response_time)
 
+    # Switch back to Response Time
     click_tab(:response_time)
-    sleep 0.3
+    assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 5
+
+    assert_tab_active(:response_time)
     assert_toggles_visible(:response_time)
     assert_toggles_hidden(:error_rate)
   end
 
-  # ── Table updates from all charts ────────────────────────────────────────────
+  # ── Zoom URL persistence ──────────────────────────────────────────────────────
 
-  test "zooming request volume chart updates table and url" do
-    click_tab(:request_volume)
-    assert_selector "#request_volume_chart[data-chart-rendered='true']", wait: 10
+  test "zooming any chart updates the url" do
+    [ :request_volume, :error_rate ].each do |chart_type|
+      visit_rails_pulse_path "/routes?q[period_start_range]=last_month"
+      assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
 
-    zoomed = apply_chart_zoom("request_volume_chart")
-    skip "Not enough data points to zoom" unless zoomed
+      click_tab(chart_type)
+      chart_id = CHART_IDS[chart_type]
+      assert_selector "##{chart_id}[data-chart-rendered='true']", wait: 10
 
-    sleep 1.5 # Allow debounce + fetch
+      zoomed = apply_chart_zoom(chart_id.to_s)
+      skip "Not enough data points to zoom #{chart_type}" unless zoomed
 
-    assert_includes page.current_url, "zoom_start_time",
-      "URL should include zoom_start_time after zooming request volume chart"
-    assert_includes page.current_url, "zoom_end_time",
-      "URL should include zoom_end_time after zooming request volume chart"
-  end
+      sleep 1.5 # Allow debounce + fetch
 
-  test "zooming error rate chart updates table and url" do
-    click_tab(:error_rate)
-    assert_selector "#error_rate_chart[data-chart-rendered='true']", wait: 10
-
-    zoomed = apply_chart_zoom("error_rate_chart")
-    skip "Not enough data points to zoom" unless zoomed
-
-    sleep 1.5
-
-    assert_includes page.current_url, "zoom_start_time",
-      "URL should include zoom_start_time after zooming error rate chart"
+      assert_includes page.current_url, "zoom_start_time",
+        "URL should include zoom_start_time after zooming #{chart_type} chart"
+      assert_includes page.current_url, "zoom_end_time",
+        "URL should include zoom_end_time after zooming #{chart_type} chart"
+    end
   end
 
   # ── Zoom persistence across chart switches ───────────────────────────────────
-
-  test "zoom applied to response time persists when switching to request volume" do
-    assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
-
-    zoom_state = apply_chart_zoom_and_capture("response_time_percentiles_chart")
-    skip "Not enough data points to test zoom persistence" unless zoom_state
-
-    click_tab(:request_volume)
-    assert_selector "#request_volume_chart[data-chart-rendered='true']", wait: 10
-    sleep 0.5
-
-    rv_zoom = read_chart_zoom("request_volume_chart")
-
-    assert rv_zoom, "Request volume chart should have zoom state after switching"
-    assert_equal zoom_state["start"], rv_zoom["startValue"],
-      "Zoom start index should carry over to request volume chart"
-    assert_equal zoom_state["end"], rv_zoom["endValue"],
-      "Zoom end index should carry over to request volume chart"
-  end
 
   test "zoom persists when switching through all three charts" do
     assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
@@ -170,7 +110,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     assert rv_zoom, "Request volume should inherit zoom"
     assert_equal zoom_state["start"], rv_zoom["startValue"]
 
-    # Switch to Error Rates and verify zoom carries from request volume
+    # Switch to Error Rates and verify zoom carries over
     click_tab(:error_rate)
     assert_selector "#error_rate_chart[data-chart-rendered='true']", wait: 10
     sleep 0.5
@@ -180,7 +120,6 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
   end
 
   test "switching back to a chart after zoom preserves its listeners" do
-    # Switch away and back — listeners should still work
     click_tab(:request_volume)
     assert_selector "#request_volume_chart[data-chart-rendered='true']", wait: 10
 
@@ -188,7 +127,6 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 5
     sleep 0.5
 
-    # Apply zoom on response time after switching back — URL should still update
     zoomed = apply_chart_zoom("response_time_percentiles_chart")
     skip "Not enough data points" unless zoomed
 

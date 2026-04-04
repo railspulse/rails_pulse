@@ -135,7 +135,9 @@ module ChartValidationHelpers
     series_data.each do |series|
       series["data"].each do |data_point|
         # Data points should be numbers representing response times in milliseconds
+        # nil values are valid — they represent gaps in data (no activity in that period)
         response_time = data_point.is_a?(Array) ? data_point[1] : data_point
+        next if response_time.nil?
 
         assert_kind_of Numeric, response_time,
                "Response time should be numeric, got #{response_time.class}: #{response_time}"
@@ -147,7 +149,7 @@ module ChartValidationHelpers
     # Verify we have data points that align with our test data categories
     all_response_times = series_data.flat_map { |s|
       s["data"].map { |dp| dp.is_a?(Array) ? dp[1] : dp }
-    }
+    }.compact
 
     return if all_response_times.empty?
 

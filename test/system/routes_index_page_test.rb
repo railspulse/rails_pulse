@@ -56,16 +56,16 @@ class RoutesIndexPageTest < SharedIndexPageTest
   def metric_card_selectors
     {
       "#percentile_response_times" => {
-        title_regex: /95TH PERCENTILE RESPONSE TIME/,
-        title_message: "95th percentile card should have correct title",
+        title_regex: /P95 RESPONSE TIME/,
+        title_message: "P95 response time card should have correct title",
         value_regex: /\d+(\.\d+)?\s*ms/,
         value_message: "95th percentile should show ms value"
       },
       "#request_count_totals" => {
         title_regex: /REQUEST COUNT TOTAL/,
         title_message: "Request count card should have correct title",
-        value_regex: /\d+(\.\d+)?\s*\/\s*(min|day)/,
-        value_message: "Request count should show per minute or per day value"
+        value_regex: /\d+(\.\d+)?\s*\/\s*(min|hour|day)/,
+        value_message: "Request count should show per minute, hour or per day value"
       },
       "#error_rate_per_route" => {
         title_regex: /ERROR RATE PER ROUTE/,

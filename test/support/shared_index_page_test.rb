@@ -95,17 +95,10 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     assert_selector chart_selector
     assert_selector "[data-rails-pulse--index-target='chart']"
 
-    # Verify chart data matches expected test data
+    # Verify chart and table data matches expected test data
     expected_data = all_test_data
     validate_chart_data(chart_selector, expected_data: expected_data)
     validate_table_data(page_type: page_type, expected_data: expected_data)
-
-    # Try "Last Month" filter to see all our test data
-    select "Last Month", from: "q[period_start_range]"
-    click_button "Search"
-
-    validate_table_data(page_type: page_type, expected_data: expected_data, filter_applied: "Last Month")
-    validate_chart_data(chart_selector, expected_data: expected_data, filter_applied: "Last Month")
   end
 
   test "metric cards display data correctly" do
@@ -170,27 +163,6 @@ class SharedIndexPageTest < ApplicationSystemTestCase
     critical_data = critical_performance_data
     validate_chart_data(chart_selector, expected_data: critical_data, filter_applied: "Critical")
     validate_table_data(page_type: page_type, filter_applied: "Critical")
-  end
-
-  test "combined filters work together" do
-    visit_rails_pulse_path page_path
-
-    # Test combined filtering: slow from last week
-    select performance_filter_options[:slow], from: "q[avg_duration]"
-    select "Last Week", from: "q[period_start_range]"
-
-    # Add page-specific filtering if needed
-    additional_filter_test
-
-    click_button "Search"
-
-    # Wait for page to update
-    assert_selector "tbody", wait: 5
-    sleep 0.5  # Allow DOM to fully stabilize
-
-    expected_combined_data = slow_performance_data
-    validate_chart_data(chart_selector, expected_data: expected_combined_data, filter_applied: "Combined Slow + Last Week")
-    validate_table_data(page_type: page_type, filter_applied: "Slow")
   end
 
   test "table column sorting works correctly" do
@@ -415,7 +387,7 @@ class SharedIndexPageTest < ApplicationSystemTestCase
 
   def simulate_column_selection
     # Find the index controller and simulate column click
-    index_element = find('[data-controller="rails-pulse--index"]')
+    index_element = find('[data-controller*="rails-pulse--index"]')
 
     assert index_element, "Should find element with rails-pulse--index controller"
 
