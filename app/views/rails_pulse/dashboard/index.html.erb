@@ -1,107 +1,391 @@
-<div class="flex justify-end">
-  <%= render 'rails_pulse/components/active_filters' %>
+<%# ============================================================
+    MOCK DASHBOARD v2 — static HTML prototype
+    Changes from v1:
+      - Combined 5xx + 4xx into single "Error Rate" card
+      - Replaced 4 separate tables with one ranked "Needs Attention" panel
+      - Kept 2 charts (response time + throughput/errors)
+      - Kept health bar
+    ============================================================ %>
+
+<%# ── 1. SYSTEM HEALTH BAR + PAGE TIME RANGE ─────────────────── %>
+<div class="card" style="padding: 0.75rem 1rem;">
+  <div class="flex items-center" style="gap: 1.5rem;">
+    <span class="font-semibold uppercase text-xs" style="flex-shrink: 0; color: var(--color-text-subtle);">System Health</span>
+
+    <a href="#" class="badge" style="text-decoration: none; display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.6rem; border-color: color-mix(in srgb, var(--color-positive) 40%, transparent);">
+      <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--color-positive); display: inline-block; flex-shrink: 0;"></span>
+      <span class="text-xs font-semibold">Routes</span>
+      <span class="text-xs text-subtle">42 healthy · 3 slow ·</span>
+      <span class="text-xs font-semibold" style="color: var(--color-negative);">1 critical</span>
+    </a>
+
+    <a href="#" class="badge" style="text-decoration: none; display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.6rem; border-color: color-mix(in srgb, #eab308 40%, transparent);">
+      <span style="width: 10px; height: 10px; border-radius: 50%; background: #eab308; display: inline-block; flex-shrink: 0;"></span>
+      <span class="text-xs font-semibold">Queries</span>
+      <span class="text-xs text-subtle">18 healthy · 5 slow · 0 critical</span>
+    </a>
+
+    <a href="#" class="badge" style="text-decoration: none; display: flex; align-items: center; gap: 0.4rem; padding: 0.3rem 0.6rem; border-color: color-mix(in srgb, var(--color-negative) 40%, transparent);">
+      <span style="width: 10px; height: 10px; border-radius: 50%; background: var(--color-negative); display: inline-block; flex-shrink: 0;"></span>
+      <span class="text-xs font-semibold">Jobs</span>
+      <span class="text-xs text-subtle">6 healthy · 0 slow ·</span>
+      <span class="text-xs font-semibold" style="color: var(--color-negative);">2 failing</span>
+    </a>
+
+    <div style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
+      <div style="display: flex; align-items: center; gap: 0; border: 1px solid var(--color-border); border-radius: 6px; overflow: hidden;">
+        <button style="padding: 0.2rem 0.6rem; font-size: 0.7rem; font-weight: 600; background: var(--color-primary); color: var(--color-text-reversed); border: none; cursor: pointer;">7d</button>
+        <button style="padding: 0.2rem 0.6rem; font-size: 0.7rem; font-weight: 600; background: transparent; color: var(--color-text-subtle); border: none; border-left: 1px solid var(--color-border); cursor: pointer;">14d</button>
+        <button style="padding: 0.2rem 0.6rem; font-size: 0.7rem; font-weight: 600; background: transparent; color: var(--color-text-subtle); border: none; border-left: 1px solid var(--color-border); cursor: pointer;">30d</button>
+      </div>
+      <span class="text-xs text-subtle">Updated just now</span>
+    </div>
+  </div>
 </div>
 
-<% metric_cards = [
-  @percentile_response_times_metric_card&.merge(link_url: routes_path(q: { s: "p95_duration_sort desc", period_start_range: :last_two_weeks })),
-  @request_count_totals_metric_card&.merge(link_url: routes_path(q: { s: "count_sort desc", period_start_range: :last_two_weeks })),
-  @error_rate_per_route_metric_card&.merge(link_url: routes_path(q: { s: "error_rate_percentage desc", period_start_range: :last_two_weeks })),
-  @client_error_rate_metric_card&.merge(link_url: routes_path(q: { s: "error_rate_percentage desc", period_start_range: :last_two_weeks }))
-].compact %>
-<%= render 'rails_pulse/components/metric_strip', metrics_data: metric_cards %>
+<%# ── 2. METRIC STRIP (4 cards — error rate combined) ───────── %>
+<div class="card metric-strip">
 
+  <%# P95 Response Time %>
+  <div class="metric-strip__section">
+    <div class="flex items-start justify-between gap-2">
+      <h2 class="metric-strip__title font-semibold uppercase text-xs">P95 Response Time</h2>
+    </div>
+    <h4 class="text-xl font-bold">163 ms</h4>
+    <div class="metric-strip__chart">
+      <svg viewBox="0 0 100 30" preserveAspectRatio="none" style="width:100%;height:100%;">
+        <rect x="0"  y="20" width="6" height="10" fill="#eab308" opacity="0.7"/>
+        <rect x="8"  y="18" width="6" height="12" fill="#eab308" opacity="0.7"/>
+        <rect x="16" y="15" width="6" height="15" fill="#eab308" opacity="0.7"/>
+        <rect x="24" y="17" width="6" height="13" fill="#eab308" opacity="0.7"/>
+        <rect x="32" y="12" width="6" height="18" fill="#eab308" opacity="0.7"/>
+        <rect x="40" y="16" width="6" height="14" fill="#eab308" opacity="0.7"/>
+        <rect x="48" y="14" width="6" height="16" fill="#eab308" opacity="0.7"/>
+        <rect x="56" y="10" width="6" height="20" fill="#eab308" opacity="0.7"/>
+        <rect x="64" y="13" width="6" height="17" fill="#eab308" opacity="0.7"/>
+        <rect x="72" y="11" width="6" height="19" fill="#eab308" opacity="0.7"/>
+        <rect x="80" y="9"  width="6" height="21" fill="#eab308" opacity="0.7"/>
+        <rect x="88" y="8"  width="6" height="22" fill="#eab308" opacity="0.7"/>
+      </svg>
+    </div>
+    <div class="metric-strip__trend">
+      <span class="badge badge--positive-inverse badge--trend metric-strip__trend-badge p-0">
+        <span class="badge__trend-amount">↓ 13.9%</span>
+      </span>
+      <p class="metric-strip__trend-label mis-2 text-subtle text-xs">Compared to last week</p>
+    </div>
+  </div>
+
+  <%# Request Rate %>
+  <div class="metric-strip__section">
+    <div class="flex items-start justify-between gap-2">
+      <h2 class="metric-strip__title font-semibold uppercase text-xs">Request Rate</h2>
+    </div>
+    <h4 class="text-xl font-bold">5.68 / hour</h4>
+    <div class="metric-strip__chart">
+      <svg viewBox="0 0 100 30" preserveAspectRatio="none" style="width:100%;height:100%;">
+        <rect x="0"  y="10" width="6" height="20" fill="#6b7280" opacity="0.7"/>
+        <rect x="8"  y="8"  width="6" height="22" fill="#6b7280" opacity="0.7"/>
+        <rect x="16" y="12" width="6" height="18" fill="#6b7280" opacity="0.7"/>
+        <rect x="24" y="6"  width="6" height="24" fill="#6b7280" opacity="0.7"/>
+        <rect x="32" y="9"  width="6" height="21" fill="#6b7280" opacity="0.7"/>
+        <rect x="40" y="11" width="6" height="19" fill="#6b7280" opacity="0.7"/>
+        <rect x="48" y="7"  width="6" height="23" fill="#6b7280" opacity="0.7"/>
+        <rect x="56" y="5"  width="6" height="25" fill="#6b7280" opacity="0.7"/>
+        <rect x="64" y="8"  width="6" height="22" fill="#6b7280" opacity="0.7"/>
+        <rect x="72" y="10" width="6" height="20" fill="#6b7280" opacity="0.7"/>
+        <rect x="80" y="6"  width="6" height="24" fill="#6b7280" opacity="0.7"/>
+        <rect x="88" y="7"  width="6" height="23" fill="#6b7280" opacity="0.7"/>
+      </svg>
+    </div>
+    <div class="metric-strip__trend">
+      <span class="badge badge--negative-inverse badge--trend metric-strip__trend-badge p-0">
+        <span class="badge__trend-amount">↑ 15.0%</span>
+      </span>
+      <p class="metric-strip__trend-label mis-2 text-subtle text-xs">Compared to last week</p>
+    </div>
+  </div>
+
+  <%# Error Rate — combined 5xx + 4xx, matching routes index style %>
+  <div class="metric-strip__section">
+    <div class="flex items-start justify-between gap-2">
+      <h2 class="metric-strip__title font-semibold uppercase text-xs">Error Rate</h2>
+    </div>
+    <h4 class="text-xl font-bold">1.31% <span class="text-xs font-normal text-subtle">of requests</span></h4>
+    <div class="metric-strip__chart">
+      <svg viewBox="0 0 100 30" preserveAspectRatio="none" style="width:100%;height:100%;">
+        <rect x="0"  y="27" width="6" height="3"  fill="#6b7280" opacity="0.7"/>
+        <rect x="8"  y="25" width="6" height="5"  fill="#6b7280" opacity="0.7"/>
+        <rect x="16" y="28" width="6" height="2"  fill="#6b7280" opacity="0.7"/>
+        <rect x="24" y="26" width="6" height="4"  fill="#6b7280" opacity="0.7"/>
+        <rect x="32" y="10" width="6" height="20" fill="#dc2626" opacity="0.85"/>
+        <rect x="40" y="27" width="6" height="3"  fill="#6b7280" opacity="0.7"/>
+        <rect x="48" y="28" width="6" height="2"  fill="#6b7280" opacity="0.7"/>
+        <rect x="56" y="26" width="6" height="4"  fill="#6b7280" opacity="0.7"/>
+        <rect x="64" y="27" width="6" height="3"  fill="#6b7280" opacity="0.7"/>
+        <rect x="72" y="28" width="6" height="2"  fill="#6b7280" opacity="0.7"/>
+        <rect x="80" y="26" width="6" height="4"  fill="#6b7280" opacity="0.7"/>
+        <rect x="88" y="27" width="6" height="3"  fill="#6b7280" opacity="0.7"/>
+      </svg>
+    </div>
+    <div class="metric-strip__trend">
+      <span class="badge badge--negative-inverse badge--trend metric-strip__trend-badge p-0">
+        <span class="badge__trend-amount">↑ 8.0%</span>
+      </span>
+      <p class="metric-strip__trend-label mis-2 text-subtle text-xs">Compared to last week</p>
+    </div>
+  </div>
+
+  <%# Job Failure Rate %>
+  <div class="metric-strip__section">
+    <div class="flex items-start justify-between gap-2">
+      <h2 class="metric-strip__title font-semibold uppercase text-xs">Job Failure Rate</h2>
+    </div>
+    <h4 class="text-xl font-bold">4.2%</h4>
+    <div class="metric-strip__chart">
+      <svg viewBox="0 0 100 30" preserveAspectRatio="none" style="width:100%;height:100%;">
+        <rect x="0"  y="25" width="6" height="5"  fill="#6b7280" opacity="0.7"/>
+        <rect x="8"  y="24" width="6" height="6"  fill="#6b7280" opacity="0.7"/>
+        <rect x="16" y="26" width="6" height="4"  fill="#6b7280" opacity="0.7"/>
+        <rect x="24" y="5"  width="6" height="25" fill="#dc2626" opacity="0.85"/>
+        <rect x="32" y="23" width="6" height="7"  fill="#6b7280" opacity="0.7"/>
+        <rect x="40" y="25" width="6" height="5"  fill="#6b7280" opacity="0.7"/>
+        <rect x="48" y="26" width="6" height="4"  fill="#6b7280" opacity="0.7"/>
+        <rect x="56" y="24" width="6" height="6"  fill="#6b7280" opacity="0.7"/>
+        <rect x="64" y="26" width="6" height="4"  fill="#6b7280" opacity="0.7"/>
+        <rect x="72" y="8"  width="6" height="22" fill="#dc2626" opacity="0.85"/>
+        <rect x="80" y="24" width="6" height="6"  fill="#6b7280" opacity="0.7"/>
+        <rect x="88" y="25" width="6" height="5"  fill="#6b7280" opacity="0.7"/>
+      </svg>
+    </div>
+    <div class="metric-strip__trend">
+      <span class="badge badge--negative-inverse badge--trend metric-strip__trend-badge p-0">
+        <span class="badge__trend-amount">↑ 40%</span>
+      </span>
+      <p class="metric-strip__trend-label mis-2 text-subtle text-xs">Compared to last week</p>
+    </div>
+  </div>
+
+</div>
+
+<%# ── 3. CHARTS ROW ──────────────────────────────────────────── %>
 <div class="row">
-  <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', {
-      title: 'Response Time Percentiles',
-      card_classes: 'b-full',
-      series_toggles: [
-        { name: "P95", color: RailsPulse::ChartColors::P95 },
-        { name: "P99", color: RailsPulse::ChartColors::P99 }
-      ],
-      series_toggles_chart_id: "dashboard_response_time_percentiles_chart",
-      help_heading: 'Response Time Percentiles',
-      help_text: 'This panel shows the 95th and 99th percentile response times in milliseconds for all HTTP requests. These percentiles represent the upper bounds that 95% and 99% of requests fall below, respectively. When a Service Level Objective is configured, a dashed red line shows the performance threshold.',
-      actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
-    } do %>
-      <% if @response_time_percentiles_chart_data %>
-        <div class="chart-container chart-container--slim">
-          <%= render_stimulus_chart(
-            @response_time_percentiles_chart_data,
-            type: 'line',
-            id: "dashboard_response_time_percentiles_chart",
-            height: "100%",
-            options: line_chart_options(
-              units: "ms"
-            )
-          ) %>
+
+  <%# Response Time Percentiles (P50 + P95 + P99) — 60% width %>
+  <div class="grid-item" style="flex: 1.5;">
+    <div class="card b-full" style="display: flex; flex-direction: column;">
+      <div class="flex">
+        <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs">Response Time Percentiles</h2>
+        <div class="panel-icon-bar flex items-center" style="gap: 0.5rem;">
+          <button class="series-toggle" style="color: #6b7280;" data-active="true">P50</button>
+          <button class="series-toggle" style="color: #eab308;" data-active="true">P95</button>
+          <button class="series-toggle" style="color: #3b82f6;" data-active="true">P99</button>
         </div>
-      <% else %>
-        <%= render 'rails_pulse/components/empty_state',
-          title: "No data yet",
-          description: "Response times will appear here as your app receives traffic." %>
-      <% end %>
-    <% end %>
+      </div>
+      <div class="chart-container chart-container--slim" style="position: relative; padding-top: 0.5rem; flex: 1;">
+        <svg viewBox="0 0 500 150" preserveAspectRatio="none" style="width:100%;height:100%;">
+          <line x1="0" y1="30"  x2="500" y2="30"  stroke="var(--color-border)" stroke-width="0.5"/>
+          <line x1="0" y1="60"  x2="500" y2="60"  stroke="var(--color-border)" stroke-width="0.5"/>
+          <line x1="0" y1="90"  x2="500" y2="90"  stroke="var(--color-border)" stroke-width="0.5"/>
+          <line x1="0" y1="120" x2="500" y2="120" stroke="var(--color-border)" stroke-width="0.5"/>
+          <text x="2" y="28"  font-size="8" fill="var(--color-text-subtle)">400ms</text>
+          <text x="2" y="58"  font-size="8" fill="var(--color-text-subtle)">300ms</text>
+          <text x="2" y="88"  font-size="8" fill="var(--color-text-subtle)">200ms</text>
+          <text x="2" y="118" font-size="8" fill="var(--color-text-subtle)">100ms</text>
+          <%# SLO line at 200ms %>
+          <line x1="0" y1="90" x2="500" y2="90" stroke="#dc2626" stroke-width="1" stroke-dasharray="6,4" opacity="0.5"/>
+          <%# P50 %>
+          <polyline fill="none" stroke="#6b7280" stroke-width="1.5"
+            points="0,108 36,105 73,100 109,102 145,98 182,96 218,94 254,92 291,90 327,88 363,86 400,84 436,82 472,80"/>
+          <%# P95 %>
+          <polyline fill="none" stroke="#eab308" stroke-width="2"
+            points="0,75 36,72 73,80 109,70 145,65 182,68 218,62 254,60 291,58 327,55 363,58 400,52 436,50 472,45"/>
+          <%# P99 %>
+          <polyline fill="none" stroke="#3b82f6" stroke-width="2"
+            points="0,45 36,42 73,50 109,40 145,35 182,38 218,32 254,30 291,28 327,25 363,28 400,22 436,20 472,15"/>
+          <text x="0"   y="145" font-size="7" fill="var(--color-text-subtle)">Mar 21</text>
+          <text x="70"  y="145" font-size="7" fill="var(--color-text-subtle)">Mar 25</text>
+          <text x="144" y="145" font-size="7" fill="var(--color-text-subtle)">Mar 29</text>
+          <text x="218" y="145" font-size="7" fill="var(--color-text-subtle)">Apr 2</text>
+          <text x="290" y="145" font-size="7" fill="var(--color-text-subtle)">Apr 5</text>
+        </svg>
+      </div>
+    </div>
   </div>
 
+  <%# Throughput & Errors combo %>
   <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', {
-      title: 'Query Performance',
-      card_classes: 'b-full',
-      series_toggles: [
-        { name: "P95", color: RailsPulse::ChartColors::P95 },
-        { name: "P99", color: RailsPulse::ChartColors::P99 }
-      ],
-      series_toggles_chart_id: "dashboard_p95_response_time_chart",
-      help_heading: 'Query Performance',
-      help_text: 'This panel shows the 95th and 99th percentile query execution times in milliseconds for all database queries. These percentiles represent the upper bounds that 95% and 99% of queries fall below, respectively. When a Service Level Objective is configured, a dashed red line shows the performance threshold.',
-      actions: [{ url: queries_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
-    } do %>
-      <% if @p95_response_time_chart_data %>
-        <div class="chart-container chart-container--slim">
-          <%= render_stimulus_chart(
-            @p95_response_time_chart_data,
-            type: 'line',
-            id: "dashboard_p95_response_time_chart",
-            height: "100%",
-            options: line_chart_options(
-              units: "ms"
-            )
-          ) %>
+    <div class="card b-full" style="display: flex; flex-direction: column;">
+      <div class="flex">
+        <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs">Throughput &amp; Errors</h2>
+        <div class="panel-icon-bar flex items-center" style="gap: 0.5rem;">
+          <button class="series-toggle" style="color: #6b7280;" data-active="true">Requests</button>
+          <button class="series-toggle" style="color: #dc2626;" data-active="true">Errors</button>
         </div>
-      <% else %>
-        <%= render 'rails_pulse/components/empty_state',
-          title: "No data yet",
-          description: "Query performance data will appear here as your app receives traffic." %>
-      <% end %>
-    <% end %>
+      </div>
+      <div class="chart-container chart-container--slim" style="position: relative; padding-top: 0.5rem; flex: 1;">
+        <svg viewBox="0 0 500 150" preserveAspectRatio="none" style="width:100%;height:100%;">
+          <line x1="0" y1="30"  x2="500" y2="30"  stroke="var(--color-border)" stroke-width="0.5"/>
+          <line x1="0" y1="60"  x2="500" y2="60"  stroke="var(--color-border)" stroke-width="0.5"/>
+          <line x1="0" y1="90"  x2="500" y2="90"  stroke="var(--color-border)" stroke-width="0.5"/>
+          <line x1="0" y1="120" x2="500" y2="120" stroke="var(--color-border)" stroke-width="0.5"/>
+          <text x="2" y="28"  font-size="8" fill="var(--color-text-subtle)">200</text>
+          <text x="2" y="58"  font-size="8" fill="var(--color-text-subtle)">150</text>
+          <text x="2" y="88"  font-size="8" fill="var(--color-text-subtle)">100</text>
+          <text x="2" y="118" font-size="8" fill="var(--color-text-subtle)">50</text>
+          <%# Request volume bars %>
+          <rect x="10"  y="60" width="20" height="60" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="47"  y="50" width="20" height="70" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="84"  y="55" width="20" height="65" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="121" y="45" width="20" height="75" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="158" y="40" width="20" height="80" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="195" y="52" width="20" height="68" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="232" y="38" width="20" height="82" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="269" y="42" width="20" height="78" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="306" y="35" width="20" height="85" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="343" y="48" width="20" height="72" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="380" y="43" width="20" height="77" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="417" y="36" width="20" height="84" fill="#6b7280" opacity="0.25" rx="1"/>
+          <rect x="454" y="30" width="20" height="90" fill="#6b7280" opacity="0.25" rx="1"/>
+          <%# Error rate line %>
+          <polyline fill="none" stroke="#dc2626" stroke-width="2"
+            points="20,118 57,117 94,115 131,116 168,65 205,116 242,114 279,117 316,115 353,116 390,68 427,115 464,117"/>
+          <text x="0"   y="145" font-size="7" fill="var(--color-text-subtle)">Mar 21</text>
+          <text x="70"  y="145" font-size="7" fill="var(--color-text-subtle)">Mar 25</text>
+          <text x="144" y="145" font-size="7" fill="var(--color-text-subtle)">Mar 29</text>
+          <text x="218" y="145" font-size="7" fill="var(--color-text-subtle)">Apr 2</text>
+          <text x="290" y="145" font-size="7" fill="var(--color-text-subtle)">Apr 5</text>
+        </svg>
+      </div>
+    </div>
   </div>
+
 </div>
 
-<div class="row">
-  <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', {
-      title: 'Slowest Routes This Week',
-      help_heading: 'Slowest Routes',
-      help_text: 'This panel shows the slowest routes in your application this week, including P95 response time and total request count.',
-      actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
-      card_classes: 'table-container'
-    } do %>
-      <%= render 'rails_pulse/components/table', table_data: @slow_routes_table_data %>
-    <% end %>
+<%# ── 4. NEEDS ATTENTION ──────────────────────────────────────── %>
+<div class="card">
+  <div class="flex items-center" style="margin-bottom: 0.75rem;">
+    <h2 class="font-semibold leading-none uppercase text-xs">Needs Attention</h2>
+    <span class="badge badge--negative" style="margin-left: 0.5rem; font-size: 0.65em; padding: 0.1rem 0.4rem;">7 issues</span>
+    <span class="text-xs text-subtle" style="margin-left: auto;">Ranked by severity · this week</span>
   </div>
-</div>
 
-<div class="row">
-  <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', {
-      title: 'Slowest Queries This Week',
-      help_heading: 'Slowest Queries',
-      help_text: 'This panel shows the slowest database queries in your application this week, including P95 execution time and when they were last seen.',
-      actions: [{ url: queries_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
-      card_classes: 'table-container'
-    } do %>
-      <%= render 'rails_pulse/components/table', table_data: @slow_queries_table_data %>
-    <% end %>
+  <%# helper partial for the external-link icon %>
+  <% icon_svg = '<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></svg>' %>
+
+  <div style="display: flex; flex-direction: column;">
+
+    <%# ── CRITICAL · 3 ────────────────────────────────────────── %>
+    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; margin-bottom: 0.1rem;">
+      <span style="font-size: 0.65em; font-weight: 700; letter-spacing: 0.05em; color: var(--color-negative); text-transform: uppercase;">Critical</span>
+      <span class="text-xs text-subtle">· 3</span>
+      <div style="flex: 1; height: 1px; background: color-mix(in srgb, var(--color-negative) 20%, transparent);"></div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--color-border);">
+      <div style="width: 3px; height: 2rem; background: var(--color-negative); border-radius: 2px; flex-shrink: 0;"></div>
+      <span class="badge" style="font-size: 0.65em; background: color-mix(in srgb, var(--color-negative) 12%, transparent); border-color: color-mix(in srgb, var(--color-negative) 30%, transparent); color: var(--color-negative); flex-shrink: 0; width: 3.5rem; text-align: center;">JOB</span>
+      <div style="flex: 1; min-width: 0;">
+        <a href="#" class="font-semibold text-sm" style="color: var(--color-link);">PaymentProcessorJob</a>
+        <p class="text-xs text-subtle" style="margin-top: 1px;">Payments queue · 33.3% failure rate this week</p>
+      </div>
+      <div style="text-align: right; flex-shrink: 0;">
+        <span class="font-semibold text-sm" style="color: var(--color-negative);">2 / 6 failed</span>
+        <p class="text-xs text-subtle">P95 4,821ms</p>
+      </div>
+      <a href="#" style="flex-shrink: 0; color: var(--color-text-subtle); display: flex; align-items: center;" title="View details"><%= icon_svg.html_safe %></a>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--color-border);">
+      <div style="width: 3px; height: 2rem; background: var(--color-negative); border-radius: 2px; flex-shrink: 0;"></div>
+      <span class="badge" style="font-size: 0.65em; background: color-mix(in srgb, var(--color-negative) 12%, transparent); border-color: color-mix(in srgb, var(--color-negative) 30%, transparent); color: var(--color-negative); flex-shrink: 0; width: 3.5rem; text-align: center;">ROUTE</span>
+      <div style="flex: 1; min-width: 0;">
+        <a href="#" class="font-semibold text-sm" style="color: var(--color-link);">POST /api/payments/process</a>
+        <p class="text-xs text-subtle" style="margin-top: 1px;">18.3% error rate · 120 requests this week</p>
+      </div>
+      <div style="text-align: right; flex-shrink: 0;">
+        <span class="font-semibold text-sm" style="color: var(--color-negative);">22 errors</span>
+        <p class="text-xs text-subtle">P95 312ms</p>
+      </div>
+      <a href="#" style="flex-shrink: 0; color: var(--color-text-subtle); display: flex; align-items: center;" title="View details"><%= icon_svg.html_safe %></a>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--color-border);">
+      <div style="width: 3px; height: 2rem; background: var(--color-negative); border-radius: 2px; flex-shrink: 0;"></div>
+      <span class="badge" style="font-size: 0.65em; background: color-mix(in srgb, var(--color-negative) 12%, transparent); border-color: color-mix(in srgb, var(--color-negative) 30%, transparent); color: var(--color-negative); flex-shrink: 0; width: 3.5rem; text-align: center;">ROUTE</span>
+      <div style="flex: 1; min-width: 0;">
+        <a href="#" class="font-semibold text-sm" style="color: var(--color-link);">/api/complex</a>
+        <p class="text-xs text-subtle" style="margin-top: 1px;">476ms P95 · exceeds 200ms SLO threshold</p>
+      </div>
+      <div style="text-align: right; flex-shrink: 0;">
+        <span class="font-semibold text-sm" style="color: var(--color-negative);">476ms P95</span>
+        <p class="text-xs text-subtle">53 requests</p>
+      </div>
+      <a href="#" style="flex-shrink: 0; color: var(--color-text-subtle); display: flex; align-items: center;" title="View details"><%= icon_svg.html_safe %></a>
+    </div>
+
+    <%# ── WARNING · 4 ─────────────────────────────────────────── %>
+    <div style="display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0; margin-top: 0.5rem; margin-bottom: 0.1rem;">
+      <span style="font-size: 0.65em; font-weight: 700; letter-spacing: 0.05em; color: #854d0e; text-transform: uppercase;">Warning</span>
+      <span class="text-xs text-subtle">· 4</span>
+      <div style="flex: 1; height: 1px; background: color-mix(in srgb, #eab308 30%, transparent);"></div>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--color-border);">
+      <div style="width: 3px; height: 2rem; background: #eab308; border-radius: 2px; flex-shrink: 0;"></div>
+      <span class="badge" style="font-size: 0.65em; background: color-mix(in srgb, #eab308 12%, transparent); border-color: color-mix(in srgb, #eab308 30%, transparent); color: #854d0e; flex-shrink: 0; width: 3.5rem; text-align: center;">JOB</span>
+      <div style="flex: 1; min-width: 0;">
+        <a href="#" class="font-semibold text-sm" style="color: var(--color-link);">CsvImportJob</a>
+        <p class="text-xs text-subtle" style="margin-top: 1px;">Default queue · 14.3% failure rate this week</p>
+      </div>
+      <div style="text-align: right; flex-shrink: 0;">
+        <span class="font-semibold text-sm" style="color: #eab308;">3 / 21 failed</span>
+        <p class="text-xs text-subtle">P95 12,430ms</p>
+      </div>
+      <a href="#" style="flex-shrink: 0; color: var(--color-text-subtle); display: flex; align-items: center;" title="View details"><%= icon_svg.html_safe %></a>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--color-border);">
+      <div style="width: 3px; height: 2rem; background: #eab308; border-radius: 2px; flex-shrink: 0;"></div>
+      <span class="badge" style="font-size: 0.65em; background: color-mix(in srgb, #eab308 12%, transparent); border-color: color-mix(in srgb, #eab308 30%, transparent); color: #854d0e; flex-shrink: 0; width: 3.5rem; text-align: center;">QUERY</span>
+      <div style="flex: 1; min-width: 0;">
+        <a href="#" class="font-semibold text-sm" style="color: var(--color-link); font-family: monospace; font-size: 0.8em;">SELECT users.*, COUNT(DISTINCT posts.id) as post_count…</a>
+        <p class="text-xs text-subtle" style="margin-top: 1px;">379ms P95 · potential N+1 detected</p>
+      </div>
+      <div style="text-align: right; flex-shrink: 0;">
+        <span class="font-semibold text-sm" style="color: #eab308;">379ms P95</span>
+        <p class="text-xs text-subtle">1 execution</p>
+      </div>
+      <a href="#" style="flex-shrink: 0; color: var(--color-text-subtle); display: flex; align-items: center;" title="View details"><%= icon_svg.html_safe %></a>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--color-border);">
+      <div style="width: 3px; height: 2rem; background: #eab308; border-radius: 2px; flex-shrink: 0;"></div>
+      <span class="badge" style="font-size: 0.65em; background: color-mix(in srgb, #eab308 12%, transparent); border-color: color-mix(in srgb, #eab308 30%, transparent); color: #854d0e; flex-shrink: 0; width: 3.5rem; text-align: center;">ROUTE</span>
+      <div style="flex: 1; min-width: 0;">
+        <a href="#" class="font-semibold text-sm" style="color: var(--color-link);">/slow</a>
+        <p class="text-xs text-subtle" style="margin-top: 1px;">440ms P95 · 9.1% error rate</p>
+      </div>
+      <div style="text-align: right; flex-shrink: 0;">
+        <span class="font-semibold text-sm" style="color: #eab308;">440ms P95</span>
+        <p class="text-xs text-subtle">35 requests</p>
+      </div>
+      <a href="#" style="flex-shrink: 0; color: var(--color-text-subtle); display: flex; align-items: center;" title="View details"><%= icon_svg.html_safe %></a>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--color-border);">
+      <div style="width: 3px; height: 2rem; background: #eab308; border-radius: 2px; flex-shrink: 0;"></div>
+      <span class="badge" style="font-size: 0.65em; background: color-mix(in srgb, #eab308 12%, transparent); border-color: color-mix(in srgb, #eab308 30%, transparent); color: #854d0e; flex-shrink: 0; width: 3.5rem; text-align: center;">QUERY</span>
+      <div style="flex: 1; min-width: 0;">
+        <a href="#" class="font-semibold text-sm" style="color: var(--color-link); font-family: monospace; font-size: 0.8em;">SELECT users.*, comments.* COUNT(DISTINCT posts.id)…</a>
+        <p class="text-xs text-subtle" style="margin-top: 1px;">260ms P95 · missing index on users.email</p>
+      </div>
+      <div style="text-align: right; flex-shrink: 0;">
+        <span class="font-semibold text-sm" style="color: #eab308;">260ms P95</span>
+        <p class="text-xs text-subtle">3 executions</p>
+      </div>
+      <a href="#" style="flex-shrink: 0; color: var(--color-text-subtle); display: flex; align-items: center;" title="View details"><%= icon_svg.html_safe %></a>
+    </div>
+
   </div>
 </div>
