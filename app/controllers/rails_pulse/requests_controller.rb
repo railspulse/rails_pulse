@@ -13,7 +13,6 @@ module RailsPulse
     before_action :set_request, only: :show
 
     def index
-      setup_metric_cards
       setup_chart_and_table_data
     end
 
@@ -22,18 +21,6 @@ module RailsPulse
     end
 
     private
-
-    def setup_metric_cards
-      return if  turbo_frame_request?
-
-      # Get tag filter values from session
-      disabled_tags = session_disabled_tags
-      show_non_tagged = session[:show_non_tagged] != false
-
-      @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-    end
 
 
     def chart_model
