@@ -1,3 +1,18 @@
+# Enable code coverage tracking when COVERAGE env var is set
+if ENV["COVERAGE"]
+  require "simplecov"
+
+  SimpleCov.start "rails" do
+    add_filter "/test/"
+    add_filter "/config/"
+    add_group "Models", "app/models"
+    add_group "Controllers", "app/controllers"
+    add_group "Middleware", "app/middleware"
+    add_group "Cards", "app/models/rails_pulse/*/cards"
+    add_group "Charts", "app/models/rails_pulse/dashboard/charts"
+  end
+end
+
 ENV["RAILS_ENV"] = "test"
 
 # Load environment variables from .env file for database configuration
@@ -21,7 +36,8 @@ Dir[File.expand_path("support/**/*.rb", __dir__)].each { |f| require f }
 class ActiveSupport::TestCase
   # Enable parallel testing for local performance
   # Disable when BROWSER is set to avoid multiple browser windows
-  parallelize(workers: ENV["BROWSER"] ? 0 : :number_of_processors)
+  # Disable when COVERAGE is set for accurate coverage tracking
+  parallelize(workers: (ENV["BROWSER"] || ENV["COVERAGE"]) ? 0 : :number_of_processors)
 
   parallelize_setup do |worker|
     require "mocha/minitest"

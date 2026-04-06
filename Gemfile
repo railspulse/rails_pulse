@@ -15,6 +15,7 @@ group :test do
   gem "mocha"
   gem "selenium-webdriver"
   gem "shoulda-matchers"
+  gem "simplecov", require: false
   gem "timecop"
 end
 

@@ -8,7 +8,12 @@ module RailsPulse
         RailsPulse::Operation.delete_all
         RailsPulse::Request.delete_all
         RailsPulse::Route.delete_all
+        @original_async = RailsPulse.configuration.async
         RailsPulse.configuration.async = false  # Use sync mode for tests
+      end
+
+      teardown do
+        RailsPulse.configuration.async = @original_async
       end
 
       test "middleware tracks successful requests in sync mode" do
