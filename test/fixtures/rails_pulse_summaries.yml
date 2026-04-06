@@ -43,6 +43,9 @@ query_summary_1:
   period_type: "day"
   count: 500
   avg_duration: 45.2
+  p50_duration: 35.0
+  p95_duration: 80.0
+  p99_duration: 120.0
   created_at: <%= 1.day.ago %>
   updated_at: <%= 1.day.ago %>
 

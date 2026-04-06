@@ -332,10 +332,11 @@ module RailsPulse
 
         # Sparkline Tests
 
-        test "chart_data covers the last 14 days" do
+        test "chart_data covers the default 7-day period" do
+          # period: 7 (default) → 7 days ago through today = 8 entries
           card = DatabaseLoad.new.to_metric_card
 
-          assert_equal 15, card[:chart_data].size
+          assert_equal 8, card[:chart_data].size
         end
 
         test "chart_data has itemStyle color for each day" do

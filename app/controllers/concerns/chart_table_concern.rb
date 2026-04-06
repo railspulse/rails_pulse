@@ -76,7 +76,7 @@ module ChartTableConcern
     return false unless @chart_data.is_a?(Hash) && @chart_data.key?(:series)
 
     @chart_data[:series].any? { |series|
-      !series[:name].to_s.include?("Service Level Objective") &&
+      !series[:name].to_s.include?(" SLO ") &&
         series[:data].any? { |v| v.to_f > 0 }
     }
   end
@@ -85,7 +85,7 @@ module ChartTableConcern
     has_chart_data = if @chart_data.is_a?(Hash) && @chart_data.key?(:series)
       # New multi-series chart format (line charts)
       # Exclude SLO series as it always has positive threshold values
-      @chart_data[:series].any? { |series| !series[:name].to_s.include?("Service Level Objective") && series[:data].any? { |v| v.to_f > 0 } }
+      @chart_data[:series].any? { |series| !series[:name].to_s.include?(" SLO ") && series[:data].any? { |v| v.to_f > 0 } }
     elsif @chart_data.is_a?(Hash)
       # Old simple hash format (bar charts)
       @chart_data.values.any? { |v| v.is_a?(Numeric) && v > 0 }

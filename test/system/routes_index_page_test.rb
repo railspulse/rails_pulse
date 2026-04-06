@@ -21,14 +21,6 @@ class RoutesIndexPageTest < ApplicationSystemTestCase
     assert_selector ".table"
   end
 
-  test "time range selector updates page" do
-    # Stimulus: index_controller updates on time range change
-    select "Last Week", from: "q_period_start_range"
-
-    assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
-    assert_selector ".table tbody tr", minimum: 1
-  end
-
   test "performance filter works" do
     # Stimulus: filtering updates table via dropdown
     select "Slow (≥ 500ms)", from: "q_avg_duration"

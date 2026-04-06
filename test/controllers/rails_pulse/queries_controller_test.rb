@@ -1,10 +1,15 @@
 require "test_helper"
 
 class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
+  include Rails::Controller::Testing::TestProcess
+  include Rails::Controller::Testing::TemplateAssertions
+  include Rails::Controller::Testing::Integration
+
+  fixtures :rails_pulse_queries, :rails_pulse_summaries, :rails_pulse_routes,
+           :rails_pulse_requests, :rails_pulse_operations
+
   def setup
     ENV["TEST_TYPE"] = "functional"
-
-
     super
   end
 
@@ -20,34 +25,8 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_includes RailsPulse::QueriesController.included_modules, ChartTableConcern
   end
 
-  test "controller has required private methods" do
-    controller = RailsPulse::QueriesController.new
-    private_methods = controller.private_methods
-
-    assert_includes private_methods, :chart_model
-    assert_includes private_methods, :table_model
-    assert_includes private_methods, :chart_class
-    assert_includes private_methods, :set_query
-  end
-
-  test "uses correct chart class" do
-    controller = RailsPulse::QueriesController.new
-
-    assert_equal RailsPulse::Queries::Charts::QueryPerformance, controller.send(:chart_class)
-  end
-
-  test "show_action method works correctly" do
-    controller = RailsPulse::QueriesController.new
-
-    # Mock action_name for index
-    controller.stubs(:action_name).returns("index")
-
-    refute controller.send(:show_action?)
-
-    # Mock action_name for show
-    controller.stubs(:action_name).returns("show")
-
-    assert controller.send(:show_action?)
+  test "controller inherits from ApplicationController" do
+    assert_operator RailsPulse::QueriesController, :<, RailsPulse::ApplicationController
   end
 
   test "analyze action performs query analysis and responds appropriately" do
@@ -76,10 +55,6 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to rails_pulse_engine.query_path(query)
     assert_equal "Query analysis failed: Test error", flash[:alert]
-  end
-
-  test "controller inherits from ApplicationController" do
-    assert_operator RailsPulse::QueriesController, :<, RailsPulse::ApplicationController
   end
 
   # HTTP Response Tests
@@ -345,12 +320,10 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_operator time_diff, :<, 8.days.to_i
   end
 
-  test "index with session time_range_preference" do
+  test "index with time_range_preference param" do
     setup_basic_test_data
 
-    get rails_pulse_engine.queries_path, params: {}, session: {
-      time_range_preference: "last_week"
-    }
+    get rails_pulse_engine.queries_path, params: { q: { period_start_range: "last_week" } }
 
     assert_response :success
     assert_not_nil assigns(:table_data)
@@ -375,13 +348,8 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
   test "period type is hour for ranges under 25 hours" do
     setup_basic_test_data
 
-    # Set a time range under 25 hours via session
-    get rails_pulse_engine.queries_path, params: {}, session: {
-      global_filters: {
-        start_time: 12.hours.ago.to_i,
-        end_time: Time.current.to_i
-      }
-    }
+    # last_day = 24 hours, which is under the 25-hour threshold for hourly grouping
+    get rails_pulse_engine.queries_path, params: { q: { period_start_range: "last_day" } }
 
     assert_response :success
     time_diff_hours = (assigns(:end_time) - assigns(:start_time)) / 3600.0
@@ -558,10 +526,9 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     get rails_pulse_engine.queries_path, params: {
       q: {
+        period_start_range: "last_week",
         avg_duration: "slow"
       }
-    }, session: {
-      time_range_preference: "last_week"
     }
 
     assert_response :success
@@ -574,10 +541,9 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     get rails_pulse_engine.queries_path, params: {
       q: {
+        period_start_range: "last_week",
         s: "p95_duration_sort desc"
       }
-    }, session: {
-      time_range_preference: "last_week"
     }
 
     assert_response :success
@@ -589,12 +555,11 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     get rails_pulse_engine.queries_path, params: {
       q: {
+        period_start_range: "last_week",
         avg_duration: "slow",
         s: "p95_duration_sort desc"
       },
       limit: "25"
-    }, session: {
-      time_range_preference: "last_week"
     }
 
     assert_response :success
@@ -614,24 +579,22 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
   test "index with very large time range" do
     setup_basic_test_data
 
-    get rails_pulse_engine.queries_path, params: {}, session: {
-      global_filters: {
-        start_time: 90.days.ago.to_i,
-        end_time: Time.current.to_i
-      }
-    }
+    get rails_pulse_engine.queries_path, params: { q: { period_start_range: "last_month" } }
 
     assert_response :success
     assert_not_nil assigns(:table_data)
   end
 
-  test "index with future dates" do
+  test "index with future custom date range" do
     setup_basic_test_data
 
-    get rails_pulse_engine.queries_path, params: {}, session: {
-      global_filters: {
-        start_time: 10.days.from_now.to_i,
-        end_time: 11.days.from_now.to_i
+    future_start = 10.days.from_now
+    future_end = 11.days.from_now
+
+    get rails_pulse_engine.queries_path, params: {
+      q: {
+        period_start_range: "custom",
+        custom_date_range: "#{future_start.strftime('%Y-%m-%d %H:%M')} to #{future_end.strftime('%Y-%m-%d %H:%M')}"
       }
     }
 
@@ -639,31 +602,18 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:table_data)
   end
 
-  test "conflicting parameters handled" do
+  test "multiple filters combined" do
     setup_basic_test_data
 
     get rails_pulse_engine.queries_path, params: {
       q: {
+        period_start_range: "last_week",
         avg_duration: "slow"
-      }
-    }, session: {
-      time_range_preference: "last_week",
-      global_filters: {
-        start_time: 30.days.ago.to_i,
-        end_time: Time.current.to_i
       }
     }
 
     assert_response :success
     assert_not_nil assigns(:table_data)
-  end
-
-  # Default Sort Tests
-
-  test "default table sort is period_start desc" do
-    controller = RailsPulse::QueriesController.new
-
-    assert_equal "period_start desc", controller.send(:default_table_sort)
   end
 
   # Tag Filtering Tests

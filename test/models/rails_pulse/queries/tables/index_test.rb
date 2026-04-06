@@ -4,8 +4,10 @@ module RailsPulse
   module Queries
     module Tables
       class IndexTest < ActiveSupport::TestCase
+        fixtures :rails_pulse_queries, :rails_pulse_summaries
+
         def setup
-          @start_time = 1.day.ago
+          @start_time = 2.days.ago
           @end_time = Time.current
           @ransack_query = RailsPulse::Summary.ransack({
             period_start_gteq: @start_time,
@@ -38,12 +40,11 @@ module RailsPulse
         test "result has required query attributes" do
           results = create_table
 
-          if results.any?
-            first_result = results.first
-            assert_includes first_result.attributes.keys, "query_id"
-            assert_includes first_result.attributes.keys, "normalized_sql"
-            assert_includes first_result.attributes.keys, "tags"
-          end
+          assert results.any?, "Expected query summary fixtures to be within the test time range"
+          first_result = results.first
+          assert_includes first_result.attributes.keys, "query_id"
+          assert_includes first_result.attributes.keys, "normalized_sql"
+          assert_includes first_result.attributes.keys, "tags"
         end
 
         test "result has metric attributes" do
@@ -100,11 +101,10 @@ module RailsPulse
         test "avg_duration is AVG of avg_duration across periods" do
           results = create_table
 
-          if results.any?
-            result = results.first
-            # Should be a numeric average
-            assert result.avg_duration.nil? || result.avg_duration.is_a?(Numeric)
-          end
+          assert results.any?, "Expected query summary fixtures to be within the test time range"
+          result = results.first
+          # Should be a numeric average
+          assert result.avg_duration.nil? || result.avg_duration.is_a?(Numeric)
         end
 
         test "max_duration is MAX of max_duration across periods" do
@@ -120,11 +120,10 @@ module RailsPulse
         test "p95_duration is weighted average" do
           results = create_table
 
-          if results.any?
-            result = results.first
-            # Should be calculated as SUM(p95 * count) / SUM(count)
-            assert result.p95_duration.nil? || result.p95_duration.is_a?(Numeric)
-          end
+          assert results.any?, "Expected query summary fixtures to be within the test time range"
+          result = results.first
+          # Should be calculated as SUM(p95 * count) / SUM(count)
+          assert result.p95_duration.nil? || result.p95_duration.is_a?(Numeric)
         end
 
         test "p99_duration is weighted average" do
@@ -396,6 +395,7 @@ module RailsPulse
           })
 
           results = create_table
+          assert results.is_a?(ActiveRecord::Relation)
           results_array = results.to_a
 
           if results_array.length > 1
@@ -413,6 +413,7 @@ module RailsPulse
           })
 
           results = create_table
+          assert results.is_a?(ActiveRecord::Relation)
           results_array = results.to_a
 
           if results_array.length > 1
@@ -447,7 +448,7 @@ module RailsPulse
 
           results = create_table
 
-          assert_equal 0, results.count
+          assert_equal 0, results.to_a.length
         end
 
         test "handles zero execution count" do
