@@ -161823,9 +161823,11 @@
         config2.xAxis.data = data.labels;
         config2.yAxis = config2.yAxis || {};
         config2.yAxis.type = "value";
+        const seriesOptions = config2.series && !Array.isArray(config2.series) ? config2.series : {};
         config2.series = data.series.map((seriesData) => {
           return {
             type: this.typeValue,
+            ...seriesOptions,
             ...seriesData
           };
         });
@@ -163224,6 +163226,20 @@
     selected: { type: String, default: "response_time" }
   });
 
+  // app/javascript/rails_pulse/controllers/period_selector_controller.js
+  var period_selector_controller_default = class extends Controller {
+    select(event) {
+      const clickedEl = event.currentTarget;
+      this.buttonTargets.forEach((btn) => {
+        const isActive = btn === clickedEl;
+        btn.dataset.active = isActive ? "true" : "false";
+        btn.style.background = isActive ? "var(--color-primary)" : "transparent";
+        btn.style.color = isActive ? "var(--color-text-reversed)" : "var(--color-text-subtle)";
+      });
+    }
+  };
+  __publicField(period_selector_controller_default, "targets", ["button"]);
+
   // app/javascript/rails_pulse/application.js
   var application = Application.start();
   application.debug = false;
@@ -163250,6 +163266,7 @@
   application.register("rails-pulse--series-toggle", series_toggle_controller_default);
   application.register("rails-pulse--flame-graph", flame_graph_controller_default);
   application.register("rails-pulse--chart-switcher", chart_switcher_controller_default);
+  application.register("rails-pulse--period-selector", period_selector_controller_default);
   document.addEventListener("DOMContentLoaded", () => {
     const frames = document.querySelectorAll("turbo-frame[src]:not([complete])");
     frames.forEach((frame) => {

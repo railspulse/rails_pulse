@@ -2,14 +2,15 @@ module RailsPulse
   module Dashboard
     module Charts
       class ResponseTimePercentiles
-        def initialize(disabled_tags: [], show_non_tagged: true)
+        def initialize(disabled_tags: [], show_non_tagged: true, period: 7)
           @disabled_tags = disabled_tags
           @show_non_tagged = show_non_tagged
+          @period = period
         end
 
         def to_chart_data
-          # Create a range of all dates in the past 2 weeks
-          start_date = 2.weeks.ago.beginning_of_day.to_date
+          # Create a range of all dates in the selected period
+          start_date = @period.days.ago.beginning_of_day.to_date
           end_date = Time.current.to_date
           date_range = (start_date..end_date)
 
@@ -31,11 +32,13 @@ module RailsPulse
             count = summary.count || 0
 
             if daily_data[date]
+              daily_data[date][:total_weighted_p50] += (summary.p50_duration || 0) * count
               daily_data[date][:total_weighted_p95] += (summary.p95_duration || 0) * count
               daily_data[date][:total_weighted_p99] += (summary.p99_duration || 0) * count
               daily_data[date][:total_count] += count
             else
               daily_data[date] = {
+                total_weighted_p50: (summary.p50_duration || 0) * count,
                 total_weighted_p95: (summary.p95_duration || 0) * count,
                 total_weighted_p99: (summary.p99_duration || 0) * count,
                 total_count: count
@@ -46,8 +49,9 @@ module RailsPulse
           # Convert to final values (weighted averages)
           daily_data = daily_data.transform_values do |data|
             {
-              p95: data[:total_count] > 0 ? (data[:total_weighted_p95] / data[:total_count]).round(0) : 0,
-              p99: data[:total_count] > 0 ? (data[:total_weighted_p99] / data[:total_count]).round(0) : 0
+              p50: data[:total_count] > 0 ? (data[:total_weighted_p50] / data[:total_count]).round(0) : nil,
+              p95: data[:total_count] > 0 ? (data[:total_weighted_p95] / data[:total_count]).round(0) : nil,
+              p99: data[:total_count] > 0 ? (data[:total_weighted_p99] / data[:total_count]).round(0) : nil
             }
           end
 
@@ -57,8 +61,17 @@ module RailsPulse
           # Build series data
           series = []
 
-          # Add P95 series (green)
-          p95_data = date_range.map { |date| daily_data[date]&.[](:p95) || 0 }
+          # Add P50 series (gray)
+          p50_data = date_range.map { |date| daily_data[date]&.[](:p50) }
+          series << {
+            name: "P50",
+            data: p50_data,
+            type: "line",
+            color: RailsPulse::ChartColors::DEFAULT
+          }
+
+          # Add P95 series (yellow)
+          p95_data = date_range.map { |date| daily_data[date]&.[](:p95) }
           series << {
             name: "P95",
             data: p95_data,
@@ -67,7 +80,7 @@ module RailsPulse
           }
 
           # Add P99 series (blue)
-          p99_data = date_range.map { |date| daily_data[date]&.[](:p99) || 0 }
+          p99_data = date_range.map { |date| daily_data[date]&.[](:p99) }
           series << {
             name: "P99",
             data: p99_data,

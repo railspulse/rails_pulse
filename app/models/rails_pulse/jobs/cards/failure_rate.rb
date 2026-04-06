@@ -2,8 +2,9 @@ module RailsPulse
   module Jobs
     module Cards
       class FailureRate < Base
-        def initialize(job: nil)
+        def initialize(job: nil, period: 7)
           @job = job
+          @period = period
         end
 
         def to_metric_card
@@ -71,7 +72,7 @@ module RailsPulse
         end
 
         def sparkline_from_failure_rates(errors_by_day, counts_by_day)
-          start_date = range_start.to_date
+          start_date = current_window_start.to_date
           end_date = now.to_date
 
           (start_date..end_date).each_with_object({}) do |day, hash|

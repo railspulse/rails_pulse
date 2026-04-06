@@ -26,6 +26,7 @@ import CustomRangeController from "./controllers/custom_range_controller"
 import SeriesToggleController from "./controllers/series_toggle_controller";
 import FlameGraphController from "./controllers/flame_graph_controller";
 import ChartSwitcherController from "./controllers/chart_switcher_controller";
+import PeriodSelectorController from "./controllers/period_selector_controller";
 
 const application = Application.start();
 
@@ -60,6 +61,7 @@ application.register("rails-pulse--custom-range", CustomRangeController);
 application.register("rails-pulse--series-toggle", SeriesToggleController);
 application.register("rails-pulse--flame-graph", FlameGraphController);
 application.register("rails-pulse--chart-switcher", ChartSwitcherController);
+application.register("rails-pulse--period-selector", PeriodSelectorController);
 
 // Ensure Turbo Frames are loaded after page load
 document.addEventListener('DOMContentLoaded', () => {

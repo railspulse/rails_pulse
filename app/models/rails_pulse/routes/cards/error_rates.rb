@@ -2,24 +2,25 @@ module RailsPulse
   module Routes
     module Cards
       class ErrorRates
-        def initialize(route: nil, disabled_tags: [], show_non_tagged: true)
+        def initialize(route: nil, disabled_tags: [], show_non_tagged: true, period: 7)
           @route = route
           @disabled_tags = disabled_tags
           @show_non_tagged = show_non_tagged
+          @period = period
         end
 
         def to_metric_card
-          last_7_days = 7.days.ago.beginning_of_day
-          previous_7_days = 14.days.ago.beginning_of_day
-          last7 = last_7_days.strftime("%Y-%m-%d %H:%M:%S")
-          prev7 = previous_7_days.strftime("%Y-%m-%d %H:%M:%S")
+          last_n_days = @period.days.ago.beginning_of_day
+          previous_n_days = (@period * 2).days.ago.beginning_of_day
+          last7 = last_n_days.strftime("%Y-%m-%d %H:%M:%S")
+          prev7 = previous_n_days.strftime("%Y-%m-%d %H:%M:%S")
 
           base_query = RailsPulse::Summary
             .with_tag_filters(@disabled_tags, @show_non_tagged)
             .where(
               summarizable_type: "RailsPulse::Route",
               period_type: "day",
-              period_start: 2.weeks.ago.beginning_of_day..Time.current
+              period_start: (@period * 2).days.ago.beginning_of_day..Time.current
             )
           base_query = base_query.where(summarizable_id: @route.id) if @route
 
@@ -55,7 +56,7 @@ module RailsPulse
           grouped_errors = base_query.group_by_date(:period_start).sum(:error_count)
           grouped_4xx = base_query.group_by_date(:period_start).sum(:status_4xx)
 
-          start_day = 2.weeks.ago.beginning_of_day.to_date
+          start_day = @period.days.ago.beginning_of_day.to_date
           end_day = Time.current.to_date
 
           sparkline_data = {}

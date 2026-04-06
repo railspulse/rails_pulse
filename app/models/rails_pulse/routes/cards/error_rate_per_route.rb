@@ -2,15 +2,16 @@ module RailsPulse
   module Routes
     module Cards
       class ErrorRatePerRoute
-        def initialize(route: nil, disabled_tags: [], show_non_tagged: true)
+        def initialize(route: nil, disabled_tags: [], show_non_tagged: true, period: 7)
           @route = route
           @disabled_tags = disabled_tags
           @show_non_tagged = show_non_tagged
+          @period = period
         end
 
         def to_metric_card
-          last_7_days = 7.days.ago.beginning_of_day
-          previous_7_days = 14.days.ago.beginning_of_day
+          last_n_days = @period.days.ago.beginning_of_day
+          previous_n_days = (@period * 2).days.ago.beginning_of_day
 
           # Single query to get all error metrics with conditional aggregation
           base_query = RailsPulse::Summary
@@ -18,15 +19,15 @@ module RailsPulse
             .where(
               summarizable_type: "RailsPulse::Route",
               period_type: "day",
-              period_start: 2.weeks.ago.beginning_of_day..Time.current
+              period_start: (@period * 2).days.ago.beginning_of_day..Time.current
             )
           base_query = base_query.where(summarizable_id: @route.id) if @route
 
           metrics = base_query.select(
             "SUM(error_count) AS total_errors",
             "SUM(count) AS total_requests",
-            "SUM(CASE WHEN period_start >= '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN error_count ELSE 0 END) AS current_errors",
-            "SUM(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN error_count ELSE 0 END) AS previous_errors"
+            "SUM(CASE WHEN period_start >= '#{last_n_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN error_count ELSE 0 END) AS current_errors",
+            "SUM(CASE WHEN period_start >= '#{previous_n_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_n_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN error_count ELSE 0 END) AS previous_errors"
           ).take
 
           # Calculate metrics from single query result
@@ -50,12 +51,12 @@ module RailsPulse
             trend_amount = "—"
           end
 
-          # Sparkline data by day with zero-filled days over the last 14 days
+          # Sparkline data by day with zero-filled days over the selected period
           grouped_daily = base_query
             .group_by_date(:period_start)
             .sum(:error_count)
 
-          start_day = 2.weeks.ago.beginning_of_day.to_date
+          start_day = (@period * 2).days.ago.beginning_of_day.to_date
           end_day = Time.current.to_date
 
           sparkline_data = {}

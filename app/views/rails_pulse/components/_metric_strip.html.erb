@@ -40,7 +40,7 @@
             </div>
           <% end %>
           <% if data[:link_url] %>
-            <%= link_to data[:link_url], class: "mis-2", style: "display: block; line-height: 1;", title: "View details" do %>
+            <%= link_to data[:link_url], class: "mis-2", style: "display: block; line-height: 1;", title: "View details", data: { turbo: false } do %>
               <%= rails_pulse_icon 'external-link', height: "16px", width: "16px" %>
             <% end %>
           <% end %>

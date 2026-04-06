@@ -114,10 +114,12 @@ export default class extends Controller {
       config.yAxis = config.yAxis || {}
       config.yAxis.type = 'value'
 
-      // Set series data from provided series array
+      // Set series data from provided series array, merging any series-level options (e.g. itemStyle)
+      const seriesOptions = (config.series && !Array.isArray(config.series)) ? config.series : {}
       config.series = data.series.map((seriesData) => {
         return {
           type: this.typeValue,
+          ...seriesOptions,
           ...seriesData
         }
       })

@@ -4,21 +4,22 @@ module RailsPulse
   module Jobs
     module Cards
       class Base
-        RANGE_DAYS = 14
-        WINDOW_DAYS = 7
-
         private
 
         def now
           @now ||= Time.current
         end
 
+        def window_days
+          @period || 7
+        end
+
         def previous_window_start
-          (now - (WINDOW_DAYS * 2).days).beginning_of_day
+          (now - (window_days * 2).days).beginning_of_day
         end
 
         def current_window_start
-          (now - WINDOW_DAYS.days).beginning_of_day
+          (now - window_days.days).beginning_of_day
         end
 
         def range_start
@@ -30,7 +31,7 @@ module RailsPulse
         end
 
         def sparkline_from(grouped_values)
-          start_date = range_start.to_date
+          start_date = current_window_start.to_date
           end_date = now.to_date
 
           (start_date..end_date).each_with_object({}) do |day, hash|

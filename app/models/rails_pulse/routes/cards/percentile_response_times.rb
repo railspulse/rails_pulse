@@ -2,15 +2,16 @@ module RailsPulse
   module Routes
     module Cards
       class PercentileResponseTimes
-        def initialize(route: nil, disabled_tags: [], show_non_tagged: true)
+        def initialize(route: nil, disabled_tags: [], show_non_tagged: true, period: 7)
           @route = route
           @disabled_tags = disabled_tags
           @show_non_tagged = show_non_tagged
+          @period = period
         end
 
         def to_metric_card
-          last_7_days = 7.days.ago.beginning_of_day
-          previous_7_days = 14.days.ago.beginning_of_day
+          last_n_days = @period.days.ago.beginning_of_day
+          previous_n_days = (@period * 2).days.ago.beginning_of_day
 
           # Single query to get all P95 metrics with conditional aggregation
           base_query = RailsPulse::Summary
@@ -18,12 +19,12 @@ module RailsPulse
             .where(
               summarizable_type: "RailsPulse::Route",
               period_type: "day",
-              period_start: 2.weeks.ago.beginning_of_day..Time.current
+              period_start: (@period * 2).days.ago.beginning_of_day..Time.current
             )
           base_query = base_query.where(summarizable_id: @route.id) if @route
 
-          last7 = last_7_days.strftime("%Y-%m-%d %H:%M:%S")
-          prev7 = previous_7_days.strftime("%Y-%m-%d %H:%M:%S")
+          last7 = last_n_days.strftime("%Y-%m-%d %H:%M:%S")
+          prev7 = previous_n_days.strftime("%Y-%m-%d %H:%M:%S")
 
           metrics = base_query.select(
             "SUM(p95_duration * count) / NULLIF(SUM(count), 0) AS overall_p95",
@@ -33,9 +34,9 @@ module RailsPulse
           ).take
 
           # Calculate metrics from single query result
-          p95_response_time = (metrics.overall_p95 || 0).round(0)
-          current_period_p95 = metrics.current_p95 || 0
-          previous_period_p95 = metrics.previous_p95 || 0
+          p95_response_time = (metrics&.overall_p95 || 0).round(0)
+          current_period_p95 = metrics&.current_p95 || 0
+          previous_period_p95 = metrics&.previous_p95 || 0
 
           has_data = metrics.total_count.to_i > 0
 
@@ -48,11 +49,11 @@ module RailsPulse
             trend_amount = "—"
           end
 
-          # Sparkline data by day with zero-filled days over the last 14 days
+          # Sparkline data by day with zero-filled days over the selected period
           weighted_sums = base_query.group_by_date(:period_start).sum("p95_duration * count")
           daily_counts = base_query.group_by_date(:period_start).sum(:count)
 
-          start_day = 2.weeks.ago.beginning_of_day.to_date
+          start_day = @period.days.ago.beginning_of_day.to_date
           end_day = Time.current.to_date
 
           sparkline_data = {}

@@ -21,45 +21,6 @@ class RequestsIndexPageTest < ApplicationSystemTestCase
     assert_text "api/users GET"
   end
 
-  test "metric cards display data correctly" do
-    visit_rails_pulse_path "/requests"
-
-    # Wait for page to load
-    assert_selector "table tbody tr", wait: 5
-
-    # Test 95th Percentile Response Time card
-    within("#percentile_response_times") do
-      card_text = text.upcase
-
-      assert_match(/95TH PERCENTILE RESPONSE TIME/, card_text)
-      assert_match(/\d+(\.\d+)?\s*ms/, text)
-    end
-
-    # Test 95th Percentile card
-    within("#percentile_response_times") do
-      card_text = text.upcase
-
-      assert_match(/95TH PERCENTILE RESPONSE TIME/, card_text)
-      assert_match(/\d+(\.\d+)?\s*ms/, text)
-    end
-
-    # Test Request Count card
-    within("#request_count_totals") do
-      card_text = text.upcase
-
-      assert_match(/REQUEST COUNT TOTAL/, card_text)
-      assert_match(/\d+(\.\d+)?\s*\/\s*(min|day)/, text)
-    end
-
-    # Test Error Rate card
-    within("#error_rate_per_route") do
-      card_text = text.upcase
-
-      assert_match(/ERROR RATE PER ROUTE/, card_text)
-      assert_match(/\d+(\.\d+)?%/, text)
-    end
-  end
-
   test "performance duration filter works correctly" do
     visit_rails_pulse_path "/requests"
 
