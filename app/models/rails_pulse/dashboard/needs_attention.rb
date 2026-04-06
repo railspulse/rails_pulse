@@ -48,7 +48,7 @@ module RailsPulse
         route_data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
           .joins("INNER JOIN rails_pulse_routes ON rails_pulse_routes.id = rails_pulse_summaries.summarizable_id")
-          .where(summarizable_type: "RailsPulse::Route", period_type: @period_type, period_start: start..finish)
+          .where(summarizable_type: "RailsPulse::Route", period_start: start..finish)
           .group("rails_pulse_summaries.summarizable_id, rails_pulse_routes.path")
           .select(
             "rails_pulse_summaries.summarizable_id as route_id",
@@ -121,7 +121,7 @@ module RailsPulse
         query_data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
           .joins("INNER JOIN rails_pulse_queries ON rails_pulse_queries.id = rails_pulse_summaries.summarizable_id")
-          .where(summarizable_type: "RailsPulse::Query", period_type: @period_type, period_start: start..finish)
+          .where(summarizable_type: "RailsPulse::Query", period_start: start..finish)
           .group("rails_pulse_summaries.summarizable_id, rails_pulse_queries.normalized_sql")
           .select(
             "rails_pulse_summaries.summarizable_id as query_id",

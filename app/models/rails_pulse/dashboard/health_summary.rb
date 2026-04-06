@@ -35,7 +35,7 @@ module RailsPulse
 
         data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
-          .where(summarizable_type: "RailsPulse::Route", period_type: @period_type, period_start: start..finish)
+          .where(summarizable_type: "RailsPulse::Route", period_start: start..finish)
           .group("summarizable_id")
           .select(
             "summarizable_id",
@@ -68,7 +68,7 @@ module RailsPulse
 
         data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
-          .where(summarizable_type: "RailsPulse::Query", period_type: @period_type, period_start: start..finish)
+          .where(summarizable_type: "RailsPulse::Query", period_start: start..finish)
           .group("summarizable_id")
           .select(
             "summarizable_id",

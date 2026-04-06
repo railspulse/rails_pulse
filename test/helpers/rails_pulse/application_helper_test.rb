@@ -67,4 +67,50 @@ class RailsPulse::ApplicationHelperTest < ActionView::TestCase
   test "rails_pulse_csp_nonce returns nil by default" do
     assert_nil rails_pulse_csp_nonce
   end
+
+  # humanize_time_range Tests
+
+  test "humanize_time_range converts :last_day to 'last 24 hours'" do
+    assert_equal "last 24 hours", humanize_time_range(:last_day)
+  end
+
+  test "humanize_time_range converts :last_week to 'last week'" do
+    assert_equal "last week", humanize_time_range(:last_week)
+  end
+
+  test "humanize_time_range converts :last_two_weeks to 'last 2 weeks'" do
+    assert_equal "last 2 weeks", humanize_time_range(:last_two_weeks)
+  end
+
+  test "humanize_time_range converts :last_month to 'last month'" do
+    assert_equal "last month", humanize_time_range(:last_month)
+  end
+
+  test "humanize_time_range converts :last_24_hours to 'last 24 hours'" do
+    assert_equal "last 24 hours", humanize_time_range(:last_24_hours)
+  end
+
+  test "humanize_time_range converts :last_7_days to 'last 7 days'" do
+    assert_equal "last 7 days", humanize_time_range(:last_7_days)
+  end
+
+  test "humanize_time_range converts :last_14_days to 'last 14 days'" do
+    assert_equal "last 14 days", humanize_time_range(:last_14_days)
+  end
+
+  test "humanize_time_range converts :last_30_days to 'last 30 days'" do
+    assert_equal "last 30 days", humanize_time_range(:last_30_days)
+  end
+
+  test "humanize_time_range converts :custom to 'custom range'" do
+    assert_equal "custom range", humanize_time_range(:custom)
+  end
+
+  test "humanize_time_range accepts string symbols" do
+    assert_equal "last week", humanize_time_range("last_week")
+  end
+
+  test "humanize_time_range handles unknown symbols with humanized fallback" do
+    assert_equal "some other range", humanize_time_range(:some_other_range)
+  end
 end
