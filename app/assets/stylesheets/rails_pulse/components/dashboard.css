@@ -1,10 +1,6 @@
 /* Dashboard-specific styles */
 
 /* System Health Bar */
-.dashboard-health-bar {
-  padding: var(--size-3) var(--size-4);
-}
-
 .dashboard-health-bar__content {
   display: flex;
   align-items: center;
@@ -184,8 +180,5 @@
 @media (max-width: 640px) {
   .dashboard-health-bar {
     padding: var(--size-2) var(--size-3);
-  }
-  .dashboard-health-bar__updated {
-    display: none;
   }
 }
