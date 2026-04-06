@@ -2,23 +2,24 @@ module RailsPulse
   module Queries
     module Charts
       class DatabaseLoad
-        def initialize(disabled_tags: [], show_non_tagged: true)
+        def initialize(start_time:, end_time:, period_type: :day, disabled_tags: [], show_non_tagged: true)
+          @start_time = start_time
+          @end_time = end_time
+          @period_type = period_type
           @disabled_tags = disabled_tags
           @show_non_tagged = show_non_tagged
         end
 
         def to_chart_data
-          start_date = 2.weeks.ago.beginning_of_day.to_date
-          end_date = Time.current.to_date
-          date_range = (start_date..end_date)
+          step = @period_type.to_s == "hour" ? 3600 : 86400
 
           # Get query summaries (DB time)
           query_summaries = RailsPulse::Summary
             .with_tag_filters(@disabled_tags, @show_non_tagged)
             .where(
               summarizable_type: "RailsPulse::Query",
-              period_type: "day",
-              period_start: start_date.beginning_of_day..end_date.end_of_day
+              period_type: @period_type,
+              period_start: Time.at(@start_time)..Time.at(@end_time)
             )
 
           # Get route summaries (total request time)
@@ -26,49 +27,47 @@ module RailsPulse
             .with_tag_filters(@disabled_tags, @show_non_tagged)
             .where(
               summarizable_type: "RailsPulse::Route",
-              period_type: "day",
-              period_start: start_date.beginning_of_day..end_date.end_of_day
+              period_type: @period_type,
+              period_start: Time.at(@start_time)..Time.at(@end_time)
             )
 
           return nil if query_summaries.empty? || route_summaries.empty?
 
-          # Group by day
-          daily_query_time = {}
+          # Group by period_start timestamp
+          query_time_by_period = {}
           query_summaries.each do |summary|
-            date = summary.period_start.to_date
-            daily_query_time[date] ||= 0
-            daily_query_time[date] += summary.total_duration || 0
+            ts = summary.period_start.to_i
+            query_time_by_period[ts] ||= 0
+            query_time_by_period[ts] += summary.total_duration || 0
           end
 
-          daily_request_time = {}
+          request_time_by_period = {}
           route_summaries.each do |summary|
-            date = summary.period_start.to_date
-            daily_request_time[date] ||= 0
-            daily_request_time[date] += summary.total_duration || 0
+            ts = summary.period_start.to_i
+            request_time_by_period[ts] ||= 0
+            request_time_by_period[ts] += summary.total_duration || 0
           end
 
-          # Calculate daily percentages
-          daily_percentages = date_range.map do |date|
-            query_time = daily_query_time[date] || 0
-            request_time = daily_request_time[date] || 0
-            request_time > 0 ? (query_time.to_f / request_time * 100).round(1) : 0
-          end
+          # Build labels (ms timestamps) and per-bar colored data
+          # <25% = green (healthy), 25-40% = yellow (watch), >40% = red (bottleneck)
+          labels = []
+          bar_data = []
 
-          # Build labels
-          labels = date_range.map { |date| date.strftime("%b %-d") }
+          (@start_time.to_i..@end_time.to_i).step(step) do |timestamp|
+            query_time = query_time_by_period[timestamp] || 0
+            request_time = request_time_by_period[timestamp] || 0
+            percentage = request_time > 0 ? (query_time.to_f / request_time * 100).round(1) : 0
 
-          # Color bars based on threshold
-          # <25% = green (healthy)
-          # 25-40% = yellow (watch)
-          # >40% = red (bottleneck)
-          bar_colors = daily_percentages.map do |percentage|
-            if percentage < 25
+            color = if percentage < 25
               "rgb(34, 197, 94)"  # green
             elsif percentage < 40
               "rgb(234, 179, 8)"  # yellow
             else
               "rgb(239, 68, 68)"  # red
             end
+
+            labels << timestamp * 1000
+            bar_data << { value: percentage, itemStyle: { color: color } }
           end
 
           {
@@ -76,9 +75,8 @@ module RailsPulse
             series: [
               {
                 name: "DB Load",
-                data: daily_percentages,
-                type: "bar",
-                color: bar_colors
+                data: bar_data,
+                type: "bar"
               }
             ]
           }

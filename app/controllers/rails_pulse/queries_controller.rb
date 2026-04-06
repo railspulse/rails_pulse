@@ -8,7 +8,6 @@ module RailsPulse
     def index
       setup_metric_cards
       setup_chart_and_table_data
-      setup_database_load_chart
     end
 
     def show
@@ -48,6 +47,36 @@ module RailsPulse
           }
         end
       end
+    end
+
+    # Override setup_chart_data to generate all 3 chart types
+    def setup_chart_data(ransack_params)
+      chart_ransack_params = build_chart_ransack_params(ransack_params)
+      chart_ransack_query = chart_model.ransack(chart_ransack_params)
+
+      common_options = {
+        ransack_query: chart_ransack_query,
+        period_type: period_type,
+        start_time: @start_time,
+        end_time: @end_time,
+        start_duration: @start_duration,
+        disabled_tags: session_disabled_tags,
+        show_non_tagged: session[:show_non_tagged] != false,
+        **chart_options
+      }
+
+      @query_performance_chart_data = Queries::Charts::QueryPerformance.new(**common_options).to_chart_data
+      @execution_volume_chart_data = Queries::Charts::ExecutionVolume.new(**common_options).to_chart_data
+
+      @database_load_chart_data = Queries::Charts::DatabaseLoad.new(
+        start_time: @start_time,
+        end_time: @end_time,
+        period_type: period_type,
+        disabled_tags: session_disabled_tags,
+        show_non_tagged: session[:show_non_tagged] != false
+      ).to_chart_data
+
+      @chart_data = @query_performance_chart_data  # Backward compatibility
     end
 
     private
@@ -142,10 +171,31 @@ module RailsPulse
       # Get tag filter values from session
       disabled_tags = session_disabled_tags
       show_non_tagged = session[:show_non_tagged] != false
+      period = ((@end_time - @start_time) / 1.day).round
+      period_type_str = period_type.to_s
 
-      @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @database_load_metric_card = RailsPulse::Queries::Cards::DatabaseLoad.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card if @query.nil?
+      @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(
+        query: @query,
+        disabled_tags: disabled_tags,
+        show_non_tagged: show_non_tagged,
+        period: period,
+        period_type: period_type_str
+      ).to_metric_card
+
+      @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(
+        query: @query,
+        disabled_tags: disabled_tags,
+        show_non_tagged: show_non_tagged,
+        period: period,
+        period_type: period_type_str
+      ).to_metric_card
+
+      @database_load_metric_card = RailsPulse::Queries::Cards::DatabaseLoad.new(
+        disabled_tags: disabled_tags,
+        show_non_tagged: show_non_tagged,
+        period: period,
+        period_type: period_type_str
+      ).to_metric_card if @query.nil?
     end
 
     def show_action?
@@ -183,18 +233,6 @@ module RailsPulse
 
     def set_query
       @query = Query.find(params[:id])
-    end
-
-    def setup_database_load_chart
-      return if turbo_frame_request?
-
-      disabled_tags = session_disabled_tags
-      show_non_tagged = session[:show_non_tagged] != false
-
-      @database_load_chart_data = RailsPulse::Queries::Charts::DatabaseLoad.new(
-        disabled_tags: disabled_tags,
-        show_non_tagged: show_non_tagged
-      ).to_chart_data
     end
   end
 end

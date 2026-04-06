@@ -25,7 +25,10 @@ export default class extends Controller {
     const chartTypeMap = {
       response_time: 'response_time_percentiles_chart',
       request_rate: 'request_rate_chart',
-      error_rate: 'error_rate_chart'
+      error_rate: 'error_rate_chart',
+      query_performance: 'query_performance_chart',
+      execution_volume: 'execution_volume_chart',
+      database_load: 'database_load_chart'
     }
     this.activeChartId = chartTypeMap[chartType] || this.chartIdValue
 
@@ -89,6 +92,11 @@ export default class extends Controller {
     // Tear down listeners from the outgoing chart
     this.teardownActiveChartListeners()
 
+    // Clear cached bar styles so they get re-read from the incoming chart's data.
+    // Keep selectedColumnIndex — initializeColumnSelectionFromUrl will resolve the
+    // correct index for the new chart from the URL's selected_column_time param.
+    this.originalBarItemStyles = null
+
     // Switch active chart
     this.activeChartId = toId
     this.chart = this.charts[toId]
@@ -101,12 +109,13 @@ export default class extends Controller {
     }
 
     if (!this.chartSetup[toId]) {
-      // First visit — full setup including highlight series
+      // First visit — full setup including highlight series and column restore
       this.setup()
     } else {
-      // Returning to a previously-set-up chart — re-attach listeners only
+      // Returning to a previously-set-up chart — re-attach listeners and restore column
       this.visibleData = this.getVisibleData()
       this.setupChartEventListeners()
+      this.initializeColumnSelectionFromUrl()
     }
   }
 
@@ -516,12 +525,20 @@ export default class extends Controller {
       const isPrimaryBar = option.series?.[0]?.type === 'bar'
 
       if (isPrimaryBar) {
+        // Cache original item styles before first modification so we can restore colors on reset
+        if (!this.originalBarItemStyles) {
+          const seriesData = option.series?.[0]?.data || []
+          this.originalBarItemStyles = seriesData.map(val =>
+            typeof val === 'object' ? (val.itemStyle || {}) : {}
+          )
+        }
+
         // For bar charts: dim non-selected bars by updating per-bar itemStyle opacity
         this.chart.setOption({
           series: option.series.slice(0, 1).map(s => ({
             data: (s.data || []).map((val, i) => ({
               value: typeof val === 'object' ? val.value : val,
-              itemStyle: { opacity: i === selectedIndex ? 1 : 0.25 }
+              itemStyle: { ...(this.originalBarItemStyles[i] || {}), opacity: i === selectedIndex ? 1 : 0.25 }
             }))
           }))
         })
@@ -550,12 +567,14 @@ export default class extends Controller {
       const isPrimaryBar = option.series?.[0]?.type === 'bar'
 
       if (isPrimaryBar) {
-        // Restore full opacity on all bars
+        // Restore full opacity on all bars, preserving original per-bar colors
+        const originalStyles = this.originalBarItemStyles || []
+        this.originalBarItemStyles = null
         this.chart.setOption({
           series: option.series.slice(0, 1).map(s => ({
-            data: (s.data || []).map(val => ({
+            data: (s.data || []).map((val, i) => ({
               value: typeof val === 'object' ? val.value : val,
-              itemStyle: { opacity: 1 }
+              itemStyle: { ...(originalStyles[i] || {}), opacity: 1 }
             }))
           }))
         })

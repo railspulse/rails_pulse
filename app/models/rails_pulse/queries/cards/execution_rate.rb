@@ -2,42 +2,38 @@ module RailsPulse
   module Queries
     module Cards
       class ExecutionRate
-        def initialize(query: nil, disabled_tags: [], show_non_tagged: true)
+        def initialize(query: nil, disabled_tags: [], show_non_tagged: true, period: 7, period_type: "day")
           @query = query
           @disabled_tags = disabled_tags
           @show_non_tagged = show_non_tagged
+          @period = period
+          @period_type = period_type
         end
 
         def to_metric_card
-          last_7_days = 7.days.ago.beginning_of_day
-          previous_7_days = 14.days.ago.beginning_of_day
-
-          # Get the most common period type for this query, or fall back to "day"
-          period_type = if @query
-            RailsPulse::Summary
-              .with_tag_filters(@disabled_tags, @show_non_tagged)
-              .where(
-                summarizable_type: "RailsPulse::Query",
-                summarizable_id: @query.id
-              ).group(:period_type).count.max_by(&:last)&.first || "day"
-          else
-            "day"
-          end
+          # For hourly: period is in days (e.g., 1), but we work in hours
+          # For daily: period is in days as before
+          time_unit = @period_type == "hour" ? 1.hour : 1.day
+          last_n_units = @period_type == "hour" ? (@period * 24).hours.ago : @period.days.ago.beginning_of_day
+          previous_n_units = @period_type == "hour" ? (@period * 48).hours.ago : (@period * 2).days.ago.beginning_of_day
 
           # Single query to get all count metrics with conditional aggregation
           base_query = RailsPulse::Summary
             .with_tag_filters(@disabled_tags, @show_non_tagged)
             .where(
               summarizable_type: "RailsPulse::Query",
-              period_type: period_type,
-              period_start: 2.weeks.ago.beginning_of_day..Time.current
+              period_type: @period_type,
+              period_start: previous_n_units..Time.current
             )
           base_query = base_query.where(summarizable_id: @query.id) if @query
 
+          last7 = last_n_units.strftime("%Y-%m-%d %H:%M:%S")
+          prev7 = previous_n_units.strftime("%Y-%m-%d %H:%M:%S")
+
           metrics = base_query.select(
             "SUM(count) AS total_count",
-            "SUM(CASE WHEN period_start >= '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS current_count",
-            "SUM(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS previous_count"
+            "SUM(CASE WHEN period_start >= '#{last7}' THEN count ELSE 0 END) AS current_count",
+            "SUM(CASE WHEN period_start >= '#{prev7}' AND period_start < '#{last7}' THEN count ELSE 0 END) AS previous_count"
           ).take
 
           # Calculate metrics from single query result
@@ -49,41 +45,47 @@ module RailsPulse
           trend_icon = percentage < 0.1 ? "move-right" : current_period_count < previous_period_count ? "trending-down" : "trending-up"
           trend_amount = previous_period_count.zero? ? "0%" : "#{percentage}%"
 
-          # Sparkline data with zero-filled periods over the last 14 days
-          if period_type == "day"
-            grouped_data = base_query
-              .group_by_date(:period_start)
-              .sum(:count)
+          # Sparkline data - group by hour or day depending on period_type
+          if @period_type == "hour"
+            start_time = (@period * 24).hours.ago.beginning_of_hour
+            end_time = Time.current.beginning_of_hour
 
-            start_period = 2.weeks.ago.beginning_of_day.to_date
-            end_period = Time.current.to_date
+            # Create a separate query for sparkline data using only the current period
+            sparkline_query = RailsPulse::Summary
+              .with_tag_filters(@disabled_tags, @show_non_tagged)
+              .where(
+                summarizable_type: "RailsPulse::Query",
+                period_type: @period_type,
+                period_start: start_time..end_time
+              )
+            sparkline_query = sparkline_query.where(summarizable_id: @query.id) if @query
+
+            grouped_data = sparkline_query.group_by_hour(:period_start).sum(:count)
 
             sparkline_data = {}
-            (start_period..end_period).each do |day|
-              total = grouped_data[day] || 0
-              label = day.strftime("%b %-d")
-              sparkline_data[label] = { value: total }
+            current_time = start_time
+            while current_time <= end_time
+              total = grouped_data[current_time] || 0
+              # Use timestamp in milliseconds as key to preserve uniqueness across days
+              sparkline_data[current_time.to_i * 1000] = { value: total }
+              current_time += 1.hour
             end
           else
-            # For hourly data, group by day for sparkline display
-            grouped_data = base_query
-              .group("DATE(period_start)")
-              .sum(:count)
+            grouped_data = base_query.group_by_date(:period_start).sum(:count)
 
-            start_period = 2.weeks.ago.beginning_of_day.to_date
-            end_period = Time.current.to_date
+            start_day = @period.days.ago.beginning_of_day.to_date
+            end_day = Time.current.to_date
 
             sparkline_data = {}
-            (start_period..end_period).each do |day|
-              date_key = day.strftime("%Y-%m-%d")
-              total = grouped_data[date_key] || 0
+            (start_day..end_day).each do |day|
+              total = grouped_data[day] || 0
               label = day.strftime("%b %-d")
               sparkline_data[label] = { value: total }
             end
           end
 
           # Calculate appropriate rate display based on frequency
-          total_minutes = 2.weeks / 1.minute.to_f
+          total_minutes = (@period_type == "hour" ? (@period * 24).hours : (@period * 2).days) / 1.minute.to_f
           executions_per_minute = total_execution_count.to_f / total_minutes
 
           # Choose appropriate time unit for display
