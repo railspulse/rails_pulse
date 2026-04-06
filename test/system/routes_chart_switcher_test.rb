@@ -8,7 +8,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
 
   CHART_IDS = {
     response_time: "response_time_percentiles_chart",
-    request_volume: "request_volume_chart",
+    request_rate: "request_rate_chart",
     error_rate: "error_rate_chart"
   }.freeze
 
@@ -25,11 +25,11 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
 
   test "default state is correct" do
     assert_chart_container_visible(:response_time)
-    assert_chart_container_hidden(:request_volume)
+    assert_chart_container_hidden(:request_rate)
     assert_chart_container_hidden(:error_rate)
 
     assert_tab_active(:response_time)
-    assert_tab_inactive(:request_volume)
+    assert_tab_inactive(:request_rate)
     assert_tab_inactive(:error_rate)
 
     assert_toggles_visible(:response_time)
@@ -40,14 +40,14 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
 
   test "switching tabs shows correct chart, updates active state and series toggles" do
     # Switch to Request Volume
-    click_tab(:request_volume)
+    click_tab(:request_rate)
 
-    assert_selector "#request_volume_chart[data-chart-rendered='true']", wait: 10
+    assert_selector "#request_rate_chart[data-chart-rendered='true']", wait: 10
 
-    assert_chart_container_visible(:request_volume)
+    assert_chart_container_visible(:request_rate)
     assert_chart_container_hidden(:response_time)
     assert_chart_container_hidden(:error_rate)
-    assert_tab_active(:request_volume)
+    assert_tab_active(:request_rate)
     assert_tab_inactive(:response_time)
     assert_toggles_hidden(:response_time)
     assert_toggles_hidden(:error_rate)
@@ -59,9 +59,9 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
 
     assert_chart_container_visible(:error_rate)
     assert_chart_container_hidden(:response_time)
-    assert_chart_container_hidden(:request_volume)
+    assert_chart_container_hidden(:request_rate)
     assert_tab_active(:error_rate)
-    assert_tab_inactive(:request_volume)
+    assert_tab_inactive(:request_rate)
     assert_toggles_visible(:error_rate)
     assert_toggles_hidden(:response_time)
 
@@ -78,7 +78,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
   # ── Zoom URL persistence ──────────────────────────────────────────────────────
 
   test "zooming any chart updates the url" do
-    [ :request_volume, :error_rate ].each do |chart_type|
+    [ :request_rate, :error_rate ].each do |chart_type|
       visit_rails_pulse_path "/routes?q[period_start_range]=last_month"
 
       assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
@@ -111,11 +111,11 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     assert zoom_state, "Should have enough data points to test zoom persistence (need at least 4 data points)"
 
     # Switch to Request Volume and verify zoom
-    click_tab(:request_volume)
+    click_tab(:request_rate)
 
-    assert_selector "#request_volume_chart[data-chart-rendered='true']", wait: 10
+    assert_selector "#request_rate_chart[data-chart-rendered='true']", wait: 10
     sleep 0.5
-    rv_zoom = read_chart_zoom("request_volume_chart")
+    rv_zoom = read_chart_zoom("request_rate_chart")
 
     assert rv_zoom, "Request volume should inherit zoom"
     assert_equal zoom_state["start"], rv_zoom["startValue"]
@@ -132,9 +132,9 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
   end
 
   test "switching back to a chart after zoom preserves its listeners" do
-    click_tab(:request_volume)
+    click_tab(:request_rate)
 
-    assert_selector "#request_volume_chart[data-chart-rendered='true']", wait: 10
+    assert_selector "#request_rate_chart[data-chart-rendered='true']", wait: 10
 
     click_tab(:response_time)
 
@@ -154,7 +154,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
   # ── Chart data integrity ─────────────────────────────────────────────────────
 
   test "all three charts render with valid series data" do
-    [ :request_volume, :error_rate ].each do |chart_type|
+    [ :request_rate, :error_rate ].each do |chart_type|
       click_tab(chart_type)
       chart_id = CHART_IDS[chart_type]
 

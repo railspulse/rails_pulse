@@ -90,6 +90,11 @@ module RailsPulse
     def sparkline_chart_options
       # Compact sparkline columns that fill the canvas with no axes/labels/gaps
       base_chart_options.deep_merge({
+        tooltip: {
+          trigger: "axis",
+          axisPointer: { type: "shadow" },
+          formatter: "sparkline_tooltip"
+        },
         series: {
           type: "bar",
           itemStyle: { borderRadius: [ 2, 2, 0, 0 ] },

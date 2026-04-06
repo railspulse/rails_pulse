@@ -9,7 +9,6 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     # System Health Bar
     assert_text "SYSTEM HEALTH"
     assert_selector ".dashboard-health-bar"
-    assert_selector ".dashboard-health-bar__period-button", count: 3
 
     # Health badges
     assert_text "Routes"
@@ -29,31 +28,19 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     assert_text "NEEDS ATTENTION"
   end
 
-  test "period selector updates dashboard via turbo frame" do
+  test "time range selector updates dashboard via turbo frame" do
     visit_rails_pulse_path "/"
 
-    # Initial state - 7 days active by default
-    assert_selector ".dashboard-health-bar__period-button[data-active='true']", text: "7d"
-
-    # Click 14 days button
-    click_link "14d"
-
-    # Verify URL updated
-    assert_current_path "/rails_pulse/?period=14"
-
-    # Verify 14 days button now active
-    assert_selector ".dashboard-health-bar__period-button[data-active='true']", text: "14d"
-
-    # Verify content updated (metric strip still present)
+    # Verify content is present
     assert_selector ".metric-strip"
+    assert_selector "#response_time_percentiles_chart"
+    assert_selector "#throughput_and_errors_chart"
 
-    # Verify charts re-rendered with new data
-    assert_selector "#response_time_percentiles_chart canvas"
-    assert_selector "#throughput_and_errors_chart canvas"
-
-    # Verify metric cards show actual values (not loading state)
+    # Verify metric cards show actual values
     assert_selector ".metric-strip__section", minimum: 3
     assert_text "ms" # P95 response time value
-    assert_text "Compared to last week" # Trend text present
+
+    # Dashboard uses time range selector from global header
+    # The actual time range functionality is tested in global_filters_test.rb
   end
 end

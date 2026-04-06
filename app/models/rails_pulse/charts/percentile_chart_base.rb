@@ -28,6 +28,7 @@ module RailsPulse
           .select(
             :period_start,
             "SUM(count) as total_count",
+            "SUM(p50_duration * count) as total_weighted_p50",
             "SUM(p95_duration * count) as total_weighted_p95",
             "SUM(p99_duration * count) as total_weighted_p99"
           )
@@ -39,6 +40,7 @@ module RailsPulse
           count = summary.total_count || 0
 
           raw_data[timestamp] = {
+            total_weighted_p50: summary.total_weighted_p50 || 0,
             total_weighted_p95: summary.total_weighted_p95 || 0,
             total_weighted_p99: summary.total_weighted_p99 || 0,
             total_count: count
@@ -52,11 +54,12 @@ module RailsPulse
           if raw_data[timestamp]
             count = raw_data[timestamp][:total_count]
             daily_data[timestamp] = {
+              p50: count > 0 ? (raw_data[timestamp][:total_weighted_p50] / count).round(0) : nil,
               p95: count > 0 ? (raw_data[timestamp][:total_weighted_p95] / count).round(0) : nil,
               p99: count > 0 ? (raw_data[timestamp][:total_weighted_p99] / count).round(0) : nil
             }
           else
-            daily_data[timestamp] = { p95: nil, p99: nil }
+            daily_data[timestamp] = { p50: nil, p95: nil, p99: nil }
           end
         end
 
@@ -65,6 +68,14 @@ module RailsPulse
 
         # Build series data
         series = []
+
+        p50_data = daily_data.values.map { |data| data[:p50] }
+        series << {
+          name: "P50",
+          data: p50_data,
+          type: "line",
+          color: RailsPulse::ChartColors::DEFAULT,
+        }
 
         p95_data = daily_data.values.map { |data| data[:p95] }
         series << {

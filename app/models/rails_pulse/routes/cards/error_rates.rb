@@ -73,13 +73,11 @@ module RailsPulse
             grouped_4xx = sparkline_query.group_by_hour(:period_start).sum(:status_4xx)
 
             current_time = start_time
-            index = 0
             while current_time <= end_time
               total = (grouped_errors[current_time] || 0) + (grouped_4xx[current_time] || 0)
-              # Use index as key to preserve order and avoid timezone issues
-              sparkline_data[index.to_s] = { value: total }
+              # Use timestamp in milliseconds as key to preserve uniqueness across days
+              sparkline_data[current_time.to_i * 1000] = { value: total }
               current_time += 1.hour
-              index += 1
             end
           else
             grouped_errors = base_query.group_by_date(:period_start).sum(:error_count)

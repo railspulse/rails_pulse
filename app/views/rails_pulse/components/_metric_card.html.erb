@@ -1,26 +1,27 @@
-<%
-  # Use the passed data object directly
-  id = data[:id]
-  context = data[:context]
-  title = data[:title]
-  summary = data[:summary]
-  chart_data = data[:chart_data]
-  trend_icon = data[:trend_icon]
-  trend_amount = data[:trend_amount]
-  trend_text = data[:trend_text]
-%>
+<%# Use the passed data object directly
+id = data[:id]
+context = data[:context]
+title = data[:title]
+summary = data[:summary]
+chart_data = data[:chart_data]
+trend_icon = data[:trend_icon]
+trend_amount = data[:trend_amount]
+trend_text = data[:trend_text] %>
 <div class="grid-item" id="<%= id %>">
   <%= render 'rails_pulse/components/panel', { title: title, card_classes: 'card-compact' } do %>
-    <div class="row mbs-2" style="--columns: 2; align-items: center; margin-bottom: 0;">
+    <div
+      class="row mbs-2"
+      style="--columns: 2; align-items: center; margin-bottom: 0;"
+    >
       <div class="grid-item">
         <h4 class="text-xl mbs-1 font-bold"><%= summary %></h4>
       </div>
       <div class="grid-item">
         <div class="chart-container chart-container--slim">
-          <%
-            # Match chart color to trending icon - use hex equivalents of CSS variables
-            # These colors match the badge colors exactly
-            chart_color = case trend_icon
+          <%# Match chart color to trending icon - use hex equivalents of CSS variables
+          # These colors match the badge colors exactly
+          chart_color =
+            case trend_icon
             when "trending-up"
               "#dc2626" # equivalent to --red-600 (negative trend)
             when "trending-down"
@@ -28,30 +29,37 @@
             else
               "#ffc91f" # equivalent to --zinc-900 (neutral/primary)
             end
-
-            chart_options = sparkline_chart_options.deep_merge(
+          
+          # Extract short name for tooltip (e.g., "P95" from "P95 Response Time")
+          short_name = title.split.first
+          
+          chart_options =
+            sparkline_chart_options.deep_merge(
               color: [chart_color],
               series: {
+                name: short_name,
                 itemStyle: {
-                  color: chart_color
-                }
-              }
-            )
-          %>
-          <%= render_stimulus_chart chart_data, type: 'bar', height: "100%", options: chart_options %>
+                  color: chart_color,
+                },
+              },
+            ) %>
+          <%= render_stimulus_chart chart_data,
+          type: "bar",
+          height: "100%",
+          options: chart_options %>
         </div>
       </div>
     </div>
     <div class="mbs-2" style="height: 10px;">
-      <%
-        badge =
-          case trend_icon
-          when "trending-up" then "badge--negative-inverse"
-          when "trending-down" then "badge--positive-inverse"
-          else
-            "badge--primary-inverse"
-          end
-      %>
+      <% badge =
+        case trend_icon
+        when "trending-up"
+          "badge--negative-inverse"
+        when "trending-down"
+          "badge--positive-inverse"
+        else
+          "badge--primary-inverse"
+        end %>
       <div class="flex items-center justify-between">
         <span class="badge <%= badge %> badge--trend p-0">
           <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>

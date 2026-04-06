@@ -45,7 +45,7 @@ module RailsPulse
           assert_operator data[:labels].first, :>, 1_000_000_000_000
         end
 
-        test "series is array with exactly two line chart series" do
+        test "series is array with exactly two bar chart series" do
           chart = ErrorRate.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -59,7 +59,7 @@ module RailsPulse
           assert_equal 2, data[:series].length
         end
 
-        test "first series name is Error Rate" do
+        test "first series name is 4xx Errors" do
           chart = ErrorRate.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -69,10 +69,10 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          assert_equal "Error Rate", data[:series][0][:name]
+          assert_equal "4xx Errors", data[:series][0][:name]
         end
 
-        test "second series name is Client Error Rate" do
+        test "second series name is 5xx Errors" do
           chart = ErrorRate.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -82,10 +82,10 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          assert_equal "Client Error Rate", data[:series][1][:name]
+          assert_equal "5xx Errors", data[:series][1][:name]
         end
 
-        test "both series have type line" do
+        test "both series have type bar" do
           chart = ErrorRate.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -95,11 +95,11 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          assert_equal "line", data[:series][0][:type]
-          assert_equal "line", data[:series][1][:type]
+          assert_equal "bar", data[:series][0][:type]
+          assert_equal "bar", data[:series][1][:type]
         end
 
-        test "Error Rate series color is ChartColors::P95" do
+        test "both series are stacked together" do
           chart = ErrorRate.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -109,10 +109,11 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          assert_equal RailsPulse::ChartColors::P95, data[:series][0][:color]
+          assert_equal "error_rate", data[:series][0][:stack]
+          assert_equal "error_rate", data[:series][1][:stack]
         end
 
-        test "Client Error Rate series color is ChartColors::P99" do
+        test "bottom series has no border radius" do
           chart = ErrorRate.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -122,7 +123,46 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          assert_equal RailsPulse::ChartColors::P99, data[:series][1][:color]
+          assert_equal [0, 0, 0, 0], data[:series][0][:itemStyle][:borderRadius]
+        end
+
+        test "top series has rounded top corners only" do
+          chart = ErrorRate.new(
+            ransack_query: @ransack_query,
+            period_type: :day,
+            start_time: @start_time,
+            end_time: @end_time
+          )
+
+          data = chart.to_chart_data
+
+          assert_equal [5, 5, 0, 0], data[:series][1][:itemStyle][:borderRadius]
+        end
+
+        test "4xx Errors series color is ChartColors::P99" do
+          chart = ErrorRate.new(
+            ransack_query: @ransack_query,
+            period_type: :day,
+            start_time: @start_time,
+            end_time: @end_time
+          )
+
+          data = chart.to_chart_data
+
+          assert_equal RailsPulse::ChartColors::P99, data[:series][0][:color]
+        end
+
+        test "5xx Errors series color is ChartColors::P95" do
+          chart = ErrorRate.new(
+            ransack_query: @ransack_query,
+            period_type: :day,
+            start_time: @start_time,
+            end_time: @end_time
+          )
+
+          data = chart.to_chart_data
+
+          assert_equal RailsPulse::ChartColors::P95, data[:series][1][:color]
         end
 
         test "both data arrays same length as labels" do

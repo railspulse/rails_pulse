@@ -161800,6 +161800,9 @@
           }
         });
         this.resizeObserver.observe(this.element);
+        this.chart.on("legendselectchanged", (params) => {
+          this.handleLegendToggle(params);
+        });
         this.element.setAttribute("data-chart-rendered", "true");
       } catch (error3) {
         console.error("[RailsPulse] Error initializing chart:", error3);
@@ -161811,7 +161814,15 @@
       this.processFormatters(config2);
       this.setChartData(config2);
       if (!config2.legend) {
-        config2.legend = { show: false };
+        const selected = {};
+        if (config2.series && Array.isArray(config2.series)) {
+          config2.series.forEach((s) => {
+            if (s.name) {
+              selected[s.name] = true;
+            }
+          });
+        }
+        config2.legend = { show: false, selected };
       }
       return config2;
     }
@@ -161875,14 +161886,24 @@
     }
     processFormatters(config2) {
       if (config2.tooltip?.formatter && typeof config2.tooltip.formatter === "string") {
-        config2.tooltip.formatter = this.parseFormatter(config2.tooltip.formatter);
+        if (this.isEChartsTemplate(config2.tooltip.formatter)) {
+        } else {
+          config2.tooltip.formatter = this.parseFormatter(config2.tooltip.formatter);
+        }
       }
       if (config2.xAxis?.axisLabel?.formatter && typeof config2.xAxis.axisLabel.formatter === "string") {
-        config2.xAxis.axisLabel.formatter = this.parseFormatter(config2.xAxis.axisLabel.formatter);
+        if (!this.isEChartsTemplate(config2.xAxis.axisLabel.formatter)) {
+          config2.xAxis.axisLabel.formatter = this.parseFormatter(config2.xAxis.axisLabel.formatter);
+        }
       }
       if (config2.yAxis?.axisLabel?.formatter && typeof config2.yAxis.axisLabel.formatter === "string") {
-        config2.yAxis.axisLabel.formatter = this.parseFormatter(config2.yAxis.axisLabel.formatter);
+        if (!this.isEChartsTemplate(config2.yAxis.axisLabel.formatter)) {
+          config2.yAxis.axisLabel.formatter = this.parseFormatter(config2.yAxis.axisLabel.formatter);
+        }
       }
+    }
+    isEChartsTemplate(formatterString) {
+      return /^\{[a-zA-Z0-9_]+\}/.test(formatterString.trim()) || formatterString.includes("{value}") || formatterString.includes("{a}") || formatterString.includes("{b}") || formatterString.includes("{c}");
     }
     parseFormatter(formatterString) {
       const cleanString = formatterString.replace(/__FUNCTION_START__|__FUNCTION_END__/g, "");
@@ -162056,6 +162077,23 @@
             html += `${param.marker} ${param.seriesName}: ${value}<br/>`;
           });
           return html;
+        },
+        // Sparkline tooltip - simpler format for small charts
+        "sparkline_tooltip": (params) => {
+          if (!Array.isArray(params) || params.length === 0)
+            return "";
+          const data = params[0];
+          let axisValue = data.axisValue;
+          const value = typeof data.value === "number" ? Math.round(data.value) : data.value;
+          const seriesName = data.seriesName || "Value";
+          const numValue = typeof axisValue === "string" ? parseFloat(axisValue) : axisValue;
+          if (typeof numValue === "number" && !isNaN(numValue) && numValue > 1e12) {
+            const date = new Date(numValue);
+            if (!isNaN(date.getTime())) {
+              axisValue = date.getHours().toString().padStart(2, "0") + ":00";
+            }
+          }
+          return `${axisValue}<br/>${data.marker} ${seriesName}: ${value}`;
         }
       };
       const isTooltipFormatter = formatterString.includes("params") && formatterString.includes("params[0]") && formatterString.includes("axisValue");
@@ -162142,6 +162180,41 @@
         this.chart.dispatchAction({ type: "legendToggleSelect", name });
       });
     }
+    // Handle legend toggle to adjust border radius for stacked bars
+    handleLegendToggle(params) {
+      if (!this.chart)
+        return;
+      const option = this.chart.getOption();
+      const series = option.series || [];
+      const hasStackedBars = series.some((s) => s.type === "bar" && s.stack);
+      if (!hasStackedBars)
+        return;
+      const selected = params.selected || {};
+      const visibleSeriesIndices = [];
+      series.forEach((s, index) => {
+        const isVisible = selected[s.name] !== false;
+        if (isVisible && s.type === "bar" && s.stack) {
+          visibleSeriesIndices.push(index);
+        }
+      });
+      if (visibleSeriesIndices.length === 0)
+        return;
+      const topSeriesIndex = visibleSeriesIndices[visibleSeriesIndices.length - 1];
+      const updatedSeries = series.map((s, index) => {
+        if (s.type !== "bar" || !s.stack)
+          return s;
+        const isVisible = visibleSeriesIndices.includes(index);
+        const isTop = index === topSeriesIndex;
+        return {
+          ...s,
+          itemStyle: {
+            ...s.itemStyle || {},
+            borderRadius: isVisible && isTop ? [5, 5, 0, 0] : [0, 0, 0, 0]
+          }
+        };
+      });
+      this.chart.setOption({ series: updatedSeries });
+    }
     // Color scheme management
     onColorSchemeChange() {
       this.applyColorScheme();
@@ -162192,7 +162265,7 @@
       const chartType = urlParams.get("chart_type");
       const chartTypeMap = {
         response_time: "response_time_percentiles_chart",
-        request_volume: "request_volume_chart",
+        request_rate: "request_rate_chart",
         error_rate: "error_rate_chart"
       };
       this.activeChartId = chartTypeMap[chartType] || this.chartIdValue;

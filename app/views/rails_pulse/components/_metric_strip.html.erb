@@ -7,9 +7,15 @@
       trend_icon = data[:trend_icon]
       chart_color = data[:chart_color] || RailsPulse::ChartColors::DEFAULT
 
+      # Extract short name for tooltip (e.g., "P95" from "P95 Response Time")
+      short_name = data[:title].to_s.split.first
+
       chart_options = sparkline_chart_options.deep_merge(
         color: [chart_color],
-        series: { itemStyle: { color: chart_color } }
+        series: {
+          name: short_name,
+          itemStyle: { color: chart_color }
+        }
       )
 
       badge = case trend_icon

@@ -88,15 +88,13 @@ module RailsPulse
             result = {}
 
             current_time = start_time
-            index = 0
             while current_time <= end_time
               errors = errors_by_period[current_time].to_f
               total = counts_by_period[current_time].to_f
               rate = total.zero? ? 0.0 : (errors / total * 100).round(1)
-              # Use index as key to preserve order and avoid timezone issues
-              result[index.to_s] = { value: rate }
+              # Use timestamp in milliseconds as key to preserve uniqueness across days
+              result[current_time.to_i * 1000] = { value: rate }
               current_time += 1.hour
-              index += 1
             end
             result
           else

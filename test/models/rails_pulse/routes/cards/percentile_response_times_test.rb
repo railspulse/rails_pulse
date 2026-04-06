@@ -147,6 +147,33 @@ module RailsPulse
           assert_kind_of String, card[:trend_amount]
           assert_includes [ "move-right", "trending-up", "trending-down" ], card[:trend_icon]
         end
+
+        test "uses hourly summaries for period_type hour" do
+          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(period: 1, period_type: "hour").to_metric_card
+
+          # Should have ~24 data points for 1 day
+          assert_operator card[:chart_data].size, :>=, 24
+          assert_operator card[:chart_data].size, :<=, 25
+
+          # Keys should be timestamps in milliseconds when using hourly data
+          card[:chart_data].keys.each do |key|
+            assert_kind_of Integer, key
+            assert_operator key, :>, 1000000000000 # Millisecond timestamp
+          end
+        end
+
+        test "uses daily summaries for period_type day" do
+          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(period: 7, period_type: "day").to_metric_card
+
+          # Should have ~7 data points for 7 days
+          assert_operator card[:chart_data].size, :>=, 7
+          assert_operator card[:chart_data].size, :<=, 8
+
+          # Keys should be date strings when using daily data
+          card[:chart_data].keys.each do |label|
+            assert_match(/[A-Z][a-z]{2} \d{1,2}/, label)
+          end
+        end
       end
     end
   end

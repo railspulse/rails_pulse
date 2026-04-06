@@ -31,7 +31,7 @@
       link_url: routes_path(chart_type: "response_time"),
     ),
     @request_count_totals_metric_card&.merge(
-      link_url: routes_path(chart_type: "request_volume"),
+      link_url: routes_path(chart_type: "request_rate"),
     ),
     @error_rates_metric_card&.merge(
       link_url: routes_path(chart_type: "error_rate"),
@@ -97,7 +97,7 @@
     help_title: "Throughput & Errors",
     help_text:
       "Daily request volume with errors overlaid. The red bar shows error count on top of total requests. Monitor both metrics together to identify traffic spikes, error rate patterns, and capacity planning needs.",
-    link_url: routes_path(chart_type: "request_volume"),
+    link_url: routes_path(chart_type: "request_rate"),
     chart_data: @throughput_and_errors_chart_data,
     chart_type: "bar",
     chart_id: "throughput_and_errors_chart",

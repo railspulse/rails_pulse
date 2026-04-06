@@ -169,12 +169,12 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:response_time_chart_data)
   end
 
-  test "index assigns request_volume_chart_data" do
+  test "index assigns request_rate_chart_data" do
     setup_basic_test_data
 
     get rails_pulse.routes_path
 
-    assert_not_nil assigns(:request_volume_chart_data)
+    assert_not_nil assigns(:request_rate_chart_data)
   end
 
   test "index assigns error_rate_chart_data" do
@@ -456,7 +456,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_not_nil assigns(:response_time_chart_data)
-    assert_not_nil assigns(:request_volume_chart_data)
+    assert_not_nil assigns(:request_rate_chart_data)
     assert_not_nil assigns(:error_rate_chart_data)
   end
 
@@ -480,7 +480,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:response_time_chart_data)
-    assert_not_nil assigns(:request_volume_chart_data)
+    assert_not_nil assigns(:request_rate_chart_data)
     assert_not_nil assigns(:error_rate_chart_data)
   end
 

@@ -19,10 +19,11 @@ module TimeRangeConcern
   def setup_time_range
     default_key = default_time_range_key
     start_time = case default_key
-    when :last_week       then 1.week.ago
-    when :last_two_weeks  then 2.weeks.ago
-    when :last_month      then 1.month.ago
-    else                       1.day.ago
+    when :last_24_hours, :last_day               then 1.day.ago
+    when :last_7_days, :last_week                then 1.week.ago
+    when :last_14_days, :last_two_weeks          then 2.weeks.ago
+    when :last_30_days, :last_month              then 1.month.ago
+    else                                              1.day.ago
     end
     end_time = Time.zone.now
     selected_time_range = default_key
@@ -35,10 +36,10 @@ module TimeRangeConcern
       selected_time_range = ransack_params[:period_start_range]
       start_time =
         case selected_time_range.to_sym
-        when :last_day then 1.day.ago
-        when :last_week then 1.week.ago
-        when :last_two_weeks then 2.weeks.ago
-        when :last_month then 1.month.ago
+        when :last_24_hours, :last_day       then 1.day.ago
+        when :last_7_days, :last_week        then 1.week.ago
+        when :last_14_days, :last_two_weeks  then 2.weeks.ago
+        when :last_30_days, :last_month      then 1.month.ago
         else 1.day.ago # Default fallback
         end
     # Priority 2: Page-specific custom datetime range from picker (only if period_start_range is :custom)
@@ -67,10 +68,10 @@ module TimeRangeConcern
         selected_time_range = preference.to_sym
         start_time =
           case selected_time_range
-          when :last_24_hours then 24.hours.ago
-          when :last_7_days then 7.days.ago
-          when :last_14_days then 14.days.ago
-          when :last_30_days then 30.days.ago
+          when :last_24_hours, :last_day       then 1.day.ago
+          when :last_7_days, :last_week        then 1.week.ago
+          when :last_14_days, :last_two_weeks  then 2.weeks.ago
+          when :last_30_days, :last_month      then 1.month.ago
           else start_time
           end
       end

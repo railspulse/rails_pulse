@@ -55,16 +55,20 @@ module RailsPulse
 
           series = [
             {
-              name: "Error Rate",
-              data: daily_data.values.map { |d| d[:error_rate] },
-              type: "line",
-              color: RailsPulse::ChartColors::P95
+              name: "4xx Errors",
+              data: daily_data.values.map { |d| d[:client_error_rate] },
+              type: "bar",
+              stack: "error_rate",
+              color: RailsPulse::ChartColors::P99,
+              itemStyle: { borderRadius: [ 0, 0, 0, 0 ] }
             },
             {
-              name: "Client Error Rate",
-              data: daily_data.values.map { |d| d[:client_error_rate] },
-              type: "line",
-              color: RailsPulse::ChartColors::P99
+              name: "5xx Errors",
+              data: daily_data.values.map { |d| d[:error_rate] },
+              type: "bar",
+              stack: "error_rate",
+              color: RailsPulse::ChartColors::P95,
+              itemStyle: { borderRadius: [ 5, 5, 0, 0 ] }
             }
           ]
 

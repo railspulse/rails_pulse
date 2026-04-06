@@ -3,7 +3,7 @@
 <% unless turbo_frame_request? %>
   <% metric_cards = [
     @percentile_response_times_metric_card&.merge(link_url: routes_path(chart_type: "response_time")),
-    @request_count_totals_metric_card&.merge(link_url: routes_path(chart_type: "request_volume")),
+    @request_count_totals_metric_card&.merge(link_url: routes_path(chart_type: "request_rate")),
     @error_rates_metric_card&.merge(link_url: routes_path(chart_type: "error_rate")),
   ].compact %>
   <%= render "rails_pulse/components/metric_strip", metrics_data: metric_cards %>
@@ -25,17 +25,12 @@
   } do %>
     <%# Zone 2: Data filter bar %>
     <div class="filter-bar">
-      <%= search_form_for @ransack_query, url: routes_path, class: "filter-bar__form", data: { controller: "rails-pulse--custom-range" } do |form| %>
+      <%= search_form_for @ransack_query, url: routes_path, class: "filter-bar__form" do |form| %>
         <input
           type="hidden"
           name="chart_type"
           data-rails-pulse--chart-switcher-target="chartTypeInput"
         >
-        <%= time_range_selector(
-          form,
-          time_range_options: RailsPulse::RoutesController::TIME_RANGE_OPTIONS,
-          selected_time_range: @selected_time_range,
-        ) %>
         <%= form.search_field :route_path_cont,
                           placeholder: "Filter by route",
                           autocomplete: "off",
@@ -65,23 +60,32 @@
         >Response Time</button>
         <button
           class="panel-tab"
-          data-chart-type="request_volume"
+          data-chart-type="request_rate"
           data-rails-pulse--chart-switcher-target="button"
           data-action="click->rails-pulse--chart-switcher#switch"
-        >Request Volume</button>
+        >Request Rate</button>
         <button
           class="panel-tab"
           data-chart-type="error_rate"
           data-rails-pulse--chart-switcher-target="button"
           data-action="click->rails-pulse--chart-switcher#switch"
         >Error Rate</button>
-        <%# P95/P99 toggles — only shown for Response Time %>
+        <%# P50/P95/P99 toggles — only shown for Response Time %>
         <div
           data-rails-pulse--chart-switcher-target="toggleGroup"
           data-chart-type="response_time"
           class="panel-tabs__toggles"
           style="display: flex;"
         >
+          <button
+            class="series-toggle"
+            style="color: <%= RailsPulse::ChartColors::DEFAULT %>"
+            data-active="true"
+            data-controller="rails-pulse--series-toggle"
+            data-rails-pulse--series-toggle-series-name-value="P50"
+            data-rails-pulse--series-toggle-chart-id-value="response_time_percentiles_chart"
+            data-action="click->rails-pulse--series-toggle#toggle"
+          >P50</button>
           <button
             class="series-toggle"
             style="color: <%= RailsPulse::ChartColors::P95 %>"
@@ -101,7 +105,7 @@
             data-action="click->rails-pulse--series-toggle#toggle"
           >P99</button>
         </div>
-        <%# Error/Client toggles — only shown for Error Rates %>
+        <%# 5xx/4xx toggles — only shown for Error Rates %>
         <div
           data-rails-pulse--chart-switcher-target="toggleGroup"
           data-chart-type="error_rate"
@@ -113,19 +117,19 @@
             style="color: <%= RailsPulse::ChartColors::P95 %>"
             data-active="true"
             data-controller="rails-pulse--series-toggle"
-            data-rails-pulse--series-toggle-series-name-value="Error Rate"
+            data-rails-pulse--series-toggle-series-name-value="5xx Errors"
             data-rails-pulse--series-toggle-chart-id-value="error_rate_chart"
             data-action="click->rails-pulse--series-toggle#toggle"
-          >Errors</button>
+          >5xx</button>
           <button
             class="series-toggle"
             style="color: <%= RailsPulse::ChartColors::P99 %>"
             data-active="true"
             data-controller="rails-pulse--series-toggle"
-            data-rails-pulse--series-toggle-series-name-value="Client Error Rate"
+            data-rails-pulse--series-toggle-series-name-value="4xx Errors"
             data-rails-pulse--series-toggle-chart-id-value="error_rate_chart"
             data-action="click->rails-pulse--series-toggle#toggle"
-          >Client</button>
+          >4xx</button>
         </div>
       </div>
     </div>
@@ -162,14 +166,14 @@
           class="chart-container chart-container--slim"
           data-rails-pulse--index-target="chart"
           data-rails-pulse--chart-switcher-target="chart"
-          data-chart-type="request_volume"
-          data-chart-id="request_volume_chart"
+          data-chart-type="request_rate"
+          data-chart-id="request_rate_chart"
           style="display: none;"
         >
           <%= render_stimulus_chart(
-            @request_volume_chart_data,
+            @request_rate_chart_data,
             type: "bar",
-            id: "request_volume_chart",
+            id: "request_rate_chart",
             height: "100%",
             options:
               bar_chart_options(
@@ -188,11 +192,11 @@
         >
           <%= render_stimulus_chart(
             @error_rate_chart_data,
-            type: "line",
+            type: "bar",
             id: "error_rate_chart",
             height: "100%",
             options:
-              line_chart_options(
+              bar_chart_options(
                 units: "%",
                 zoom: true
               ),

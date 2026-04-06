@@ -73,14 +73,12 @@ module RailsPulse
 
             sparkline_data = {}
             current_time = start_time
-            index = 0
             while current_time <= end_time
               total_count = period_counts[current_time].to_i
               avg = total_count > 0 ? (weighted_sums[current_time].to_f / total_count).round(0) : 0
-              # Use index as key to preserve order and avoid timezone issues
-              sparkline_data[index.to_s] = { value: avg }
+              # Use timestamp in milliseconds as key to preserve uniqueness across days
+              sparkline_data[current_time.to_i * 1000] = { value: avg }
               current_time += 1.hour
-              index += 1
             end
           else
             weighted_sums = base_query.group_by_date(:period_start).sum("p95_duration * count")

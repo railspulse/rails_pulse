@@ -73,6 +73,11 @@ export default class extends Controller {
       })
       this.resizeObserver.observe(this.element)
 
+      // Listen for legend toggle events to adjust border radius dynamically
+      this.chart.on('legendselectchanged', (params) => {
+        this.handleLegendToggle(params)
+      })
+
       // Mark as rendered for tests
       this.element.setAttribute('data-chart-rendered', 'true')
 
@@ -93,8 +98,17 @@ export default class extends Controller {
     this.setChartData(config)
 
     // Add hidden legend so series can be toggled programmatically via dispatchAction
+    // Initialize all series as selected (visible) by default
     if (!config.legend) {
-      config.legend = { show: false }
+      const selected = {}
+      if (config.series && Array.isArray(config.series)) {
+        config.series.forEach(s => {
+          if (s.name) {
+            selected[s.name] = true
+          }
+        })
+      }
+      config.legend = { show: false, selected: selected }
     }
 
     return config
@@ -184,18 +198,37 @@ export default class extends Controller {
   processFormatters(config) {
     // Process tooltip formatter
     if (config.tooltip?.formatter && typeof config.tooltip.formatter === 'string') {
-      config.tooltip.formatter = this.parseFormatter(config.tooltip.formatter)
+      // Check if it's an ECharts template pattern (e.g., "{value}", "{value} ms")
+      if (this.isEChartsTemplate(config.tooltip.formatter)) {
+        // Leave ECharts templates as-is
+      } else {
+        config.tooltip.formatter = this.parseFormatter(config.tooltip.formatter)
+      }
     }
 
     // Process xAxis formatter
     if (config.xAxis?.axisLabel?.formatter && typeof config.xAxis.axisLabel.formatter === 'string') {
-      config.xAxis.axisLabel.formatter = this.parseFormatter(config.xAxis.axisLabel.formatter)
+      if (!this.isEChartsTemplate(config.xAxis.axisLabel.formatter)) {
+        config.xAxis.axisLabel.formatter = this.parseFormatter(config.xAxis.axisLabel.formatter)
+      }
     }
 
     // Process yAxis formatter
     if (config.yAxis?.axisLabel?.formatter && typeof config.yAxis.axisLabel.formatter === 'string') {
-      config.yAxis.axisLabel.formatter = this.parseFormatter(config.yAxis.axisLabel.formatter)
+      if (!this.isEChartsTemplate(config.yAxis.axisLabel.formatter)) {
+        config.yAxis.axisLabel.formatter = this.parseFormatter(config.yAxis.axisLabel.formatter)
+      }
     }
+  }
+
+  isEChartsTemplate(formatterString) {
+    // ECharts template strings use {variableName} patterns
+    // Common patterns: {value}, {a}, {b}, {c}, {seriesName}, etc.
+    return /^\{[a-zA-Z0-9_]+\}/.test(formatterString.trim()) ||
+           formatterString.includes('{value}') ||
+           formatterString.includes('{a}') ||
+           formatterString.includes('{b}') ||
+           formatterString.includes('{c}')
   }
 
   parseFormatter(formatterString) {
@@ -420,6 +453,30 @@ export default class extends Controller {
         })
 
         return html
+      },
+
+      // Sparkline tooltip - simpler format for small charts
+      'sparkline_tooltip': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        const data = params[0]
+        let axisValue = data.axisValue
+        const value = typeof data.value === 'number' ? Math.round(data.value) : data.value
+        const seriesName = data.seriesName || 'Value'
+
+        // Format timestamp as hour if it's a number (timestamp in milliseconds)
+        const numValue = typeof axisValue === 'string' ? parseFloat(axisValue) : axisValue
+        if (typeof numValue === 'number' && !isNaN(numValue) && numValue > 1000000000000) {
+          const date = new Date(numValue)
+          if (!isNaN(date.getTime())) {
+            // Format as hour (e.g., "08:00")
+            axisValue = date.getHours().toString().padStart(2, '0') + ':00'
+          }
+        }
+        // If it's already a formatted string (like "Apr 5"), leave it as-is
+
+        // Show marker, series name, and value (e.g., "● P95: 150")
+        return `${axisValue}<br/>${data.marker} ${seriesName}: ${value}`
       }
     }
 
@@ -541,6 +598,54 @@ export default class extends Controller {
     namesToToggle.forEach(name => {
       this.chart.dispatchAction({ type: 'legendToggleSelect', name })
     })
+  }
+
+  // Handle legend toggle to adjust border radius for stacked bars
+  handleLegendToggle(params) {
+    if (!this.chart) return
+
+    const option = this.chart.getOption()
+    const series = option.series || []
+
+    // Only process if we have stacked bar series
+    const hasStackedBars = series.some(s => s.type === 'bar' && s.stack)
+    if (!hasStackedBars) return
+
+    // Get visibility state from legend
+    const selected = params.selected || {}
+
+    // Find visible series (in order)
+    const visibleSeriesIndices = []
+    series.forEach((s, index) => {
+      const isVisible = selected[s.name] !== false
+      if (isVisible && s.type === 'bar' && s.stack) {
+        visibleSeriesIndices.push(index)
+      }
+    })
+
+    if (visibleSeriesIndices.length === 0) return
+
+    // Get the topmost visible series (last in the array for stacked bars)
+    const topSeriesIndex = visibleSeriesIndices[visibleSeriesIndices.length - 1]
+
+    // Update border radius for each series
+    const updatedSeries = series.map((s, index) => {
+      if (s.type !== 'bar' || !s.stack) return s
+
+      const isVisible = visibleSeriesIndices.includes(index)
+      const isTop = index === topSeriesIndex
+
+      return {
+        ...s,
+        itemStyle: {
+          ...(s.itemStyle || {}),
+          borderRadius: (isVisible && isTop) ? [5, 5, 0, 0] : [0, 0, 0, 0]
+        }
+      }
+    })
+
+    // Apply the updated configuration
+    this.chart.setOption({ series: updatedSeries })
   }
 
   // Color scheme management

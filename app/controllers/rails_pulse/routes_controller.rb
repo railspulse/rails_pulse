@@ -24,9 +24,13 @@ module RailsPulse
       disabled_tags = session_disabled_tags
       show_non_tagged = session[:show_non_tagged] != false
 
-      @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @error_rates_metric_card = RailsPulse::Routes::Cards::ErrorRates.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
+      # Calculate period in days for metric cards
+      period = ((@end_time - @start_time) / 1.day).round
+      period_type_str = period_type.to_s
+
+      @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, period_type: period_type_str).to_metric_card
+      @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, period_type: period_type_str).to_metric_card
+      @error_rates_metric_card = RailsPulse::Routes::Cards::ErrorRates.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, period_type: period_type_str).to_metric_card
     end
 
     # Override setup_chart_data to generate all 4 chart types
@@ -46,7 +50,7 @@ module RailsPulse
       }
 
       @response_time_chart_data = Routes::Charts::ResponseTimePercentiles.new(**common_options).to_chart_data
-      @request_volume_chart_data = Routes::Charts::RequestVolume.new(**common_options).to_chart_data
+      @request_rate_chart_data = Routes::Charts::RequestVolume.new(**common_options).to_chart_data
       @error_rate_chart_data = Routes::Charts::ErrorRate.new(**common_options).to_chart_data
 
       # Keep @chart_data for backward compatibility
@@ -146,7 +150,7 @@ module RailsPulse
     end
 
     def default_time_range_key
-      :last_two_weeks
+      :last_14_days
     end
 
     def duration_field

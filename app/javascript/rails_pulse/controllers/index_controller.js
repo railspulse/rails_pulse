@@ -24,7 +24,7 @@ export default class extends Controller {
     const chartType = urlParams.get('chart_type')
     const chartTypeMap = {
       response_time: 'response_time_percentiles_chart',
-      request_volume: 'request_volume_chart',
+      request_rate: 'request_rate_chart',
       error_rate: 'error_rate_chart'
     }
     this.activeChartId = chartTypeMap[chartType] || this.chartIdValue

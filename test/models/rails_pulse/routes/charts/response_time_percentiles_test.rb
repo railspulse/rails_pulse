@@ -38,7 +38,7 @@ module RailsPulse
           assert_kind_of Array, data[:series]
         end
 
-        test "includes P95 and P99 series" do
+        test "includes P50, P95 and P99 series" do
           chart = ResponseTimePercentiles.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -49,8 +49,25 @@ module RailsPulse
           data = chart.to_chart_data
           series_names = data[:series].map { |s| s[:name] }
 
+          assert_includes series_names, "P50"
           assert_includes series_names, "P95"
           assert_includes series_names, "P99"
+        end
+
+        test "P50 series has correct configuration" do
+          chart = ResponseTimePercentiles.new(
+            ransack_query: @ransack_query,
+            period_type: :day,
+            start_time: @start_time,
+            end_time: @end_time
+          )
+
+          data = chart.to_chart_data
+          p50_series = data[:series].find { |s| s[:name] == "P50" }
+
+          assert_equal "line", p50_series[:type]
+          assert_equal RailsPulse::ChartColors::DEFAULT, p50_series[:color]
+          assert_kind_of Array, p50_series[:data]
         end
 
         test "P95 series has correct configuration" do
@@ -116,9 +133,10 @@ module RailsPulse
 
           assert data.key?(:labels)
           assert data.key?(:series)
-          # Should still have P95 and P99 series with zero values
+          # Should still have P50, P95 and P99 series with nil values
           series_names = data[:series].map { |s| s[:name] }
 
+          assert_includes series_names, "P50"
           assert_includes series_names, "P95"
           assert_includes series_names, "P99"
         end
