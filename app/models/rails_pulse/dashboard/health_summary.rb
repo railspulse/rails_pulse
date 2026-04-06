@@ -6,10 +6,11 @@ module RailsPulse
       CRITICAL_JOB_FAILURE_RATE = 10.0
       WARNING_JOB_FAILURE_RATE  = 5.0
 
-      def initialize(disabled_tags: [], show_non_tagged: true, period: 7)
+      def initialize(disabled_tags: [], show_non_tagged: true, period: 7, period_type: @period_type)
         @disabled_tags   = disabled_tags
         @show_non_tagged = show_non_tagged
         @period          = period
+        @period_type     = period_type
         @route_thresholds = RailsPulse.configuration.route_thresholds
         @query_thresholds = RailsPulse.configuration.query_thresholds
         @job_thresholds   = RailsPulse.configuration.job_thresholds
@@ -34,7 +35,7 @@ module RailsPulse
 
         data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
-          .where(summarizable_type: "RailsPulse::Route", period_type: "day", period_start: start..finish)
+          .where(summarizable_type: "RailsPulse::Route", period_type: @period_type, period_start: start..finish)
           .group("summarizable_id")
           .select(
             "summarizable_id",
@@ -67,7 +68,7 @@ module RailsPulse
 
         data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
-          .where(summarizable_type: "RailsPulse::Query", period_type: "day", period_start: start..finish)
+          .where(summarizable_type: "RailsPulse::Query", period_type: @period_type, period_start: start..finish)
           .group("summarizable_id")
           .select(
             "summarizable_id",

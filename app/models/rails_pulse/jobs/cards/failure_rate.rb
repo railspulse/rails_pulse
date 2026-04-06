@@ -2,16 +2,17 @@ module RailsPulse
   module Jobs
     module Cards
       class FailureRate < Base
-        def initialize(job: nil, period: 7)
+        def initialize(job: nil, period: 7, period_type: "day")
           @job = job
           @period = period
+          @period_type = period_type
         end
 
         def to_metric_card
           base_query = RailsPulse::Summary
             .where(
               summarizable_type: "RailsPulse::Job",
-              period_type: "day",
+              period_type: @period_type,
               period_start: range_start..now
             )
           base_query = base_query.where(summarizable_id: @job.id) if @job
@@ -38,13 +39,22 @@ module RailsPulse
 
           trend_icon, trend_amount = trend_for(current_rate, previous_rate)
 
-          grouped_errors = base_query
-            .group_by_date(:period_start)
-            .sum(:error_count)
+          # Create a separate query for sparkline data using only the current period
+          sparkline_query = RailsPulse::Summary
+            .where(
+              summarizable_type: "RailsPulse::Job",
+              period_type: @period_type,
+              period_start: current_window_start..now
+            )
+          sparkline_query = sparkline_query.where(summarizable_id: @job.id) if @job
 
-          grouped_counts = base_query
-            .group_by_date(:period_start)
-            .sum(:count)
+          if @period_type == "hour"
+            grouped_errors = sparkline_query.group_by_hour(:period_start).sum(:error_count)
+            grouped_counts = sparkline_query.group_by_hour(:period_start).sum(:count)
+          else
+            grouped_errors = sparkline_query.group_by_date(:period_start).sum(:error_count)
+            grouped_counts = sparkline_query.group_by_date(:period_start).sum(:count)
+          end
 
           sparkline_data = sparkline_from_failure_rates(grouped_errors, grouped_counts)
 
@@ -71,16 +81,35 @@ module RailsPulse
           (errors.to_f / total * 100).round(1)
         end
 
-        def sparkline_from_failure_rates(errors_by_day, counts_by_day)
-          start_date = current_window_start.to_date
-          end_date = now.to_date
+        def sparkline_from_failure_rates(errors_by_period, counts_by_period)
+          if @period_type == "hour"
+            start_time = current_window_start.beginning_of_hour
+            end_time = now.beginning_of_hour
+            result = {}
 
-          (start_date..end_date).each_with_object({}) do |day, hash|
-            errors = errors_by_day[day].to_f
-            total = counts_by_day[day].to_f
-            rate = total.zero? ? 0.0 : (errors / total * 100).round(1)
-            label = day.strftime("%b %-d")
-            hash[label] = { value: rate }
+            current_time = start_time
+            index = 0
+            while current_time <= end_time
+              errors = errors_by_period[current_time].to_f
+              total = counts_by_period[current_time].to_f
+              rate = total.zero? ? 0.0 : (errors / total * 100).round(1)
+              # Use index as key to preserve order and avoid timezone issues
+              result[index.to_s] = { value: rate }
+              current_time += 1.hour
+              index += 1
+            end
+            result
+          else
+            start_date = current_window_start.to_date
+            end_date = now.to_date
+
+            (start_date..end_date).each_with_object({}) do |day, hash|
+              errors = errors_by_period[day].to_f
+              total = counts_by_period[day].to_f
+              rate = total.zero? ? 0.0 : (errors / total * 100).round(1)
+              label = day.strftime("%b %-d")
+              hash[label] = { value: rate }
+            end
           end
         end
       end

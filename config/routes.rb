@@ -18,6 +18,7 @@ RailsPulse::Engine.routes.draw do
   end
   patch "pagination/limit", to: "application#set_pagination_limit"
   patch "settings/global_filters", to: "application#set_global_filters"
+  patch "settings/time_range", to: "application#set_time_range", as: :settings_time_range
 
   # Tag management
   post "tags/:taggable_type/:taggable_id/add", to: "tags#create", as: :add_tag

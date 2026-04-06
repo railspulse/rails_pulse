@@ -22,41 +22,19 @@
         critical_label: "failing" %>
       <% end %>
     </div>
-
-    <div class="dashboard-health-bar__controls">
-      <div
-        class="dashboard-health-bar__period-selector"
-        data-controller="rails-pulse--period-selector"
-      >
-        <% [[7, "7d"], [14, "14d"], [30, "30d"]].each do |days, label| %>
-          <% active = @period == days %>
-          <a
-            href="<%= rails_pulse.root_path(period: days) %>"
-            class="dashboard-health-bar__period-button"
-            data-turbo-frame="dashboard_data"
-            data-turbo-action="advance"
-            data-rails-pulse--period-selector-target="button"
-            data-action="click->rails-pulse--period-selector#select"
-            data-active="<%= active %>"
-          >
-            <%= label %>
-          </a>
-        <% end %>
-      </div>
-    </div>
   </div>
 </div>
 
 <turbo-frame id="dashboard_data">
   <% metric_strip_cards = [
     @percentile_response_times_metric_card&.merge(
-      link_url: routes_path(chart_type: "response_time", period: @period),
+      link_url: routes_path(chart_type: "response_time"),
     ),
     @request_count_totals_metric_card&.merge(
-      link_url: routes_path(chart_type: "request_volume", period: @period),
+      link_url: routes_path(chart_type: "request_volume"),
     ),
     @error_rates_metric_card&.merge(
-      link_url: routes_path(chart_type: "error_rate", period: @period),
+      link_url: routes_path(chart_type: "error_rate"),
     ),
   ].compact
   if @job_failure_rate_metric_card
@@ -92,7 +70,7 @@
     help_title: "Response Time Percentiles",
     help_text:
       "P50 (median), P95, and P99 response times show the distribution of request latency. P95 means 95% of requests are faster than this value. Higher percentiles reveal tail latency affecting a subset of users.",
-    link_url: routes_path(chart_type: "response_time", period: @period),
+    link_url: routes_path(chart_type: "response_time"),
     chart_data: @response_time_percentiles_chart_data,
     chart_type: "line",
     chart_id: "response_time_percentiles_chart",
@@ -119,7 +97,7 @@
     help_title: "Throughput & Errors",
     help_text:
       "Daily request volume with errors overlaid. The red bar shows error count on top of total requests. Monitor both metrics together to identify traffic spikes, error rate patterns, and capacity planning needs.",
-    link_url: routes_path(chart_type: "request_volume", period: @period),
+    link_url: routes_path(chart_type: "request_volume"),
     chart_data: @throughput_and_errors_chart_data,
     chart_type: "bar",
     chart_id: "throughput_and_errors_chart",

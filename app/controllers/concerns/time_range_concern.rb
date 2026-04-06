@@ -54,13 +54,33 @@ module TimeRangeConcern
       start_time = parse_time_param(ransack_params[:occurred_at_gteq])
       end_time = parse_time_param(ransack_params[:occurred_at_lt])
       selected_time_range = :custom
-    # Priority 4: Global filters (from session)
+    # Priority 4: Time range selector (from session)
+    elsif session[:time_range_preference].present?
+      preference = session[:time_range_preference]
+      if preference.is_a?(Hash) && preference["type"] == "custom"
+        # Custom range from time range selector
+        start_time = parse_time_param(preference["start_time"])
+        end_time = parse_time_param(preference["end_time"])
+        selected_time_range = :custom
+      else
+        # Preset from time range selector
+        selected_time_range = preference.to_sym
+        start_time =
+          case selected_time_range
+          when :last_24_hours then 24.hours.ago
+          when :last_7_days then 7.days.ago
+          when :last_14_days then 14.days.ago
+          when :last_30_days then 30.days.ago
+          else start_time
+          end
+      end
+    # Priority 5: Global filters (from session)
     elsif session_global_filters["start_time"].present? || session_global_filters["end_time"].present?
       start_time = parse_time_param(session_global_filters["start_time"]) if session_global_filters["start_time"].present?
       end_time = parse_time_param(session_global_filters["end_time"]) if session_global_filters["end_time"].present?
       selected_time_range = :custom
     end
-    # Priority 5: Default time range (already set above)
+    # Priority 6: Default time range (already set above)
 
     time_diff = (end_time.to_i - start_time.to_i) / 3600.0
 

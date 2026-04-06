@@ -1,0 +1,51 @@
+/* Time Range Selector - Header Component */
+
+.time-range-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
+  padding: var(--size-1) var(--size-2) var(--size-1) var(--size-3);
+  font-size: var(--text-sm);
+  font-weight: var(--font-medium);
+  background: transparent;
+  border: 1px solid var(--color-border);
+  border-radius: var(--rounded-md);
+  cursor: pointer;
+  color: var(--color-text);
+  transition: all var(--time-150) ease;
+  white-space: nowrap;
+}
+
+.time-range-trigger:hover {
+  background: var(--color-secondary);
+  border-color: var(--color-border-emphasis);
+}
+
+.time-range-trigger svg {
+  opacity: 0.6;
+  transition: transform var(--time-150) ease;
+}
+
+.time-range-trigger:has(+ [popover]:popover-open) {
+  background: var(--color-secondary);
+  border-color: var(--color-border-emphasis);
+}
+
+.time-range-trigger:has(+ [popover]:popover-open) svg {
+  transform: rotate(180deg);
+}
+
+/* Light mode improvements */
+html[data-color-scheme="light"] .time-range-trigger {
+  border-color: rgba(0, 0, 0, 0.2);
+}
+
+html[data-color-scheme="light"] .time-range-trigger:hover {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.3);
+}
+
+html[data-color-scheme="light"] .time-range-trigger:has(+ [popover]:popover-open) {
+  background: rgba(0, 0, 0, 0.05);
+  border-color: rgba(0, 0, 0, 0.3);
+}

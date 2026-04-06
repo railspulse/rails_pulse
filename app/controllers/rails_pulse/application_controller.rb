@@ -3,7 +3,7 @@ module RailsPulse
     before_action :authenticate_rails_pulse_user!
     before_action :set_show_non_tagged_default
     before_action :set_onboarding_state
-    helper_method :session_global_filters, :session_disabled_tags
+    helper_method :session_global_filters, :session_disabled_tags, :session_time_range_preference
 
     def set_pagination_limit(limit = nil)
       limit = limit || params[:limit]
@@ -52,6 +52,23 @@ module RailsPulse
         end
 
         session[:global_filters] = filters
+      end
+
+      # Redirect back to the referring page or root
+      redirect_back(fallback_location: root_path)
+    end
+
+    def set_time_range
+      if params[:preset].present?
+        # Store preset selection
+        session[:time_range_preference] = params[:preset]
+      elsif params[:start_time].present? && params[:end_time].present?
+        # Store custom range
+        session[:time_range_preference] = {
+          type: "custom",
+          start_time: params[:start_time],
+          end_time: params[:end_time]
+        }
       end
 
       # Redirect back to the referring page or root
@@ -128,6 +145,10 @@ module RailsPulse
 
     def session_disabled_tags
       session_global_filters["disabled_tags"] || []
+    end
+
+    def session_time_range_preference
+      session[:time_range_preference]
     end
 
     # Get the minimum duration based on global performance threshold
