@@ -3,11 +3,11 @@ require "test_helper"
 module RailsPulse
   module Routes
     module Cards
-      class PercentileResponseTimesTest < ActiveSupport::TestCase
+      class ErrorRatesTest < ActiveSupport::TestCase
         fixtures :rails_pulse_routes, :rails_pulse_summaries
 
         test "returns hash with required keys" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new.to_metric_card
+          card = RailsPulse::Routes::Cards::ErrorRates.new.to_metric_card
 
           assert_kind_of Hash, card
           assert_includes card.keys, :id
@@ -19,81 +19,79 @@ module RailsPulse
           assert_includes card.keys, :trend_text
           assert_includes card.keys, :help_heading
           assert_includes card.keys, :help_text
-          assert_includes card.keys, :chart_color
-          assert_includes card.keys, :context
         end
 
-        test "id is percentile_response_times" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new.to_metric_card
+        test "id is error_rates" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new.to_metric_card
 
-          assert_equal "percentile_response_times", card[:id]
+          assert_equal "error_rates", card[:id]
         end
 
-        test "chart_color is P95 color" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new.to_metric_card
+        test "chart_color is DEFAULT color" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new.to_metric_card
 
-          assert_equal RailsPulse::ChartColors::P95, card[:chart_color]
+          assert_equal RailsPulse::ChartColors::DEFAULT, card[:chart_color]
         end
 
         test "context is routes" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new.to_metric_card
+          card = RailsPulse::Routes::Cards::ErrorRates.new.to_metric_card
 
           assert_equal "routes", card[:context]
         end
 
+        test "summary format is percentage or —" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new(period: 7).to_metric_card
+
+          assert card[:summary] == "—" || card[:summary].match?(/\d+\.\d+% of requests/)
+        end
+
         test "chart_data is a hash" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new.to_metric_card
+          card = RailsPulse::Routes::Cards::ErrorRates.new.to_metric_card
 
           assert_kind_of Hash, card[:chart_data]
         end
 
-        test "summary has ms suffix or is —" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(period: 7).to_metric_card
+        test "trend_icon is valid" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new.to_metric_card
 
-          assert card[:summary] == "—" || card[:summary].match?(/\d+ ms/)
+          assert_includes [ "move-right", "trending-up", "trending-down" ], card[:trend_icon]
         end
 
-        test "trend_amount ends with % or is —" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new.to_metric_card
+        test "trend_amount is percentage or —" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new.to_metric_card
 
           assert card[:trend_amount] == "—" || card[:trend_amount].end_with?("%")
         end
 
         test "trend_text is Compared to last week" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new.to_metric_card
+          card = RailsPulse::Routes::Cards::ErrorRates.new.to_metric_card
 
           assert_equal "Compared to last week", card[:trend_text]
         end
 
-        test "trend_icon is valid" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new.to_metric_card
-
-          assert_includes [ "move-right", "trending-up", "trending-down" ], card[:trend_icon]
-        end
-
-        test "calculates for 7-day period" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(period: 7).to_metric_card
+        test "7-day period has correct sparkline size" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new(period: 7).to_metric_card
 
           assert_operator card[:chart_data].size, :>=, 7
           assert_operator card[:chart_data].size, :<=, 8
         end
 
-        test "calculates for 14-day period" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(period: 14).to_metric_card
+        test "14-day period has correct sparkline size" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new(period: 14).to_metric_card
 
           assert_operator card[:chart_data].size, :>=, 14
           assert_operator card[:chart_data].size, :<=, 15
         end
 
-        test "calculates for 30-day period" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(period: 30).to_metric_card
+        test "30-day period has correct sparkline size" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new(period: 30).to_metric_card
 
           assert_operator card[:chart_data].size, :>=, 30
           assert_operator card[:chart_data].size, :<=, 31
         end
 
         test "sparkline data has correct structure" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(period: 7).to_metric_card
+          card = RailsPulse::Routes::Cards::ErrorRates.new(period: 7).to_metric_card
           card[:chart_data].values.each do |data_point|
             assert_kind_of Hash, data_point
             assert_includes data_point.keys, :value
@@ -102,28 +100,28 @@ module RailsPulse
         end
 
         test "date labels formatted correctly" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(period: 7).to_metric_card
+          card = RailsPulse::Routes::Cards::ErrorRates.new(period: 7).to_metric_card
 
           card[:chart_data].keys.each do |label|
             assert_match(/[A-Z][a-z]{2} \d{1,2}/, label)
           end
         end
 
-        test "route-specific mode filters by route id" do
+        test "route-specific mode works" do
           route = rails_pulse_routes(:api_users)
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: route, period: 7).to_metric_card
+          card = RailsPulse::Routes::Cards::ErrorRates.new(route: route, period: 7).to_metric_card
 
           assert_kind_of Hash, card
         end
 
-        test "aggregate mode includes all routes" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: nil, period: 7).to_metric_card
+        test "aggregate mode works" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new(route: nil, period: 7).to_metric_card
 
           assert_kind_of Hash, card
         end
 
         test "respects disabled_tags parameter" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(
+          card = RailsPulse::Routes::Cards::ErrorRates.new(
             disabled_tags: [ 999999 ],
             period: 7
           ).to_metric_card
@@ -132,7 +130,7 @@ module RailsPulse
         end
 
         test "respects show_non_tagged false" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(
+          card = RailsPulse::Routes::Cards::ErrorRates.new(
             show_non_tagged: false,
             period: 7
           ).to_metric_card
@@ -141,7 +139,7 @@ module RailsPulse
         end
 
         test "handles periods with limited data" do
-          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(period: 90).to_metric_card
+          card = RailsPulse::Routes::Cards::ErrorRates.new(period: 90).to_metric_card
           # Should return valid structure regardless of data availability
           assert_kind_of String, card[:summary]
           assert_kind_of String, card[:trend_amount]

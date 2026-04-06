@@ -161,8 +161,8 @@ module RailsPulse
           result = card.to_metric_card
 
           assert_kind_of Hash, result[:chart_data]
-          # Should have 15 days of data (14 days + today)
-          assert_equal 15, result[:chart_data].size
+          # Should have 8 days of data (7 days + today)
+          assert_equal 8, result[:chart_data].size
 
           # Each entry should have a label and value
           result[:chart_data].each do |label, data|
@@ -178,10 +178,10 @@ module RailsPulse
           card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
           result = card.to_metric_card
 
-          # Most days should have 0 value
+          # Most days should have 0 value (at least 5 out of 8)
           zero_value_count = result[:chart_data].values.count { |v| v[:value] == 0 }
 
-          assert_operator zero_value_count, :>, 10
+          assert_operator zero_value_count, :>, 5
         end
 
         test "card sparkline shows run counts for days with data" do

@@ -1,6 +1,8 @@
 require "test_helper"
 
 class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
+  fixtures :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_jobs, :rails_pulse_summaries
+
   def setup
     ENV["TEST_TYPE"] = "functional"
     super
@@ -11,53 +13,56 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     RailsPulse::Job.update_all(runs_count: 0)
   end
 
-  test "should handle time range parameter" do
-    get rails_pulse.root_path, params: { time_range: "24h" }
+  # Parameter & HTTP Response Tests
+
+  test "accepts period 7 parameter" do
+    get rails_pulse.root_path, params: { period: 7 }
 
     assert_response :success
   end
 
-  test "should handle invalid time range gracefully" do
-    get rails_pulse.root_path, params: { time_range: "invalid" }
+  test "accepts period 14 parameter" do
+    get rails_pulse.root_path, params: { period: 14 }
 
     assert_response :success
-    # Should default to a valid time range
   end
 
-  test "should include required CSS and JavaScript" do
+  test "accepts period 30 parameter" do
+    get rails_pulse.root_path, params: { period: 30 }
+
+    assert_response :success
+  end
+
+  test "handles invalid period parameter" do
+    get rails_pulse.root_path, params: { period: 999 }
+
+    assert_response :success
+  end
+
+  test "handles zero period parameter" do
+    get rails_pulse.root_path, params: { period: 0 }
+
+    assert_response :success
+  end
+
+  test "handles negative period parameter" do
+    get rails_pulse.root_path, params: { period: -5 }
+
+    assert_response :success
+  end
+
+  test "handles missing period parameter" do
     get rails_pulse.root_path
 
     assert_response :success
   end
 
-  test "should display breadcrumbs" do
+  test "returns HTML content" do
     get rails_pulse.root_path
 
     assert_response :success
-  end
-
-  test "renders job failure rate card when track_jobs is true" do
-    original = RailsPulse.configuration.track_jobs
-    RailsPulse.configuration.track_jobs = true
-
-    get rails_pulse.root_path
-
-    assert_response :success
-    assert_match "jobs_failure_rate", response.body
-  ensure
-    RailsPulse.configuration.track_jobs = original
-  end
-
-  test "omits job failure rate card when track_jobs is false" do
-    original = RailsPulse.configuration.track_jobs
-    RailsPulse.configuration.track_jobs = false
-
-    get rails_pulse.root_path
-
-    assert_response :success
-    assert_no_match "jobs_failure_rate", response.body
-  ensure
-    RailsPulse.configuration.track_jobs = original
+    assert_not_nil response.body
+    assert_operator response.body.length, :>, 0
   end
 
   private

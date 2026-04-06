@@ -39,7 +39,12 @@ module RailsPulse
 
           result = RailsPulse::Dashboard::Charts::ResponseTimePercentiles.new.to_chart_data
 
-          assert_equal 3, result[:series].length
+          # Should have at least 3 series (P50, P95, P99), may have more if SLO configured
+          assert_operator result[:series].length, :>=, 3
+          # Verify the 3 main series exist
+          assert result[:series].any? { |s| s[:name] == "P50" }
+          assert result[:series].any? { |s| s[:name] == "P95" }
+          assert result[:series].any? { |s| s[:name] == "P99" }
         end
 
         test "first series is named P50 with line type" do
@@ -112,14 +117,14 @@ module RailsPulse
           assert_equal 600, p99_series[:data][yesterday_index]
         end
 
-        test "fills zero for days with no data" do
+        test "fills nil for days with no data" do
           create_route_day_summary(rails_pulse_routes(:api_users), 1.day.ago, p50: 100, p95: 300, p99: 500, count: 100)
 
           result = RailsPulse::Dashboard::Charts::ResponseTimePercentiles.new(period: 7).to_chart_data
           five_days_ago_index = result[:labels].index(5.days.ago.to_date.strftime("%b %-d"))
           p50_series = result[:series].find { |s| s[:name] == "P50" }
 
-          assert_equal 0, p50_series[:data][five_days_ago_index]
+          assert_nil p50_series[:data][five_days_ago_index]
         end
 
         test "calculates weighted average P50 across multiple routes on same day" do
@@ -158,6 +163,7 @@ module RailsPulse
 
           assert_equal 8, result[:labels].length
           p50_series = result[:series].find { |s| s[:name] == "P50" }
+
           refute_includes p50_series[:data], 999
         end
 
@@ -180,6 +186,7 @@ module RailsPulse
           result = RailsPulse::Dashboard::Charts::ResponseTimePercentiles.new.to_chart_data
 
           slo_series = result[:series].find { |s| s[:name].include?("SLO") }
+
           assert_not_nil slo_series
         ensure
           RailsPulse.configuration.service_level_objectives = []
@@ -211,6 +218,7 @@ module RailsPulse
 
           yesterday_index = result[:labels].index(1.day.ago.to_date.strftime("%b %-d"))
           p50_series = result[:series].find { |s| s[:name] == "P50" }
+
           assert_equal 200, p50_series[:data][yesterday_index]
         end
 
@@ -225,6 +233,7 @@ module RailsPulse
 
           yesterday_index = result[:labels].index(1.day.ago.to_date.strftime("%b %-d"))
           p50_series = result[:series].find { |s| s[:name] == "P50" }
+
           assert_equal 200, p50_series[:data][yesterday_index]
         end
 

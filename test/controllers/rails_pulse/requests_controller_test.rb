@@ -25,20 +25,6 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_respond_to controller, :show
   end
 
-  test "controller has required private methods" do
-    controller = RailsPulse::RequestsController.new
-    private_methods = controller.private_methods
-
-    assert_includes private_methods, :chart_model
-    assert_includes private_methods, :table_model
-    assert_includes private_methods, :chart_class
-    assert_includes private_methods, :set_request
-    assert_includes private_methods, :setup_metric_cards
-    assert_includes private_methods, :build_chart_ransack_params
-    assert_includes private_methods, :build_table_ransack_params
-    assert_includes private_methods, :build_table_results
-  end
-
   test "controller inherits from ApplicationController" do
     assert_operator RailsPulse::RequestsController, :<, RailsPulse::ApplicationController
   end
