@@ -1,0 +1,12 @@
+<% dot_color = health[:critical] > 0 ? "var(--color-negative)" : (health[:slow] > 0 ? "#eab308" : "var(--color-positive)") %>
+<% border_color = health[:critical] > 0 ? "color-mix(in srgb, var(--color-negative) 40%, transparent)" : (health[:slow] > 0 ? "color-mix(in srgb, #eab308 40%, transparent)" : "color-mix(in srgb, var(--color-positive) 40%, transparent)") %>
+<span class="badge flex items-center" style="border-color: <%= border_color %>; gap: 0.4rem; padding: 0.3rem 0.6rem;">
+  <span style="width: 10px; height: 10px; border-radius: 50%; background: <%= dot_color %>; flex-shrink: 0;"></span>
+  <span class="text-xs font-semibold"><%= name %></span>
+  <% if health[:critical] > 0 %>
+    <span class="text-xs text-subtle"><%= health[:healthy] %> healthy · <%= health[:slow] %> slow ·</span>
+    <span class="text-xs font-semibold" style="color: var(--color-negative);"><%= health[:critical] %> <%= critical_label %></span>
+  <% else %>
+    <span class="text-xs text-subtle"><%= health[:healthy] %> healthy · <%= health[:slow] %> slow · 0 <%= critical_label %></span>
+  <% end %>
+</span>
