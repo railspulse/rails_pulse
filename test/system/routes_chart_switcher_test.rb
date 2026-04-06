@@ -17,7 +17,8 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     load_shared_test_data
     create_chart_summaries
     visit_rails_pulse_path "/routes?q[period_start_range]=last_month"
-    assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
+    # Wait for chart to render before running tests
+    page.has_selector?("#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10)
   end
 
   # ── Default state ────────────────────────────────────────────────────────────
@@ -40,6 +41,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
   test "switching tabs shows correct chart, updates active state and series toggles" do
     # Switch to Request Volume
     click_tab(:request_volume)
+
     assert_selector "#request_volume_chart[data-chart-rendered='true']", wait: 10
 
     assert_chart_container_visible(:request_volume)
@@ -52,6 +54,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
 
     # Switch to Error Rates
     click_tab(:error_rate)
+
     assert_selector "#error_rate_chart[data-chart-rendered='true']", wait: 10
 
     assert_chart_container_visible(:error_rate)
@@ -64,6 +67,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
 
     # Switch back to Response Time
     click_tab(:response_time)
+
     assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 5
 
     assert_tab_active(:response_time)
@@ -76,13 +80,16 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
   test "zooming any chart updates the url" do
     [ :request_volume, :error_rate ].each do |chart_type|
       visit_rails_pulse_path "/routes?q[period_start_range]=last_month"
+
       assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
 
       click_tab(chart_type)
       chart_id = CHART_IDS[chart_type]
+
       assert_selector "##{chart_id}[data-chart-rendered='true']", wait: 10
 
       zoomed = apply_chart_zoom(chart_id.to_s)
+
       assert zoomed, "Should have enough data points to zoom #{chart_type} (need at least 4 data points)"
 
       sleep 1.5 # Allow debounce + fetch
@@ -100,37 +107,46 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
 
     zoom_state = apply_chart_zoom_and_capture("response_time_percentiles_chart")
+
     assert zoom_state, "Should have enough data points to test zoom persistence (need at least 4 data points)"
 
     # Switch to Request Volume and verify zoom
     click_tab(:request_volume)
+
     assert_selector "#request_volume_chart[data-chart-rendered='true']", wait: 10
     sleep 0.5
     rv_zoom = read_chart_zoom("request_volume_chart")
+
     assert rv_zoom, "Request volume should inherit zoom"
     assert_equal zoom_state["start"], rv_zoom["startValue"]
 
     # Switch to Error Rates and verify zoom carries over
     click_tab(:error_rate)
+
     assert_selector "#error_rate_chart[data-chart-rendered='true']", wait: 10
     sleep 0.5
     er_zoom = read_chart_zoom("error_rate_chart")
+
     assert er_zoom, "Error rate chart should inherit zoom"
     assert_equal zoom_state["start"], er_zoom["startValue"]
   end
 
   test "switching back to a chart after zoom preserves its listeners" do
     click_tab(:request_volume)
+
     assert_selector "#request_volume_chart[data-chart-rendered='true']", wait: 10
 
     click_tab(:response_time)
+
     assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 5
     sleep 0.5
 
     zoomed = apply_chart_zoom("response_time_percentiles_chart")
+
     assert zoomed, "Should have enough data points (need at least 4 data points)"
 
     sleep 1.5
+
     assert_includes page.current_url, "zoom_start_time",
       "Response time chart should still update URL after switching back"
   end
@@ -141,6 +157,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     [ :request_volume, :error_rate ].each do |chart_type|
       click_tab(chart_type)
       chart_id = CHART_IDS[chart_type]
+
       assert_selector "##{chart_id}[data-chart-rendered='true']", wait: 10
 
       series_count = page.execute_script(<<~JS)
@@ -182,36 +199,42 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
 
   def assert_chart_container_visible(type)
     display = chart_container_display(type)
+
     assert_equal "block", display,
       "#{type} chart container should be visible (display: block), got: #{display}"
   end
 
   def assert_chart_container_hidden(type)
     display = chart_container_display(type)
+
     assert_equal "none", display,
       "#{type} chart container should be hidden (display: none), got: #{display}"
   end
 
   def assert_tab_active(type)
     active = tab_data_active(type)
+
     assert_equal "true", active,
       "#{type} tab should have data-active=true, got: #{active}"
   end
 
   def assert_tab_inactive(type)
     active = tab_data_active(type)
+
     assert_equal "false", active,
       "#{type} tab should have data-active=false, got: #{active}"
   end
 
   def assert_toggles_visible(type)
     display = toggle_group_display(type)
+
     assert_not_equal "none", display,
       "#{type} toggle group should be visible, got display: #{display}"
   end
 
   def assert_toggles_hidden(type)
     display = toggle_group_display(type)
+
     assert_equal "none", display,
       "#{type} toggle group should be hidden (display: none), got: #{display}"
   end
