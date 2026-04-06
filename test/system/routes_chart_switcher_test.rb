@@ -83,7 +83,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
       assert_selector "##{chart_id}[data-chart-rendered='true']", wait: 10
 
       zoomed = apply_chart_zoom(chart_id.to_s)
-      skip "Not enough data points to zoom #{chart_type}" unless zoomed
+      assert zoomed, "Should have enough data points to zoom #{chart_type} (need at least 4 data points)"
 
       sleep 1.5 # Allow debounce + fetch
 
@@ -100,7 +100,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
 
     zoom_state = apply_chart_zoom_and_capture("response_time_percentiles_chart")
-    skip "Not enough data points to test zoom persistence" unless zoom_state
+    assert zoom_state, "Should have enough data points to test zoom persistence (need at least 4 data points)"
 
     # Switch to Request Volume and verify zoom
     click_tab(:request_volume)
@@ -128,7 +128,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     sleep 0.5
 
     zoomed = apply_chart_zoom("response_time_percentiles_chart")
-    skip "Not enough data points" unless zoomed
+    assert zoomed, "Should have enough data points (need at least 4 data points)"
 
     sleep 1.5
     assert_includes page.current_url, "zoom_start_time",
@@ -295,10 +295,11 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
   # ── Test data ────────────────────────────────────────────────────────────────
 
   def create_chart_summaries
-    # Create day-level summaries across the last 2 weeks so all 3 charts have data to display
+    # Create day-level summaries across the last 30 days (full month) to ensure
+    # sufficient data points for zoom operations (zoom requires at least 4 data points)
     route = rails_pulse_routes(:api_users)
 
-    14.downto(1) do |days_ago|
+    30.downto(1) do |days_ago|
       period_start = days_ago.days.ago.beginning_of_day
       next if RailsPulse::Summary.exists?(
         summarizable: route,
@@ -317,8 +318,8 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
         max_duration: 400.0,
         p95_duration: 280.0 + (days_ago * 8),
         p99_duration: 380.0 + (days_ago * 10),
-        error_count: days_ago == 7 ? 5 : 0,
-        status_4xx: days_ago == 5 ? 3 : 0,
+        error_count: days_ago % 7 == 0 ? 5 : 0,  # Errors every 7 days
+        status_4xx: days_ago % 5 == 0 ? 3 : 0,   # Client errors every 5 days
         success_count: 50 + (days_ago * 3)
       )
     end
