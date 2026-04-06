@@ -18,7 +18,6 @@ module ChartTableConcern
     unless turbo_frame_request?
       # Setup chart data first using original time range (no sorting from table)
       setup_chart_data(ransack_params)
-      setup_chart_formatters
       @has_chart_data = meaningful_chart_data?
     end
 
@@ -64,10 +63,6 @@ module ChartTableConcern
     @start_duration, @selected_response_range = setup_duration_range
   end
 
-  def setup_chart_formatters
-    @xaxis_formatter = RailsPulse::ChartFormatters.period_as_time_or_date(@time_diff_hours)
-    @tooltip_formatter = RailsPulse::ChartFormatters.tooltip_as_time_or_date_with_marker(@time_diff_hours)
-  end
 
   def period_type
     @time_diff_hours <= 25 ? :hour : :day

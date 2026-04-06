@@ -30,14 +30,18 @@ module RailsPulse
       {
         tooltip: {
           trigger: "axis",
-          axisPointer: { type: "shadow" }
+          axisPointer: { type: "shadow" },
+          formatter: "tooltip_with_timestamp"
         },
         toolbox: {
           feature: { saveAsImage: { show: false } }
         },
         xAxis: {
           axisLine: { show: false },
-          axisTick: { show: false }
+          axisTick: { show: false },
+          axisLabel: {
+            formatter: "timestamp_to_date"
+          }
         },
         yAxis: {
           splitArea: { show: false },
@@ -56,21 +60,19 @@ module RailsPulse
       }
     end
 
-    def bar_chart_options(units: nil, zoom: false, chart_start: 0, chart_end: 100, xaxis_formatter: nil, tooltip_formatter: nil, zoom_start: nil, zoom_end: nil, chart_data: nil)
+    def bar_chart_options(units: nil, zoom: false, chart_start: 0, chart_end: 100, zoom_start: nil, zoom_end: nil, chart_data: nil)
       options = base_chart_options(units: units, zoom: zoom).deep_merge({
         series: {
           itemStyle: { borderRadius: [ 5, 5, 5, 5 ] }
         }
       })
 
-      apply_tooltip_formatter(options, tooltip_formatter)
-      apply_xaxis_formatter(options, xaxis_formatter)
       apply_zoom_configuration(options, zoom, zoom_start, zoom_end, chart_data)
 
       options
     end
 
-    def line_chart_options(units: nil, zoom: false, chart_start: 0, chart_end: 100, xaxis_formatter: nil, tooltip_formatter: nil, zoom_start: nil, zoom_end: nil, chart_data: nil)
+    def line_chart_options(units: nil, zoom: false, chart_start: 0, chart_end: 100, zoom_start: nil, zoom_end: nil, chart_data: nil)
       options = base_chart_options(units: units, zoom: zoom).deep_merge({
         series: {
           smooth: true,
@@ -80,8 +82,6 @@ module RailsPulse
         }
       })
 
-      apply_tooltip_formatter(options, tooltip_formatter)
-      apply_xaxis_formatter(options, xaxis_formatter)
       apply_zoom_configuration(options, zoom, zoom_start, zoom_end, chart_data)
 
       options
@@ -121,23 +121,6 @@ module RailsPulse
     end
 
     private
-
-    # Wraps JavaScript function strings for later processing
-    def js_function(func_string)
-      "__FUNCTION_START__#{func_string}__FUNCTION_END__"
-    end
-
-    def apply_tooltip_formatter(options, tooltip_formatter)
-      return unless tooltip_formatter.present?
-
-      options[:tooltip][:formatter] = js_function(tooltip_formatter)
-    end
-
-    def apply_xaxis_formatter(options, xaxis_formatter)
-      return unless xaxis_formatter.present?
-
-      options[:xAxis][:axisLabel] ||= { formatter: js_function(xaxis_formatter) }
-    end
 
     def apply_zoom_configuration(options, zoom, zoom_start, zoom_end, chart_data)
       return unless zoom

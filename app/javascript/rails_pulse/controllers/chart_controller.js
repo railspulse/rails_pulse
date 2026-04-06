@@ -202,13 +202,8 @@ export default class extends Controller {
     // Remove function markers if present
     const cleanString = formatterString.replace(/__FUNCTION_START__|__FUNCTION_END__/g, '')
 
-    // If it's a function string, use safe formatter registry instead of eval()
-    if (cleanString.trim().startsWith('function')) {
-      // Extract formatter logic using safe parsing
-      // Rather than eval(), we match against known safe patterns
-      return this.getSafeFormatter(cleanString)
-    }
-    return cleanString
+    // Always use safe formatter registry (handles both function strings and keys like "timestamp_to_date")
+    return this.getSafeFormatter(cleanString)
   }
 
   /**
@@ -301,13 +296,165 @@ export default class extends Controller {
         }
 
         return size.toFixed(2) + ' ' + units[unitIndex]
+      },
+
+      // Tooltip formatters (these receive params array, not a single value)
+      // Tooltip with time (HH:00) and milliseconds
+      'tooltip_time_ms': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        const data = params[0]
+        const date = new Date(data.axisValue)
+        const dateString = date.getHours().toString().padStart(2, '0') + ':00'
+        const value = parseInt(data.data)
+
+        return `${dateString} <br /> ${data.marker} ${value} ms`
+      },
+
+      // Tooltip with date (Mon DD) and milliseconds
+      'tooltip_date_ms': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        const data = params[0]
+        const date = new Date(data.axisValue)
+        const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        const value = parseInt(data.data)
+
+        return `${dateString} <br /> ${data.marker} ${value} ms`
+      },
+
+      // Tooltip with time (HH:00) - generic
+      'tooltip_time': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        const data = params[0]
+        const date = new Date(data.axisValue)
+        const dateString = date.getHours().toString().padStart(2, '0') + ':00'
+
+        return `${dateString} <br /> ${data.marker} ${data.data}`
+      },
+
+      // Tooltip with date (Mon DD) - generic
+      'tooltip_date': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        const data = params[0]
+        const date = new Date(data.axisValue)
+        const dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+
+        return `${dateString} <br /> ${data.marker} ${data.data}`
+      },
+
+      // Auto date tooltip - formats timestamp and shows all series
+      'auto_date_tooltip': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        // Get the axis value (timestamp) from first series
+        const axisValue = params[0].axisValue || params[0].axisValueLabel
+        let dateString = axisValue
+
+        // Try to parse as timestamp and format
+        if (typeof axisValue === 'number' || (typeof axisValue === 'string' && !isNaN(Number(axisValue)))) {
+          const timestamp = Number(axisValue)
+          const date = new Date(timestamp)
+          if (!isNaN(date.getTime())) {
+            dateString = date.toLocaleDateString('en-US', {
+              month: 'short',
+              day: 'numeric',
+              year: date.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
+            })
+          }
+        }
+
+        // Build tooltip HTML with all series
+        let html = `${dateString}<br/>`
+        params.forEach(param => {
+          const value = typeof param.value === 'number' ? Math.round(param.value) : param.value
+          html += `${param.marker} ${param.seriesName}: ${value}<br/>`
+        })
+
+        return html
+      },
+
+      // Timestamp to date formatter for axis labels
+      'timestamp_to_date': (value) => {
+        // Try to parse as number if it's a numeric string
+        const numValue = typeof value === 'string' ? parseFloat(value) : value
+
+        // If it's a timestamp (number > 1 trillion = after year 2001 in ms), format it
+        if (typeof numValue === 'number' && !isNaN(numValue) && numValue > 1000000000000) {
+          const date = new Date(numValue)
+          if (!isNaN(date.getTime())) {
+            return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          }
+        }
+
+        // If it's already a formatted string (like "Mar 30"), return as-is
+        return value
+      },
+
+      // Tooltip with timestamp formatting
+      'tooltip_with_timestamp': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        // Get the axis value (could be timestamp or string)
+        const axisValue = params[0].axisValue
+        let dateString = axisValue
+
+        // Try to parse as number if it's a numeric string
+        const numValue = typeof axisValue === 'string' ? parseFloat(axisValue) : axisValue
+
+        // If it's a timestamp (number > 1 trillion = after year 2001 in ms), format it
+        if (typeof numValue === 'number' && !isNaN(numValue) && numValue > 1000000000000) {
+          const date = new Date(numValue)
+          if (!isNaN(date.getTime())) {
+            dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+          }
+        }
+
+        // Build tooltip HTML with all series
+        let html = `${dateString}<br/>`
+        params.forEach(param => {
+          const value = typeof param.value === 'number' ? Math.round(param.value) : param.value
+          html += `${param.marker} ${param.seriesName}: ${value}<br/>`
+        })
+
+        return html
       }
     }
 
     // IMPORTANT: Check for SPECIFIC patterns FIRST before generic keyword matching
     // The order matters! More specific patterns should be checked before generic ones.
 
-    // Check for specific function calls that uniquely identify the formatter type
+    // Check for tooltip formatters first (they have params[0], data.axisValue, data.marker)
+    const isTooltipFormatter = formatterString.includes('params') &&
+                                formatterString.includes('params[0]') &&
+                                formatterString.includes('axisValue')
+
+    if (isTooltipFormatter) {
+      // Check if it's time-based (has getHours)
+      if (formatterString.includes('getHours')) {
+        // Check if it formats milliseconds
+        if (formatterString.includes('ms')) {
+          return SAFE_FORMATTERS.tooltip_time_ms
+        }
+        return SAFE_FORMATTERS.tooltip_time
+      }
+
+      // Check if it's date-based (has toLocaleDateString)
+      if (formatterString.includes('toLocaleDateString')) {
+        // Check if it formats milliseconds
+        if (formatterString.includes('ms')) {
+          return SAFE_FORMATTERS.tooltip_date_ms
+        }
+        return SAFE_FORMATTERS.tooltip_date
+      }
+
+      // Default tooltip formatter (shouldn't reach here normally)
+      return SAFE_FORMATTERS.tooltip_date
+    }
+
+    // Check for axis label formatters (single value parameter)
     if (formatterString.includes('getHours')) {
       return SAFE_FORMATTERS.time
     }
@@ -328,8 +475,13 @@ export default class extends Controller {
       return SAFE_FORMATTERS.duration_ms
     }
 
+    // Try exact match first
+    if (SAFE_FORMATTERS[formatterString]) {
+      return SAFE_FORMATTERS[formatterString]
+    }
+
     // Try to match the formatter string to a known safe pattern by key name
-    // This is less specific and should come after the function call checks above
+    // This is less specific and should come after exact match
     for (const [key, formatter] of Object.entries(SAFE_FORMATTERS)) {
       if (formatterString.includes(key) ||
           formatterString.includes(key.replace('_', ''))) {

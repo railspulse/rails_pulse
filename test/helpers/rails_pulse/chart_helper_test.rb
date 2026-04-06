@@ -11,24 +11,18 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
     assert opts[:animation]
   end
 
-  test "bar_chart_options deep merges series and applies formatters" do
-    opts = bar_chart_options(units: "ms", zoom: false,
-                             xaxis_formatter: "formatX",
-                             tooltip_formatter: "formatT")
+  test "bar_chart_options deep merges series" do
+    opts = bar_chart_options(units: "ms", zoom: false)
 
     assert_equal [ 5, 5, 5, 5 ], opts[:series][:itemStyle][:borderRadius]
-    assert_equal "__FUNCTION_START__formatT__FUNCTION_END__", opts[:tooltip][:formatter]
   end
 
-  test "line_chart_options deep merges series and applies formatters" do
-    opts = line_chart_options(units: "ms", zoom: false,
-                              xaxis_formatter: "formatX",
-                              tooltip_formatter: "formatT")
+  test "line_chart_options deep merges series" do
+    opts = line_chart_options(units: "ms", zoom: false)
 
     assert opts[:series][:smooth]
     assert_equal 3, opts[:series][:lineStyle][:width]
     assert_equal "circle", opts[:series][:symbol]
-    assert_equal "__FUNCTION_START__formatT__FUNCTION_END__", opts[:tooltip][:formatter]
   end
 
   test "sparkline_chart_options hides axes and grid" do
