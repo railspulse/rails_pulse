@@ -1,128 +1,44 @@
-<%# ============================================================
-    DASHBOARD — Rails Pulse Dashboard with health summary
-    ============================================================ %>
-
-<%# ── 1. SYSTEM HEALTH BAR + PAGE TIME RANGE ─────────────────── %>
-<style>
-  .dashboard-health-bar {
-    padding: 0.75rem 1rem;
-  }
-  .dashboard-health-bar__content {
-    display: flex;
-    align-items: center;
-    gap: 1.5rem;
-    flex-wrap: wrap;
-  }
-  .dashboard-health-bar__label {
-    flex-shrink: 0;
-    color: var(--color-text-subtle);
-  }
-  .dashboard-health-bar__badges {
-    display: flex;
-    align-items: center;
-    gap: 0.75rem;
-    flex-wrap: wrap;
-    flex: 1;
-    min-width: 0;
-  }
-  .dashboard-health-bar__controls {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-shrink: 0;
-  }
-  .dashboard-health-bar__period-selector {
-    display: flex;
-    align-items: center;
-    gap: 0;
-    border: 1px solid var(--color-border);
-    border-radius: 6px;
-    overflow: hidden;
-  }
-  .dashboard-health-bar__period-button {
-    padding: 0.2rem 0.6rem;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-decoration: none;
-    display: inline-block;
-    border: none;
-    cursor: pointer;
-  }
-  .dashboard-health-bar__period-button:not(:first-child) {
-    border-left: 1px solid var(--color-border);
-  }
-  .dashboard-health-bar__period-button[data-active="true"] {
-    background: var(--color-primary);
-    color: var(--color-text-reversed);
-  }
-  .dashboard-health-bar__period-button[data-active="false"] {
-    background: transparent;
-    color: var(--color-text-subtle);
-  }
-
-  @media (max-width: 1200px) {
-    .dashboard-health-bar__content {
-      gap: 1rem;
-    }
-    .dashboard-health-bar__badges {
-      gap: 0.5rem;
-    }
-  }
-
-  @media (max-width: 900px) {
-    .dashboard-health-bar__content {
-      gap: 0.75rem;
-    }
-    .dashboard-health-bar__label {
-      width: 100%;
-      margin-bottom: 0.25rem;
-    }
-    .dashboard-health-bar__badges {
-      flex: 1;
-      min-width: 0;
-    }
-    .dashboard-health-bar__controls {
-      margin-left: 0;
-      width: 100%;
-      justify-content: space-between;
-      margin-top: 0.5rem;
-    }
-  }
-
-  @media (max-width: 640px) {
-    .dashboard-health-bar {
-      padding: 0.5rem 0.75rem;
-    }
-    .dashboard-health-bar__updated {
-      display: none;
-    }
-  }
-</style>
-
 <div class="card dashboard-health-bar">
   <div class="dashboard-health-bar__content">
-    <span class="font-semibold uppercase text-xs dashboard-health-bar__label">System Health</span>
+    <span
+      class="
+        font-semibold uppercase text-xs text-subtle shrink-0 dashboard-health-bar__label
+      "
+    >System Health</span>
 
     <div class="dashboard-health-bar__badges">
-      <%= render "rails_pulse/dashboard/health_badge", name: "Routes", health: @health_summary[:routes], critical_label: "critical" %>
-      <%= render "rails_pulse/dashboard/health_badge", name: "Queries", health: @health_summary[:queries], critical_label: "critical" %>
+      <%= render "rails_pulse/dashboard/health_badge",
+      name: "Routes",
+      health: @health_summary[:routes],
+      critical_label: "critical" %>
+      <%= render "rails_pulse/dashboard/health_badge",
+      name: "Queries",
+      health: @health_summary[:queries],
+      critical_label: "critical" %>
       <% if @health_summary[:jobs] %>
-        <%= render "rails_pulse/dashboard/health_badge", name: "Jobs", health: @health_summary[:jobs], critical_label: "failing" %>
+        <%= render "rails_pulse/dashboard/health_badge",
+        name: "Jobs",
+        health: @health_summary[:jobs],
+        critical_label: "failing" %>
       <% end %>
     </div>
 
     <div class="dashboard-health-bar__controls">
-      <div class="dashboard-health-bar__period-selector" data-controller="rails-pulse--period-selector">
+      <div
+        class="dashboard-health-bar__period-selector"
+        data-controller="rails-pulse--period-selector"
+      >
         <% [[7, "7d"], [14, "14d"], [30, "30d"]].each do |days, label| %>
           <% active = @period == days %>
-          <a href="<%= rails_pulse.root_path(period: days) %>"
-             class="dashboard-health-bar__period-button"
-             data-turbo-frame="dashboard_data"
-             data-turbo-action="advance"
-             data-rails-pulse--period-selector-target="button"
-             data-action="click->rails-pulse--period-selector#select"
-             data-active="<%= active %>">
+          <a
+            href="<%= rails_pulse.root_path(period: days) %>"
+            class="dashboard-health-bar__period-button"
+            data-turbo-frame="dashboard_data"
+            data-turbo-action="advance"
+            data-rails-pulse--period-selector-target="button"
+            data-action="click->rails-pulse--period-selector#select"
+            data-active="<%= active %>"
+          >
             <%= label %>
           </a>
         <% end %>
@@ -133,97 +49,136 @@
 </div>
 
 <turbo-frame id="dashboard_data">
-
-<%# ── 2. METRIC STRIP (4 cards — error rate combined) ───────── %>
-<%
-  metric_strip_cards = [
-    @percentile_response_times_metric_card&.merge(link_url: routes_path(chart_type: "response_time", period: @period)),
-    @request_count_totals_metric_card&.merge(link_url: routes_path(chart_type: "request_volume", period: @period)),
-    @error_rates_metric_card&.merge(link_url: routes_path(chart_type: "error_rate", period: @period))
+  <% metric_strip_cards = [
+    @percentile_response_times_metric_card&.merge(
+      link_url: routes_path(chart_type: "response_time", period: @period),
+    ),
+    @request_count_totals_metric_card&.merge(
+      link_url: routes_path(chart_type: "request_volume", period: @period),
+    ),
+    @error_rates_metric_card&.merge(
+      link_url: routes_path(chart_type: "error_rate", period: @period),
+    ),
   ].compact
-  metric_strip_cards << @job_failure_rate_metric_card&.merge(link_url: jobs_path) if @job_failure_rate_metric_card
-%>
-<%= render "rails_pulse/components/metric_strip", metrics_data: metric_strip_cards %>
+  if @job_failure_rate_metric_card
+    metric_strip_cards << @job_failure_rate_metric_card&.merge(
+      link_url: jobs_path,
+    )
+  end %>
+  <%= render "rails_pulse/components/metric_strip", metrics_data: metric_strip_cards %>
 
-<%# ── 3. CHARTS ROW ──────────────────────────────────────────── %>
-<div class="row">
-  <%# Response Time Percentiles (P50 + P95 + P99) — 60% width %>
-  <% response_time_toggles = capture do %>
-    <%= render "rails_pulse/dashboard/series_toggle", label: "P50", series_name: "P50", chart_id: "response_time_percentiles_chart", color: RailsPulse::ChartColors::DEFAULT %>
-    <%= render "rails_pulse/dashboard/series_toggle", label: "P95", series_name: "P95", chart_id: "response_time_percentiles_chart", color: RailsPulse::ChartColors::P95 %>
-    <%= render "rails_pulse/dashboard/series_toggle", label: "P99", series_name: "P99", chart_id: "response_time_percentiles_chart", color: RailsPulse::ChartColors::P99 %>
-  <% end %>
+  <div class="row">
+    <%# Response Time Percentiles (P50 + P95 + P99) — 60% width %>
+    <% response_time_toggles = capture do %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "P50",
+      series_name: "P50",
+      chart_id: "response_time_percentiles_chart",
+      color: RailsPulse::ChartColors::DEFAULT %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "P95",
+      series_name: "P95",
+      chart_id: "response_time_percentiles_chart",
+      color: RailsPulse::ChartColors::P95 %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "P99",
+      series_name: "P99",
+      chart_id: "response_time_percentiles_chart",
+      color: RailsPulse::ChartColors::P99 %>
+    <% end %>
 
-  <%= render "rails_pulse/dashboard/chart_panel",
+    <%= render "rails_pulse/dashboard/chart_panel",
     flex_style: "flex: 1.5;",
     title: "Response Time Percentiles",
     help_title: "Response Time Percentiles",
-    help_text: "P50 (median), P95, and P99 response times show the distribution of request latency. P95 means 95% of requests are faster than this value. Higher percentiles reveal tail latency affecting a subset of users.",
+    help_text:
+      "P50 (median), P95, and P99 response times show the distribution of request latency. P95 means 95% of requests are faster than this value. Higher percentiles reveal tail latency affecting a subset of users.",
     link_url: routes_path(chart_type: "response_time", period: @period),
     chart_data: @response_time_percentiles_chart_data,
-    chart_type: 'line',
+    chart_type: "line",
     chart_id: "response_time_percentiles_chart",
     chart_options: line_chart_options(units: "ms"),
     empty_message: "No response time data available for this period.",
     series_toggles: response_time_toggles %>
 
-  <%# Throughput & Errors combo %>
-  <% throughput_toggles = capture do %>
-    <%= render "rails_pulse/dashboard/series_toggle", label: "Requests", series_name: "Requests", chart_id: "throughput_and_errors_chart", color: RailsPulse::ChartColors::DEFAULT %>
-    <%= render "rails_pulse/dashboard/series_toggle", label: "Errors", series_name: "Errors", chart_id: "throughput_and_errors_chart", color: "#dc2626" %>
-  <% end %>
+    <%# Throughput & Errors combo %>
+    <% throughput_toggles = capture do %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "Requests",
+      series_name: "Requests",
+      chart_id: "throughput_and_errors_chart",
+      color: RailsPulse::ChartColors::DEFAULT %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "Errors",
+      series_name: "Errors",
+      chart_id: "throughput_and_errors_chart",
+      color: "#dc2626" %>
+    <% end %>
 
-  <%= render "rails_pulse/dashboard/chart_panel",
+    <%= render "rails_pulse/dashboard/chart_panel",
     title: "Throughput & Errors",
     help_title: "Throughput & Errors",
-    help_text: "Daily request volume with errors overlaid. The red bar shows error count on top of total requests. Monitor both metrics together to identify traffic spikes, error rate patterns, and capacity planning needs.",
+    help_text:
+      "Daily request volume with errors overlaid. The red bar shows error count on top of total requests. Monitor both metrics together to identify traffic spikes, error rate patterns, and capacity planning needs.",
     link_url: routes_path(chart_type: "request_volume", period: @period),
     chart_data: @throughput_and_errors_chart_data,
-    chart_type: 'bar',
+    chart_type: "bar",
     chart_id: "throughput_and_errors_chart",
     chart_options: bar_chart_options,
     empty_message: "No request data available for this period.",
     series_toggles: throughput_toggles %>
-</div>
-
-<%# ── 4. NEEDS ATTENTION ──────────────────────────────────────── %>
-<div class="card">
-  <div class="flex items-center" style="margin-bottom: 0.75rem;">
-    <h2 class="font-semibold leading-none uppercase text-xs">Needs Attention</h2>
-    <% if @needs_attention[:total] > 0 %>
-      <span class="badge badge--negative" style="margin-left: 0.5rem; font-size: 0.65em; padding: 0.1rem 0.4rem;"><%= @needs_attention[:total] %> <%= @needs_attention[:total] == 1 ? "issue" : "issues" %></span>
-    <% end %>
-    <span class="text-xs text-subtle" style="margin-left: auto;">Ranked by severity · this week</span>
   </div>
 
-  <% if @needs_attention[:total] == 0 %>
-    <%# ── ALL CLEAR ─────────────────────────────────────────── %>
-    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 2rem 1rem; gap: 0.5rem;">
-      <span style="width: 2rem; height: 2rem; border-radius: 50%; background: color-mix(in srgb, var(--color-positive) 15%, transparent); border: 2px solid color-mix(in srgb, var(--color-positive) 40%, transparent); display: flex; align-items: center; justify-content: center;">
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="color: var(--color-positive);"><polyline points="20 6 9 17 4 12"/></svg>
-      </span>
-      <p class="font-semibold text-sm" style="color: var(--color-positive);">All clear</p>
-      <p class="text-xs text-subtle">No routes, queries, or jobs need attention this week.</p>
+  <div class="card">
+    <div class="flex items-center mbe-3">
+      <h2 class="font-semibold leading-none uppercase text-xs">Needs Attention</h2>
+      <% if @needs_attention[:total] > 0 %>
+        <span class="badge badge--negative mis-2 text-xs">
+          <%= @needs_attention[:total] %>
+          <%= @needs_attention[:total] == 1 ? "issue" : "issues" %>
+        </span>
+      <% end %>
+      <span class="text-xs text-subtle mis-auto">Ranked by severity · this week</span>
     </div>
-  <% else %>
-    <div style="display: flex; flex-direction: column;">
-      <% if @needs_attention[:critical].any? %>
-        <%= render "rails_pulse/dashboard/attention_section",
+
+    <% if @needs_attention[:total] == 0 %>
+      <div class="flex flex-col items-center justify-center pb-8 pi-4 gap">
+        <span class="all-clear-icon">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="text-positive"
+          ><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <p class="font-semibold text-sm text-positive">All clear</p>
+        <p class="text-xs text-subtle">No routes, queries, or jobs need attention this week.</p>
+      </div>
+    <% else %>
+      <div class="flex flex-col">
+        <% if @needs_attention[:critical].any? %>
+          <%= render "rails_pulse/dashboard/attention_section",
           severity: "critical",
           count: @needs_attention[:critical].size,
           items: @needs_attention[:critical],
           add_spacing: false %>
-      <% end %>
+        <% end %>
 
-      <% if @needs_attention[:warning].any? %>
-        <%= render "rails_pulse/dashboard/attention_section",
+        <% if @needs_attention[:warning].any? %>
+          <%= render "rails_pulse/dashboard/attention_section",
           severity: "warning",
           count: @needs_attention[:warning].size,
           items: @needs_attention[:warning],
           add_spacing: @needs_attention[:critical].any? %>
-      <% end %>
-    </div>
-  <% end %>
-</div>
+        <% end %>
+      </div>
+    <% end %>
+  </div>
 
 </turbo-frame>

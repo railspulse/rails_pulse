@@ -1,18 +1,42 @@
-<% indicator_color = severity == "critical" ? "var(--color-negative)" : "#eab308" %>
-<% badge_bg = severity == "critical" ? "color-mix(in srgb, var(--color-negative) 12%, transparent)" : "color-mix(in srgb, #eab308 12%, transparent)" %>
-<% badge_border = severity == "critical" ? "color-mix(in srgb, var(--color-negative) 30%, transparent)" : "color-mix(in srgb, #eab308 30%, transparent)" %>
-<% badge_text = severity == "critical" ? "var(--color-negative)" : "#854d0e" %>
-<% metric_color = severity == "critical" ? "var(--color-negative)" : "#eab308" %>
+<% indicator_class =
+  (
+    if severity == "critical"
+      "attention-item__indicator--critical"
+    else
+      "attention-item__indicator--warning"
+    end
+  ) %>
+<% badge_class =
+  (
+    if severity == "critical"
+      "attention-item__badge--critical"
+    else
+      "attention-item__badge--warning"
+    end
+  ) %>
+<% metric_class =
+  (
+    if severity == "critical"
+      "attention-item__metric-value--critical"
+    else
+      "attention-item__metric-value--warning"
+    end
+  ) %>
 
-<div style="display: flex; align-items: center; gap: 1rem; padding: 0.5rem 0; border-bottom: 1px solid var(--color-border);">
-  <div style="width: 3px; height: 2rem; background: <%= indicator_color %>; border-radius: 2px; flex-shrink: 0;"></div>
-  <span class="badge" style="font-size: 0.65em; background: <%= badge_bg %>; border-color: <%= badge_border %>; color: <%= badge_text %>; flex-shrink: 0; width: 3.5rem; text-align: center;"><%= item[:type] %></span>
-  <div style="flex: 1; min-width: 0;">
-    <a href="<%= item[:link] %>" class="font-semibold text-sm" style="color: var(--color-link); <%= item[:monospace] ? "font-family: monospace; font-size: 0.8em;" : "" %>" data-turbo="false"><%= item[:name] %></a>
-    <p class="text-xs text-subtle" style="margin-top: 1px;"><%= item[:reason] %></p>
+<div class="attention-item">
+  <div class="attention-item__indicator <%= indicator_class %>"></div>
+  <span class="badge attention-item__badge <%= badge_class %>"><%= item[:type] %></span>
+  <div class="attention-item__content">
+    <a
+      href="<%= item[:link] %>"
+      class="font-semibold text-sm text-primary"
+      style="color: var(--color-link); <%= item[:monospace] ? "font-family: monospace; font-size: 0.8em;" : "" %>"
+      data-turbo="false"
+    ><%= item[:name] %></a>
+    <p class="text-xs text-subtle mbs-0"><%= item[:reason] %></p>
   </div>
-  <div style="text-align: right; flex-shrink: 0;">
-    <span class="font-semibold text-sm" style="color: <%= metric_color %>;"><%= item[:metric] %></span>
+  <div class="attention-item__metric">
+    <span class="font-semibold text-sm <%= metric_class %>"><%= item[:metric] %></span>
     <p class="text-xs text-subtle"><%= item[:metric_sub] %></p>
   </div>
 </div>
