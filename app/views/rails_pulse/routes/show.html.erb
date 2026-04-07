@@ -1,62 +1,38 @@
 <%= render 'rails_pulse/components/page_header', taggable: @route %>
 
-<% unless turbo_frame_request? %>
-  <% metric_cards = [
-    @percentile_response_times_metric_card,
-    @request_count_totals_metric_card,
-    @error_rates_metric_card
-  ].compact %>
-  <%= render 'rails_pulse/components/metric_strip', metrics_data: metric_cards %>
-<% end %>
+<%= render "rails_pulse/routes/metric_cards" %>
 
 <div
   class="row"
-  data-controller="rails-pulse--index"
-  data-rails-pulse--index-chart-id-value="route_responses_chart"
+  data-controller="rails-pulse--index rails-pulse--chart-switcher"
+  data-rails-pulse--index-chart-id-value="response_time_percentiles_chart"
+  data-rails-pulse--chart-switcher-selected-value="response_time"
+  data-action="
+    rails-pulse--chart-switcher:switched->rails-pulse--index#handleChartSwitched
+  "
 >
   <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', {
-      title: 'Route Requests',
-      series_toggles: [
-        { name: "P95", color: RailsPulse::ChartColors::P95 },
-        { name: "P99", color: RailsPulse::ChartColors::P99 }
-      ],
-      series_toggles_chart_id: "route_responses_chart"
-    } do %>
-      <%= search_form_for @ransack_query, url: route_path(@route), class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
-        <div class="flex items-center grow gap">
-          <%= time_range_selector(form, time_range_options: RailsPulse::RoutesController::TIME_RANGE_OPTIONS, selected_time_range: @selected_time_range) %>
+    <%= render 'rails_pulse/components/panel', { title: 'Route Requests' } do %>
+      <div class="filter-bar">
+        <%= search_form_for @ransack_query, url: route_path(@route), class: "filter-bar__form" do |form| %>
+          <input
+            type="hidden"
+            name="chart_type"
+            data-rails-pulse--chart-switcher-target="chartTypeInput"
+          >
           <%= form.select :avg_duration,
             duration_options(:route),
             { selected: @selected_response_range },
             { class: "input" }
           %>
-          <%= link_to "Reset", route_path(@route), class: "btn btn--borderless show@md" if params.has_key?(:q) %>
-          <%= form.submit "Search", class: "btn show@sm" %>
-        </div>
-      <% end %>
+          <%= link_to "Reset", route_path(@route), class: "btn btn--plain", style: "text-decoration: none; color: var(--color-text-muted);" if params.has_key?(:q) %>
+          <%= form.submit "Search", class: "btn" %>
+        <% end %>
+      </div>
 
       <% unless turbo_frame_request? %>
         <% if @has_chart_data %>
-          <div
-            class="chart-container chart-container--slim"
-            data-rails-pulse--index-target="chart"
-          >
-            <%= render_stimulus_chart(
-              @chart_data,
-              type: 'line',
-              code: false,
-              id: "route_responses_chart",
-              height: "100%",
-              options: line_chart_options(
-                units: "ms",
-                zoom: true,
-                zoom_start: @zoom_start,
-                zoom_end: @zoom_end,
-                chart_data: @chart_data
-              )
-            ) %>
-          </div>
+          <%= render "rails_pulse/routes/chart_tabs" %>
         <% end %>
       <% end %>
 
