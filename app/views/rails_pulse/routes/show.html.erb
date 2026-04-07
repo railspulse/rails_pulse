@@ -12,7 +12,11 @@
   "
 >
   <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', { title: 'Route Requests' } do %>
+    <%= render 'rails_pulse/components/panel', {
+      title: 'Route Requests',
+      help_heading: 'Route Performance Charts',
+      help_text: 'Toggle between different performance metrics for this route. Response Time shows P95/P99 latency, Request Rate shows traffic patterns, and Error Rate tracks failure rates over time.'
+    } do %>
       <div class="filter-bar">
         <%= search_form_for @ransack_query, url: route_path(@route), class: "filter-bar__form" do |form| %>
           <input

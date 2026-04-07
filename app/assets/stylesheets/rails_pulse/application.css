@@ -149,7 +149,6 @@ html[data-color-scheme="dark"] .input {
   position: absolute;
   height: 22px;
   min-width: 3px;
-  border-radius: 3px;
   overflow: hidden;
   cursor: pointer;
   box-sizing: border-box;
