@@ -9,7 +9,6 @@ RailsPulse::Engine.routes.draw do
     end
   end
   resources :operations, only: %i[show]
-  resources :caches, only: %i[show], as: :cache
 
   if RailsPulse.configuration.track_jobs
     resources :jobs, only: %i[index show], param: :id do
