@@ -143,6 +143,18 @@ task :test do
   sh "rails test test/controllers test/helpers test/instrumentation test/jobs test/models test/services"
 end
 
+desc "Run test suite with code coverage"
+task :test_coverage do
+  ENV["COVERAGE"] = "true"
+  Rake::Task[:test].invoke
+
+  puts "\n" + "=" * 50
+  puts "📊 Coverage Report"
+  puts "=" * 50
+  puts "Open coverage/index.html to view detailed results"
+  puts "=" * 50
+end
+
 desc "Setup database for specific Rails version and database"
 task :test_setup_for_version, [ :database, :rails_version ] do |t, args|
   database = args[:database] || ENV['DB'] || 'sqlite3'

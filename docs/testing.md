@@ -947,4 +947,110 @@ All pull requests should pass the complete test matrix. Local development can us
 
 ---
 
-**Last Updated:** 2025-10-29
+## Code Coverage
+
+RailsPulse uses SimpleCov for code coverage tracking. Coverage analysis helps identify untested code and maintain high test quality.
+
+### Running Tests with Coverage
+
+Enable coverage tracking by setting the `COVERAGE` environment variable:
+
+```bash
+# Run tests with coverage (SQLite3 by default)
+COVERAGE=true rails test
+
+# Or use the rake task
+rake test_coverage
+
+# With specific database
+COVERAGE=true DB=postgresql rails test
+```
+
+### Viewing Coverage Reports
+
+After running tests with coverage enabled:
+
+1. Open `coverage/index.html` in your browser
+2. Review overall coverage percentage and per-file metrics
+3. Click through files to see line-by-line coverage
+
+### Coverage Configuration
+
+SimpleCov is configured in `.simplecov` with:
+
+- **Minimum coverage thresholds**: 90% overall, 80% per file
+- **Branch coverage enabled**: Tracks if/else branch execution
+- **File tracking**: Shows files with 0% coverage (untested code)
+- **Grouped reporting**: Organizes by component type (Models, Controllers, Services, etc.)
+- **Parallel test support**: Each worker reports separately for accurate results
+
+### Coverage Groups
+
+Coverage is organized into logical groups:
+
+- **Models**: `app/models`
+- **Controllers**: `app/controllers`
+- **Middleware**: `app/middleware`
+- **Services**: `app/services`
+- **Concerns**: `app/controllers/concerns`
+- **Card Components**: `app/models/rails_pulse/*/cards`
+- **Chart Components**: `app/models/rails_pulse/dashboard/charts`
+- **Lib**: `lib/rails_pulse`
+- **Generators**: `lib/generators`
+
+### What's Excluded from Coverage
+
+- Test code (`/test/`)
+- Config files (`/config/`)
+- Dummy app (`/test/dummy/`)
+- Database migrations (`/db/`)
+
+### Coverage Best Practices
+
+1. **Run coverage regularly** during development to catch untested code early
+2. **Investigate 0% coverage** files - they indicate completely untested code
+3. **Check branch coverage** - 100% line coverage doesn't mean all code paths are tested
+4. **Don't game the metrics** - focus on meaningful tests, not just hitting coverage targets
+5. **Review coverage in PRs** - ensure new features include tests
+
+### CI Integration
+
+In CI environments, SimpleCov uses a simple text formatter. For integration with services like Codecov or Coveralls, add the appropriate formatter gem:
+
+```ruby
+# Gemfile
+group :development, :test do
+  gem "simplecov-cobertura", require: false  # For XML reports
+end
+```
+
+Then update the formatter configuration in `.simplecov`:
+
+```ruby
+# .simplecov
+if ENV["CI"]
+  require "simplecov-cobertura"
+  SimpleCov.formatters = SimpleCov::Formatter::MultiFormatter.new([
+    SimpleCov::Formatter::SimpleFormatter,
+    SimpleCov::Formatter::CoberturaFormatter
+  ])
+end
+```
+
+### Parallel Test Considerations
+
+Coverage tracking automatically disables parallel test execution for accuracy. Each test worker gets a unique command name for proper coverage merging:
+
+```ruby
+# test/test_helper.rb
+SimpleCov.command_name "test:#{Process.pid}"
+
+# Disable parallelization when coverage is enabled
+parallelize(workers: (ENV["BROWSER"] || ENV["COVERAGE"]) ? 0 : :number_of_processors)
+```
+
+When `COVERAGE=true`, tests run serially to ensure accurate coverage measurement.
+
+---
+
+**Last Updated:** 2026-04-08

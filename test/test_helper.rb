@@ -1,16 +1,10 @@
 # Enable code coverage tracking when COVERAGE env var is set
+# Configuration loaded from .simplecov file
 if ENV["COVERAGE"]
   require "simplecov"
 
-  SimpleCov.start "rails" do
-    add_filter "/test/"
-    add_filter "/config/"
-    add_group "Models", "app/models"
-    add_group "Controllers", "app/controllers"
-    add_group "Middleware", "app/middleware"
-    add_group "Cards", "app/models/rails_pulse/*/cards"
-    add_group "Charts", "app/models/rails_pulse/dashboard/charts"
-  end
+  # Support parallel test execution with unique command names
+  SimpleCov.command_name "test:#{Process.pid}"
 end
 
 ENV["RAILS_ENV"] = "test"

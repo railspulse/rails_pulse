@@ -47,12 +47,6 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_equal RailsPulse::Request, controller.send(:table_model)
   end
 
-  test "uses correct chart class" do
-    controller = RailsPulse::RoutesController.new
-
-    assert_equal RailsPulse::Routes::Charts::ResponseTimePercentiles, controller.send(:chart_class)
-  end
-
   test "default table sort" do
     controller = RailsPulse::RoutesController.new
 

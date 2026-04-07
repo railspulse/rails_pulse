@@ -49,10 +49,6 @@ module RailsPulse
       show_action? ? Request : Summary
     end
 
-    def chart_class
-      Routes::Charts::ResponseTimePercentiles
-    end
-
     # Pass the route to chart classes on show pages
     def chart_options
       show_action? ? { route: @route } : {}
@@ -109,10 +105,6 @@ module RailsPulse
 
     def default_time_range_key
       :last_14_days
-    end
-
-    def duration_field
-      :avg_duration
     end
 
     # Override table data setup to handle custom sorting logic for index page

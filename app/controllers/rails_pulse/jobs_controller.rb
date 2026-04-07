@@ -5,7 +5,6 @@ module RailsPulse
     include MetricCardConcern
 
     before_action :set_job, only: :show
-    after_action :set_legacy_instance_variables
 
     def index
       setup_metric_cards
@@ -54,10 +53,6 @@ module RailsPulse
 
     def table_model
       show_action? ? JobRun : Summary
-    end
-
-    def chart_class
-      Jobs::Charts::Duration
     end
 
     # Pass the job to chart classes on show pages
@@ -113,20 +108,6 @@ module RailsPulse
 
     def default_time_range_key
       :last_7_days
-    end
-
-    def duration_field
-      :avg_duration
-    end
-
-    # Backward compatibility: set legacy instance variable names expected by tests
-    # Convert to array to avoid issues with grouped queries returning Hash from .size
-    def set_legacy_instance_variables
-      if show_action?
-        @recent_runs = @table_data.is_a?(ActiveRecord::Relation) ? @table_data.to_a : @table_data
-      else
-        @jobs = @table_data.is_a?(ActiveRecord::Relation) ? @table_data.to_a : @table_data
-      end
     end
   end
 end

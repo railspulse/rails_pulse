@@ -74,17 +74,8 @@ module RailsPulse
 
     # Override to handle database_load card which has different params
     def setup_metric_cards
+      super
       return if turbo_frame_request?
-
-      card_params = metric_card_params
-
-      # Setup standard metric cards
-      metric_card_definitions.each do |ivar_name, card_class|
-        instance_variable_set(
-          "@#{ivar_name}",
-          card_class.new(**card_params).to_metric_card
-        )
-      end
 
       # Database load card only shows on index page and doesn't accept query param
       if current_resource.nil?
@@ -116,10 +107,6 @@ module RailsPulse
 
     def table_model
       Summary
-    end
-
-    def chart_class
-      Queries::Charts::QueryPerformance
     end
 
     # Pass the query to chart classes on show pages

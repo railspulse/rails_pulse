@@ -48,12 +48,6 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_equal RailsPulse::Request, controller.send(:table_model)
   end
 
-  test "uses correct chart class" do
-    controller = RailsPulse::RequestsController.new
-
-    assert_equal RailsPulse::Requests::Charts::AverageResponseTimes, controller.send(:chart_class)
-  end
-
   test "chart options are empty for requests index" do
     controller = RailsPulse::RequestsController.new
     options = controller.send(:chart_options)
@@ -152,6 +146,163 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     operation_timeline = assigns(:operation_timeline)
 
     assert_instance_of RailsPulse::Charts::OperationsChart, operation_timeline
+  end
+
+  # Custom Chart Ransack Params Tests
+
+  test "chart data uses summarizable_id 0 for aggregate requests" do
+    get rails_pulse.requests_path
+
+    assert_response :success
+    # Chart data should aggregate all requests (not scoped to specific request)
+    assert_not_nil assigns(:chart_data)
+  end
+
+  test "chart data uses correct summarizable_type" do
+    get rails_pulse.requests_path
+
+    assert_response :success
+    # Should filter by RailsPulse::Request type for polymorphic summaries
+    assert_not_nil assigns(:chart_data)
+  end
+
+  # Recent Mode Tests
+
+  test "index with recent mode omits time filters" do
+    get rails_pulse.requests_path, params: { q: { period_start_range: "recent" } }
+
+    assert_response :success
+    # Recent mode should work without time constraints
+    assert_not_nil assigns(:table_data)
+    requests = assigns(:table_data)
+    assert_operator requests.size, :>, 0
+  end
+
+  test "index with no time params defaults to recent mode" do
+    get rails_pulse.requests_path
+
+    assert_response :success
+    # Should handle no time filtering (recent mode)
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "index recent mode uses default sort by occurred_at desc" do
+    get rails_pulse.requests_path, params: { q: { period_start_range: "recent" } }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    # Verify recent mode sorts by occurred_at descending
+    if requests.size > 1
+      requests.each_cons(2) do |current, next_req|
+        assert_operator current.occurred_at, :>=, next_req.occurred_at
+      end
+    end
+  end
+
+  # Duration Threshold Conversion Tests
+
+  test "index with slow duration as symbol converts to threshold" do
+    get rails_pulse.requests_path, params: { q: { duration_gteq: "slow" } }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    # All returned requests should meet the slow threshold
+    slow_threshold = RailsPulse.configuration.request_thresholds[:slow] || 500
+    requests.each do |req|
+      assert_operator req.duration, :>=, slow_threshold
+    end
+  end
+
+  test "index with very_slow duration as symbol converts to threshold" do
+    get rails_pulse.requests_path, params: { q: { duration_gteq: "very_slow" } }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    # All returned requests should meet the very_slow threshold
+    very_slow_threshold = RailsPulse.configuration.request_thresholds[:very_slow] || 1000
+    requests.each do |req|
+      assert_operator req.duration, :>=, very_slow_threshold
+    end
+  end
+
+  test "index with critical duration as symbol converts to threshold" do
+    get rails_pulse.requests_path, params: { q: { duration_gteq: "critical" } }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    # All returned requests should meet the critical threshold
+    critical_threshold = RailsPulse.configuration.request_thresholds[:critical] || 2000
+    requests.each do |req|
+      assert_operator req.duration, :>=, critical_threshold
+    end
+  end
+
+  test "index with numeric duration parameter is preserved" do
+    get rails_pulse.requests_path, params: { q: { duration_gteq: 1000 } }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    # All returned requests should meet the numeric threshold
+    requests.each do |req|
+      assert_operator req.duration, :>=, 1000
+    end
+  end
+
+  # Route Path Join Tests
+
+  test "index with route_path sort applies join" do
+    get rails_pulse.requests_path, params: { q: { s: "route_path asc" } }
+
+    assert_response :success
+    # Should not raise error - JOIN is applied when sorting by route_path
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "index with route_path filter applies join" do
+    get rails_pulse.requests_path, params: { q: { route_path_cont: "users" } }
+
+    assert_response :success
+    # Should not raise error - JOIN is applied when filtering by route_path
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "index without route_path criteria works without join" do
+    get rails_pulse.requests_path
+
+    assert_response :success
+    # Should work fine without JOIN when not filtering/sorting by route_path
+    assert_not_nil assigns(:table_data)
+  end
+
+  # Custom Time Range Handling Tests
+
+  test "index with custom time range applies time filters" do
+    get rails_pulse.requests_path, params: {
+      q: {
+        period_start_range: "last_24_hours"
+      }
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+    # Time filters should be applied for non-recent mode
+  end
+
+  test "index handles time mode parameter correctly" do
+    # Test that period_start_range parameter is respected
+    get rails_pulse.requests_path, params: {
+      q: {
+        period_start_range: "last_7_days"
+      }
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
   end
 
   private

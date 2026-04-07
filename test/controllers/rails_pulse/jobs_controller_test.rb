@@ -51,7 +51,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_not_nil assigns(:ransack_query)
     assert_not_nil assigns(:pagination)
-    assert_not_nil assigns(:jobs)
+    assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:available_queues)
   end
@@ -60,7 +60,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.jobs_path
 
     assert_response :success
-    jobs = assigns(:jobs)
+    jobs = assigns(:table_data).to_a.to_a
 
     # Verify jobs are ordered by runs_count desc
     if jobs.size > 1
@@ -74,7 +74,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.jobs_path, params: { q: { name_cont: "Report" } }
 
     assert_response :success
-    jobs = assigns(:jobs)
+    jobs = assigns(:table_data).to_a
 
     # All returned jobs should have "Report" in the name
     assert jobs.all? { |job| job.name.include?("Report") }
@@ -84,7 +84,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.jobs_path, params: { q: { queue_name_eq: "default" } }
 
     assert_response :success
-    jobs = assigns(:jobs)
+    jobs = assigns(:table_data).to_a
 
     # All returned jobs should have queue_name "default"
     assert jobs.all? { |job| job.queue_name == "default" }
@@ -95,7 +95,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     pagination = assigns(:pagination)
-    jobs = assigns(:jobs)
+    jobs = assigns(:table_data).to_a
 
     assert_not_nil pagination
     assert_operator jobs.size, :<=, 10
@@ -116,7 +116,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.jobs_path, params: { q: { s: "name asc" } }
 
     assert_response :success
-    jobs = assigns(:jobs)
+    jobs = assigns(:table_data).to_a
 
     # Verify jobs are ordered by name asc
     if jobs.size > 1
@@ -135,7 +135,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:job)
     assert_not_nil assigns(:ransack_query)
     assert_not_nil assigns(:pagination)
-    assert_not_nil assigns(:recent_runs)
+    assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:selected_time_range)
     assert_equal @job, assigns(:job)
@@ -161,7 +161,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.job_path(@job)
 
     assert_response :success
-    runs = assigns(:recent_runs)
+    runs = assigns(:table_data).to_a
 
     # Verify runs are ordered by occurred_at desc
     if runs.size > 1
@@ -175,7 +175,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.job_path(@job), params: { q: { status_eq: "success" } }
 
     assert_response :success
-    runs = assigns(:recent_runs)
+    runs = assigns(:table_data).to_a
 
     # All returned runs should have status "success"
     assert runs.all? { |run| run.status == "success" }
@@ -185,7 +185,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.job_path(@job), params: { q: { duration_gteq: 300 } }
 
     assert_response :success
-    runs = assigns(:recent_runs)
+    runs = assigns(:table_data).to_a
 
     # All returned runs should have duration >= 300
     assert runs.all? { |run| run.duration.to_f >= 300 }
@@ -196,7 +196,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     pagination = assigns(:pagination)
-    runs = assigns(:recent_runs)
+    runs = assigns(:table_data).to_a
 
     assert_not_nil pagination
     assert_operator runs.size, :<=, 10
@@ -206,7 +206,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.job_path(@job), params: { q: { s: "duration asc" } }
 
     assert_response :success
-    runs = assigns(:recent_runs)
+    runs = assigns(:table_data).to_a
 
     # Verify runs are ordered by duration asc
     if runs.size > 1
@@ -216,11 +216,11 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "show action table_data matches recent_runs" do
+  test "show action sets table_data" do
     get rails_pulse.job_path(@job)
 
     assert_response :success
-    assert_equal assigns(:recent_runs), assigns(:table_data)
+    assert_not_nil assigns(:table_data)
   end
 
   private
