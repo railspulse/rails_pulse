@@ -28,9 +28,7 @@ module RailsPulse
 
         send_file asset_path,
                   type: content_type,
-                  disposition: "inline",
-                  cache: true,
-                  expires: 1.year.from_now
+                  disposition: "inline"
       else
         head :not_found
       end
