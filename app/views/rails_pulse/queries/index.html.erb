@@ -1,13 +1,6 @@
 <%= render "rails_pulse/components/page_header", show_active_filters: true %>
 
-<% unless turbo_frame_request? %>
-  <% metric_cards = [
-    @percentile_query_times_metric_card&.merge(link_url: queries_path(chart_type: "query_performance")),
-    @execution_rate_metric_card&.merge(link_url: queries_path(chart_type: "execution_volume")),
-    @database_load_metric_card&.merge(link_url: queries_path(chart_type: "database_load")),
-  ].compact %>
-  <%= render "rails_pulse/components/metric_strip", metrics_data: metric_cards %>
-<% end %>
+<%= render "rails_pulse/queries/metric_cards" %>
 
 <div
   data-controller="rails-pulse--index rails-pulse--chart-switcher"
@@ -45,134 +38,13 @@
       <% end %>
     </div>
 
-    <%# Zone 1: Chart view selector %>
-    <div class="panel-tabs">
-      <div class="panel-tabs__list">
-        <button
-          class="panel-tab"
-          data-chart-type="query_performance"
-          data-rails-pulse--chart-switcher-target="button"
-          data-action="click->rails-pulse--chart-switcher#switch"
-        >Query Performance</button>
-        <button
-          class="panel-tab"
-          data-chart-type="execution_volume"
-          data-rails-pulse--chart-switcher-target="button"
-          data-action="click->rails-pulse--chart-switcher#switch"
-        >Execution Volume</button>
-        <button
-          class="panel-tab"
-          data-chart-type="database_load"
-          data-rails-pulse--chart-switcher-target="button"
-          data-action="click->rails-pulse--chart-switcher#switch"
-        >Database Load</button>
-        <%# P50/P95/P99 toggles — only shown for Query Performance %>
-        <div
-          data-rails-pulse--chart-switcher-target="toggleGroup"
-          data-chart-type="query_performance"
-          class="panel-tabs__toggles"
-          style="display: flex;"
-        >
-          <button
-            class="series-toggle"
-            style="color: <%= RailsPulse::ChartColors::DEFAULT %>"
-            data-active="true"
-            data-controller="rails-pulse--series-toggle"
-            data-rails-pulse--series-toggle-series-name-value="P50"
-            data-rails-pulse--series-toggle-chart-id-value="query_performance_chart"
-            data-action="click->rails-pulse--series-toggle#toggle"
-          >P50</button>
-          <button
-            class="series-toggle"
-            style="color: <%= RailsPulse::ChartColors::P95 %>"
-            data-active="true"
-            data-controller="rails-pulse--series-toggle"
-            data-rails-pulse--series-toggle-series-name-value="P95"
-            data-rails-pulse--series-toggle-chart-id-value="query_performance_chart"
-            data-action="click->rails-pulse--series-toggle#toggle"
-          >P95</button>
-          <button
-            class="series-toggle"
-            style="color: <%= RailsPulse::ChartColors::P99 %>"
-            data-active="true"
-            data-controller="rails-pulse--series-toggle"
-            data-rails-pulse--series-toggle-series-name-value="P99"
-            data-rails-pulse--series-toggle-chart-id-value="query_performance_chart"
-            data-action="click->rails-pulse--series-toggle#toggle"
-          >P99</button>
-        </div>
-      </div>
-    </div>
-
     <% if turbo_frame_request? %>
       <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
         <%= render "rails_pulse/queries/table" %>
       <% end %>
     <% elsif @has_data %>
       <% if @has_chart_data %>
-        <!-- Query Performance Chart -->
-        <div
-          class="chart-container chart-container--slim"
-          data-rails-pulse--index-target="chart"
-          data-rails-pulse--chart-switcher-target="chart"
-          data-chart-type="query_performance"
-          data-chart-id="query_performance_chart"
-          style="display: block;"
-        >
-          <%= render_stimulus_chart(
-            @query_performance_chart_data,
-            type: "line",
-            id: "query_performance_chart",
-            height: "100%",
-            options:
-              line_chart_options(
-                units: "ms",
-                zoom: true
-              ),
-          ) %>
-        </div>
-        <!-- Execution Volume Chart -->
-        <div
-          class="chart-container chart-container--slim"
-          data-rails-pulse--index-target="chart"
-          data-rails-pulse--chart-switcher-target="chart"
-          data-chart-type="execution_volume"
-          data-chart-id="execution_volume_chart"
-          style="display: none;"
-        >
-          <%= render_stimulus_chart(
-            @execution_volume_chart_data,
-            type: "bar",
-            id: "execution_volume_chart",
-            height: "100%",
-            options:
-              bar_chart_options(
-                zoom: true
-              ),
-          ) %>
-        </div>
-        <!-- Database Load Chart -->
-        <div
-          class="chart-container chart-container--slim"
-          data-rails-pulse--index-target="chart"
-          data-rails-pulse--chart-switcher-target="chart"
-          data-chart-type="database_load"
-          data-chart-id="database_load_chart"
-          style="display: none;"
-        >
-          <%= render_stimulus_chart(
-            @database_load_chart_data,
-            type: "bar",
-            id: "database_load_chart",
-            height: "100%",
-            options:
-              bar_chart_options(
-                units: "%",
-                zoom: true
-              ),
-          ) %>
-        </div>
-
+        <%= render "rails_pulse/queries/chart_tabs" %>
       <% end %>
 
       <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
