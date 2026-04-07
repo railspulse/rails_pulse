@@ -1,3 +1,14 @@
+# TimeRangeConcern
+#
+# Handles time range selection and filtering across all controllers.
+# Supports multiple time range sources with priority order:
+# 1. Page-specific preset/custom range (from dropdown/picker)
+# 2. Chart zoom parameters
+# 3. Time range selector (session)
+# 4. Global filters (session)
+# 5. Default time range
+#
+# Normalizes times to beginning/end of hour or day based on range duration.
 module TimeRangeConcern
   extend ActiveSupport::Concern
 

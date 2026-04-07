@@ -1,3 +1,11 @@
+# ChartTableConcern
+#
+# Core concern for controllers that display both charts and tables (routes, requests, queries, jobs).
+# Orchestrates time range setup, chart generation, table queries, and zoom/filter handling.
+# Includes TimeRangeConcern, ResponseRangeConcern, and ZoomRangeConcern for filter management.
+#
+# Controllers including this concern must implement:
+# - chart_model, table_model, chart_definitions, default_table_sort, build_table_results
 module ChartTableConcern
   extend ActiveSupport::Concern
 
@@ -83,12 +91,6 @@ module ChartTableConcern
     # Default to :day for "recent" mode or when time_diff isn't set
     return :day if @time_diff_hours.nil?
     @time_diff_hours <= 25 ? :hour : :day
-  end
-
-  def group_by
-    # Default to :group_by_day for "recent" mode or when time_diff isn't set
-    return :group_by_day if @time_diff_hours.nil?
-    @time_diff_hours <= 25 ? :group_by_hour : :group_by_day
   end
 
   def meaningful_chart_data?

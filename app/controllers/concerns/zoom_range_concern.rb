@@ -1,3 +1,9 @@
+# ZoomRangeConcern
+#
+# Handles chart zoom and column selection for filtering table data.
+# When users zoom into a chart or click a chart column, this concern calculates
+# the appropriate time boundaries for filtering the table while keeping the chart unchanged.
+# Normalizes zoom times to hour/day boundaries based on the overall time range.
 module ZoomRangeConcern
   extend ActiveSupport::Concern
 

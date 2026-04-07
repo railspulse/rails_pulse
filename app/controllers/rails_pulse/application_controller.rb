@@ -9,10 +9,10 @@ module RailsPulse
       limit = limit || params[:limit]
       session[:pagination_limit] = limit.to_i if limit.present?
 
-    # Render JSON for direct API calls or AJAX requests (but not turbo frame requests)
-    if (request.xhr? && !turbo_frame_request?) || (request.patch? && action_name == "set_pagination_limit")
-        render json: { status: "ok" }
-    end
+      # Render JSON for direct API calls or AJAX requests (but not turbo frame requests)
+      if (request.xhr? && !turbo_frame_request?) || (request.patch? && action_name == "set_pagination_limit")
+          render json: { status: "ok" }
+      end
     end
 
     def set_global_filters

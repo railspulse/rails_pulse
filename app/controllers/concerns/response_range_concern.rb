@@ -1,3 +1,8 @@
+# ResponseRangeConcern
+#
+# Handles performance threshold filtering (slow, very_slow, critical).
+# Converts symbolic threshold names to numeric values based on resource type.
+# Supports both page-specific duration filters and global performance threshold filters.
 module ResponseRangeConcern
   extend ActiveSupport::Concern
 
