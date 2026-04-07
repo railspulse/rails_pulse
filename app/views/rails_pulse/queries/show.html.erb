@@ -10,7 +10,11 @@
     rails-pulse--chart-switcher:switched->rails-pulse--index#handleChartSwitched
   "
 >
-  <%= render 'rails_pulse/components/panel', { title: 'Query Responses' } do %>
+  <%= render 'rails_pulse/components/panel', {
+    title: 'Query Responses',
+    help_heading: 'Query Responses',
+    help_text: 'This panel shows all executions of this query, including performance metrics, duration distribution, and query execution details.'
+  } do %>
     <div class="filter-bar">
       <%= search_form_for @ransack_query, url: query_path(@query), class: "filter-bar__form" do |form| %>
         <input
