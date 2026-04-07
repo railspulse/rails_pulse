@@ -990,12 +990,11 @@ Coverage is organized into logical groups:
 
 - **Models**: `app/models`
 - **Controllers**: `app/controllers`
-- **Middleware**: `app/middleware`
 - **Services**: `app/services`
 - **Concerns**: `app/controllers/concerns`
 - **Card Components**: `app/models/rails_pulse/*/cards`
 - **Chart Components**: `app/models/rails_pulse/dashboard/charts`
-- **Lib**: `lib/rails_pulse`
+- **Lib**: `lib/rails_pulse` (includes middleware adapters, configuration, etc.)
 - **Generators**: `lib/generators`
 
 ### What's Excluded from Coverage

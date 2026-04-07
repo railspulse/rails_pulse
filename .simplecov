@@ -22,7 +22,6 @@ SimpleCov.start do
   # Groups - organize coverage by component type
   add_group "Models", "app/models"
   add_group "Controllers", "app/controllers"
-  add_group "Middleware", "app/middleware"
   add_group "Services", "app/services"
   add_group "Concerns", "app/controllers/concerns"
   add_group "Card Components", "app/models/rails_pulse/*/cards"

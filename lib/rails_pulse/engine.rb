@@ -27,6 +27,16 @@ module RailsPulse
     autoload :SuggestionGenerator, File.expand_path("../../app/services/rails_pulse/analysis/suggestion_generator", __dir__)
   end
 
+  # Optimization suggestion services
+  module Suggestions
+    autoload :Base, File.expand_path("../../app/services/rails_pulse/suggestions/base", __dir__)
+    autoload :SqlSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/sql_suggestions_service", __dir__)
+    autoload :ViewSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/view_suggestions_service", __dir__)
+    autoload :ControllerSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/controller_suggestions_service", __dir__)
+    autoload :CacheSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/cache_suggestions_service", __dir__)
+    autoload :HttpSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/http_suggestions_service", __dir__)
+  end
+
   class Engine < ::Rails::Engine
     isolate_namespace RailsPulse
 

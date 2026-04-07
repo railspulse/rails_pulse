@@ -630,6 +630,174 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:database_load_chart_data)
   end
 
+  # Show Action Tests
+
+  test "show action loads successfully" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_response :success
+    assert_not_nil assigns(:query)
+    assert_equal @query1, assigns(:query)
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action assigns all required instance variables" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_response :success
+    assert_not_nil assigns(:percentile_query_times_metric_card)
+    assert_not_nil assigns(:execution_rate_metric_card)
+    assert_not_nil assigns(:query_performance_chart_data)
+    assert_not_nil assigns(:execution_volume_chart_data)
+    assert_not_nil assigns(:pagination)
+    assert_not_nil assigns(:start_time)
+    assert_not_nil assigns(:end_time)
+  end
+
+  test "show action does not assign database_load_metric_card" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_response :success
+    # database_load_metric_card is only on index page, not show
+    assert_nil assigns(:database_load_metric_card)
+  end
+
+  test "show action does not assign database_load_chart_data" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_response :success
+    # database_load_chart_data is only on index page
+    # The setup_chart_data override should not create it on show pages
+    assert_not_nil assigns(:query_performance_chart_data)
+    assert_not_nil assigns(:execution_volume_chart_data)
+  end
+
+  test "show action uses Summary model for table" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_response :success
+    # Table data should be Summary records for this query
+    table_data = assigns(:table_data)
+    assert table_data.all? { |s| s.is_a?(RailsPulse::Summary) } if table_data.any?
+  end
+
+  test "show action filters summaries to specific query" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_response :success
+    table_data = assigns(:table_data)
+    # All summaries should belong to this query
+    assert table_data.all? { |s| s.summarizable_id == @query1.id && s.summarizable_type == "RailsPulse::Query" } if table_data.any?
+  end
+
+  test "show action default sort is period_start desc" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_response :success
+    ransack_query = assigns(:ransack_query)
+    # Check that default sort is applied
+    assert ransack_query.sorts.any?
+    assert_equal "period_start", ransack_query.sorts.first.name
+    assert_equal "desc", ransack_query.sorts.first.dir
+  end
+
+  test "show action with custom sorting" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1), params: { q: { s: "avg_duration_sort desc" } }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action with pagination" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1), params: { limit: 10, page: 1 }
+
+    assert_response :success
+    pagination = assigns(:pagination)
+    assert_not_nil pagination
+    assert_equal 10, pagination.limit
+  end
+
+  test "show action with time range filter" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1), params: { q: { period_start_range: "last_day" } }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action skips metric cards on turbo frame request" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1), headers: { "Turbo-Frame" => "table_frame" }
+
+    assert_response :success
+    assert_nil assigns(:percentile_query_times_metric_card)
+    assert_nil assigns(:execution_rate_metric_card)
+    assert_nil assigns(:database_load_metric_card)
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action response body has content" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_not_nil response.body
+    assert_operator response.body.length, :>, 0
+  end
+
+  test "show action content type is HTML" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_equal "text/html; charset=utf-8", response.content_type
+  end
+
+  test "show action with duration filter" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1), params: { q: { avg_duration: "slow" } }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action with multiple filters combined" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1), params: {
+      q: {
+        period_start_range: "last_week",
+        avg_duration: "slow",
+        s: "p95_duration_sort desc"
+      },
+      limit: 25
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
   private
 
   def setup_basic_test_data

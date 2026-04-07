@@ -70,7 +70,187 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:table_data)
   end
 
-  # Skip show action tests due to mocking complexity in test environment
+  # Show Action Tests
+
+  test "show action loads successfully" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route)
+
+    assert_response :success
+    assert_not_nil assigns(:route)
+    assert_equal @route, assigns(:route)
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action assigns all required instance variables" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route)
+
+    assert_response :success
+    assert_not_nil assigns(:percentile_response_times_metric_card)
+    assert_not_nil assigns(:request_count_totals_metric_card)
+    assert_not_nil assigns(:error_rates_metric_card)
+    assert_not_nil assigns(:response_time_chart_data)
+    assert_not_nil assigns(:request_rate_chart_data)
+    assert_not_nil assigns(:error_rate_chart_data)
+    assert_not_nil assigns(:pagination)
+    assert_not_nil assigns(:start_time)
+    assert_not_nil assigns(:end_time)
+  end
+
+  test "show action uses Request model for table" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route)
+
+    assert_response :success
+    # Table data should be Request records
+    table_data = assigns(:table_data)
+    assert table_data.all? { |r| r.is_a?(RailsPulse::Request) } if table_data.any?
+  end
+
+  test "show action default sort is occurred_at desc" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route)
+
+    assert_response :success
+    ransack_query = assigns(:ransack_query)
+    # Check that default sort is applied
+    assert ransack_query.sorts.any?
+    assert_equal "occurred_at", ransack_query.sorts.first.name
+    assert_equal "desc", ransack_query.sorts.first.dir
+  end
+
+  test "show action with custom sorting" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route), params: { q: { s: "duration desc" } }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action with pagination" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route), params: { limit: 10, page: 1 }
+
+    assert_response :success
+    pagination = assigns(:pagination)
+    assert_not_nil pagination
+    assert_equal 10, pagination.limit
+  end
+
+  test "show action with time range filter" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route), params: { q: { period_start_range: "last_24_hours" } }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action skips metric cards on turbo frame request" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route), headers: { "Turbo-Frame" => "table_frame" }
+
+    assert_response :success
+    assert_nil assigns(:percentile_response_times_metric_card)
+    assert_nil assigns(:request_count_totals_metric_card)
+    assert_nil assigns(:error_rates_metric_card)
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action filters requests to specific route" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route)
+
+    assert_response :success
+    table_data = assigns(:table_data)
+    # All requests should belong to this route
+    assert table_data.all? { |r| r.route_id == @route.id } if table_data.any?
+  end
+
+  test "show action with zoom parameters" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route), params: {
+      zoom_start_time: 1.day.ago.to_i,
+      zoom_end_time: Time.current.to_i
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action response body has content" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route)
+
+    assert_not_nil response.body
+    assert_operator response.body.length, :>, 0
+  end
+
+  test "show action content type is HTML" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route)
+
+    assert_equal "text/html; charset=utf-8", response.content_type
+  end
+
+  test "show action with duration filter" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route), params: { q: { response_time_range: "slow" } }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action with multiple filters combined" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route), params: {
+      q: {
+        period_start_range: "last_7_days",
+        response_time_range: "slow",
+        s: "duration desc"
+      },
+      limit: 25
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action handles route with no requests" do
+    # Create route with no requests
+    empty_route = RailsPulse::Route.create!(
+      method: "GET",
+      path: "/empty/route"
+    )
+
+    get rails_pulse.route_path(empty_route)
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action ordering_by_computed_column works" do
+    setup_basic_test_data
+
+    get rails_pulse.route_path(@route), params: { q: { s: "status_indicator desc" } }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
 
   test "index action with time filtering" do
     setup_basic_test_data

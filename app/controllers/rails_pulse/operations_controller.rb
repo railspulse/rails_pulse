@@ -76,156 +76,20 @@ module RailsPulse
     end
 
     def generate_optimization_suggestions
-      suggestions = []
-
-      case @operation.operation_type
+      service_class = case @operation.operation_type
       when "sql"
-        suggestions.concat(sql_optimization_suggestions)
+        Suggestions::SqlSuggestionsService
       when "template", "partial", "layout", "collection"
-        suggestions.concat(view_optimization_suggestions)
+        Suggestions::ViewSuggestionsService
       when "controller"
-        suggestions.concat(controller_optimization_suggestions)
+        Suggestions::ControllerSuggestionsService
       when "cache_read", "cache_write"
-        suggestions.concat(cache_optimization_suggestions)
+        Suggestions::CacheSuggestionsService
       when "http"
-        suggestions.concat(http_optimization_suggestions)
+        Suggestions::HttpSuggestionsService
       end
 
-      suggestions
-    end
-
-    def sql_optimization_suggestions
-      suggestions = []
-
-      if @operation.duration > 100
-        suggestions << {
-          type: "performance",
-          icon: "zap",
-          title: "Slow Query Detected",
-          description: "This query took #{@operation.duration.round(2)}ms. Consider adding database indexes or optimizing the query.",
-          priority: "high"
-        }
-      end
-
-      if @operation.label&.match?(/SELECT.*FROM\s+(\w+)/i)
-        table_name = @operation.label.match(/FROM\s+(\w+)/i)&.captures&.first
-        if table_name
-          suggestions << {
-            type: "index",
-            icon: "database",
-            title: "Index Optimization",
-            description: "Review indexes on the '#{table_name}' table. Consider composite indexes for WHERE clauses.",
-            priority: "medium"
-          }
-        end
-      end
-
-      # Check for potential N+1 queries
-      if @parent
-        # Sanitize LIKE pattern to prevent SQL injection via wildcards
-        label_prefix = @operation.label.split.first(3).join(" ")
-        sanitized_pattern = ActiveRecord::Base.sanitize_sql_like(label_prefix, "\\")
-
-        similar_queries = @parent.operations
-          .where(operation_type: [ "sql" ])
-          .where("label LIKE ?", "%#{sanitized_pattern}%")
-          .where.not(id: @operation.id)
-
-        if similar_queries.count > 2
-          suggestions << {
-            type: "n_plus_one",
-            icon: "alert-triangle",
-            title: "Potential N+1 Query",
-            description: "#{similar_queries.count + 1} similar queries detected. Consider using includes() or joins().",
-            priority: "high"
-          }
-        end
-      end
-
-      suggestions
-    end
-
-    def view_optimization_suggestions
-      suggestions = []
-
-      if @operation.duration > 100
-        suggestions << {
-          type: "performance",
-          icon: "zap",
-          title: "Slow View Rendering",
-          description: "This view took #{@operation.duration.round(2)}ms to render. Consider fragment caching or reducing database calls.",
-          priority: "high"
-        }
-      end
-
-      # Check for database queries in views
-      if @parent
-        view_db_operations = @parent.operations
-          .where(operation_type: [ "sql" ])
-          .where("occurred_at >= ? AND occurred_at <= ?",
-                 @operation.occurred_at,
-                 @operation.occurred_at + @operation.duration)
-
-        if view_db_operations.count > 0
-          suggestions << {
-            type: "database",
-            icon: "database",
-            title: "Database Queries in View",
-            description: "#{view_db_operations.count} database queries during view rendering. Move data fetching to the controller.",
-            priority: "medium"
-          }
-        end
-      end
-
-      suggestions
-    end
-
-    def controller_optimization_suggestions
-      suggestions = []
-
-      if @operation.duration > 500
-        suggestions << {
-          type: "performance",
-          icon: "zap",
-          title: "Slow Controller Action",
-          description: "This action took #{@operation.duration.round(2)}ms. Consider moving heavy computation to background jobs.",
-          priority: "high"
-        }
-      end
-
-      suggestions
-    end
-
-    def cache_optimization_suggestions
-      suggestions = []
-
-      if @operation.operation_type == "cache_read" && @operation.duration > 10
-        suggestions << {
-          type: "performance",
-          icon: "clock",
-          title: "Slow Cache Read",
-          description: "Cache read took #{@operation.duration.round(2)}ms. Check cache backend performance.",
-          priority: "medium"
-        }
-      end
-
-      suggestions
-    end
-
-    def http_optimization_suggestions
-      suggestions = []
-
-      if @operation.duration > 1000
-        suggestions << {
-          type: "performance",
-          icon: "globe",
-          title: "Slow External Request",
-          description: "HTTP request took #{@operation.duration.round(2)}ms. Consider caching responses or using background jobs.",
-          priority: "high"
-        }
-      end
-
-      suggestions
+      service_class ? service_class.new(@operation, @parent).generate : []
     end
   end
 end
