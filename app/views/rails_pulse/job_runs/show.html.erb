@@ -26,26 +26,27 @@
     <% end %>
   </div>
 
-  <% if @run.error_class.present? %>
-    <div class="grid-item">
-      <%= render 'rails_pulse/components/panel', title: 'Error Details' do %>
-        <dl class="descriptive-list mbs-4">
-          <dt>Error Class</dt>
-          <dd><%= @run.error_class %></dd>
-          <% if @run.error_message.present? %>
-            <dt>Error Message</dt>
-            <dd><%= @run.error_message %></dd>
-          <% end %>
-        </dl>
-      <% end %>
-    </div>
-  <% elsif @run.arguments.present? %>
-    <div class="grid-item">
-      <%= render 'rails_pulse/components/panel', title: 'Arguments' do %>
-        <pre class="mbs-4"><%= JSON.pretty_generate(JSON.parse(@run.arguments)) rescue @run.arguments %></pre>
-      <% end %>
-    </div>
-  <% end %>
+  <div class="grid-item">
+    <%= render 'rails_pulse/components/panel', title: 'Performance Breakdown' do %>
+      <% breakdown = operations_performance_breakdown(@operations) %>
+      <dl class="descriptive-list mbs-4">
+        <dt>Database</dt>
+        <dd><%= breakdown[:database] %>% (<%= pluralize(@operations.by_type('sql').count, 'query') %>)</dd>
+        <dt>View Rendering</dt>
+        <dd><%= breakdown[:view] %>%</dd>
+        <dt>Application Logic</dt>
+        <dd><%= breakdown[:application] %>%</dd>
+        <dt>Other Operations</dt>
+        <dd><%= breakdown[:other] %>%</dd>
+        <dt>Total Operations</dt>
+        <dd><%= @operations.count %></dd>
+        <dt>Slowest Operation</dt>
+        <dd><%= @operations.maximum(:duration)&.round(2) %> ms</dd>
+      </dl>
+    <% end %>
+  </div>
 </div>
+
+<%= render 'rails_pulse/requests/flame_graph', title: 'Job Execution Trace', help_text: 'Each row is a layer of your stack. Many short Database bars means N+1 queries. Wide Action bars indicate slow application code. This visualization helps identify performance bottlenecks in job execution.' %>
 
 <%= render 'operations', operations: @operations %>

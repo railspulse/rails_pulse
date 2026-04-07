@@ -1,13 +1,15 @@
 <%= render 'rails_pulse/components/panel',
-      title: 'Request Trace',
+      title: local_assigns[:title] || 'Request Trace',
       help_heading: 'How to read this',
-      help_text: 'Each row is a layer of your stack. Many short Database bars means N+1 queries — fix with includes(). A wide Action bar with little Database time means slow Ruby code. A wide View bar usually means a partial rendered in a loop.' do %>
+      help_text: local_assigns[:help_text] || 'Each row is a layer of your stack. Many short Database bars means N+1 queries — fix with includes(). A wide Action bar with little Database time means slow Ruby code. A wide View bar usually means a partial rendered in a loop.' do %>
   <% if @operation_timeline.bars.any? %>
     <%
       row_height = 28
       timeline_height = (@operation_timeline.max_depth + 1) * row_height
       total_ms = @operation_timeline.total_duration
-      request_duration = @request.duration.to_f
+      # Use local variable if provided, otherwise fall back to @request or @run
+      total_duration = local_assigns[:total_duration] || @request&.duration || @run&.duration || 0
+      request_duration = total_duration.to_f
     %>
 
     <div class="flame-legend">
