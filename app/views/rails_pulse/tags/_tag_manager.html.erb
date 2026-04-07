@@ -1,24 +1,32 @@
-<%
-  taggable_type = taggable.class.name.demodulize.underscore
-  available_tags = RailsPulse.configuration.tags
-  current_tags = taggable.tag_list
-  available_to_add = available_tags - current_tags
-%>
+<% taggable_type = taggable.class.name.demodulize.underscore
+available_tags = RailsPulse.configuration.tags
+current_tags = taggable.tag_list
+available_to_add = available_tags - current_tags %>
 
 <div
   id="tag_manager_<%= taggable_type %>_<%= taggable.id %>"
-  class="tag-manager card pi-3 pb-2 text-sm shadow-xs"
+  class="tag-manager text-sm shadow-xs"
 >
   <% if current_tags.present? %>
     Tags:
-    <% end %>
+  <% end %>
   <div class="tag-list">
     <% current_tags.each do |tag| %>
-      <%= render_tag_badge(tag, variant: :secondary, removable: true, taggable_type: taggable_type, taggable_id: taggable.id) %>
+      <%= render_tag_badge(
+        tag,
+        variant: :secondary,
+        removable: true,
+        taggable_type: taggable_type,
+        taggable_id: taggable.id,
+      ) %>
     <% end %>
 
     <% if available_to_add.any? %>
-      <div class="tag-add-container" data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-start">
+      <div
+        class="tag-add-container"
+        data-controller="rails-pulse--popover"
+        data-rails-pulse--popover-placement-value="bottom-start"
+      >
         <button
           type="button"
           id="tag_menu_button_<%= taggable_type %>_<%= taggable.id %>"
@@ -41,7 +49,10 @@
             id="tag_menu_<%= taggable_type %>_<%= taggable.id %>"
             class="menu"
             data-controller="rails-pulse--menu"
-            data-action="keydown.up->rails-pulse--menu#prev keydown.down->rails-pulse--menu#next"
+            data-action="
+              keydown.up->rails-pulse--menu#prev
+              keydown.down->rails-pulse--menu#next
+            "
             role="menu"
             aria-labelledby="tag_menu_button_<%= taggable_type %>_<%= taggable.id %>"
           >

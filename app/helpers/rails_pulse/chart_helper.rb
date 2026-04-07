@@ -75,7 +75,7 @@ module RailsPulse
     def line_chart_options(units: nil, zoom: false, chart_start: 0, chart_end: 100, zoom_start: nil, zoom_end: nil, chart_data: nil)
       options = base_chart_options(units: units, zoom: zoom).deep_merge({
         series: {
-          smooth: true,
+          smooth: false,
           lineStyle: { width: 3 },
           symbol: "circle",
           symbolSize: 8

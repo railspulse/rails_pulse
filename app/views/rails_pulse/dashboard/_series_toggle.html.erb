@@ -1,7 +1,7 @@
 <button
   class="series-toggle"
   style="color: <%= color %>;"
-  data-active="true"
+  data-active="<%= defined?(active) ? active : true %>"
   data-controller="rails-pulse--series-toggle"
   data-rails-pulse--series-toggle-series-name-value="<%= series_name %>"
   data-rails-pulse--series-toggle-chart-id-value="<%= chart_id %>"

@@ -1,6 +1,12 @@
 /* Dashboard-specific styles */
 
 /* System Health Bar */
+.dashboard-health-bar {
+  min-height: 2.5rem;
+  display: flex;
+  align-items: center;
+}
+
 .dashboard-health-bar__content {
   display: flex;
   align-items: center;

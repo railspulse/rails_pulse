@@ -98,13 +98,22 @@ export default class extends Controller {
     this.setChartData(config)
 
     // Add hidden legend so series can be toggled programmatically via dispatchAction
-    // Initialize all series as selected (visible) by default
+    // Initialize series visibility from toggle button data-active attributes, defaulting to true
     if (!config.legend) {
+      const toggleButtons = document.querySelectorAll(
+        `[data-rails-pulse--series-toggle-chart-id-value="${this.element.id}"]`
+      )
+      const buttonStates = {}
+      toggleButtons.forEach(btn => {
+        const name = btn.getAttribute('data-rails-pulse--series-toggle-series-name-value')
+        if (name) buttonStates[name] = btn.dataset.active !== 'false'
+      })
+
       const selected = {}
       if (config.series && Array.isArray(config.series)) {
         config.series.forEach(s => {
           if (s.name) {
-            selected[s.name] = true
+            selected[s.name] = s.name in buttonStates ? buttonStates[s.name] : true
           }
         })
       }

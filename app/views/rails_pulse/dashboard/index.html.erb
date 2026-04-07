@@ -1,11 +1,5 @@
 <div class="dashboard-health-bar">
   <div class="dashboard-health-bar__content">
-    <span
-      class="
-        font-semibold uppercase text-xs text-subtle shrink-0 dashboard-health-bar__label
-      "
-    >System Health</span>
-
     <div class="dashboard-health-bar__badges">
       <%= render "rails_pulse/dashboard/health_badge",
       name: "Routes",
@@ -51,7 +45,8 @@
       label: "P50",
       series_name: "P50",
       chart_id: "response_time_percentiles_chart",
-      color: RailsPulse::ChartColors::DEFAULT %>
+      color: RailsPulse::ChartColors::DEFAULT,
+      active: false %>
       <%= render "rails_pulse/dashboard/series_toggle",
       label: "P95",
       series_name: "P95",
@@ -116,20 +111,33 @@
             <%= @needs_attention[:total] == 1 ? "issue" : "issues" %>
           </span>
         <% end %>
-        <span class="text-xs text-subtle mis-2">Ranked by severity · <%= humanize_time_range(@selected_time_range) %></span>
+        <span class="text-xs text-subtle mis-2">Ranked by severity ·
+          <%= humanize_time_range(@selected_time_range) %></span>
       </div>
-      <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-end">
-        <a href="#"
+      <div
+        data-controller="rails-pulse--popover"
+        data-rails-pulse--popover-placement-value="bottom-end"
+      >
+        <a
+          href="#"
           data-rails-pulse--popover-target="button"
           data-action="rails-pulse--popover#toggle"
           data-popovertarget="popover"
-          class="block leading-none">
-          <%= rails_pulse_icon 'message-circle-question', height: "16px", width: "16px" %>
+          class="block leading-none"
+        >
+          <%= rails_pulse_icon "message-circle-question", height: "16px", width: "16px" %>
         </a>
-        <div popover class="popover card max-w-lg" data-rails-pulse--popover-target="menu">
+        <div
+          popover
+          class="popover card max-w-lg"
+          data-rails-pulse--popover-target="menu"
+        >
           <div class="flex flex-col">
             <h3 class="font-semibold leading-none mbe-2 uppercase text-sm">About Error Rates</h3>
-            <p class="text-sm text-subtle">Error rates are calculated across the entire selected time period. Longer time ranges may dilute recent spikes in errors. For example, a route with 10% errors in the last day may show 1% over a week if earlier days had no errors.</p>
+            <p class="text-sm text-subtle">Error rates are calculated across the entire selected time
+              period. Longer time ranges may dilute recent spikes in errors.
+              For example, a route with 10% errors in the last day may show 1%
+              over a week if earlier days had no errors.</p>
           </div>
         </div>
       </div>
@@ -152,7 +160,8 @@
           ><polyline points="20 6 9 17 4 12"/></svg>
         </span>
         <p class="font-semibold text-sm text-positive">All clear</p>
-        <p class="text-xs text-subtle">No routes, queries, or jobs need attention in the <%= humanize_time_range(@selected_time_range) %>.</p>
+        <p class="text-xs text-subtle">No routes, queries, or jobs need attention in the
+          <%= humanize_time_range(@selected_time_range) %>.</p>
       </div>
     <% else %>
       <div class="flex flex-col">
