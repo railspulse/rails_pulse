@@ -163170,19 +163170,6 @@
     // Open the global filters dialog
     open(event) {
       event.preventDefault();
-      if (this.dateRangeTarget.value) {
-        const datepickerController = this.application.getControllerForElementAndIdentifier(
-          this.dateRangeTarget,
-          "rails-pulse--datepicker"
-        );
-        if (datepickerController && datepickerController.flatpickr) {
-          const value = this.dateRangeTarget.value;
-          if (value.includes(" to ")) {
-            const [start3, end2] = value.split(" to ").map((d) => d.trim());
-            datepickerController.flatpickr.setDate([start3, end2], false);
-          }
-        }
-      }
       this.wrapperTarget.style.display = "flex";
       document.body.style.overflow = "hidden";
     }
@@ -163200,26 +163187,10 @@
         this.close(event);
       }
     }
-    // Handle form submission - parse date range and add individual params
+    // Handle form submission
     submit(event) {
       if (event.submitter && event.submitter.name === "clear") {
         return;
-      }
-      const dateRangeValue = this.dateRangeTarget.value;
-      const form = event.target;
-      if (dateRangeValue && dateRangeValue.includes(" to ")) {
-        const [startTime, endTime] = dateRangeValue.split(" to ").map((d) => d.trim());
-        form.querySelectorAll('input[name="start_time"], input[name="end_time"]').forEach((el) => el.remove());
-        const startInput = document.createElement("input");
-        startInput.type = "hidden";
-        startInput.name = "start_time";
-        startInput.value = startTime;
-        form.appendChild(startInput);
-        const endInput = document.createElement("input");
-        endInput.type = "hidden";
-        endInput.name = "end_time";
-        endInput.value = endTime;
-        form.appendChild(endInput);
       }
     }
     // Update visual indicator based on activeValue
@@ -163237,7 +163208,7 @@
       this.updateIndicator();
     }
   };
-  __publicField(global_filters_controller_default, "targets", ["wrapper", "dialog", "dateRange", "indicator", "form"]);
+  __publicField(global_filters_controller_default, "targets", ["wrapper", "dialog", "indicator", "form"]);
   __publicField(global_filters_controller_default, "values", {
     active: { type: Boolean, default: false }
   });
