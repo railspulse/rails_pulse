@@ -1,11 +1,10 @@
 <% columns = [
   { field: :name, label: 'Job Class', class: 'w-48', cell_class: 'truncate-cell' },
   { field: :queue_name, label: 'Queue', class: 'w-32' },
-  { field: :runs_count, label: 'Total Runs', class: 'w-28' },
-  { field: :failures_count, label: 'Failures', class: 'w-24' },
-  { field: :retries_count, label: 'Retries', class: 'w-24' },
-  { field: :p95_duration, label: 'P95 Duration', class: 'w-32' },
-  { field: :p99_duration, label: 'P99 Duration', class: 'w-32' },
+  { field: :count_sort, label: 'Runs', class: 'w-28' },
+  { field: :failures_count_sort, label: 'Failures', class: 'w-24' },
+  { field: :p95_duration_sort, label: 'P95', class: 'w-32' },
+  { field: :p99_duration_sort, label: 'P99', class: 'w-32' },
   { field: nil, label: 'Tags', class: 'w-32', sortable: false }
 ] %>
 
@@ -13,31 +12,35 @@
   <%= render "rails_pulse/components/table_head", columns: columns %>
 
   <tbody>
-    <% @table_data.each do |job| %>
+    <% @table_data.each do |row| %>
       <tr>
         <td class="truncate-cell">
-          <%= link_to job.name, job_path(job), data: { turbo_frame: '_top' } %>
+          <%= link_to row.name, job_path(row.job_id), data: { turbo_frame: '_top' } %>
         </td>
         <td>
-          <%= job.queue_name || 'default' %>
+          <span class="badge badge--primary"><%= row.queue_name || 'default' %></span>
         </td>
         <td>
-          <%= number_with_delimiter(job.runs_count) %>
+          <%= number_with_delimiter(row.count) %>
         </td>
         <td>
-          <%= number_with_delimiter(job.failures_count) %>
+          <%= number_with_delimiter(row.error_count) %>
         </td>
         <td>
-          <%= number_with_delimiter(job.retries_count) %>
+          <%= row.p95_duration ? "#{row.p95_duration.round(0)} ms" : "—" %>
         </td>
         <td>
-          <%= number_to_human(job.p95_duration || 0, units: { unit: "ms", thousand: "s" }, precision: 2) %>
+          <%= row.p99_duration ? "#{row.p99_duration.round(0)} ms" : "—" %>
         </td>
         <td>
-          <%= number_to_human(job.p99_duration || 0, units: { unit: "ms", thousand: "s" }, precision: 2) %>
-        </td>
-        <td>
-          <%= display_tag_badges(job) %>
+          <% tags = JSON.parse(row.tags || "[]") rescue [] %>
+          <% if tags.any? %>
+            <% tags.each do |tag| %>
+              <span class="badge badge--secondary"><%= tag %></span>
+            <% end %>
+          <% else %>
+            —
+          <% end %>
         </td>
       </tr>
     <% end %>

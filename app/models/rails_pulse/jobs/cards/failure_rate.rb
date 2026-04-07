@@ -2,28 +2,43 @@ module RailsPulse
   module Jobs
     module Cards
       class FailureRate < Base
-        def initialize(job: nil, period: 7, period_type: "day")
+        def initialize(job: nil, disabled_tags: [], show_non_tagged: true, period: 14, period_type: "day")
           @job = job
+          @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
           @period = period
           @period_type = period_type
         end
 
         def to_metric_card
           base_query = RailsPulse::Summary
+            .joins("INNER JOIN rails_pulse_jobs ON rails_pulse_jobs.id = rails_pulse_summaries.summarizable_id")
             .where(
               summarizable_type: "RailsPulse::Job",
               period_type: @period_type,
               period_start: range_start..now
             )
+
+          # Apply tag filters
+          actual_disabled_tags = @disabled_tags.reject { |tag| tag == "non_tagged" }
+          actual_disabled_tags.each do |tag|
+            sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
+            base_query = base_query.where.not("rails_pulse_jobs.tags LIKE ?", "%#{sanitized_tag}%")
+          end
+
+          unless @show_non_tagged
+            base_query = base_query.where("rails_pulse_jobs.tags IS NOT NULL AND rails_pulse_jobs.tags != '[]'")
+          end
+
           base_query = base_query.where(summarizable_id: @job.id) if @job
 
           metrics = base_query.select(
-            "SUM(count) AS total_count",
-            "SUM(error_count) AS total_errors",
-            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN count ELSE 0 END) AS current_count",
-            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN error_count ELSE 0 END) AS current_errors",
-            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN count ELSE 0 END) AS previous_count",
-            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN error_count ELSE 0 END) AS previous_errors"
+            "SUM(rails_pulse_summaries.count) AS total_count",
+            "SUM(rails_pulse_summaries.error_count) AS total_errors",
+            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(current_window_start)} THEN rails_pulse_summaries.count ELSE 0 END) AS current_count",
+            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(current_window_start)} THEN rails_pulse_summaries.error_count ELSE 0 END) AS current_errors",
+            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(range_start)} AND rails_pulse_summaries.period_start < #{quote(current_window_start)} THEN rails_pulse_summaries.count ELSE 0 END) AS previous_count",
+            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(range_start)} AND rails_pulse_summaries.period_start < #{quote(current_window_start)} THEN rails_pulse_summaries.error_count ELSE 0 END) AS previous_errors"
           ).take
 
           total_runs = metrics&.total_count.to_i
@@ -41,19 +56,31 @@ module RailsPulse
 
           # Create a separate query for sparkline data using only the current period
           sparkline_query = RailsPulse::Summary
+            .joins("INNER JOIN rails_pulse_jobs ON rails_pulse_jobs.id = rails_pulse_summaries.summarizable_id")
             .where(
               summarizable_type: "RailsPulse::Job",
               period_type: @period_type,
               period_start: current_window_start..now
             )
+
+          # Apply tag filters to sparkline query
+          actual_disabled_tags.each do |tag|
+            sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
+            sparkline_query = sparkline_query.where.not("rails_pulse_jobs.tags LIKE ?", "%#{sanitized_tag}%")
+          end
+
+          unless @show_non_tagged
+            sparkline_query = sparkline_query.where("rails_pulse_jobs.tags IS NOT NULL AND rails_pulse_jobs.tags != '[]'")
+          end
+
           sparkline_query = sparkline_query.where(summarizable_id: @job.id) if @job
 
           if @period_type == "hour"
-            grouped_errors = sparkline_query.group_by_hour(:period_start).sum(:error_count)
-            grouped_counts = sparkline_query.group_by_hour(:period_start).sum(:count)
+            grouped_errors = sparkline_query.group_by_hour(:period_start).sum("rails_pulse_summaries.error_count")
+            grouped_counts = sparkline_query.group_by_hour(:period_start).sum("rails_pulse_summaries.count")
           else
-            grouped_errors = sparkline_query.group_by_date(:period_start).sum(:error_count)
-            grouped_counts = sparkline_query.group_by_date(:period_start).sum(:count)
+            grouped_errors = sparkline_query.group_by_date(:period_start).sum("rails_pulse_summaries.error_count")
+            grouped_counts = sparkline_query.group_by_date(:period_start).sum("rails_pulse_summaries.count")
           end
 
           sparkline_data = sparkline_from_failure_rates(grouped_errors, grouped_counts)

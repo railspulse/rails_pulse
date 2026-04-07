@@ -1,31 +1,63 @@
-<%= render 'rails_pulse/components/page_header', show_active_filters: true, show_global_filters: true %>
+<%= render 'rails_pulse/components/page_header', show_active_filters: true %>
 
-<% unless turbo_frame_request? %>
-  <% metric_cards = [@total_runs_metric_card, @failure_rate_metric_card, @p95_duration_metric_card].compact %>
-  <%= render 'rails_pulse/components/metric_strip', metrics_data: metric_cards %>
-<% end %>
+<%= render "rails_pulse/jobs/metric_cards" %>
 
-<%= render 'rails_pulse/components/panel', { title: 'Job Classes' } do %>
-  <%= search_form_for @ransack_query, url: jobs_path, class: "flex items-center justify-between gap mb-4" do |form| %>
-    <div class="flex items-center grow gap">
-      <%= form.search_field :name_cont, placeholder: "Filter by job name", autocomplete: "off", class: "input" %>
-      <%= form.select :queue_name_eq,
-        options_for_select([["All queues", ""]] + @available_queues.map { |q| [q || "default", q] }, params.dig(:q, :queue_name_eq)),
-        {},
-        { class: "input" }
-      %>
-      <%= link_to "Reset", jobs_path, class: "btn btn--borderless show@md" if params.has_key?(:q) %>
-      <%= form.submit "Search", class: "btn show@sm" %>
+<div
+  data-controller="rails-pulse--index rails-pulse--chart-switcher"
+  data-rails-pulse--index-chart-id-value="duration_chart"
+  data-rails-pulse--chart-switcher-selected-value="duration"
+  data-action="
+    rails-pulse--chart-switcher:switched->rails-pulse--index#handleChartSwitched
+  "
+>
+  <%= render 'rails_pulse/components/panel', {
+    title: 'Job Classes',
+    card_classes: 'b-full',
+    help_heading: 'Job Performance Charts',
+    help_text: 'Toggle between different performance metrics to analyze your background jobs. Duration shows P95/P99 latency, Execution Volume shows job frequency patterns, and Failure Rate tracks errors over time.'
+  } do %>
+    <div class="filter-bar">
+      <%= search_form_for @ransack_query, url: jobs_path, class: "filter-bar__form" do |form| %>
+        <input
+          type="hidden"
+          name="chart_type"
+          data-rails-pulse--chart-switcher-target="chartTypeInput"
+        >
+        <%= select_tag :queue_name,
+          options_for_select([["All queues", ""]] + @available_queues.map { |q| [q || "default", q] }, params[:queue_name]),
+          { class: "input" }
+        %>
+        <%= form.select :avg_duration,
+          duration_options(:job),
+          { selected: @selected_response_range },
+          { class: "input" }
+        %>
+        <%= if params.has_key?(:q) || params[:queue_name].present?
+          link_to "Reset",
+          jobs_path,
+          class: "btn btn--plain",
+          style: "text-decoration: none; color: var(--color-text-muted);"
+        end %>
+        <%= form.submit "Search", class: "btn" %>
+      <% end %>
     </div>
-  <% end %>
 
-  <% if @table_data && @table_data.any? %>
-    <%= turbo_frame_tag :index_table do %>
-      <%= render 'rails_pulse/jobs/table' %>
+    <% if turbo_frame_request? %>
+      <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
+        <%= render "rails_pulse/jobs/table" %>
+      <% end %>
+    <% elsif @has_data %>
+      <% if @has_chart_data %>
+        <%= render "rails_pulse/jobs/chart_tabs" %>
+      <% end %>
+
+      <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
+        <%= render "rails_pulse/jobs/table" %>
+      <% end %>
+    <% else %>
+      <%= render "rails_pulse/components/empty_state",
+        title: "No job data found for the selected filters.",
+        description: "Try adjusting your time range or filters to see results." %>
     <% end %>
-  <% else %>
-    <%= render 'rails_pulse/components/empty_state',
-        title: 'No jobs found',
-        description: 'No background jobs have been executed yet.' %>
   <% end %>
-<% end %>
+</div>

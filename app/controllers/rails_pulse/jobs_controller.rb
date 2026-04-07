@@ -1,63 +1,20 @@
 module RailsPulse
   class JobsController < ApplicationController
+    include ChartTableConcern
     include TagFilterConcern
-    include TimeRangeConcern
-
-    # Override TIME_RANGE_OPTIONS from TimeRangeConcern
-    remove_const(:TIME_RANGE_OPTIONS) if const_defined?(:TIME_RANGE_OPTIONS)
-    TIME_RANGE_OPTIONS = [
-      [ "Recent", "recent" ],
-      [ "Custom Range", "custom" ]
-    ].freeze
 
     before_action :set_job, only: :show
 
     def index
       setup_metric_cards
-
-      @ransack_query = RailsPulse::Job.ransack(params[:q])
-      @ransack_query.sorts = "runs_count desc" if @ransack_query.sorts.empty?
-
-      # Apply tag filters from session
-      base_query = apply_tag_filters(@ransack_query.result)
-
-      @pagination, @jobs = paginate(base_query, limit: session_pagination_limit)
-      @table_data = @jobs
+      setup_chart_and_table_data
 
       @available_queues = RailsPulse::Job.distinct.pluck(:queue_name).compact.sort
     end
 
     def show
       setup_metric_cards
-
-      ransack_params = params[:q] || {}
-
-      # Check if user explicitly selected a time range
-      time_mode = params.dig(:q, :period_start_range) || "recent"
-
-      # Apply time range filter only if custom mode is selected
-      if time_mode == "custom"
-        # Get time range from TimeRangeConcern which parses custom_date_range
-        @start_time, @end_time, @selected_time_range, @time_diff_hours = setup_time_range
-
-        # Apply time filters using parsed times from concern
-        ransack_params = ransack_params.merge(
-          occurred_at_gteq: Time.at(@start_time),
-          occurred_at_lteq: Time.at(@end_time)
-        )
-      else
-        # Recent mode - no time filters, just rely on sort + pagination
-        @selected_time_range = "recent"
-      end
-
-      @ransack_query = @job.runs.ransack(ransack_params)
-      @ransack_query.sorts = "occurred_at desc" if @ransack_query.sorts.empty?
-
-      # Apply tag filters from session
-      base_query = apply_tag_filters(@ransack_query.result)
-
-      @pagination, @recent_runs = paginate(base_query, limit: session_pagination_limit)
-      @table_data = @recent_runs
+      setup_chart_and_table_data
     end
 
     private
@@ -69,10 +26,155 @@ module RailsPulse
     def setup_metric_cards
       return if turbo_frame_request?
 
-      # Pass the job to scope the cards to the current job on the show page
-      @total_runs_metric_card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job).to_metric_card
-      @failure_rate_metric_card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job).to_metric_card
-      @p95_duration_metric_card = RailsPulse::Jobs::Cards::P95Duration.new(job: @job).to_metric_card
+      disabled_tags = session_disabled_tags
+      show_non_tagged = session[:show_non_tagged] != false
+      period = ((@end_time - @start_time) / 1.day).round
+      period_type_str = period_type.to_s
+
+      @total_runs_metric_card = RailsPulse::Jobs::Cards::TotalRuns.new(
+        job: @job,
+        disabled_tags: disabled_tags,
+        show_non_tagged: show_non_tagged,
+        period: period,
+        period_type: period_type_str
+      ).to_metric_card
+
+      @failure_rate_metric_card = RailsPulse::Jobs::Cards::FailureRate.new(
+        job: @job,
+        disabled_tags: disabled_tags,
+        show_non_tagged: show_non_tagged,
+        period: period,
+        period_type: period_type_str
+      ).to_metric_card
+
+      @p95_duration_metric_card = RailsPulse::Jobs::Cards::P95Duration.new(
+        job: @job,
+        disabled_tags: disabled_tags,
+        show_non_tagged: show_non_tagged,
+        period: period,
+        period_type: period_type_str
+      ).to_metric_card
+    end
+
+    # Override setup_chart_data to generate all 3 chart types
+    def setup_chart_data(ransack_params)
+      chart_ransack_params = build_chart_ransack_params(ransack_params)
+      chart_ransack_query = chart_model.ransack(chart_ransack_params)
+
+      common_options = {
+        ransack_query: chart_ransack_query,
+        period_type: period_type,
+        start_time: @start_time,
+        end_time: @end_time,
+        start_duration: @start_duration,
+        disabled_tags: session_disabled_tags,
+        show_non_tagged: session[:show_non_tagged] != false,
+        **chart_options
+      }
+
+      @duration_chart_data = Jobs::Charts::Duration.new(**common_options).to_chart_data
+      @execution_volume_chart_data = Jobs::Charts::ExecutionVolume.new(**common_options).to_chart_data
+      @failure_rate_chart_data = Jobs::Charts::FailureRate.new(**common_options).to_chart_data
+
+      @chart_data = @duration_chart_data  # Backward compatibility
+    end
+
+    def chart_model
+      Summary
+    end
+
+    def table_model
+      show_action? ? JobRun : Summary
+    end
+
+    def chart_class
+      Jobs::Charts::Duration
+    end
+
+    def chart_options
+      show_action? ? { job: @job } : {}
+    end
+
+    def build_chart_ransack_params(ransack_params)
+      base_params = ransack_params.except(:s).merge(
+        period_start_gteq: Time.at(@start_time),
+        period_start_lt: Time.at(@end_time),
+        summarizable_type_eq: "RailsPulse::Job"
+      )
+
+      # Only add duration filter if we have a meaningful threshold
+      base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+
+      if show_action?
+        base_params.merge(summarizable_id_eq: @job.id)
+      else
+        base_params
+      end
+    end
+
+    def build_table_ransack_params(ransack_params)
+      if show_action?
+        # For JobRun model on show page
+        params = ransack_params.merge(
+          occurred_at_gteq: Time.at(@table_start_time),
+          occurred_at_lt: Time.at(@table_end_time),
+          job_id_eq: @job.id
+        )
+        params[:duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+        params
+      else
+        # For Summary model on index page
+        params = ransack_params.merge(
+          period_start_gteq: Time.at(@table_start_time),
+          period_start_lt: Time.at(@table_end_time),
+          summarizable_type_eq: "RailsPulse::Job"
+        )
+        params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+        params
+      end
+    end
+
+    def default_table_sort
+      show_action? ? "occurred_at desc" : "count_sort desc"
+    end
+
+    def build_table_results
+      if show_action?
+        # For show action, query JobRun directly but join to summaries for consistency
+        base_query = @ransack_query.result
+          .joins(<<~SQL)
+            INNER JOIN rails_pulse_summaries ON
+              rails_pulse_summaries.summarizable_id = rails_pulse_job_runs.job_id AND
+              rails_pulse_summaries.summarizable_type = 'RailsPulse::Job' AND
+              rails_pulse_summaries.period_type = '#{period_type}' AND
+              rails_pulse_job_runs.occurred_at >= rails_pulse_summaries.period_start AND
+              rails_pulse_job_runs.occurred_at < rails_pulse_summaries.period_end
+          SQL
+        base_query.distinct
+      else
+        # For index action, use aggregated summaries
+        Jobs::Tables::Index.new(
+          ransack_query: @ransack_query,
+          period_type: period_type,
+          start_time: @start_time,
+          params: params,
+          disabled_tags: session_disabled_tags,
+          show_non_tagged: session[:show_non_tagged] != false,
+          queue_name: params[:queue_name]
+        ).to_table
+      end
+    end
+
+    def default_time_range_key
+      :last_week
+    end
+
+    def duration_field
+      :avg_duration
+    end
+
+    def show_action?
+      action_name == "show"
     end
   end
 end

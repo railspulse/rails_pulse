@@ -2,26 +2,43 @@ module RailsPulse
   module Jobs
     module Cards
       class P95Duration < Base
-        def initialize(job: nil)
+        def initialize(job: nil, disabled_tags: [], show_non_tagged: true, period: 14, period_type: "day")
           @job = job
+          @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
+          @period = period
+          @period_type = period_type
         end
 
         def to_metric_card
           base_query = RailsPulse::Summary
+            .joins("INNER JOIN rails_pulse_jobs ON rails_pulse_jobs.id = rails_pulse_summaries.summarizable_id")
             .where(
               summarizable_type: "RailsPulse::Job",
-              period_type: "day",
+              period_type: @period_type,
               period_start: range_start..now
             )
+
+          # Apply tag filters
+          actual_disabled_tags = @disabled_tags.reject { |tag| tag == "non_tagged" }
+          actual_disabled_tags.each do |tag|
+            sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
+            base_query = base_query.where.not("rails_pulse_jobs.tags LIKE ?", "%#{sanitized_tag}%")
+          end
+
+          unless @show_non_tagged
+            base_query = base_query.where("rails_pulse_jobs.tags IS NOT NULL AND rails_pulse_jobs.tags != '[]'")
+          end
+
           base_query = base_query.where(summarizable_id: @job.id) if @job
 
           metrics = base_query.select(
-            "SUM(p95_duration * count) AS total_weighted_p95",
-            "SUM(count) AS total_runs",
-            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN p95_duration * count ELSE 0 END) AS current_weighted_p95",
-            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN count ELSE 0 END) AS current_runs",
-            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN p95_duration * count ELSE 0 END) AS previous_weighted_p95",
-            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN count ELSE 0 END) AS previous_runs"
+            "SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) AS total_weighted_p95",
+            "SUM(rails_pulse_summaries.count) AS total_runs",
+            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(current_window_start)} THEN rails_pulse_summaries.p95_duration * rails_pulse_summaries.count ELSE 0 END) AS current_weighted_p95",
+            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(current_window_start)} THEN rails_pulse_summaries.count ELSE 0 END) AS current_runs",
+            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(range_start)} AND rails_pulse_summaries.period_start < #{quote(current_window_start)} THEN rails_pulse_summaries.p95_duration * rails_pulse_summaries.count ELSE 0 END) AS previous_weighted_p95",
+            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(range_start)} AND rails_pulse_summaries.period_start < #{quote(current_window_start)} THEN rails_pulse_summaries.count ELSE 0 END) AS previous_runs"
           ).take
 
           total_runs = metrics&.total_runs.to_i
@@ -39,11 +56,11 @@ module RailsPulse
 
           grouped_weighted = base_query
             .group_by_date(:period_start)
-            .sum(Arel.sql("p95_duration * count"))
+            .sum(Arel.sql("rails_pulse_summaries.p95_duration * rails_pulse_summaries.count"))
 
           grouped_counts = base_query
             .group_by_date(:period_start)
-            .sum(:count)
+            .sum("rails_pulse_summaries.count")
 
           sparkline_data = sparkline_from_averages(grouped_weighted, grouped_counts)
 
