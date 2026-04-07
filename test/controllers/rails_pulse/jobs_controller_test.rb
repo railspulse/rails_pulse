@@ -31,10 +31,13 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_operator RailsPulse::JobsController, :<, RailsPulse::ApplicationController
   end
 
-  test "controller defines custom TIME_RANGE_OPTIONS" do
+  test "controller uses standard TIME_RANGE_OPTIONS" do
     expected_options = [
-      [ "Recent", "recent" ],
-      [ "Custom Range", "custom" ]
+      [ "Last 24 hours", :last_24_hours ],
+      [ "Last 7 days", :last_7_days ],
+      [ "Last 14 days", :last_14_days ],
+      [ "Last 30 days", :last_30_days ],
+      [ "Custom range", :custom ]
     ]
 
     assert_equal expected_options, RailsPulse::JobsController::TIME_RANGE_OPTIONS
@@ -138,20 +141,20 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @job, assigns(:job)
   end
 
-  test "show action defaults to recent mode" do
+  test "show action defaults to last 7 days" do
     get rails_pulse.job_path(@job)
 
     assert_response :success
-    assert_equal "recent", assigns(:selected_time_range)
+    assert_equal "last_7_days", assigns(:selected_time_range)
   end
 
-  test "show action with recent mode does not filter by time" do
-    get rails_pulse.job_path(@job), params: { q: { period_start_range: "recent" } }
+  test "show action filters by time range" do
+    get rails_pulse.job_path(@job)
 
     assert_response :success
-    assert_equal "recent", assigns(:selected_time_range)
-    # In recent mode, start_time and end_time should not be set
-    assert_nil assigns(:start_time)
+    # Time filtering should be applied
+    assert_not_nil assigns(:start_time)
+    assert_not_nil assigns(:end_time)
   end
 
   test "show action orders runs by occurred_at desc" do

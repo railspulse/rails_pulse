@@ -28,10 +28,14 @@ module ChartTableConcern
     @has_data = has_meaningful_data?
   end
 
+  # Sets up chart data for all chart types defined by the controller.
+  # Generates multiple chart instances and stores them in instance variables.
+  # Controllers override `chart_definitions` to specify which charts to render.
   def setup_chart_data(ransack_params)
     chart_ransack_params = build_chart_ransack_params(ransack_params)
     chart_ransack_query = chart_model.ransack(chart_ransack_params)
-    @chart_data = chart_class.new(
+
+    common_options = {
       ransack_query: chart_ransack_query,
       period_type: period_type,
       start_time: @start_time,
@@ -40,7 +44,18 @@ module ChartTableConcern
       disabled_tags: session_disabled_tags,
       show_non_tagged: session[:show_non_tagged] != false,
       **chart_options
-    ).to_chart_data
+    }
+
+    # Generate all chart types defined by the controller
+    chart_definitions.each do |ivar_name, chart_class|
+      instance_variable_set(
+        "@#{ivar_name}",
+        chart_class.new(**common_options).to_chart_data
+      )
+    end
+
+    # Backward compatibility: first chart becomes @chart_data
+    @chart_data = instance_variable_get("@#{chart_definitions.keys.first}")
   end
 
   def setup_table_data(ransack_params)
@@ -65,10 +80,14 @@ module ChartTableConcern
 
 
   def period_type
+    # Default to :day for "recent" mode or when time_diff isn't set
+    return :day if @time_diff_hours.nil?
     @time_diff_hours <= 25 ? :hour : :day
   end
 
   def group_by
+    # Default to :group_by_day for "recent" mode or when time_diff isn't set
+    return :group_by_day if @time_diff_hours.nil?
     @time_diff_hours <= 25 ? :group_by_hour : :group_by_day
   end
 
@@ -101,14 +120,143 @@ module ChartTableConcern
     send(method, params[:limit]) if params[:limit].present?
   end
 
+  # Helper method to determine if we're on a show action
+  def show_action?
+    action_name == "show"
+  end
+
+  # Determines which pagination method to use based on action
+  # Index pages store the limit globally, show pages set it temporarily
+  def pagination_method
+    show_action? ? :set_pagination_limit : :store_pagination_limit
+  end
+
+  # Builds ransack parameters for chart queries
+  # Common pattern: time range + optional duration filter + resource scope
+  # Handles "recent" mode where @start_time/@end_time may be nil
+  def build_chart_ransack_params(ransack_params)
+    base_params = ransack_params.except(:s)
+
+    # Add time filters if we have time boundaries (not in "recent" mode)
+    if @start_time && @end_time
+      base_params.merge!(
+        period_start_gteq: Time.at(@start_time),
+        period_start_lt: Time.at(@end_time)
+      )
+    end
+
+    # Add summarizable_type filter for polymorphic associations (queries, jobs)
+    base_params.merge!(summarizable_type_eq: summarizable_type) if summarizable_type
+
+    # Only add duration filter if we have a meaningful threshold
+    base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+
+    # Scope to specific resource on show pages
+    if show_action?
+      base_params.merge(summarizable_id_eq: current_resource.id)
+    else
+      base_params
+    end
+  end
+
+  # Builds ransack parameters for table queries
+  # Different logic for index (summaries) vs show (individual records)
+  def build_table_ransack_params(ransack_params)
+    if show_action?
+      build_show_table_ransack_params(ransack_params)
+    else
+      build_index_table_ransack_params(ransack_params)
+    end
+  end
+
+  # Builds table params for show pages (individual records like Request, JobRun)
+  # Handles "recent" mode where time boundaries may be nil
+  def build_show_table_ransack_params(ransack_params)
+    params = ransack_params.dup
+
+    # Add time filters if we have time boundaries (not in "recent" mode)
+    if @table_start_time && @table_end_time
+      params.merge!(
+        occurred_at_gteq: Time.at(@table_start_time),
+        occurred_at_lt: Time.at(@table_end_time)
+      )
+    end
+
+    params.merge!(show_resource_filter)
+    params[:duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+    params
+  end
+
+  # Builds table params for index pages (summary records)
+  # Handles "recent" mode where time boundaries may be nil
+  def build_index_table_ransack_params(ransack_params)
+    params = ransack_params.dup
+
+    # Add time filters if we have time boundaries (not in "recent" mode)
+    if @table_start_time && @table_end_time
+      params.merge!(
+        period_start_gteq: Time.at(@table_start_time),
+        period_start_lt: Time.at(@table_end_time)
+      )
+    end
+
+    params.merge!(summarizable_type_eq: summarizable_type) if summarizable_type
+    params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+    params
+  end
+
   # Abstract methods - must be implemented by including controllers
-  def chart_model; raise NotImplementedError; end
-  def table_model; raise NotImplementedError; end
-  def chart_class; raise NotImplementedError; end
-  def chart_options; {}; end
-  def build_chart_ransack_params(ransack_params); raise NotImplementedError; end
-  def build_table_ransack_params(ransack_params); raise NotImplementedError; end
-  def default_table_sort; raise NotImplementedError; end
-  def build_table_results; raise NotImplementedError; end
-  def pagination_method; :store_pagination_limit; end
+
+  # Returns the ActiveRecord model used for chart queries (usually Summary)
+  def chart_model
+    raise NotImplementedError, "#{self.class} must implement #chart_model"
+  end
+
+  # Returns the ActiveRecord model used for table queries (varies by action)
+  def table_model
+    raise NotImplementedError, "#{self.class} must implement #table_model"
+  end
+
+  # DEPRECATED: Use chart_definitions instead
+  # Returns the primary chart class for backward compatibility
+  def chart_class
+    raise NotImplementedError, "#{self.class} must implement #chart_class"
+  end
+
+  # Returns a hash of { instance_variable_name: ChartClass }
+  # Example: { response_time_chart_data: Routes::Charts::ResponseTime }
+  def chart_definitions
+    raise NotImplementedError, "#{self.class} must implement #chart_definitions"
+  end
+
+  # Returns options passed to chart classes (e.g., { route: @route })
+  def chart_options
+    {}
+  end
+
+  # Returns the default sort order for tables
+  def default_table_sort
+    raise NotImplementedError, "#{self.class} must implement #default_table_sort"
+  end
+
+  # Returns the table query results (may include joins, filters, etc.)
+  def build_table_results
+    raise NotImplementedError, "#{self.class} must implement #build_table_results"
+  end
+
+  # Returns the summarizable_type for polymorphic associations (nil for routes)
+  def summarizable_type
+    nil
+  end
+
+  # Returns the ransack filter for scoping to a specific resource on show pages
+  # Example: { route_id_eq: @route.id }
+  def show_resource_filter
+    raise NotImplementedError, "#{self.class} must implement #show_resource_filter" if show_action?
+  end
+
+  # Override in show actions to return the current resource (e.g., @route, @query)
+  def current_resource
+    nil
+  end
 end

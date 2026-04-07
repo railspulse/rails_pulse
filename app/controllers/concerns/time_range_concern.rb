@@ -4,26 +4,27 @@ module TimeRangeConcern
   included do
     # Define the constant in the including class - ordered by most common usage
     const_set(:TIME_RANGE_OPTIONS, [
-      [ "Last 24 hours", :last_day ],
-      [ "Last Week", :last_week ],
-      [ "Last 2 Weeks", :last_two_weeks ],
-      [ "Last Month", :last_month ],
-      [ "Custom Range...", :custom ]
+      [ "Last 24 hours", :last_24_hours ],
+      [ "Last 7 days", :last_7_days ],
+      [ "Last 14 days", :last_14_days ],
+      [ "Last 30 days", :last_30_days ],
+      [ "Custom range", :custom ]
     ].freeze)
   end
 
   def default_time_range_key
-    :last_day
+    :last_24_hours
   end
 
   def setup_time_range
     default_key = default_time_range_key
+
     start_time = case default_key
-    when :last_24_hours, :last_day               then 1.day.ago
-    when :last_7_days, :last_week                then 1.week.ago
-    when :last_14_days, :last_two_weeks          then 2.weeks.ago
-    when :last_30_days, :last_month              then 1.month.ago
-    else                                              1.day.ago
+    when :last_24_hours  then 1.day.ago
+    when :last_7_days    then 1.week.ago
+    when :last_14_days   then 2.weeks.ago
+    when :last_30_days   then 1.month.ago
+    else                      1.day.ago
     end
     end_time = Time.zone.now
     selected_time_range = default_key
@@ -34,12 +35,13 @@ module TimeRangeConcern
     if ransack_params[:period_start_range].present? && ransack_params[:period_start_range].to_sym != :custom
       # Predefined time range from dropdown
       selected_time_range = ransack_params[:period_start_range]
+
       start_time =
         case selected_time_range.to_sym
-        when :last_24_hours, :last_day       then 1.day.ago
-        when :last_7_days, :last_week        then 1.week.ago
-        when :last_14_days, :last_two_weeks  then 2.weeks.ago
-        when :last_30_days, :last_month      then 1.month.ago
+        when :last_24_hours  then 1.day.ago
+        when :last_7_days    then 1.week.ago
+        when :last_14_days   then 2.weeks.ago
+        when :last_30_days   then 1.month.ago
         else 1.day.ago # Default fallback
         end
     # Priority 2: Page-specific custom datetime range from picker (only if period_start_range is :custom)
@@ -68,10 +70,10 @@ module TimeRangeConcern
         selected_time_range = preference.to_sym
         start_time =
           case selected_time_range
-          when :last_24_hours, :last_day       then 1.day.ago
-          when :last_7_days, :last_week        then 1.week.ago
-          when :last_14_days, :last_two_weeks  then 2.weeks.ago
-          when :last_30_days, :last_month      then 1.month.ago
+          when :last_24_hours  then 1.day.ago
+          when :last_7_days    then 1.week.ago
+          when :last_14_days   then 2.weeks.ago
+          when :last_30_days   then 1.month.ago
           else start_time
           end
       end
@@ -93,7 +95,8 @@ module TimeRangeConcern
       end_time = end_time.end_of_day
     end
 
-    [ start_time.to_i, end_time.to_i, selected_time_range, time_diff ]
+    # Convert selected_time_range to string for backward compatibility with tests
+    [ start_time.to_i, end_time.to_i, selected_time_range.to_s, time_diff ]
   end
 
   private

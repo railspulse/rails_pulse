@@ -81,7 +81,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
   test "index action with time filtering" do
     setup_basic_test_data
 
-    get rails_pulse.routes_path, params: { q: { period_start_range: "last_week" } }
+    get rails_pulse.routes_path, params: { q: { period_start_range: "last_7_days" } }
 
     assert_response :success
     assert_not_nil assigns(:table_data)
@@ -275,7 +275,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
   # Time Range Filtering Tests
 
-  test "index default time range is last_two_weeks" do
+  test "index default time range is last_14_days" do
     setup_basic_test_data
 
     get rails_pulse.routes_path
@@ -287,20 +287,20 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_operator time_diff, :<, 15.days.to_i
   end
 
-  test "index with last_day time range" do
+  test "index with last_24_hours time range" do
     setup_basic_test_data
 
-    get rails_pulse.routes_path, params: { q: { period_start_range: "last_day" } }
+    get rails_pulse.routes_path, params: { q: { period_start_range: "last_24_hours" } }
 
     assert_response :success
     time_diff = assigns(:end_time) - assigns(:start_time)
     assert_operator time_diff, :<=, 25.hours.to_i
   end
 
-  test "index with last_week time range" do
+  test "index with last_7_days time range" do
     setup_basic_test_data
 
-    get rails_pulse.routes_path, params: { q: { period_start_range: "last_week" } }
+    get rails_pulse.routes_path, params: { q: { period_start_range: "last_7_days" } }
 
     assert_response :success
     time_diff = assigns(:end_time) - assigns(:start_time)
@@ -308,10 +308,10 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_operator time_diff, :<, 8.days.to_i
   end
 
-  test "index with last_two_weeks time range" do
+  test "index with last_14_days time range" do
     setup_basic_test_data
 
-    get rails_pulse.routes_path, params: { q: { period_start_range: "last_two_weeks" } }
+    get rails_pulse.routes_path, params: { q: { period_start_range: "last_14_days" } }
 
     assert_response :success
     time_diff = assigns(:end_time) - assigns(:start_time)
@@ -319,10 +319,10 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_operator time_diff, :<, 15.days.to_i
   end
 
-  test "index with last_month time range" do
+  test "index with last_30_days time range" do
     setup_basic_test_data
 
-    get rails_pulse.routes_path, params: { q: { period_start_range: "last_month" } }
+    get rails_pulse.routes_path, params: { q: { period_start_range: "last_30_days" } }
 
     assert_response :success
     time_diff = assigns(:end_time) - assigns(:start_time)
@@ -375,7 +375,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
   test "period type is hour for ranges under 25 hours" do
     setup_basic_test_data
 
-    get rails_pulse.routes_path, params: { q: { period_start_range: "last_day" } }
+    get rails_pulse.routes_path, params: { q: { period_start_range: "last_24_hours" } }
 
     assert_response :success
     time_diff_hours = (assigns(:end_time) - assigns(:start_time)) / 3600.0
@@ -386,7 +386,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
   test "period type is day for ranges over 25 hours" do
     setup_basic_test_data
 
-    get rails_pulse.routes_path, params: { q: { period_start_range: "last_week" } }
+    get rails_pulse.routes_path, params: { q: { period_start_range: "last_7_days" } }
 
     assert_response :success
     time_diff_hours = (assigns(:end_time) - assigns(:start_time)) / 3600.0
@@ -707,7 +707,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     get rails_pulse.routes_path, params: {
       q: {
-        period_start_range: "last_week",
+        period_start_range: "last_7_days",
         response_time_range: "slow"
       }
     }
@@ -721,7 +721,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     get rails_pulse.routes_path, params: {
       q: {
-        period_start_range: "last_week",
+        period_start_range: "last_7_days",
         s: "count_sort desc"
       }
     }
@@ -749,7 +749,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     get rails_pulse.routes_path, params: {
       q: {
-        period_start_range: "last_week",
+        period_start_range: "last_7_days",
         response_time_range: "slow",
         s: "p95_duration_sort desc"
       }
@@ -862,7 +862,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     # Both preset and custom dates
     get rails_pulse.routes_path, params: {
       q: {
-        period_start_range: "last_week",
+        period_start_range: "last_7_days",
         start_date: 30.days.ago.to_date,
         end_date: Date.today
       }
