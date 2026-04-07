@@ -1,19 +1,10 @@
 module RailsPulse
   class ApplicationController < ActionController::Base
+    include PaginationConcern
+    include SessionFiltersConcern
+
     before_action :authenticate_rails_pulse_user!
-    before_action :set_show_non_tagged_default
     before_action :set_onboarding_state
-    helper_method :session_global_filters, :session_disabled_tags, :session_time_range_preference
-
-    def set_pagination_limit(limit = nil)
-      limit = limit || params[:limit]
-      session[:pagination_limit] = limit.to_i if limit.present?
-
-      # Render JSON for direct API calls or AJAX requests (but not turbo frame requests)
-      if (request.xhr? && !turbo_frame_request?) || (request.patch? && action_name == "set_pagination_limit")
-          render json: { status: "ok" }
-      end
-    end
 
     def set_global_filters
       if params[:clear] == "true"
@@ -125,66 +116,11 @@ module RailsPulse
       end
     end
 
-    def session_pagination_limit
-      # Use URL param if present, otherwise session, otherwise default
-      limit = params[:limit].presence || session[:pagination_limit] || 10
-      # Update session if URL param was used
-      session[:pagination_limit] = limit.to_i if params[:limit].present?
-      limit.to_i
-    end
-
-    def store_pagination_limit(limit)
-      # Validate pagination limit: minimum 5, maximum 50 for performance
-      validated_limit = limit.to_i.clamp(5, 50)
-      session[:pagination_limit] = validated_limit if limit.present?
-    end
-
-    def session_global_filters
-      session[:global_filters] || {}
-    end
-
-    def session_disabled_tags
-      session_global_filters["disabled_tags"] || []
-    end
-
-    def session_time_range_preference
-      session[:time_range_preference]
-    end
-
-    # Get the minimum duration based on global performance threshold
-    # Returns nil if no threshold is set (show all)
-    # context: :route, :request, or :query
-    def global_performance_threshold_duration(context)
-      threshold = session_global_filters["performance_threshold"]
-      return nil unless threshold.present?
-
-      config_key = "#{context}_thresholds".to_sym
-      thresholds = RailsPulse.configuration.public_send(config_key)
-
-      thresholds[threshold.to_sym]
-    rescue StandardError => e
-      logger.warn "Failed to get performance threshold: #{e.message}"
-      nil
-    end
-
     def set_onboarding_state
       @has_requests = RailsPulse::Request.exists?
       last_summary_at = RailsPulse::Summary.maximum(:updated_at)
       @has_summaries = last_summary_at.present?
       @summaries_stale = RailsPulse.configuration.warn_on_stale_summaries && @has_summaries && last_summary_at < 2.hours.ago
-    end
-
-    # Set default value for show_non_tagged if not already set
-    def set_show_non_tagged_default
-      session[:show_non_tagged] = true if session[:show_non_tagged].nil?
-    end
-
-    def paginate(collection, limit:)
-      page    = [ params[:page].to_i, 1 ].max
-      raw     = collection.count(:all)
-      count   = raw.is_a?(Hash) ? raw.size : raw
-      records = collection.offset((page - 1) * limit).limit(limit)
-      [ RailsPulse::Paginator.new(count: count, page: page, limit: limit), records ]
     end
   end
 end

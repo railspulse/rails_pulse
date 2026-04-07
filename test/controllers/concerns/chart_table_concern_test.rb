@@ -15,6 +15,8 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   class TestController < ActionController::Base
+    include PaginationConcern
+    include SessionFiltersConcern
     include ChartTableConcern
 
     attr_accessor :params, :session
@@ -36,9 +38,6 @@ class ChartTableConcernTest < ActionController::TestCase
     def current_resource; nil; end
     def chart_options; {}; end
 
-    def session_pagination_limit; 10; end
-    def session_disabled_tags; []; end
-    def paginate(collection, limit:); [ nil, [] ]; end
     def turbo_frame_request?; false; end
     def action_name; "index"; end
   end
@@ -432,33 +431,16 @@ class ChartTableConcernTest < ActionController::TestCase
     refute @controller.send(:show_action?)
   end
 
-  test "pagination_method returns set_pagination_limit for show" do
-    @controller.stubs(:show_action?).returns(true)
-
-    result = @controller.send(:pagination_method)
-
-    assert_equal :set_pagination_limit, result
-  end
-
-  test "pagination_method returns store_pagination_limit for index" do
-    @controller.stubs(:show_action?).returns(false)
-
-    result = @controller.send(:pagination_method)
-
-    assert_equal :store_pagination_limit, result
-  end
-
-  test "handle_pagination calls pagination_method" do
-    @controller.params = ActionController::Parameters.new({})
-    @controller.expects(:pagination_method).returns(:store_pagination_limit)
+  test "handle_pagination calls set_pagination_limit when limit param present" do
+    @controller.params = ActionController::Parameters.new({ limit: 25 })
+    @controller.expects(:set_pagination_limit).with(25)
 
     @controller.send(:handle_pagination)
   end
 
-  test "handle_pagination sends method with limit param when present" do
-    @controller.params = ActionController::Parameters.new({ limit: 25 })
-    @controller.stubs(:pagination_method).returns(:store_pagination_limit)
-    @controller.expects(:store_pagination_limit).with(25)
+  test "handle_pagination does nothing when limit param not present" do
+    @controller.params = ActionController::Parameters.new({})
+    @controller.expects(:set_pagination_limit).never
 
     @controller.send(:handle_pagination)
   end

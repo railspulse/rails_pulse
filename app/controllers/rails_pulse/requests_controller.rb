@@ -116,12 +116,6 @@ module RailsPulse
       base_query
     end
 
-    # Requests index stores pagination globally like other index pages
-    def pagination_method
-      :store_pagination_limit
-    end
-
-
     # Override table data setup to handle "recent" mode
     def setup_table_data(ransack_params)
       table_ransack_params = build_table_ransack_params(ransack_params)

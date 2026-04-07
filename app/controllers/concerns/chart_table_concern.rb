@@ -118,19 +118,12 @@ module ChartTableConcern
   end
 
   def handle_pagination
-    method = pagination_method
-    send(method, params[:limit]) if params[:limit].present?
+    set_pagination_limit(params[:limit]) if params[:limit].present?
   end
 
   # Helper method to determine if we're on a show action
   def show_action?
     action_name == "show"
-  end
-
-  # Determines which pagination method to use based on action
-  # Index pages store the limit globally, show pages set it temporarily
-  def pagination_method
-    show_action? ? :set_pagination_limit : :store_pagination_limit
   end
 
   # Builds ransack parameters for chart queries
