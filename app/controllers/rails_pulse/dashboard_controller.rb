@@ -27,10 +27,10 @@ module RailsPulse
       @throughput_and_errors_chart_data = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: @period, period_type: @period_type).to_chart_data
 
       # Needs Attention panel
-      @needs_attention = RailsPulse::Dashboard::NeedsAttention.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: @period, period_type: @period_type).to_attention_data
+      @needs_attention = RailsPulse::Dashboard::NeedsAttention.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: @period).to_attention_data
 
       # System Health bar
-      @health_summary = RailsPulse::Dashboard::HealthSummary.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: @period, period_type: @period_type).to_health_data
+      @health_summary = RailsPulse::Dashboard::HealthSummary.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: @period).to_health_data
     end
   end
 end

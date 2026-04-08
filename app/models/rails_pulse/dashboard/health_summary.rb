@@ -1,16 +1,13 @@
 module RailsPulse
   module Dashboard
     class HealthSummary
-      CRITICAL_ERROR_RATE = 10.0
-      WARNING_ERROR_RATE  = 5.0
-      CRITICAL_JOB_FAILURE_RATE = 10.0
-      WARNING_JOB_FAILURE_RATE  = 5.0
+      include Concerns::ThresholdConstants
+      include Concerns::TimeRangeHelper
 
-      def initialize(disabled_tags: [], show_non_tagged: true, period: 7, period_type: @period_type)
+      def initialize(disabled_tags: [], show_non_tagged: true, period: 7)
         @disabled_tags   = disabled_tags
         @show_non_tagged = show_non_tagged
         @period          = period
-        @period_type     = period_type
         @route_thresholds = RailsPulse.configuration.route_thresholds
         @query_thresholds = RailsPulse.configuration.query_thresholds
         @job_thresholds   = RailsPulse.configuration.job_thresholds
@@ -25,10 +22,6 @@ module RailsPulse
       end
 
       private
-
-      def period_range
-        [ @period.days.ago.beginning_of_day, Time.current ]
-      end
 
       def route_counts
         start, finish = period_range
