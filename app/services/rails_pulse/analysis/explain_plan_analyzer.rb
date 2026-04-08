@@ -99,8 +99,8 @@ module RailsPulse
         issues = []
 
         # High cost operations
-        if explain_plan.match(/cost=(\d+\.\d+)\.\.(\d+\.\d+)/)
-          total_cost = $2.to_f
+        if match = explain_plan.match(/cost=(?<start>\d+\.\d+)\.\.(?<total>\d+\.\d+)/)
+          total_cost = match[:total].to_f
           if total_cost > 1000
             issues << {
               type: "high_cost_operation",
@@ -112,8 +112,8 @@ module RailsPulse
         end
 
         # Hash joins on large datasets
-        if explain_plan.include?("Hash Join") && explain_plan.match(/rows=(\d+)/)
-          rows = $1.to_i
+        if explain_plan.include?("Hash Join") && (match = explain_plan.match(/rows=(?<rows>\d+)/))
+          rows = match[:rows].to_i
           if rows > 10000
             issues << {
               type: "large_hash_join",
@@ -141,8 +141,8 @@ module RailsPulse
         end
 
         # Full table scan with large row count
-        if explain_plan.match(/type: ALL.*rows: (\d+)/)
-          rows = $1.to_i
+        if match = explain_plan.match(/type: ALL.*rows: (?<rows>\d+)/)
+          rows = match[:rows].to_i
           if rows > 1000
             issues << {
               type: "full_scan_large_table",

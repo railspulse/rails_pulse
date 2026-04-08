@@ -84,7 +84,8 @@ module RailsPulse
           instance = TestClass.new(period: 7)
           start_time, end_time = instance.send(:period_range)
 
-          days_difference = ((end_time - start_time) / 1.day).round
+          # Span is N days ago at midnight to now, so it's >= N days but < N+1 days
+          days_difference = ((end_time - start_time) / 1.day).floor
 
           assert_equal 7, days_difference
         end
@@ -93,7 +94,8 @@ module RailsPulse
           instance = TestClass.new(period: 30)
           start_time, end_time = instance.send(:period_range)
 
-          days_difference = ((end_time - start_time) / 1.day).round
+          # Span is N days ago at midnight to now, so it's >= N days but < N+1 days
+          days_difference = ((end_time - start_time) / 1.day).floor
 
           assert_equal 30, days_difference
         end

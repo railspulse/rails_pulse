@@ -107,7 +107,7 @@ module RailsPulse
         issues = []
 
         # Missing WHERE clause on SELECT
-        if sql.match?(/^SELECT.*FROM.*(?!WHERE)/i) && !has_limit?
+        if detect_query_type == "SELECT" && !sql.match?(/\bWHERE\b/i) && !has_limit?
           issues << {
             type: "missing_where_clause",
             severity: "warning",

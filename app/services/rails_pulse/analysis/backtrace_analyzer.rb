@@ -10,7 +10,6 @@ module RailsPulse
           total_executions: operations.count,
           unique_locations: backtraces.uniq.count,
           most_common_location: find_most_common_location(backtraces),
-          potential_n_plus_one: detect_simple_n_plus_one_pattern,
           execution_frequency: calculate_execution_frequency,
           location_distribution: calculate_location_distribution(backtraces),
           code_hotspots: identify_code_hotspots(backtraces),
@@ -39,32 +38,13 @@ module RailsPulse
         }
       end
 
-      def detect_simple_n_plus_one_pattern
-        # Simple N+1 detection: many operations with same query in short time
-        time_window = 1.minute
-        groups = operations.group_by { |op| op.occurred_at.beginning_of_minute }
-
-        suspicious_groups = groups.select { |_, ops| ops.count > 10 }
-
-        {
-          detected: suspicious_groups.any?,
-          suspicious_periods: suspicious_groups.map do |time, ops|
-            {
-              period: time.strftime("%Y-%m-%d %H:%M"),
-              count: ops.count,
-              avg_duration: ops.sum(&:duration) / ops.count
-            }
-          end
-        }
-      end
-
       def calculate_execution_frequency
         return 0 if operations.empty? || operations.count < 2
 
         time_span = operations.last.occurred_at - operations.first.occurred_at
         return operations.count if time_span <= 0
 
-        (operations.count / time_span.in_hours).round(2)
+        (operations.count / (time_span / 1.hour)).round(2)
       end
 
       def calculate_location_distribution(backtraces)
@@ -149,8 +129,7 @@ module RailsPulse
             type: type,
             location: item,
             count: count,
-            percentage: (count.to_f / total_operations * 100).round(1),
-            operations_per_execution: (count.to_f / item_counts.values.sum * total_operations).round(2)
+            percentage: (count.to_f / total_operations * 100).round(1)
           }
         end
       end

@@ -319,7 +319,19 @@ module RailsPulse
       end
 
       def reserved_word?(word)
-        word.upcase.in?([ "AND", "OR", "NOT", "NULL", "TRUE", "FALSE" ])
+        # Common SQL reserved words that should not be treated as column names
+        word.upcase.in?(%w[
+          AND OR NOT IN IS NULL TRUE FALSE
+          SELECT FROM WHERE ORDER BY GROUP HAVING LIMIT OFFSET
+          JOIN INNER OUTER LEFT RIGHT CROSS ON USING
+          INSERT UPDATE DELETE CREATE DROP ALTER
+          TABLE INDEX VIEW CONSTRAINT PRIMARY FOREIGN KEY
+          DISTINCT ALL ANY SOME EXISTS BETWEEN LIKE
+          ASC DESC CASE WHEN THEN ELSE END
+          AS INTO VALUES SET DEFAULT
+          UNION INTERSECT EXCEPT
+          WITH RECURSIVE
+        ])
       end
     end
   end
