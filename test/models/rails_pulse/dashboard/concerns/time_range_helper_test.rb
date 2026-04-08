@@ -159,7 +159,6 @@ module RailsPulse
           instance = TestClass.new(period: 7)
 
           refute_respond_to instance, :period_range
-          assert_respond_to instance, :period_range
         end
       end
     end
