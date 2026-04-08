@@ -13,13 +13,17 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     @request_record = rails_pulse_requests(:users_request_1)
   end
 
+  # ============================================================================
   # Helper Structure Tests
+  # ============================================================================
 
   test "helper module is included" do
     assert_respond_to self, :breadcrumbs
   end
 
+  # ============================================================================
   # Root Path Tests
+  # ============================================================================
 
   test "breadcrumbs returns empty array for engine root path" do
     setup_request_path("/rails_pulse")
@@ -39,7 +43,9 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     assert_equal 0, crumbs.length
   end
 
+  # ============================================================================
   # Simple Path Tests
+  # ============================================================================
 
   test "breadcrumbs builds path segments after engine mount point" do
     setup_request_path("/rails_pulse/routes")

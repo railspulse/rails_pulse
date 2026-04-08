@@ -1,125 +1,5 @@
 module RailsPulse
   module StatusHelper
-    def route_status_indicator(status_value)
-      case status_value.to_i
-      when 0
-        # Healthy routes show no icon to reduce visual clutter
-        ""
-      when 1
-        content_tag(
-          :span,
-          lucide_icon("alert-triangle", width: "16", height: "16", class: "text-yellow-600"),
-          title: "Warning - Response time > #{RailsPulse.configuration.route_thresholds[:slow]} ms"
-        )
-      when 2
-        content_tag(
-          :span,
-          lucide_icon("alert-circle", width: "16", height: "16", class: "text-orange-600"),
-          title: "Slow - Response time > #{RailsPulse.configuration.route_thresholds[:very_slow]} ms"
-        )
-      when 3
-        content_tag(
-          :span,
-          lucide_icon("x-circle", width: "16", height: "16", class: "text-red-600"),
-          title: "Critical - Response time > #{RailsPulse.configuration.route_thresholds[:critical]} ms"
-        )
-      else
-        content_tag(
-          :span,
-          lucide_icon("help-circle", width: "16", height: "16", class: "text-gray-400"),
-          title: "Unknown status"
-        )
-      end
-    end
-
-    def request_status_indicator(duration)
-      thresholds = RailsPulse.configuration.request_thresholds
-      status_value = case duration.to_i
-      when 0...thresholds[:slow]
-        0 # Healthy
-      when thresholds[:slow]...thresholds[:very_slow]
-        1 # Warning
-      when thresholds[:very_slow]...thresholds[:critical]
-        2 # Slow
-      else
-        3 # Critical
-      end
-
-      case status_value
-      when 0
-        # Healthy requests show no icon to reduce visual clutter
-        ""
-      when 1
-        content_tag(
-          :span,
-          lucide_icon("alert-triangle", width: "16", height: "16", class: "text-yellow-600"),
-          title: "Warning - Response time > #{thresholds[:slow]} ms"
-        )
-      when 2
-        content_tag(
-          :span,
-          lucide_icon("alert-circle", width: "16", height: "16", class: "text-orange-600"),
-          title: "Slow - Response time > #{thresholds[:very_slow]} ms"
-        )
-      when 3
-        content_tag(
-          :span,
-          lucide_icon("x-circle", width: "16", height: "16", class: "text-red-600"),
-          title: "Critical - Response time > #{thresholds[:critical]} ms"
-        )
-      else
-        content_tag(
-          :span,
-          lucide_icon("help-circle", width: "16", height: "16", class: "text-gray-400"),
-          title: "Unknown status"
-        )
-      end
-    end
-
-    def query_status_indicator(avg_duration)
-      thresholds = RailsPulse.configuration.query_thresholds
-      status_value = case avg_duration.to_f
-      when 0...thresholds[:slow]
-        0 # Healthy
-      when thresholds[:slow]...thresholds[:very_slow]
-        1 # Warning
-      when thresholds[:very_slow]...thresholds[:critical]
-        2 # Slow
-      else
-        3 # Critical
-      end
-
-      case status_value
-      when 0
-        # Healthy queries show no icon to reduce visual clutter
-        ""
-      when 1
-        content_tag(
-          :span,
-          lucide_icon("alert-triangle", width: "16", height: "16", class: "text-yellow-600"),
-          title: "Warning - Query time > #{thresholds[:slow]} ms"
-        )
-      when 2
-        content_tag(
-          :span,
-          lucide_icon("alert-circle", width: "16", height: "16", class: "text-orange-600"),
-          title: "Slow - Query time > #{thresholds[:very_slow]} ms"
-        )
-      when 3
-        content_tag(
-          :span,
-          lucide_icon("x-circle", width: "16", height: "16", class: "text-red-600"),
-          title: "Critical - Query time > #{thresholds[:critical]} ms"
-        )
-      else
-        content_tag(
-          :span,
-          lucide_icon("help-circle", width: "16", height: "16", class: "text-gray-400"),
-          title: "Unknown status"
-        )
-      end
-    end
-
     def operation_status_indicator(operation)
       # Define operation-specific thresholds
       thresholds = case operation.operation_type
@@ -216,39 +96,6 @@ module RailsPulse
       end
     end
 
-    def operation_category_label(operation_type)
-      case categorize_operation(operation_type)
-      when :database
-        "Database"
-      when :view
-        "View Rendering"
-      when :application
-        "Application Logic"
-      else
-        "Other Operations"
-      end
-    end
-
-    def performance_badge_class(percentile)
-      case percentile
-      when 0..50
-        "badge--positive"
-      when 51..75
-        "badge--warning"
-      when 76..90
-        "badge--negative"
-      else
-        "badge--critical"
-      end
-    end
-
-    def rescue_template_missing
-      yield
-      true
-    rescue ActionView::MissingTemplate
-      false
-    end
-
     def truncate_sql(sql, length: 100)
       return sql if sql.length <= length
       sql.truncate(length)
@@ -266,8 +113,6 @@ module RailsPulse
         "#a6a6a6"
       end
     end
-
-
 
     def duration_options(type = :route)
       thresholds = RailsPulse.configuration.public_send("#{type}_thresholds")

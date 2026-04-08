@@ -1,19 +1,32 @@
 module RailsPulse
   class CleanupJob < ApplicationJob
+    # Performs scheduled cleanup of old RailsPulse data
+    # @return [Hash, nil] Stats hash with cleanup results or nil if archiving disabled
     def perform
       return unless RailsPulse.configuration.archiving_enabled
 
-      RailsPulse.logger.info "[CleanupJob] Starting scheduled cleanup"
-
+      log_start
       stats = CleanupService.perform
-
-      RailsPulse.logger.info "[CleanupJob] Cleanup completed - #{stats[:total_deleted]} records deleted"
-
+      log_completion(stats)
       stats
-    rescue => e
-      RailsPulse.logger.error "[CleanupJob] Cleanup failed: #{e.message}"
-      RailsPulse.logger.error e.backtrace.join("\n")
+    rescue StandardError => e
+      log_error(e)
       raise
+    end
+
+    private
+
+    def log_start
+      RailsPulse.logger.info "[CleanupJob] Starting scheduled cleanup"
+    end
+
+    def log_completion(stats)
+      RailsPulse.logger.info "[CleanupJob] Cleanup completed - #{stats[:total_deleted]} records deleted"
+    end
+
+    def log_error(error)
+      RailsPulse.logger.error "[CleanupJob] Cleanup failed: #{error.message}"
+      RailsPulse.logger.error error.backtrace.join("\n")
     end
   end
 end

@@ -1,5 +1,10 @@
 module RailsPulse
   class BackfillSummariesJob < ApplicationJob
+    # Backfills summary data for a date range
+    # @param start_date [String, Date, Time] Start of the backfill range
+    # @param end_date [String, Date, Time] End of the backfill range
+    # @param period_types [Array<String>] Period types to backfill (default: ["hour", "day"])
+    # @return [nil]
     def perform(start_date, end_date, period_types = [ "hour", "day" ])
       start_date = start_date.to_datetime
       end_date = end_date.to_datetime

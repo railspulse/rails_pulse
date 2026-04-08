@@ -19,7 +19,47 @@ This document outlines the testing standards and best practices for the RailsPul
 
 ## Core Principles
 
-### 1. DO NOT test the existence of private methods
+### 1. Execute real code - minimize mocking and stubbing
+
+Tests should execute the actual application code to provide meaningful coverage and catch real bugs. Over-mocking creates false confidence: tests pass but code is never actually run.
+
+**❌ Bad - Mocking prevents real execution:**
+```ruby
+test "calculates total with tax" do
+  # Stubbing prevents calculate_tax from actually running
+  stub(:calculate_tax, 10.0) do
+    result = order.total_with_tax
+    assert_equal 110.0, result
+  end
+  # Code coverage: 0% for calculate_tax method
+end
+```
+
+**✅ Good - Real execution:**
+```ruby
+test "calculates total with tax" do
+  order = create_order(subtotal: 100.0, tax_rate: 0.10)
+
+  result = order.total_with_tax
+
+  assert_equal 110.0, result
+  # Code coverage: 100% - calculate_tax actually executed
+end
+```
+
+**When to use mocking/stubbing:**
+- External API calls (network requests, third-party services)
+- Time-consuming operations (file I/O, complex calculations) where fixtures are impractical
+- Dependencies that are difficult to set up in test environment
+
+**When NOT to use mocking/stubbing:**
+- Your own application code (models, services, helpers, concerns)
+- Rails framework methods (they're already tested by Rails)
+- Simple calculations or data transformations
+
+---
+
+### 2. DO NOT test the existence of private methods
 
 Private methods are implementation details. Only test the public API.
 
@@ -849,10 +889,254 @@ end
 
 ---
 
+## Helper Testing Best Practices
+
+Helpers are pure Ruby modules that generate HTML or format data. Testing them requires following the core principle: **execute real code, not mocks**. Helpers are particularly susceptible to the "tests pass but 0% coverage" problem when over-mocked.
+
+### 1. Use ActionView::TestCase
+
+Helper tests should inherit from `ActionView::TestCase` and include the helper module:
+
+```ruby
+require "test_helper"
+
+class RailsPulse::TableHelperTest < ActionView::TestCase
+  include RailsPulse::TableHelper
+  include RailsPulse::Engine.routes.url_helpers  # If helper generates links
+  fixtures :rails_pulse_routes, :rails_pulse_queries  # If needed
+
+  test "render_cell_content returns simple value" do
+    row_data = { name: "Test Route" }
+    column = { field: :name }
+
+    result = render_cell_content(row_data, column)
+
+    assert_equal "Test Route", result
+  end
+end
+```
+
+### 2. Execute helpers for real - DO NOT mock them
+
+This is a specific application of Core Principle #1. Mocking helpers prevents their code from running.
+
+**❌ Bad - Mocking prevents code execution:**
+```ruby
+test "render_cell_content with link creates link" do
+  row_data = { name: "Test", path: "/test" }
+  column = { field: :name, link_to: :path }
+
+  # This prevents the real helper code from running!
+  define_singleton_method(:link_to) { |text, path, opts| "<a>#{text}</a>" }
+
+  result = render_cell_content(row_data, column)
+  # Helper code never executed = 0% coverage
+end
+```
+
+**✅ Good - Let helper execute for real:**
+```ruby
+test "render_cell_content with link creates link" do
+  row_data = { name: "Test", path: "/test" }
+  column = { field: :name, link_to: :path }
+
+  # Real execution - link_to is available from ActionView::TestCase
+  result = render_cell_content(row_data, column)
+
+  assert_includes result, "Test"
+  assert_includes result, "/test"
+  assert_includes result, "<a"
+end
+```
+
+### 3. Include route helpers when needed
+
+If your helper generates links using route helpers (like `query_path`, `route_path`), include the engine routes:
+
+```ruby
+class RailsPulse::TableHelperTest < ActionView::TestCase
+  include RailsPulse::TableHelper
+  include RailsPulse::Engine.routes.url_helpers  # Required for path helpers
+
+  test "render_cell_content with link_field for query_id creates query link" do
+    row_data = { name: "SELECT * FROM users", query_id: 123 }
+    column = { field: :name, link_field: :query_id }
+
+    result = render_cell_content(row_data, column)
+
+    assert_includes result, "SELECT * FROM users"
+    assert_includes result, "queries/123"
+    assert_includes result, "<a"
+  end
+end
+```
+
+### 4. Use real data over mocks
+
+Use fixtures or simple Ruby hashes/arrays to provide test data:
+
+```ruby
+# ✅ Good - Real data
+test "display_tag_badges handles array of tags" do
+  html = display_tag_badges(["production", "urgent", "api"])
+
+  assert_includes html, "Production"
+  assert_includes html, "Urgent"
+  assert_includes html, "badge"
+end
+
+# ✅ Good - Fixture data
+test "operations_performance_breakdown with fixture operations" do
+  request = rails_pulse_requests(:users_request_1)
+  operations = request.operations
+
+  breakdown = operations_performance_breakdown(operations)
+
+  assert_kind_of Hash, breakdown
+  assert breakdown.key?(:database)
+end
+
+# ❌ Bad - Stubbing prevents real execution
+test "display_tag_badges handles array of tags" do
+  stub(:display_tag_badges, "<div>badge</div>") do
+    result = display_tag_badges(["test"])
+    # Stub prevents actual helper code from running
+  end
+end
+```
+
+### 5. Test all code paths and branches
+
+Ensure your tests exercise every branch in the helper:
+
+```ruby
+# Test the main path
+test "renders percentage with plus sign when positive" do
+  row_data = { change: 15.5 }
+  column = { field: :change, format: :percentage }
+
+  result = render_cell_content(row_data, column)
+  assert_equal "+15.5%", result
+end
+
+# Test the else branch
+test "renders percentage without plus sign when negative" do
+  row_data = { change: -10.2 }
+  column = { field: :change, format: :percentage }
+
+  result = render_cell_content(row_data, column)
+  assert_equal "-10.2%", result
+end
+
+# Test the boundary
+test "renders percentage without sign when zero" do
+  row_data = { change: 0 }
+  column = { field: :change, format: :percentage }
+
+  result = render_cell_content(row_data, column)
+  assert_equal "0%", result
+end
+```
+
+### 6. Organize helper tests with section comments
+
+```ruby
+class RailsPulse::TableHelperTest < ActionView::TestCase
+  include RailsPulse::TableHelper
+  include RailsPulse::Engine.routes.url_helpers
+
+  # ============================================================================
+  # render_cell_content Tests - Basic Values
+  # ============================================================================
+
+  test "returns simple string value" do
+    # ...
+  end
+
+  # ============================================================================
+  # render_cell_content Tests - Links
+  # ============================================================================
+
+  test "creates link with link_to option" do
+    # ...
+  end
+
+  # ============================================================================
+  # render_cell_content Tests - Formatting
+  # ============================================================================
+
+  test "formats percentage with plus sign" do
+    # ...
+  end
+
+  # ============================================================================
+  # Edge Cases
+  # ============================================================================
+
+  test "handles missing field in row_data" do
+    # ...
+  end
+end
+```
+
+### 7. Keep helper tests simple
+
+Helpers should be pure functions with clear inputs and outputs. If a helper is complex or requires extensive context (session, params, form builders), consider:
+
+1. Simplifying the helper by extracting logic
+2. Testing it in integration/system tests where full context is available
+3. Adding more unit tests for extracted private methods (tested through public API)
+
+```ruby
+# Simple helper - easy to test
+def humanize_time_range(time_range_symbol)
+  case time_range_symbol.to_sym
+  when :last_day then "last 24 hours"
+  when :last_week then "last week"
+  else time_range_symbol.to_s.humanize.downcase
+  end
+end
+
+# Test is straightforward
+test "humanize_time_range converts symbols" do
+  assert_equal "last 24 hours", humanize_time_range(:last_day)
+  assert_equal "last week", humanize_time_range(:last_week)
+end
+```
+
+### 8. Coverage Anti-Patterns
+
+**Problem: Tests pass but coverage is 0%**
+
+This happens when tests use too much mocking/stubbing. The test executes but the actual application code doesn't run. This applies to all test types, not just helpers.
+
+**Solution: Remove mocks and use real execution**
+
+```ruby
+# Before (0% coverage):
+test "icon helper renders" do
+  stub(:rails_pulse_icon, "<icon>") do
+    assert_equal "<icon>", rails_pulse_icon("alert")
+  end
+end
+
+# After (100% coverage):
+test "icon helper renders" do
+  html = rails_pulse_icon("alert")
+
+  assert_includes html, "rails-pulse-icon"
+  assert_includes html, "data-controller"
+  assert_includes html, "rails-pulse--icon-name-value=\"alert\""
+end
+```
+
+---
+
 ## Summary Checklist
 
 Before submitting a test file, verify:
 
+- [ ] **Tests execute real application code (minimal mocking/stubbing)**
 - [ ] Tests only public methods (no private method existence tests)
 - [ ] Uses fixtures where possible
 - [ ] No `rescue` blocks in tests
@@ -869,6 +1153,8 @@ Before submitting a test file, verify:
 - [ ] Complex calculations documented with comments
 - [ ] Both positive and negative cases tested
 - [ ] Tests pass consistently across different random seeds
+- [ ] Tests include necessary dependencies (route helpers, modules, etc.)
+- [ ] Coverage verified (aim for >90%)
 
 ---
 
@@ -1011,6 +1297,49 @@ Coverage is organized into logical groups:
 3. **Check branch coverage** - 100% line coverage doesn't mean all code paths are tested
 4. **Don't game the metrics** - focus on meaningful tests, not just hitting coverage targets
 5. **Review coverage in PRs** - ensure new features include tests
+6. **Clear coverage cache when needed** - SimpleCov merges results across runs. If coverage seems stuck, clear it:
+   ```bash
+   rm -rf coverage/ && COVERAGE=true rails test
+   ```
+7. **Watch for "tests pass but 0% coverage"** - This is usually caused by:
+   - Too much mocking/stubbing (code never executes)
+   - Missing module includes or dependencies
+   - Tests that only check method existence, not execution
+   - This applies to ALL test types: models, controllers, services, helpers, concerns
+
+### Achieving High Coverage (>90%)
+
+Follow these principles for any code type (models, services, helpers, controllers):
+
+1. **Execute real code** - Minimize mocking/stubbing of your own application code
+2. **Include dependencies** - Route helpers, modules, concerns that code needs
+3. **Test all branches** - If/else, case statements, ternary operators, early returns
+4. **Use real data** - Fixtures for models, simple data structures for helpers
+5. **Test edge cases** - nil, empty, zero, boundary values
+
+Example coverage progression for helpers:
+```
+Initial (with mocking):  12.9% coverage
+After removing mocks:    100%  coverage
+```
+
+The same principle applies to all code: **Real execution beats mocking every time.**
+
+### When Mocking is Appropriate
+
+Mock external dependencies, not your own code:
+
+**✅ Good mocking:**
+- HTTP requests to third-party APIs
+- External services (payment processors, email providers)
+- File system operations when testing logic (not file handling)
+- Time-consuming external processes
+
+**❌ Bad mocking:**
+- Your own models, services, helpers, or concerns
+- Rails framework methods
+- Database queries (use fixtures instead)
+- Simple calculations or data transformations
 
 ### CI Integration
 

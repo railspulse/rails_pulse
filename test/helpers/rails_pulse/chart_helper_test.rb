@@ -3,6 +3,10 @@ require "test_helper"
 class RailsPulse::ChartHelperTest < ActionView::TestCase
   include RailsPulse::ChartHelper
 
+  # ============================================================================
+  # Chart Options Tests - Base Configuration
+  # ============================================================================
+
   test "base_chart_options sets defaults with units and zoom" do
     opts = base_chart_options(units: "ms", zoom: true)
 
@@ -10,6 +14,10 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
     assert_equal "60", opts[:grid][:bottom]
     assert opts[:animation]
   end
+
+  # ============================================================================
+  # Chart Options Tests - Specific Chart Types
+  # ============================================================================
 
   test "bar_chart_options deep merges series" do
     opts = bar_chart_options(units: "ms", zoom: false)
@@ -20,7 +28,7 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
   test "line_chart_options deep merges series" do
     opts = line_chart_options(units: "ms", zoom: false)
 
-    assert opts[:series][:smooth]
+    refute opts[:series][:smooth]  # Lines are not smoothed by default
     assert_equal 3, opts[:series][:lineStyle][:width]
     assert_equal "circle", opts[:series][:symbol]
   end
@@ -38,6 +46,10 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
     assert_equal "roundRect", opts[:series][:symbol]
     assert_equal 8, opts[:series][:symbolSize]
   end
+
+  # ============================================================================
+  # Zoom Configuration Tests
+  # ============================================================================
 
   test "bar_chart_options applies zoom configuration with chart_data" do
     chart_data = {
@@ -62,6 +74,10 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
 
     assert_equal "slider", opts[:dataZoom].first[:type]
   end
+
+  # ============================================================================
+  # render_stimulus_chart Tests - Basic Rendering
+  # ============================================================================
 
   test "render_stimulus_chart generates Stimulus-compatible div" do
     data = { 100 => 1, 200 => 2, 300 => 3 }
@@ -111,6 +127,10 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
     assert parsed_options["tooltip"]
   end
 
+  # ============================================================================
+  # render_stimulus_chart Tests - Configuration Options
+  # ============================================================================
+
   test "render_stimulus_chart generates unique IDs" do
     data = { 100 => 1 }
     html1 = render_stimulus_chart(data, type: "bar")
@@ -142,5 +162,23 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
     html = render_stimulus_chart(data, type: "bar")
 
     assert_match(/data-rails-pulse--chart-theme-value="railspulse"/, html)
+  end
+
+  test "bar_chart_options with new format chart_data using labels array" do
+    chart_data = {
+      labels: [100, 200, 300],
+      series: [[1, 2, 3]]
+    }
+
+    opts = bar_chart_options(zoom: true, zoom_start: 150, zoom_end: 250, chart_data: chart_data)
+
+    assert_kind_of Array, opts[:dataZoom]
+    assert_equal "slider", opts[:dataZoom].first[:type]
+  end
+
+  test "bar_chart_options handles empty chart_data gracefully" do
+    opts = bar_chart_options(zoom: true, zoom_start: 100, zoom_end: 200, chart_data: {})
+
+    assert_kind_of Array, opts[:dataZoom]
   end
 end
