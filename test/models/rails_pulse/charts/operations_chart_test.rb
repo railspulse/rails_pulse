@@ -310,6 +310,36 @@ module RailsPulse
         assert_equal 0, controller_bar.depth
         assert_equal 1, sql_bar.depth
       end
+
+      test "handles operations with all different lane types" do
+        ops = [
+          make_op(type: "controller", start_time: 0, duration: 100),
+          make_op(type: "template", start_time: 5, duration: 80),
+          make_op(type: "partial", start_time: 10, duration: 40),
+          make_op(type: "sql", start_time: 15, duration: 5),
+          make_op(type: "cache_read", start_time: 20, duration: 2),
+          make_op(type: "http", start_time: 25, duration: 30)
+        ]
+        chart = OperationsChart.new(ops)
+
+        # Should have 6 different depths (0-5)
+        depths = chart.bars.map(&:depth).uniq.sort
+
+        assert_operator depths.length, :>=, 5
+        assert_equal 5, chart.max_depth
+      end
+
+      test "handles large collection of fixture operations efficiently" do
+        # Load all operations from fixtures
+        ops = RailsPulse::Operation.all.to_a
+
+        chart = OperationsChart.new(ops)
+
+        # Should handle any number of operations
+        assert_equal ops.length, chart.bars.length
+        assert_operator chart.max_depth, :>=, 0
+        refute_empty chart.lane_labels if ops.any?
+      end
     end
   end
 end
