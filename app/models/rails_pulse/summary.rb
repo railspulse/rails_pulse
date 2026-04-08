@@ -50,9 +50,9 @@ module RailsPulse
       # Get filtered IDs from TagFilterService
       filtered_ids = TagFilterService.filter_all(disabled_tags, show_non_tagged)
 
-      route_ids = filtered_ids[:route_ids].presence || [-1]
-      query_ids = filtered_ids[:query_ids].presence || [-1]
-      job_ids = filtered_ids[:job_ids].presence || [-1]
+      route_ids = filtered_ids[:route_ids].presence || [ -1 ]
+      query_ids = filtered_ids[:query_ids].presence || [ -1 ]
+      job_ids = filtered_ids[:job_ids].presence || [ -1 ]
 
       # Apply filters: include only summaries for filtered routes/queries/jobs
       # Use -1 as an impossible ID when no items match the filter

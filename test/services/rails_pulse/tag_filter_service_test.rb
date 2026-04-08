@@ -16,7 +16,7 @@ module RailsPulse
       # Find a route with tags to test against
       tagged_route = rails_pulse_routes(:api_users)
 
-      ids = TagFilterService.filter_ids(Route, ["api"], true)
+      ids = TagFilterService.filter_ids(Route, [ "api" ], true)
 
       assert_not_includes ids, tagged_route.id
     end
@@ -42,7 +42,7 @@ module RailsPulse
     end
 
     test "filter_ids handles multiple disabled tags" do
-      ids = TagFilterService.filter_ids(Route, ["api", "users"], true)
+      ids = TagFilterService.filter_ids(Route, [ "api", "users" ], true)
 
       # Should exclude routes with either tag
       assert_kind_of Array, ids
@@ -51,7 +51,7 @@ module RailsPulse
     test "filter_ids sanitizes SQL wildcards in tags" do
       # Test that % and _ are escaped properly
       assert_nothing_raised do
-        TagFilterService.filter_ids(Route, ["%_test"], true)
+        TagFilterService.filter_ids(Route, [ "%_test" ], true)
       end
     end
 
@@ -86,10 +86,11 @@ module RailsPulse
     end
 
     test "filter_all filters routes, queries, and jobs" do
-      result = TagFilterService.filter_all(["api"], true)
+      result = TagFilterService.filter_all([ "api" ], true)
 
       # Routes with "api" tag should be excluded
       tagged_route = rails_pulse_routes(:api_users)
+
       assert_not_includes result[:route_ids], tagged_route.id
 
       # All results should be arrays
@@ -100,7 +101,7 @@ module RailsPulse
 
     test "filter_all handles non_tagged virtual tag" do
       # "non_tagged" should be filtered out and not cause errors
-      result = TagFilterService.filter_all(["non_tagged"], false)
+      result = TagFilterService.filter_all([ "non_tagged" ], false)
 
       assert_kind_of Hash, result
       assert_kind_of Array, result[:route_ids]
@@ -115,11 +116,12 @@ module RailsPulse
     end
 
     test "filter_all handles mixed tags including non_tagged" do
-      result = TagFilterService.filter_all(["api", "non_tagged"], true)
+      result = TagFilterService.filter_all([ "api", "non_tagged" ], true)
 
       # Should filter out "api" tag but ignore "non_tagged"
       assert_kind_of Hash, result
       tagged_route = rails_pulse_routes(:api_users)
+
       assert_not_includes result[:route_ids], tagged_route.id
     end
 
@@ -134,6 +136,7 @@ module RailsPulse
     test "filter_all handles nil disabled_tags" do
       assert_nothing_raised do
         result = TagFilterService.filter_all(nil, true)
+
         assert_kind_of Hash, result
       end
     end

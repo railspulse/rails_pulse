@@ -11,13 +11,13 @@ module RailsPulse
     end
 
     test "calculate_percentile returns single value for single-element array" do
-      result = Statistics.calculate_percentile([500.0], 0.95)
+      result = Statistics.calculate_percentile([ 500.0 ], 0.95)
 
       assert_in_delta 500.0, result, 0.01
     end
 
     test "calculate_percentile handles identical values" do
-      values = [300.0] * 5
+      values = [ 300.0 ] * 5
 
       result = Statistics.calculate_percentile(values, 0.95)
 
@@ -46,7 +46,7 @@ module RailsPulse
     end
 
     test "calculate_percentile handles median (p50)" do
-      values = [100, 200, 300, 400, 500]
+      values = [ 100, 200, 300, 400, 500 ]
 
       result = Statistics.calculate_percentile(values, 0.50)
 
@@ -54,7 +54,7 @@ module RailsPulse
     end
 
     test "calculate_percentile handles boundary at 0th percentile" do
-      values = [100, 200, 300, 400, 500]
+      values = [ 100, 200, 300, 400, 500 ]
 
       result = Statistics.calculate_percentile(values, 0.0)
 
@@ -62,7 +62,7 @@ module RailsPulse
     end
 
     test "calculate_percentile handles boundary at 100th percentile" do
-      values = [100, 200, 300, 400, 500]
+      values = [ 100, 200, 300, 400, 500 ]
 
       result = Statistics.calculate_percentile(values, 1.0)
 
@@ -70,7 +70,7 @@ module RailsPulse
     end
 
     test "calculate_percentile works with two values" do
-      values = [100, 200]
+      values = [ 100, 200 ]
 
       result = Statistics.calculate_percentile(values, 0.50)
 
@@ -95,13 +95,13 @@ module RailsPulse
     end
 
     test "calculate_stddev returns nil for single-element array" do
-      result = Statistics.calculate_stddev([100], 100)
+      result = Statistics.calculate_stddev([ 100 ], 100)
 
       assert_nil result
     end
 
     test "calculate_stddev calculates standard deviation correctly" do
-      values = [100, 200, 300, 400, 500]
+      values = [ 100, 200, 300, 400, 500 ]
       mean = 300.0
       # Expected stddev ≈ 158.11
 
@@ -111,7 +111,7 @@ module RailsPulse
     end
 
     test "calculate_stddev handles zero variance" do
-      values = [100, 100, 100, 100]
+      values = [ 100, 100, 100, 100 ]
       mean = 100.0
 
       result = Statistics.calculate_stddev(values, mean)
@@ -120,7 +120,7 @@ module RailsPulse
     end
 
     test "calculate_stddev works with two values" do
-      values = [100, 200]
+      values = [ 100, 200 ]
       mean = 150.0
 
       result = Statistics.calculate_stddev(values, mean)
@@ -130,7 +130,7 @@ module RailsPulse
     end
 
     test "calculate_stddev handles negative values" do
-      values = [-100, -50, 0, 50, 100]
+      values = [ -100, -50, 0, 50, 100 ]
       mean = 0.0
 
       result = Statistics.calculate_stddev(values, mean)

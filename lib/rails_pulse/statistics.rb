@@ -15,7 +15,7 @@ module RailsPulse
       n = sorted_values.length
       rank = percentile * (n - 1)
       lower_index = rank.floor
-      upper_index = [rank.ceil, n - 1].min
+      upper_index = [ rank.ceil, n - 1 ].min
 
       if lower_index == upper_index
         sorted_values[lower_index]
