@@ -3,7 +3,7 @@ require "test_helper"
 module RailsPulse
   module Queries
     module Charts
-      class AverageQueryTimesTest < ActiveSupport::TestCase
+      class ExecutionVolumeTest < ActiveSupport::TestCase
         fixtures :rails_pulse_queries, :rails_pulse_summaries
 
         def setup
@@ -17,8 +17,8 @@ module RailsPulse
 
         # Structure Tests
 
-        test "to_chart_data returns hash with timestamps as keys" do
-          chart = AverageQueryTimes.new(
+        test "to_chart_data returns hash with required keys" do
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             start_time: @start_time,
@@ -28,10 +28,12 @@ module RailsPulse
           result = chart.to_chart_data
 
           assert_kind_of Hash, result
+          assert_includes result, :labels
+          assert_includes result, :series
         end
 
-        test "keys are timestamps in milliseconds" do
-          chart = AverageQueryTimes.new(
+        test "labels is an array" do
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             start_time: @start_time,
@@ -40,14 +42,11 @@ module RailsPulse
 
           result = chart.to_chart_data
 
-          result.keys.each do |key|
-            assert_kind_of Integer, key
-            assert_operator key, :>, 1000000000000  # Unix timestamp in milliseconds
-          end
+          assert_kind_of Array, result[:labels]
         end
 
-        test "values are floats" do
-          chart = AverageQueryTimes.new(
+        test "series is an array" do
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             start_time: @start_time,
@@ -56,15 +55,62 @@ module RailsPulse
 
           result = chart.to_chart_data
 
-          result.values.each do |value|
-            assert_kind_of Float, value
+          assert_kind_of Array, result[:series]
+        end
+
+        test "series contains hash with name, data, type, and color" do
+          chart = ExecutionVolume.new(
+            ransack_query: @ransack_query,
+            period_type: :day,
+            start_time: @start_time,
+            end_time: @end_time
+          )
+
+          result = chart.to_chart_data
+          series = result[:series].first
+
+          assert_kind_of Hash, series
+          assert_equal "Executions", series[:name]
+          assert_kind_of Array, series[:data]
+          assert_equal "bar", series[:type]
+          assert_equal RailsPulse::ChartColors::DEFAULT, series[:color]
+        end
+
+        # Label Tests
+
+        test "labels are timestamps in milliseconds" do
+          chart = ExecutionVolume.new(
+            ransack_query: @ransack_query,
+            period_type: :day,
+            start_time: @start_time,
+            end_time: @end_time
+          )
+
+          result = chart.to_chart_data
+
+          result[:labels].each do |label|
+            assert_kind_of Integer, label
+            assert_operator label, :>, 1000000000000  # Unix timestamp in milliseconds
           end
+        end
+
+        test "labels and data have same length" do
+          chart = ExecutionVolume.new(
+            ransack_query: @ransack_query,
+            period_type: :day,
+            start_time: @start_time,
+            end_time: @end_time
+          )
+
+          result = chart.to_chart_data
+
+          assert_equal result[:labels].length, result[:series].first[:data].length
         end
 
         # Period Type Tests
 
         test "accepts day period_type" do
-          chart = AverageQueryTimes.new(
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             start_time: @start_time,
@@ -80,7 +126,7 @@ module RailsPulse
           start_time = 24.hours.ago.beginning_of_hour
           end_time = Time.current.end_of_hour
 
-          chart = AverageQueryTimes.new(
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :hour,
             start_time: start_time,
@@ -97,7 +143,7 @@ module RailsPulse
         test "accepts subject parameter" do
           query = rails_pulse_queries(:simple_query)
 
-          chart = AverageQueryTimes.new(
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             subject: query,
@@ -111,7 +157,7 @@ module RailsPulse
         end
 
         test "accepts nil subject parameter" do
-          chart = AverageQueryTimes.new(
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             subject: nil,
@@ -127,7 +173,7 @@ module RailsPulse
         # Tag Filter Tests
 
         test "accepts disabled_tags parameter" do
-          chart = AverageQueryTimes.new(
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             start_time: @start_time,
@@ -141,7 +187,7 @@ module RailsPulse
         end
 
         test "accepts show_non_tagged parameter" do
-          chart = AverageQueryTimes.new(
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             start_time: @start_time,
@@ -155,7 +201,7 @@ module RailsPulse
         end
 
         test "accepts nil disabled_tags" do
-          chart = AverageQueryTimes.new(
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             start_time: @start_time,
@@ -168,40 +214,10 @@ module RailsPulse
           end
         end
 
-        # Duration Filtering Tests
-
-        test "accepts start_duration parameter" do
-          chart = AverageQueryTimes.new(
-            ransack_query: @ransack_query,
-            period_type: :day,
-            start_time: @start_time,
-            end_time: @end_time,
-            start_duration: 100
-          )
-
-          result = chart.to_chart_data
-
-          assert_kind_of Hash, result
-        end
-
-        test "accepts nil start_duration parameter" do
-          chart = AverageQueryTimes.new(
-            ransack_query: @ransack_query,
-            period_type: :day,
-            start_time: @start_time,
-            end_time: @end_time,
-            start_duration: nil
-          )
-
-          result = chart.to_chart_data
-
-          assert_kind_of Hash, result
-        end
-
         # Data Padding Tests
 
         test "pads missing periods with zeros" do
-          chart = AverageQueryTimes.new(
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             start_time: @start_time,
@@ -213,7 +229,7 @@ module RailsPulse
           # Should have entries for each day in the range
           expected_days = ((@end_time.to_date - @start_time.to_date).to_i + 1)
 
-          assert_equal expected_days, result.size
+          assert_equal expected_days, result[:labels].length
         end
 
         # Edge Cases
@@ -221,7 +237,7 @@ module RailsPulse
         test "handles empty ransack query" do
           empty_query = RailsPulse::Summary.ransack
 
-          chart = AverageQueryTimes.new(
+          chart = ExecutionVolume.new(
             ransack_query: empty_query,
             period_type: :day,
             start_time: @start_time,
@@ -237,7 +253,7 @@ module RailsPulse
           start_time = Time.current.beginning_of_day
           end_time = Time.current.end_of_day
 
-          chart = AverageQueryTimes.new(
+          chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
             start_time: start_time,
@@ -246,7 +262,7 @@ module RailsPulse
 
           result = chart.to_chart_data
 
-          assert_equal 1, result.size
+          assert_equal 1, result[:labels].length
         end
       end
     end

@@ -1,7 +1,7 @@
 module RailsPulse
   module Jobs
     module Charts
-      class Duration < Base
+      class Duration < RailsPulse::Charts::Base
         def to_chart_data
           summaries = base_summary_query
 
@@ -81,6 +81,10 @@ module RailsPulse
             series: series
           }
         end
+
+        private
+
+        def summarizable_type = "RailsPulse::Job"
       end
     end
   end

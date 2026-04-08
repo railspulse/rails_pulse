@@ -1,35 +1,24 @@
 module RailsPulse
   module Routes
     module Cards
-      class ClientErrorRate
+      class ClientErrorRate < RailsPulse::Cards::Base
         def initialize(route: nil, disabled_tags: [], show_non_tagged: true, period: 7)
           @route = route
           @disabled_tags = disabled_tags
           @show_non_tagged = show_non_tagged
           @period = period
+          @period_type = "day"  # This card only supports day period
         end
 
         def to_metric_card
-          last_n_days = @period.days.ago.beginning_of_day
-          previous_n_days = (@period * 2).days.ago.beginning_of_day
-
-          base_query = RailsPulse::Summary
-            .with_tag_filters(@disabled_tags, @show_non_tagged)
-            .where(
-              summarizable_type: "RailsPulse::Route",
-              period_type: "day",
-              period_start: (@period * 2).days.ago.beginning_of_day..Time.current
-            )
-          base_query = base_query.where(summarizable_id: @route.id) if @route
-
-          last7 = last_n_days.strftime("%Y-%m-%d %H:%M:%S")
-          prev7 = previous_n_days.strftime("%Y-%m-%d %H:%M:%S")
+          # Use base class helper for query construction
+          base_query = base_summary_query("RailsPulse::Route")
 
           metrics = base_query.select(
             "SUM(status_4xx) AS total_4xx",
             "SUM(count) AS total_requests",
-            "SUM(CASE WHEN period_start >= '#{last7}' THEN status_4xx ELSE 0 END) AS current_4xx",
-            "SUM(CASE WHEN period_start >= '#{prev7}' AND period_start < '#{last7}' THEN status_4xx ELSE 0 END) AS previous_4xx"
+            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN status_4xx ELSE 0 END) AS current_4xx",
+            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN status_4xx ELSE 0 END) AS previous_4xx"
           ).take
 
           total_4xx = metrics.total_4xx || 0
@@ -41,28 +30,20 @@ module RailsPulse
 
           overall_rate = has_data ? (total_4xx.to_f / total_requests * 100).round(2) : 0
 
-          if has_data
-            percentage = previous_period_4xx.zero? ? 0 : ((previous_period_4xx - current_period_4xx) / previous_period_4xx.to_f * 100).abs.round(1)
-            trend_icon = percentage < 0.1 ? "move-right" : current_period_4xx < previous_period_4xx ? "trending-down" : "trending-up"
-            trend_amount = previous_period_4xx.zero? ? "0%" : "#{percentage}%"
+          # Use base class trend calculation
+          trend_icon, trend_amount = if has_data
+            trend_for(current_period_4xx, previous_period_4xx)
           else
-            trend_icon = "move-right"
-            trend_amount = "—"
+            [ "move-right", "—" ]
           end
 
+          # Get sparkline data
           grouped_daily = base_query
             .group_by_date(:period_start)
             .sum(:status_4xx)
 
-          start_day = (@period * 2).days.ago.beginning_of_day.to_date
-          end_day = Time.current.to_date
-
-          sparkline_data = {}
-          (start_day..end_day).each do |day|
-            total = grouped_daily[day] || 0
-            label = day.strftime("%b %-d")
-            sparkline_data[label] = { value: total }
-          end
+          # Use base class sparkline generation
+          sparkline_data = sparkline_from(grouped_daily)
 
           {
             id: "client_error_rate",
@@ -77,6 +58,17 @@ module RailsPulse
             help_heading: "Client Error Rate (4xx)",
             help_text: "Percentage of requests returning 4xx status codes (Not Found, Unauthorized, etc). High rates may indicate broken API consumers, deprecated endpoints still in use, or misconfigured clients."
           }
+        end
+
+        private
+
+        def subject_id
+          @route&.id
+        end
+
+        # Override to show full 14-day sparkline instead of just 7 days
+        def sparkline_start
+          range_start
         end
       end
     end

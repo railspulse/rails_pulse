@@ -67,8 +67,7 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.requests_path
 
     assert_response :success
-    # ChartTableConcern should set up these variables
-    assert_not_nil assigns(:chart_data)
+    # ChartTableConcern should set up table variables (requests page has no charts)
     assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:pagination)
   end
@@ -150,20 +149,13 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
 
   # Custom Chart Ransack Params Tests
 
-  test "chart data uses summarizable_id 0 for aggregate requests" do
+  test "requests page loads without charts" do
     get rails_pulse.requests_path
 
     assert_response :success
-    # Chart data should aggregate all requests (not scoped to specific request)
-    assert_not_nil assigns(:chart_data)
-  end
-
-  test "chart data uses correct summarizable_type" do
-    get rails_pulse.requests_path
-
-    assert_response :success
-    # Should filter by RailsPulse::Request type for polymorphic summaries
-    assert_not_nil assigns(:chart_data)
+    # Requests page doesn't have charts, only table data
+    assert_nil assigns(:chart_data)
+    assert_not_nil assigns(:table_data)
   end
 
   # Recent Mode Tests

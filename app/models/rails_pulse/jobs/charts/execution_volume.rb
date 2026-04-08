@@ -1,7 +1,7 @@
 module RailsPulse
   module Jobs
     module Charts
-      class ExecutionVolume < Base
+      class ExecutionVolume < RailsPulse::Charts::Base
         def to_chart_data
           summaries = base_summary_query
 
@@ -20,12 +20,8 @@ module RailsPulse
             raw_data[timestamp] = summary.total_count || 0
           end
 
-          # Pad missing data with zeros
-          step = time_step
-          daily_data = {}
-          (@start_time.to_i..@end_time.to_i).step(step) do |timestamp|
-            daily_data[timestamp] = raw_data[timestamp] || 0
-          end
+          # Pad missing data with zeros using base class helper
+          daily_data = pad_data_with_zeros(raw_data, @start_time, @end_time, time_step)
 
           # Build labels array (timestamps in milliseconds for JavaScript)
           labels = daily_data.keys.map { |timestamp| timestamp * 1000 }
@@ -43,6 +39,10 @@ module RailsPulse
             series: series
           }
         end
+
+        private
+
+        def summarizable_type = "RailsPulse::Job"
       end
     end
   end

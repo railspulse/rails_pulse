@@ -1,7 +1,7 @@
 module RailsPulse
   module Routes
     module Cards
-      class RequestCountTotals
+      class RequestCountTotals < RailsPulse::Cards::Base
         def initialize(route: nil, disabled_tags: [], show_non_tagged: true, period: 7, period_type: "day")
           @route = route
           @disabled_tags = disabled_tags
@@ -11,23 +11,13 @@ module RailsPulse
         end
 
         def to_metric_card
-          last_n_units = @period_type == "hour" ? (@period * 24).hours.ago : @period.days.ago.beginning_of_day
-          previous_n_units = @period_type == "hour" ? (@period * 48).hours.ago : (@period * 2).days.ago.beginning_of_day
-
-          # Single query to get all count metrics with conditional aggregation
-          base_query = RailsPulse::Summary
-            .with_tag_filters(@disabled_tags, @show_non_tagged)
-            .where(
-              summarizable_type: "RailsPulse::Route",
-              period_type: @period_type,
-              period_start: previous_n_units..Time.current
-            )
-          base_query = base_query.where(summarizable_id: @route.id) if @route
+          # Use base class helper for query construction
+          base_query = base_summary_query("RailsPulse::Route")
 
           metrics = base_query.select(
             "SUM(count) AS total_count",
-            "SUM(CASE WHEN period_start >= '#{last_n_units.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS current_count",
-            "SUM(CASE WHEN period_start >= '#{previous_n_units.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_n_units.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS previous_count"
+            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN count ELSE 0 END) AS current_count",
+            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN count ELSE 0 END) AS previous_count"
           ).take
 
           # Calculate metrics from single query result
@@ -37,55 +27,35 @@ module RailsPulse
 
           has_data = total_request_count > 0
 
-          if has_data
-            percentage = previous_period_count.zero? ? 0 : ((previous_period_count - current_period_count) / previous_period_count.to_f * 100).abs.round(1)
-            trend_icon = percentage < 0.1 ? "move-right" : current_period_count < previous_period_count ? "trending-down" : "trending-up"
-            trend_amount = previous_period_count.zero? ? "0%" : "#{percentage}%"
+          # Use base class trend calculation
+          trend_icon, trend_amount = if has_data
+            trend_for(current_period_count, previous_period_count)
           else
-            trend_icon = "move-right"
-            trend_amount = "—"
+            [ "move-right", "—" ]
           end
 
-          # Sparkline data - group by hour or day depending on period_type
-          sparkline_data = {}
-          if @period_type == "hour"
-            start_time = (@period * 24).hours.ago.beginning_of_hour
-            end_time = Time.current.beginning_of_hour
+          # Create sparkline query using only the current period
+          sparkline_query = RailsPulse::Summary
+            .with_tag_filters(@disabled_tags, @show_non_tagged)
+            .where(
+              summarizable_type: "RailsPulse::Route",
+              period_type: @period_type,
+              period_start: current_window_start..now
+            )
+          sparkline_query = sparkline_query.where(summarizable_id: @route.id) if @route
 
-            # Create a separate query for sparkline data using only the current period
-            sparkline_query = RailsPulse::Summary
-              .with_tag_filters(@disabled_tags, @show_non_tagged)
-              .where(
-                summarizable_type: "RailsPulse::Route",
-                period_type: @period_type,
-                period_start: start_time..end_time
-              )
-            sparkline_query = sparkline_query.where(summarizable_id: @route.id) if @route
-
-            grouped_hourly = sparkline_query.group_by_hour(:period_start).sum(:count)
-
-            current_time = start_time
-            while current_time <= end_time
-              total = grouped_hourly[current_time] || 0
-              # Use timestamp in milliseconds as key to preserve uniqueness across days
-              sparkline_data[current_time.to_i * 1000] = { value: total }
-              current_time += 1.hour
-            end
+          if period_type_hours?
+            grouped_data = sparkline_query.group_by_hour(:period_start).sum(:count)
           else
-            grouped_daily = base_query.group_by_date(:period_start).sum(:count)
-            start_day = @period.days.ago.beginning_of_day.to_date
-            end_day = Time.current.to_date
-
-            (start_day..end_day).each do |day|
-              total = grouped_daily[day] || 0
-              label = day.strftime("%b %-d")
-              sparkline_data[label] = { value: total }
-            end
+            grouped_data = sparkline_query.group_by_date(:period_start).sum(:count)
           end
+
+          # Use base class sparkline generation (handles hour vs day automatically)
+          sparkline_data = sparkline_from(grouped_data)
 
           # Calculate appropriate rate display based on frequency
           if has_data
-            total_minutes = (@period * 2).days / 1.minute.to_f
+            total_minutes = (period_type_hours? ? (@period * 48).hours : (@period * 2).days) / 1.minute.to_f
             requests_per_minute = total_request_count.to_f / total_minutes
 
             # Choose appropriate time unit for display
@@ -115,6 +85,12 @@ module RailsPulse
             help_heading: "Request Throughput",
             help_text: "Total HTTP requests served over the last 14 days, expressed as an average rate. Use this to understand traffic patterns and capacity planning needs."
           }
+        end
+
+        private
+
+        def subject_id
+          @route&.id
         end
       end
     end

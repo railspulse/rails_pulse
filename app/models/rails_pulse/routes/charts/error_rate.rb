@@ -1,30 +1,13 @@
 module RailsPulse
   module Routes
     module Charts
-      class ErrorRate
-        def initialize(ransack_query:, period_type: nil, route: nil, start_time: nil, end_time: nil, start_duration: nil, disabled_tags: [], show_non_tagged: true)
-          @ransack_query = ransack_query
-          @period_type = period_type
-          @route = route
-          @start_time = start_time
-          @end_time = end_time
-          @start_duration = start_duration
-          @disabled_tags = disabled_tags
-          @show_non_tagged = show_non_tagged
+      class ErrorRate < RailsPulse::Charts::Base
+        def initialize(route: nil, **kwargs)
+          super(subject: route, **kwargs)
         end
 
         def to_chart_data
-          summaries = @ransack_query.result(distinct: false)
-            .with_tag_filters(@disabled_tags, @show_non_tagged)
-            .where(
-              summarizable_type: "RailsPulse::Route",
-              period_type: @period_type
-            )
-
-          summaries = summaries.where(summarizable_id: @route.id) if @route
-
-          # Single query fetching both error types
-          summaries = summaries
+          summaries = base_summary_query
             .group(:period_start)
             .select(
               :period_start,
@@ -44,11 +27,11 @@ module RailsPulse
             }
           end
 
-          # Pad missing data with zeros
-          step = @period_type.to_s == "hour" ? 3600 : 86400
+          # Pad missing data with defaults
+          default_value = { error_rate: nil, client_error_rate: nil }
           daily_data = {}
-          (@start_time.to_i..@end_time.to_i).step(step) do |timestamp|
-            daily_data[timestamp] = raw_data[timestamp] || { error_rate: nil, client_error_rate: nil }
+          (@start_time.to_i..@end_time.to_i).step(time_step) do |timestamp|
+            daily_data[timestamp] = raw_data[timestamp] || default_value
           end
 
           labels = daily_data.keys.map { |timestamp| timestamp * 1000 }
@@ -74,6 +57,10 @@ module RailsPulse
 
           { labels: labels, series: series }
         end
+
+        private
+
+        def summarizable_type = "RailsPulse::Route"
       end
     end
   end

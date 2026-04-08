@@ -42,7 +42,7 @@ module RailsPulse
     # Filters summaries based on disabled tags in the underlying route/query
     scope :with_tag_filters, ->(disabled_tags = [], show_non_tagged = true) {
       # Separate "non_tagged" from actual tags (it's a virtual tag)
-      actual_disabled_tags = disabled_tags.reject { |tag| tag == "non_tagged" }
+      actual_disabled_tags = (disabled_tags || []).reject { |tag| tag == "non_tagged" }
 
       # Return early if no filters are applied
       return all if actual_disabled_tags.empty? && show_non_tagged

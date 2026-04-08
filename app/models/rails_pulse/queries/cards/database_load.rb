@@ -1,7 +1,7 @@
 module RailsPulse
   module Queries
     module Cards
-      class DatabaseLoad
+      class DatabaseLoad < RailsPulse::Cards::Base
         def initialize(disabled_tags: [], show_non_tagged: true, period: 7, period_type: "day")
           @disabled_tags = disabled_tags
           @show_non_tagged = show_non_tagged
@@ -10,19 +10,17 @@ module RailsPulse
         end
 
         def to_metric_card
-          # For hourly: period is in days (e.g., 1), but we work in hours
-          # For daily: period is in days as before
-          time_unit = @period_type == "hour" ? 1.hour : 1.day
-          last_n_units = @period_type == "hour" ? (@period * 24).hours.ago : @period.days.ago.beginning_of_day
-          previous_n_units = @period_type == "hour" ? (@period * 48).hours.ago : (@period * 2).days.ago.beginning_of_day
+          # Use base class time period helpers
+          last_n_units = current_window_start
+          previous_n_units = range_start
 
-          # Get query summaries (DB time)
+          # Get query summaries (DB time) - use base class helper pattern
           query_summaries = RailsPulse::Summary
             .with_tag_filters(@disabled_tags, @show_non_tagged)
             .where(
               summarizable_type: "RailsPulse::Query",
               period_type: @period_type,
-              period_start: previous_n_units..Time.current
+              period_start: previous_n_units..now
             )
 
           # Get route summaries (total request time)
@@ -31,7 +29,7 @@ module RailsPulse
             .where(
               summarizable_type: "RailsPulse::Route",
               period_type: @period_type,
-              period_start: previous_n_units..Time.current
+              period_start: previous_n_units..now
             )
 
           # Calculate totals
@@ -42,16 +40,13 @@ module RailsPulse
 
           overall_db_percentage = has_data ? (total_query_time.to_f / total_request_time * 100).round(1) : 0
 
-          # Calculate current and previous period percentages
-          last7 = last_n_units.strftime("%Y-%m-%d %H:%M:%S")
-          prev7 = previous_n_units.strftime("%Y-%m-%d %H:%M:%S")
-
-          current_query_time = query_summaries.where("period_start >= ?", last7).sum(:total_duration)
-          current_request_time = route_summaries.where("period_start >= ?", last7).sum(:total_duration)
+          # Calculate current and previous period percentages using base class quote helper
+          current_query_time = query_summaries.where("period_start >= #{quote(last_n_units)}").sum(:total_duration)
+          current_request_time = route_summaries.where("period_start >= #{quote(last_n_units)}").sum(:total_duration)
           current_percentage = current_request_time > 0 ? (current_query_time.to_f / current_request_time * 100) : 0
 
-          previous_query_time = query_summaries.where("period_start >= ? AND period_start < ?", prev7, last7).sum(:total_duration)
-          previous_request_time = route_summaries.where("period_start >= ? AND period_start < ?", prev7, last7).sum(:total_duration)
+          previous_query_time = query_summaries.where("period_start >= #{quote(previous_n_units)} AND period_start < #{quote(last_n_units)}").sum(:total_duration)
+          previous_request_time = route_summaries.where("period_start >= #{quote(previous_n_units)} AND period_start < #{quote(last_n_units)}").sum(:total_duration)
           previous_percentage = previous_request_time > 0 ? (previous_query_time.to_f / previous_request_time * 100) : 0
 
           if has_data
@@ -65,9 +60,9 @@ module RailsPulse
           end
 
           # Sparkline data - group by hour or day depending on period_type
-          if @period_type == "hour"
-            start_time = (@period * 24).hours.ago.beginning_of_hour
-            end_time = Time.current.beginning_of_hour
+          if period_type_hours?
+            start_time = current_window_start
+            end_time = now.beginning_of_hour
 
             # Create separate queries for sparkline data using only the current period
             sparkline_query_summaries = RailsPulse::Summary
@@ -117,8 +112,8 @@ module RailsPulse
               current_time += 1.hour
             end
           else
-            start_day = @period.days.ago.beginning_of_day.to_date
-            end_day = Time.current.to_date
+            start_day = current_window_start.to_date
+            end_day = now.to_date
 
             # Group by day
             daily_query_time = query_summaries.group_by { |s| s.period_start.to_date }
@@ -154,7 +149,7 @@ module RailsPulse
             id: "database_load",
             context: "queries",
             title: "Database Load",
-            summary: has_data ? "#{overall_db_percentage}%" : "—",
+            summary: has_data ? format_percentage(overall_db_percentage) : "—",
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,

@@ -1,30 +1,9 @@
 module RailsPulse
   module Queries
     module Charts
-      class ExecutionVolume
-        def initialize(ransack_query:, period_type: nil, query: nil, start_time: nil, end_time: nil, start_duration: nil, disabled_tags: [], show_non_tagged: true)
-          @ransack_query = ransack_query
-          @period_type = period_type
-          @query = query
-          @start_time = start_time
-          @end_time = end_time
-          @start_duration = start_duration
-          @disabled_tags = disabled_tags
-          @show_non_tagged = show_non_tagged
-        end
-
+      class ExecutionVolume < RailsPulse::Charts::Base
         def to_chart_data
-          summaries = @ransack_query.result(distinct: false)
-            .with_tag_filters(@disabled_tags, @show_non_tagged)
-            .where(
-              summarizable_type: "RailsPulse::Query",
-              period_type: @period_type
-            )
-
-          summaries = summaries.where(summarizable_id: @query.id) if @query
-
-          # Group by period_start and sum execution counts
-          summaries = summaries
+          summaries = base_summary_query
             .group(:period_start)
             .select(
               :period_start,
@@ -38,12 +17,8 @@ module RailsPulse
             raw_data[timestamp] = summary.total_count || 0
           end
 
-          # Pad missing data with zeros
-          step = @period_type.to_s == "hour" ? 3600 : 86400
-          execution_data = {}
-          (@start_time.to_i..@end_time.to_i).step(step) do |timestamp|
-            execution_data[timestamp] = raw_data[timestamp] || 0
-          end
+          # Pad missing data with zeros using base class helper
+          execution_data = pad_data_with_zeros(raw_data, @start_time, @end_time, time_step)
 
           # Build labels array (timestamps in milliseconds for JavaScript)
           labels = execution_data.keys.map { |timestamp| timestamp * 1000 }
@@ -61,6 +36,10 @@ module RailsPulse
             series: series
           }
         end
+
+        private
+
+        def summarizable_type = "RailsPulse::Query"
       end
     end
   end

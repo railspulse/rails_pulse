@@ -63,7 +63,7 @@ module ChartTableConcern
     end
 
     # Backward compatibility: first chart becomes @chart_data
-    @chart_data = instance_variable_get("@#{chart_definitions.keys.first}")
+    @chart_data = instance_variable_get("@#{chart_definitions.keys.first}") if chart_definitions.any?
   end
 
   def setup_table_data(ransack_params)

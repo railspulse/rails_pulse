@@ -1,7 +1,7 @@
 module RailsPulse
   module Jobs
     module Cards
-      class FailureRate < Base
+      class FailureRate < RailsPulse::Cards::Base
         def initialize(job: nil, disabled_tags: [], show_non_tagged: true, period: 14, period_type: "day")
           @job = job
           @disabled_tags = disabled_tags

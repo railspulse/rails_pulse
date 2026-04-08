@@ -1,34 +1,26 @@
 module RailsPulse
   module Queries
     module Cards
-      class AverageQueryTimes
-        def initialize(query: nil, disabled_tags: [], show_non_tagged: true)
+      class AverageQueryTimes < RailsPulse::Cards::Base
+        def initialize(query: nil, disabled_tags: [], show_non_tagged: true, period: 7, period_type: "day")
           @query = query
           @disabled_tags = disabled_tags
           @show_non_tagged = show_non_tagged
+          @period = period
+          @period_type = period_type
         end
 
         def to_metric_card
-          last_7_days = 7.days.ago.beginning_of_day
-          previous_7_days = 14.days.ago.beginning_of_day
-
-          # Single query to get all aggregated metrics with conditional sums
-          base_query = RailsPulse::Summary
-            .with_tag_filters(@disabled_tags, @show_non_tagged)
-            .where(
-              summarizable_type: "RailsPulse::Query",
-              period_type: "day",
-              period_start: 2.weeks.ago.beginning_of_day..Time.current
-            )
-          base_query = base_query.where(summarizable_id: @query.id) if @query
+          # Use base class helper for query construction
+          base_query = base_summary_query("RailsPulse::Query")
 
           metrics = base_query.select(
             "SUM(avg_duration * count) AS total_weighted_duration",
             "SUM(count) AS total_requests",
-            "SUM(CASE WHEN period_start >= '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN avg_duration * count ELSE 0 END) AS current_weighted_duration",
-            "SUM(CASE WHEN period_start >= '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS current_requests",
-            "SUM(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN avg_duration * count ELSE 0 END) AS previous_weighted_duration",
-            "SUM(CASE WHEN period_start >= '#{previous_7_days.strftime('%Y-%m-%d %H:%M:%S')}' AND period_start < '#{last_7_days.strftime('%Y-%m-%d %H:%M:%S')}' THEN count ELSE 0 END) AS previous_requests"
+            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN avg_duration * count ELSE 0 END) AS current_weighted_duration",
+            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN count ELSE 0 END) AS current_requests",
+            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN avg_duration * count ELSE 0 END) AS previous_weighted_duration",
+            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN count ELSE 0 END) AS previous_requests"
           ).take
 
           # Calculate metrics from single query result
@@ -36,12 +28,10 @@ module RailsPulse
           current_period_avg = metrics.current_requests.to_i > 0 ? (metrics.current_weighted_duration / metrics.current_requests) : 0
           previous_period_avg = metrics.previous_requests.to_i > 0 ? (metrics.previous_weighted_duration / metrics.previous_requests) : 0
 
-          percentage = previous_period_avg.zero? ? 0 : ((previous_period_avg - current_period_avg) / previous_period_avg * 100).abs.round(1)
-          trend_icon = percentage < 0.1 ? "move-right" : current_period_avg < previous_period_avg ? "trending-down" : "trending-up"
-          trend_amount = previous_period_avg.zero? ? "0%" : "#{percentage}%"
+          # Use base class trend calculation
+          trend_icon, trend_amount = trend_for(current_period_avg, previous_period_avg)
 
-          # Sparkline data by day with zero-filled days over the last 14 days
-          # Use database-agnostic date grouping (works regardless of ActiveRecord.default_timezone)
+          # Sparkline data with zero-filled periods
           grouped_weighted = base_query
             .group_by_date(:period_start)
             .sum(Arel.sql("avg_duration * count"))
@@ -50,24 +40,20 @@ module RailsPulse
             .group_by_date(:period_start)
             .sum(:count)
 
-          # Build a continuous 14-day range, fill missing days with 0
-          start_day = 2.weeks.ago.beginning_of_day.to_date
-          end_day = Time.current.to_date
-
-          sparkline_data = {}
-          (start_day..end_day).each do |day|
-            weighted_sum = grouped_weighted[day] || 0
-            count_sum = grouped_counts[day] || 0
-            avg = count_sum > 0 ? (weighted_sum.to_f / count_sum).round(0) : 0
-            label = day.strftime("%b %-d")
-            sparkline_data[label] = { value: avg }
+          # Calculate weighted averages for each period
+          averages_by_period = grouped_weighted.transform_keys(&:to_date).transform_values.with_index do |(weighted, day), _|
+            count = grouped_counts[day] || 0
+            count > 0 ? (weighted.to_f / count).round(0) : 0
           end
+
+          # Use base class sparkline generation
+          sparkline_data = sparkline_from(averages_by_period)
 
           {
             id: "average_query_times",
             context: "queries",
             title: "Average Query Time",
-            summary: "#{average_query_time} ms",
+            summary: format_duration(average_query_time),
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,

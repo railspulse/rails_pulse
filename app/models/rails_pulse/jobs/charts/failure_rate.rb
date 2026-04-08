@@ -1,7 +1,7 @@
 module RailsPulse
   module Jobs
     module Charts
-      class FailureRate < Base
+      class FailureRate < RailsPulse::Charts::Base
         def to_chart_data
           summaries = base_summary_query
 
@@ -42,6 +42,10 @@ module RailsPulse
 
           { labels: labels, series: series }
         end
+
+        private
+
+        def summarizable_type = "RailsPulse::Job"
       end
     end
   end

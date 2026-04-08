@@ -24,11 +24,9 @@ module RailsPulse
       RailsPulse::Request
     end
 
-    # Chart configuration - requests only have one chart type
+    # Chart configuration - requests page doesn't display charts
     def chart_definitions
-      {
-        chart_data: Requests::Charts::AverageResponseTimes
-      }
+      {}
     end
 
     def chart_options
