@@ -95,7 +95,9 @@ module RailsPulse
       "occurred_at desc"
     end
 
-    # Requests index shows individual request records with tag filtering
+    # Requests index shows individual request records, not aggregated summaries
+    # This differs from Routes/Queries which use Tables::Index for aggregation
+    # Individual records allow displaying per-request details (tags, occurred_at, etc.)
     def build_table_results
       base_query = apply_tag_filters(@ransack_query.result.includes(:route))
 

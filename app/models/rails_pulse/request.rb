@@ -16,7 +16,7 @@ module RailsPulse
     validates :is_error, inclusion: { in: [ true, false ] }
     validates :request_uuid, presence: true, uniqueness: true
 
-    before_create :set_request_uuid
+    before_validation :set_request_uuid, on: :create
 
     def self.ransackable_attributes(auth_object = nil)
       %w[id route_id occurred_at duration status status_category status_indicator route_path]
