@@ -6,19 +6,21 @@ module RailsPulse
       class ErrorRatesTest < ActiveSupport::TestCase
         fixtures :rails_pulse_routes, :rails_pulse_summaries
 
+        # Structure Tests
+
         test "returns hash with required keys" do
           card = RailsPulse::Routes::Cards::ErrorRates.new.to_metric_card
 
           assert_kind_of Hash, card
-          assert_includes card.keys, :id
-          assert_includes card.keys, :title
-          assert_includes card.keys, :summary
-          assert_includes card.keys, :chart_data
-          assert_includes card.keys, :trend_icon
-          assert_includes card.keys, :trend_amount
-          assert_includes card.keys, :trend_text
-          assert_includes card.keys, :help_heading
-          assert_includes card.keys, :help_text
+          assert_includes card, :id
+          assert_includes card, :title
+          assert_includes card, :summary
+          assert_includes card, :chart_data
+          assert_includes card, :trend_icon
+          assert_includes card, :trend_amount
+          assert_includes card, :trend_text
+          assert_includes card, :help_heading
+          assert_includes card, :help_text
         end
 
         test "id is error_rates" do
@@ -38,6 +40,8 @@ module RailsPulse
 
           assert_equal "routes", card[:context]
         end
+
+        # Calculation Tests
 
         test "summary format is percentage or —" do
           card = RailsPulse::Routes::Cards::ErrorRates.new(period: 7).to_metric_card
@@ -68,6 +72,8 @@ module RailsPulse
 
           assert_equal "Compared to last week", card[:trend_text]
         end
+
+        # Sparkline Tests
 
         test "7-day period has correct sparkline size" do
           card = RailsPulse::Routes::Cards::ErrorRates.new(period: 7).to_metric_card
@@ -106,6 +112,35 @@ module RailsPulse
             assert_match(/[A-Z][a-z]{2} \d{1,2}/, label)
           end
         end
+
+        test "uses hourly summaries for period_type hour" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new(period: 1, period_type: "hour").to_metric_card
+
+          # Should have ~24 data points for 1 day
+          assert_operator card[:chart_data].size, :>=, 24
+          assert_operator card[:chart_data].size, :<=, 25
+
+          # Keys should be timestamps in milliseconds when using hourly data
+          card[:chart_data].keys.each do |key|
+            assert_kind_of Integer, key
+            assert_operator key, :>, 1000000000000 # Millisecond timestamp
+          end
+        end
+
+        test "uses daily summaries for period_type day" do
+          card = RailsPulse::Routes::Cards::ErrorRates.new(period: 7, period_type: "day").to_metric_card
+
+          # Should have ~7 data points for 7 days
+          assert_operator card[:chart_data].size, :>=, 7
+          assert_operator card[:chart_data].size, :<=, 8
+
+          # Keys should be date strings when using daily data
+          card[:chart_data].keys.each do |label|
+            assert_match(/[A-Z][a-z]{2} \d{1,2}/, label)
+          end
+        end
+
+        # Edge Cases
 
         test "route-specific mode works" do
           route = rails_pulse_routes(:api_users)
