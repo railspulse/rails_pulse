@@ -40,23 +40,10 @@ module RailsPulse
             [ "move-right", "—" ]
           end
 
-          # Create sparkline query using only the current period
-          sparkline_query = RailsPulse::Summary
-            .with_tag_filters(@disabled_tags, @show_non_tagged)
-            .where(
-              summarizable_type: "RailsPulse::Route",
-              period_type: @period_type,
-              period_start: current_window_start..now
-            )
-          sparkline_query = sparkline_query.where(summarizable_id: @route.id) if @route
-
-          if period_type_hours?
-            grouped_errors = sparkline_query.group_by_hour(:period_start).sum(:error_count)
-            grouped_4xx = sparkline_query.group_by_hour(:period_start).sum(:status_4xx)
-          else
-            grouped_errors = sparkline_query.group_by_date(:period_start).sum(:error_count)
-            grouped_4xx = sparkline_query.group_by_date(:period_start).sum(:status_4xx)
-          end
+          # Build sparkline data using base class helpers
+          sparkline_query = build_sparkline_query("RailsPulse::Route")
+          grouped_errors = group_sparkline_by_period(sparkline_query, :error_count)
+          grouped_4xx = group_sparkline_by_period(sparkline_query, :status_4xx)
 
           # Combine error counts for each period
           combined_errors = grouped_errors.merge(grouped_4xx) { |_key, errors, fourxx| errors + fourxx }

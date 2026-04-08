@@ -35,23 +35,10 @@ module RailsPulse
             [ "move-right", "—" ]
           end
 
-          # Create sparkline query using only the current period
-          sparkline_query = RailsPulse::Summary
-            .with_tag_filters(@disabled_tags, @show_non_tagged)
-            .where(
-              summarizable_type: "RailsPulse::Route",
-              period_type: @period_type,
-              period_start: current_window_start..now
-            )
-          sparkline_query = sparkline_query.where(summarizable_id: @route.id) if @route
-
-          if period_type_hours?
-            weighted_sums = sparkline_query.group_by_hour(:period_start).sum("p95_duration * count")
-            period_counts = sparkline_query.group_by_hour(:period_start).sum(:count)
-          else
-            weighted_sums = sparkline_query.group_by_date(:period_start).sum("p95_duration * count")
-            period_counts = sparkline_query.group_by_date(:period_start).sum(:count)
-          end
+          # Build sparkline data using base class helpers
+          sparkline_query = build_sparkline_query("RailsPulse::Route")
+          weighted_sums = group_sparkline_by_period(sparkline_query, "p95_duration * count")
+          period_counts = group_sparkline_by_period(sparkline_query, :count)
 
           # Calculate weighted averages for each period
           averages_by_period = weighted_sums.each_with_object({}) do |(period, weighted), hash|

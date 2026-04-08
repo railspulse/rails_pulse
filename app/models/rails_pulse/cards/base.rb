@@ -108,6 +108,28 @@ module RailsPulse
         current_window_start
       end
 
+      # Build sparkline query with tag filters and optional subject filter
+      def build_sparkline_query(summarizable_type)
+        sparkline_query = RailsPulse::Summary
+          .with_tag_filters(@disabled_tags, @show_non_tagged)
+          .where(
+            summarizable_type: summarizable_type,
+            period_type: @period_type,
+            period_start: current_window_start..now
+          )
+        sparkline_query = sparkline_query.where(summarizable_id: subject_id) if subject_id
+        sparkline_query
+      end
+
+      # Group sparkline query by period type (hour or day)
+      def group_sparkline_by_period(sparkline_query, sum_field)
+        if period_type_hours?
+          sparkline_query.group_by_hour(:period_start).sum(sum_field)
+        else
+          sparkline_query.group_by_date(:period_start).sum(sum_field)
+        end
+      end
+
       # Existing trend calculation (keep as-is)
       def trend_for(current_value, previous_value, precision: 1)
         percentage = previous_value.zero? ? 0.0 : ((current_value - previous_value) / previous_value.to_f * 100).round(precision)
