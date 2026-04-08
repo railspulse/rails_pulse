@@ -39,8 +39,6 @@ module RailsPulse
             base_query = base_query.where("rails_pulse_routes.tags IS NOT NULL AND rails_pulse_routes.tags != '[]'")
           end
 
-          base_query = base_query.where(summarizable_id: @route.id) if @route
-
           # Apply grouping and aggregation
           grouped_query = base_query
             .group(
