@@ -1,6 +1,9 @@
 module RailsPulse
   class Job < RailsPulse::ApplicationRecord
     include Taggable
+    include HasPerformanceStatus
+
+    performance_status_attribute :avg_duration
 
     self.table_name = "rails_pulse_jobs"
 
@@ -49,8 +52,8 @@ module RailsPulse
 
         updates = {
           avg_duration: new_average,
-          p95_duration: calculate_percentile(recent_durations, 0.95),
-          p99_duration: calculate_percentile(recent_durations, 0.99)
+          p95_duration: RailsPulse::Statistics.calculate_percentile(recent_durations, 0.95) || 0.0,
+          p99_duration: RailsPulse::Statistics.calculate_percentile(recent_durations, 0.99) || 0.0
         }
         updates[:failures_count] = failures_count + 1 if run.failure_like_status?
         updates[:retries_count] = retries_count + 1 if run.status == "retried"
@@ -65,44 +68,12 @@ module RailsPulse
       ((failures_count.to_f / runs_count) * 100).round(2)
     end
 
-    def performance_status
-      thresholds = RailsPulse.configuration.job_thresholds
-      duration = avg_duration.to_f
-
-      if duration < thresholds[:slow]
-        :fast
-      elsif duration < thresholds[:very_slow]
-        :slow
-      elsif duration < thresholds[:critical]
-        :very_slow
-      else
-        :critical
-      end
-    end
-
     def to_param
       id.to_s
     end
 
     def to_breadcrumb
       name
-    end
-
-    private
-
-    def calculate_percentile(sorted_values, percentile)
-      return 0.0 if sorted_values.empty?
-
-      n = sorted_values.length
-      index = (percentile * (n - 1)).floor
-      next_index = [ (percentile * (n - 1)).ceil, n - 1 ].min
-
-      if index == next_index
-        sorted_values[index]
-      else
-        fraction = (percentile * (n - 1)) - index
-        sorted_values[index] + (fraction * (sorted_values[next_index] - sorted_values[index]))
-      end
     end
   end
 end

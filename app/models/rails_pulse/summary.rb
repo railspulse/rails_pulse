@@ -39,7 +39,7 @@ module RailsPulse
     }
 
     # Tag filtering scope for charts and metrics
-    # Filters summaries based on disabled tags in the underlying route/query
+    # Filters summaries based on disabled tags in the underlying route/query/job
     scope :with_tag_filters, ->(disabled_tags = [], show_non_tagged = true) {
       # Separate "non_tagged" from actual tags (it's a virtual tag)
       actual_disabled_tags = (disabled_tags || []).reject { |tag| tag == "non_tagged" }
@@ -47,68 +47,26 @@ module RailsPulse
       # Return early if no filters are applied
       return all if actual_disabled_tags.empty? && show_non_tagged
 
-      # Determine which table to join based on summarizable_type
-      # We need to handle both Route and Query summaries
-      relation = all
+      # Get filtered IDs from TagFilterService
+      filtered_ids = TagFilterService.filter_all(disabled_tags, show_non_tagged)
 
-      # Filter route summaries
-      route_ids = RailsPulse::Route.all
-
-      # Exclude routes with disabled tags
-      actual_disabled_tags.each do |tag|
-        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
-        route_ids = route_ids.where.not("tags LIKE ?", "%#{sanitized_tag}%")
-      end
-
-      # Exclude non-tagged routes if show_non_tagged is false
-      route_ids = route_ids.where("tags IS NOT NULL AND tags != '[]'") unless show_non_tagged
-
-      route_ids = route_ids.pluck(:id)
-
-      # Filter query summaries
-      query_ids = RailsPulse::Query.all
-
-      # Exclude queries with disabled tags
-      actual_disabled_tags.each do |tag|
-        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
-        query_ids = query_ids.where.not("tags LIKE ?", "%#{sanitized_tag}%")
-      end
-
-      # Exclude non-tagged queries if show_non_tagged is false
-      query_ids = query_ids.where("tags IS NOT NULL AND tags != '[]'") unless show_non_tagged
-
-      query_ids = query_ids.pluck(:id)
-
-      # Filter job summaries
-      job_ids = RailsPulse::Job.all
-
-      # Exclude jobs with disabled tags
-      actual_disabled_tags.each do |tag|
-        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
-        job_ids = job_ids.where.not("tags LIKE ?", "%#{sanitized_tag}%")
-      end
-
-      # Exclude non-tagged jobs if show_non_tagged is false
-      job_ids = job_ids.where("tags IS NOT NULL AND tags != '[]'") unless show_non_tagged
-
-      job_ids = job_ids.pluck(:id)
+      route_ids = filtered_ids[:route_ids].presence || [-1]
+      query_ids = filtered_ids[:query_ids].presence || [-1]
+      job_ids = filtered_ids[:job_ids].presence || [-1]
 
       # Apply filters: include only summaries for filtered routes/queries/jobs
-      # If no routes/queries/jobs match the filter, we need to ensure nothing is returned
-      # Use -1 as an impossible ID instead of 0 (which might be used for aggregates)
-      relation = relation.where(
+      # Use -1 as an impossible ID when no items match the filter
+      where(
         "(" \
         "  (summarizable_type = 'RailsPulse::Route' AND summarizable_id IN (?)) OR " \
         "  (summarizable_type = 'RailsPulse::Query' AND summarizable_id IN (?)) OR " \
         "  (summarizable_type = 'RailsPulse::Job' AND summarizable_id IN (?)) OR " \
         "  (summarizable_type = 'RailsPulse::Request')" \
         ")",
-        route_ids.presence || [ -1 ],
-        query_ids.presence || [ -1 ],
-        job_ids.presence || [ -1 ]
+        route_ids,
+        query_ids,
+        job_ids
       )
-
-      relation
     }
 
     # Ransack configuration

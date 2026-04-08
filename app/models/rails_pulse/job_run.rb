@@ -1,6 +1,9 @@
 module RailsPulse
   class JobRun < RailsPulse::ApplicationRecord
     include Taggable
+    include HasPerformanceStatus
+
+    performance_status_attribute :duration
 
     self.table_name = "rails_pulse_job_runs"
 
@@ -38,21 +41,6 @@ module RailsPulse
 
     def all_tags
       (job.tag_list + tag_list).uniq
-    end
-
-    def performance_status
-      thresholds = RailsPulse.configuration.job_thresholds
-      duration = self.duration.to_f
-
-      if duration < thresholds[:slow]
-        :fast
-      elsif duration < thresholds[:very_slow]
-        :slow
-      elsif duration < thresholds[:critical]
-        :very_slow
-      else
-        :critical
-      end
     end
 
     def failure_like_status?

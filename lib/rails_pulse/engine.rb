@@ -1,4 +1,5 @@
 require "rails_pulse/version"
+require "rails_pulse/statistics"
 require "rails_pulse/middleware/request_collector"
 require "rails_pulse/middleware/asset_server"
 require "rails_pulse/subscribers/operation_subscriber"
@@ -15,6 +16,7 @@ module RailsPulse
   autoload :SqlQueryNormalizer, File.expand_path("../../app/services/rails_pulse/sql_query_normalizer", __dir__)
   autoload :SummaryService, File.expand_path("../../app/services/rails_pulse/summary_service", __dir__)
   autoload :QueryAnalysisService, File.expand_path("../../app/services/rails_pulse/query_analysis_service", __dir__)
+  autoload :TagFilterService, File.expand_path("../../app/services/rails_pulse/tag_filter_service", __dir__)
 
   # Analysis services
   module Analysis
