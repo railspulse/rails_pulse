@@ -533,6 +533,7 @@ module RailsPulse
         result = analyzer.analyze
 
         select_star_issue = result[:pattern_issues].find { |issue| issue[:type] == "select_star" }
+
         assert_not_nil select_star_issue
         assert_equal "info", select_star_issue[:severity]
         assert_includes select_star_issue[:description], "SELECT *"
@@ -545,6 +546,7 @@ module RailsPulse
         result = analyzer.analyze
 
         select_star_issue = result[:pattern_issues].find { |issue| issue[:type] == "select_star" }
+
         assert_nil select_star_issue
       end
 
@@ -555,6 +557,7 @@ module RailsPulse
         result = analyzer.analyze
 
         missing_where_issue = result[:pattern_issues].find { |issue| issue[:type] == "missing_where_clause" }
+
         assert_not_nil missing_where_issue
         assert_equal "warning", missing_where_issue[:severity]
         assert_includes missing_where_issue[:description], "WHERE clause"
@@ -567,6 +570,7 @@ module RailsPulse
         result = analyzer.analyze
 
         missing_where_issue = result[:pattern_issues].find { |issue| issue[:type] == "missing_where_clause" }
+
         assert_nil missing_where_issue
       end
 
@@ -577,6 +581,7 @@ module RailsPulse
         result = analyzer.analyze
 
         missing_limit_issue = result[:pattern_issues].find { |issue| issue[:type] == "missing_limit" }
+
         assert_not_nil missing_limit_issue
         assert_equal "warning", missing_limit_issue[:severity]
         assert_includes missing_limit_issue[:description], "LIMIT"
@@ -589,6 +594,7 @@ module RailsPulse
         result = analyzer.analyze
 
         missing_limit_issue = result[:pattern_issues].find { |issue| issue[:type] == "missing_limit" }
+
         assert_nil missing_limit_issue
       end
 
@@ -599,6 +605,7 @@ module RailsPulse
         result = analyzer.analyze
 
         missing_limit_issue = result[:pattern_issues].find { |issue| issue[:type] == "missing_limit" }
+
         assert_nil missing_limit_issue
       end
 
@@ -609,6 +616,7 @@ module RailsPulse
         result = analyzer.analyze
 
         complex_where_issue = result[:pattern_issues].find { |issue| issue[:type] == "complex_where_clause" }
+
         assert_not_nil complex_where_issue
         assert_equal "warning", complex_where_issue[:severity]
         assert_includes complex_where_issue[:description], "Complex WHERE clause"
@@ -621,6 +629,7 @@ module RailsPulse
         result = analyzer.analyze
 
         complex_where_issue = result[:pattern_issues].find { |issue| issue[:type] == "complex_where_clause" }
+
         assert_nil complex_where_issue
       end
 

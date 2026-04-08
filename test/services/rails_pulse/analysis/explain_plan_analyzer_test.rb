@@ -84,6 +84,7 @@ module RailsPulse
 
         assert_not_nil result[:explain_plan]
         sequential_issue = result[:issues].find { |i| i[:type] == "sequential_scan" }
+
         assert_not_nil sequential_issue
         assert_equal "warning", sequential_issue[:severity]
         assert_includes sequential_issue[:description], "sequential"
@@ -96,6 +97,7 @@ module RailsPulse
         result = analyzer.analyze
 
         sequential_issue = result[:issues].find { |i| i[:type] == "sequential_scan" }
+
         assert_not_nil sequential_issue
       end
 
@@ -106,6 +108,7 @@ module RailsPulse
         result = analyzer.analyze
 
         sequential_issue = result[:issues].find { |i| i[:type] == "sequential_scan" }
+
         assert_not_nil sequential_issue
       end
 
@@ -116,6 +119,7 @@ module RailsPulse
         result = analyzer.analyze
 
         sequential_issue = result[:issues].find { |i| i[:type] == "sequential_scan" }
+
         assert_nil sequential_issue
       end
 
@@ -130,6 +134,7 @@ module RailsPulse
         result = analyzer.analyze
 
         temp_issue = result[:issues].find { |i| i[:type] == "temporary_table" }
+
         assert_not_nil temp_issue
         assert_equal "warning", temp_issue[:severity]
         assert_includes temp_issue[:description], "temporary"
@@ -142,6 +147,7 @@ module RailsPulse
         result = analyzer.analyze
 
         temp_issue = result[:issues].find { |i| i[:type] == "temporary_table" }
+
         assert_not_nil temp_issue
       end
 
@@ -152,6 +158,7 @@ module RailsPulse
         result = analyzer.analyze
 
         temp_issue = result[:issues].find { |i| i[:type] == "temporary_table" }
+
         assert_not_nil temp_issue
       end
 
@@ -168,6 +175,7 @@ module RailsPulse
         result = analyzer.analyze
 
         high_cost_issue = result[:issues].find { |i| i[:type] == "high_cost_operation" }
+
         assert_not_nil high_cost_issue
         assert_includes high_cost_issue[:description], "high execution cost"
       end
@@ -181,6 +189,7 @@ module RailsPulse
         result = analyzer.analyze
 
         high_cost_issue = result[:issues].find { |i| i[:type] == "high_cost_operation" }
+
         assert_nil high_cost_issue
       end
 
@@ -193,6 +202,7 @@ module RailsPulse
         result = analyzer.analyze
 
         hash_join_issue = result[:issues].find { |i| i[:type] == "large_hash_join" }
+
         assert_not_nil hash_join_issue
         assert_equal "info", hash_join_issue[:severity]
       end
@@ -210,6 +220,7 @@ module RailsPulse
         result = analyzer.analyze
 
         where_issue = result[:issues].find { |i| i[:type] == "where_without_index" }
+
         assert_not_nil where_issue
         assert_equal "warning", where_issue[:severity]
       end
@@ -223,6 +234,7 @@ module RailsPulse
         result = analyzer.analyze
 
         where_issue = result[:issues].find { |i| i[:type] == "where_without_index" }
+
         assert_nil where_issue
       end
 
@@ -235,6 +247,7 @@ module RailsPulse
         result = analyzer.analyze
 
         full_scan_issue = result[:issues].find { |i| i[:type] == "full_scan_large_table" }
+
         assert_not_nil full_scan_issue
         assert_includes full_scan_issue[:description], "5000 rows"
       end
@@ -252,6 +265,7 @@ module RailsPulse
         result = analyzer.analyze
 
         scan_issue = result[:issues].find { |i| i[:type] == "table_scan" }
+
         assert_not_nil scan_issue
         assert_equal "warning", scan_issue[:severity]
       end
@@ -266,6 +280,7 @@ module RailsPulse
 
         # Should detect table_scan issue
         scan_issue = result[:issues].find { |i| i[:type] == "table_scan" }
+
         assert_not_nil scan_issue
       end
 
@@ -355,6 +370,7 @@ module RailsPulse
         result = analyzer.analyze
 
         sequential_issue = result[:issues].find { |i| i[:type] == "sequential_scan" }
+
         assert_not_nil sequential_issue
       end
 

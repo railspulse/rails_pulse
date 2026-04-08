@@ -52,6 +52,7 @@ module RailsPulse
         result = engine.analyze
 
         recommendation = result.find { |r| r[:columns].include?("email") }
+
         assert_not_nil recommendation
         assert_equal "single_column", recommendation[:type]
         assert_equal "high", recommendation[:priority]
@@ -65,6 +66,7 @@ module RailsPulse
         result = engine.analyze
 
         recommendation = result.find { |r| r[:columns].include?("created_at") }
+
         assert_not_nil recommendation
         assert_equal "single_column", recommendation[:type]
         assert_equal "medium", recommendation[:priority]
@@ -88,6 +90,7 @@ module RailsPulse
         result = engine.analyze
 
         recommendation = result.find { |r| r[:columns].include?("name") }
+
         assert_not_nil recommendation
         assert_includes recommendation[:reason], "LIKE with prefix"
       end
@@ -99,6 +102,7 @@ module RailsPulse
         result = engine.analyze
 
         recommendation = result.find { |r| r[:type] == "full_text" }
+
         assert_not_nil recommendation
         assert_equal "low", recommendation[:priority]
       end
@@ -125,6 +129,7 @@ module RailsPulse
         result = engine.analyze
 
         recommendation = result.find { |r| r[:table] == "posts" && r[:columns].include?("user_id") }
+
         assert_not_nil recommendation
         assert_equal "high", recommendation[:priority]
         assert_includes recommendation[:reason], "JOIN"
@@ -155,6 +160,7 @@ module RailsPulse
         result = engine.analyze
 
         recommendation = result.find { |r| r[:columns].include?("created_at") }
+
         assert_not_nil recommendation
         assert_includes recommendation[:reason], "ORDER BY"
       end
@@ -166,6 +172,7 @@ module RailsPulse
         result = engine.analyze
 
         recommendation = result.find { |r| r[:type] == "composite" }
+
         assert_not_nil recommendation
         assert_equal [ "last_name", "first_name" ], recommendation[:columns]
       end
@@ -181,6 +188,7 @@ module RailsPulse
         result = engine.analyze
 
         composite = result.find { |r| r[:type] == "composite" && r[:columns].length > 1 }
+
         assert_not_nil composite
         assert_includes composite[:columns], "active"
         assert_includes composite[:columns], "created_at"
@@ -193,6 +201,7 @@ module RailsPulse
         result = engine.analyze
 
         composite = result.find { |r| r[:type] == "composite" && r[:columns].length == 2 }
+
         assert_not_nil composite
         assert_includes composite[:columns], "email"
         assert_includes composite[:columns], "active"
@@ -209,10 +218,11 @@ module RailsPulse
         result = engine.analyze
 
         covering = result.find { |r| r[:type] == "covering" }
+
         assert_not_nil covering
         assert_includes covering[:columns], "active"
         # Should include selected columns for covering
-        assert covering[:columns].length > 1
+        assert_operator covering[:columns].length, :>, 1
       end
 
       test "skips covering index for SELECT *" do
@@ -222,6 +232,7 @@ module RailsPulse
         result = engine.analyze
 
         covering = result.find { |r| r[:type] == "covering" }
+
         assert_nil covering
       end
 
@@ -236,6 +247,7 @@ module RailsPulse
         result = engine.analyze
 
         recommendation = result.first
+
         assert_includes recommendation[:migration_code], "add_index :users, :email"
       end
 
@@ -246,6 +258,7 @@ module RailsPulse
         result = engine.analyze
 
         composite = result.find { |r| r[:type] == "composite" && r[:columns].length == 2 }
+
         assert_not_nil composite
         assert_match(/add_index :users, \[.*"email".*"active".*\]/, composite[:migration_code])
       end
@@ -257,6 +270,7 @@ module RailsPulse
         result = engine.analyze
 
         fulltext = result.find { |r| r[:type] == "full_text" }
+
         assert_not_nil fulltext
 
         if engine.send(:postgresql?)
@@ -340,6 +354,7 @@ module RailsPulse
         result = engine.analyze
 
         recommendation = result.first
+
         assert_not_nil recommendation
         # extract_main_table gets first word, which is schema name
         # This is a known limitation of the regex-based parsing
@@ -364,6 +379,7 @@ module RailsPulse
         result = engine.analyze
 
         recommendation = result.first
+
         assert_includes recommendation.keys, :execution_context
         assert_equal 5, recommendation[:execution_context][:frequency]
       end

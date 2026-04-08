@@ -112,7 +112,7 @@ module RailsPulse
       end
 
       test "returns nil most_common_location when no locations" do
-        operations = [create_operation(codebase_location: nil)]
+        operations = [ create_operation(codebase_location: nil) ]
         analyzer = BacktraceAnalyzer.new(@query, operations)
 
         result = analyzer.analyze
@@ -138,7 +138,7 @@ module RailsPulse
       end
 
       test "returns zero frequency for single operation" do
-        operations = [create_operation]
+        operations = [ create_operation ]
         analyzer = BacktraceAnalyzer.new(@query, operations)
 
         result = analyzer.analyze
@@ -176,6 +176,7 @@ module RailsPulse
         result = analyzer.analyze
 
         distribution = result[:location_distribution]
+
         assert_in_delta 75.0, distribution["app/controllers/users_controller.rb:10"], 0.1
         assert_in_delta 25.0, distribution["app/models/user.rb:25"], 0.1
       end
@@ -193,7 +194,7 @@ module RailsPulse
       end
 
       test "returns empty distribution for no locations" do
-        operations = [create_operation(codebase_location: nil)]
+        operations = [ create_operation(codebase_location: nil) ]
         analyzer = BacktraceAnalyzer.new(@query, operations)
 
         result = analyzer.analyze
@@ -216,6 +217,7 @@ module RailsPulse
         result = analyzer.analyze
 
         hotspot = result[:code_hotspots].find { |h| h[:type] == "controller_action" && h[:location] == "Users#index" }
+
         assert_not_nil hotspot
         assert_equal 2, hotspot[:count]
       end
@@ -231,6 +233,7 @@ module RailsPulse
         result = analyzer.analyze
 
         hotspot = result[:code_hotspots].find { |h| h[:type] == "model_method" && h[:location] == "User.recent_posts" }
+
         assert_not_nil hotspot
         assert_equal 2, hotspot[:count]
       end
@@ -246,6 +249,7 @@ module RailsPulse
         result = analyzer.analyze
 
         file_hotspot = result[:code_hotspots].find { |h| h[:type] == "file" && h[:location] == "app/services/user_service.rb" }
+
         assert_not_nil file_hotspot
         assert_equal 2, file_hotspot[:count]
       end
@@ -263,7 +267,7 @@ module RailsPulse
       end
 
       test "returns empty hotspots for no locations" do
-        operations = [create_operation(codebase_location: nil)]
+        operations = [ create_operation(codebase_location: nil) ]
         analyzer = BacktraceAnalyzer.new(@query, operations)
 
         result = analyzer.analyze
@@ -286,6 +290,7 @@ module RailsPulse
         result = analyzer.analyze
 
         layers = result[:execution_contexts][:framework_layers]
+
         assert_equal 2, layers[:controller][:count]
         assert_equal 1, layers[:model][:count]
       end
@@ -301,6 +306,7 @@ module RailsPulse
         result = analyzer.analyze
 
         app_layers = result[:execution_contexts][:application_layers]
+
         assert_not_nil app_layers[:controllers]
         assert_not_nil app_layers[:services]
         assert_not_nil app_layers[:jobs]
@@ -317,6 +323,7 @@ module RailsPulse
         result = analyzer.analyze
 
         gem_usage = result[:execution_contexts][:gem_usage]
+
         assert_equal 2, gem_usage["devise"][:count]
         assert_equal 1, gem_usage["pundit"][:count]
       end
@@ -330,6 +337,7 @@ module RailsPulse
         result = analyzer.analyze
 
         gem_usage = result[:execution_contexts][:gem_usage]
+
         assert_operator gem_usage.length, :<=, 5
       end
 
@@ -376,7 +384,7 @@ module RailsPulse
 
       test "handles extremely long location paths" do
         long_path = "app/" + ("very_long_directory_name/" * 8) + "file.rb:10"
-        operations = [create_operation(codebase_location: long_path)]
+        operations = [ create_operation(codebase_location: long_path) ]
         analyzer = BacktraceAnalyzer.new(@query, operations)
 
         result = analyzer.analyze

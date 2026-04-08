@@ -45,6 +45,7 @@ module RailsPulse
         result = generator.generate
 
         select_star_suggestion = result.find { |s| s[:action].include?("SELECT *") }
+
         assert_not_nil select_star_suggestion
         assert_equal "optimization", select_star_suggestion[:type]
         assert_equal "medium", select_star_suggestion[:priority]
@@ -65,6 +66,7 @@ module RailsPulse
         result = generator.generate
 
         limit_suggestion = result.find { |s| s[:action].include?("LIMIT") }
+
         assert_not_nil limit_suggestion
         assert_equal "high", limit_suggestion[:priority]
         assert_equal "sql_optimization", limit_suggestion[:category]
@@ -83,6 +85,7 @@ module RailsPulse
         result = generator.generate
 
         where_suggestion = result.find { |s| s[:action].include?("WHERE") }
+
         assert_not_nil where_suggestion
         assert_equal "high", where_suggestion[:priority]
       end
@@ -100,6 +103,7 @@ module RailsPulse
         result = generator.generate
 
         complex_suggestion = result.find { |s| s[:action].include?("Simplify WHERE") }
+
         assert_not_nil complex_suggestion
         assert_equal "refactoring", complex_suggestion[:type]
         assert_equal "code_quality", complex_suggestion[:category]
@@ -127,6 +131,7 @@ module RailsPulse
         result = generator.generate
 
         index_suggestion = result.first
+
         assert_equal "index", index_suggestion[:type]
         assert_includes index_suggestion[:action], "single_column index"
         assert_includes index_suggestion[:action], "add_index :users, :email"
@@ -188,6 +193,7 @@ module RailsPulse
         result = generator.generate
 
         n_plus_one_suggestion = result.find { |s| s[:type] == "n_plus_one" }
+
         assert_not_nil n_plus_one_suggestion
         assert_equal "high", n_plus_one_suggestion[:priority]
         assert_equal "performance_critical", n_plus_one_suggestion[:category]
@@ -207,6 +213,7 @@ module RailsPulse
         result = generator.generate
 
         n_plus_one_suggestions = result.select { |s| s[:type] == "n_plus_one" }
+
         assert_empty n_plus_one_suggestions
       end
 
@@ -226,6 +233,7 @@ module RailsPulse
         result = generator.generate
 
         join_suggestion = result.find { |s| s[:action].include?("JOINs") }
+
         assert_not_nil join_suggestion
         assert_equal "medium", join_suggestion[:priority]
       end
@@ -242,6 +250,7 @@ module RailsPulse
         result = generator.generate
 
         complexity_suggestion = result.find { |s| s[:action].include?("complexity") }
+
         assert_not_nil complexity_suggestion
         assert_equal "refactoring", complexity_suggestion[:type]
       end
@@ -259,6 +268,7 @@ module RailsPulse
         result = generator.generate
 
         subquery_suggestion = result.find { |s| s[:action].include?("subqueries") }
+
         assert_not_nil subquery_suggestion
       end
 
@@ -279,6 +289,7 @@ module RailsPulse
         result = generator.generate
 
         seq_scan_suggestion = result.find { |s| s[:action].include?("indexes") && s[:action].include?("WHERE") }
+
         assert_not_nil seq_scan_suggestion
         assert_equal "high", seq_scan_suggestion[:priority]
         assert_equal "database_optimization", seq_scan_suggestion[:category]
@@ -297,6 +308,7 @@ module RailsPulse
         result = generator.generate
 
         temp_suggestion = result.find { |s| s[:action].include?("temporary tables") }
+
         assert_not_nil temp_suggestion
         assert_equal "medium", temp_suggestion[:priority]
       end
@@ -314,6 +326,7 @@ module RailsPulse
         result = generator.generate
 
         cost_suggestion = result.find { |s| s[:action].include?("high-cost") }
+
         assert_not_nil cost_suggestion
         assert_equal "high", cost_suggestion[:priority]
         assert_equal "performance_critical", cost_suggestion[:category]
@@ -376,6 +389,7 @@ module RailsPulse
         result = generator.generate
 
         limit_suggestions = result.select { |s| s[:action].include?("LIMIT") }
+
         assert_equal 1, limit_suggestions.length
       end
 
@@ -417,6 +431,7 @@ module RailsPulse
         result = generator.generate
 
         types = result.map { |s| s[:type] }.uniq
+
         assert_includes types, "optimization"
         assert_includes types, "index"
         assert_includes types, "n_plus_one"

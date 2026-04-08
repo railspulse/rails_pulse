@@ -47,7 +47,7 @@ module RailsPulse
         analyzer = BaseAnalyzer.new(@query)
 
         assert_equal @query, analyzer.query
-        assert_equal [], analyzer.operations
+        assert_empty analyzer.operations
       end
 
       test "initializes and converts single operation to array" do
@@ -80,7 +80,7 @@ module RailsPulse
         result = analyzer.analyze
 
         assert_kind_of Hash, result
-        assert_equal true, result[:test]
+        assert result[:test]
       end
 
       # ============================================================================
@@ -171,27 +171,27 @@ module RailsPulse
         analyzer = TestAnalyzer.new(@query, @operations)
         analyzer.mock_database_adapter = "postgresql"
 
-        assert analyzer.postgresql?
-        refute analyzer.mysql?
-        refute analyzer.sqlite?
+        assert_predicate analyzer, :postgresql?
+        refute_predicate analyzer, :mysql?
+        refute_predicate analyzer, :sqlite?
       end
 
       test "mysql? returns true for mysql or mysql2 adapter" do
         analyzer = TestAnalyzer.new(@query, @operations)
         analyzer.mock_database_adapter = "mysql2"
 
-        assert analyzer.mysql?
-        refute analyzer.postgresql?
-        refute analyzer.sqlite?
+        assert_predicate analyzer, :mysql?
+        refute_predicate analyzer, :postgresql?
+        refute_predicate analyzer, :sqlite?
       end
 
       test "sqlite? returns true for sqlite adapter" do
         analyzer = TestAnalyzer.new(@query, @operations)
         analyzer.mock_database_adapter = "sqlite"
 
-        assert analyzer.sqlite?
-        refute analyzer.postgresql?
-        refute analyzer.mysql?
+        assert_predicate analyzer, :sqlite?
+        refute_predicate analyzer, :postgresql?
+        refute_predicate analyzer, :mysql?
       end
 
       # ============================================================================
@@ -390,14 +390,14 @@ module RailsPulse
       test "handles empty operations array gracefully" do
         analyzer = TestAnalyzer.new(@query, [])
 
-        assert_equal [], analyzer.operations
-        assert_equal [], analyzer.recent_operations
+        assert_empty analyzer.operations
+        assert_empty analyzer.recent_operations
       end
 
       test "handles nil operations converted to empty array" do
         analyzer = TestAnalyzer.new(@query, nil)
 
-        assert_equal [], analyzer.operations
+        assert_empty analyzer.operations
       end
 
       private

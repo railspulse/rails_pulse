@@ -147,6 +147,7 @@ module RailsPulse
         result = detector.analyze
 
         repetitive_evidence = result[:evidence].find { |e| e[:type] == "repetitive_query" }
+
         assert_not_nil repetitive_evidence
         assert_equal 5, repetitive_evidence[:occurrences]
         assert_includes repetitive_evidence[:description], "5 times"
@@ -163,6 +164,7 @@ module RailsPulse
         result = detector.analyze
 
         lookup_evidence = result[:evidence].find { |e| e[:type] == "single_record_lookup" }
+
         assert_not_nil lookup_evidence
         assert_includes lookup_evidence[:description], "eager loading"
       end
@@ -226,6 +228,7 @@ module RailsPulse
         result = detector.analyze
 
         patterns = result[:execution_patterns]
+
         assert_equal 10, patterns[:total_executions]
         assert_operator patterns[:time_span_minutes], :>, 0
         assert_operator patterns[:executions_per_minute], :>, 0
@@ -258,6 +261,7 @@ module RailsPulse
         result = detector.analyze
 
         patterns = result[:execution_patterns]
+
         assert_in_delta 5.0, patterns[:executions_per_minute], 0.5
       end
 
@@ -272,6 +276,7 @@ module RailsPulse
         result = detector.analyze
 
         patterns = result[:execution_patterns]
+
         assert_operator patterns[:peak_execution_periods].length, :>, 0
       end
 
@@ -305,6 +310,7 @@ module RailsPulse
         result = detector.analyze
 
         contexts = result[:execution_patterns][:common_execution_contexts]
+
         assert_equal 2, contexts[:controller_actions]["users_controller#index"]
         assert_equal 1, contexts[:controller_actions]["posts_controller#show"]
       end
@@ -320,6 +326,7 @@ module RailsPulse
         result = detector.analyze
 
         contexts = result[:execution_patterns][:common_execution_contexts]
+
         assert_equal 2, contexts[:model_methods]["user.recent_posts"]
         assert_equal 1, contexts[:model_methods]["post.author"]
       end
@@ -335,6 +342,7 @@ module RailsPulse
         result = detector.analyze
 
         contexts = result[:execution_patterns][:common_execution_contexts]
+
         assert_equal 2, contexts[:unique_locations]
         assert_equal 3, contexts[:total_contexts]
       end
@@ -370,6 +378,7 @@ module RailsPulse
 
         assert_operator result[:suggested_fixes].length, :>, 0
         includes_fix = result[:suggested_fixes].find { |f| f[:type] == "includes" }
+
         assert_not_nil includes_fix
         assert_includes includes_fix[:description], "includes()"
       end
@@ -385,6 +394,7 @@ module RailsPulse
         result = detector.analyze
 
         fix_types = result[:suggested_fixes].map { |f| f[:type] }
+
         assert_includes fix_types, "includes"
         assert_includes fix_types, "preload"
         assert_includes fix_types, "joins"
@@ -401,6 +411,7 @@ module RailsPulse
         result = detector.analyze
 
         eager_fix = result[:suggested_fixes].find { |f| f[:type] == "eager_loading" }
+
         assert_not_nil eager_fix
         assert_includes eager_fix[:code_example], "Post.includes(:user)"
       end
@@ -416,6 +427,7 @@ module RailsPulse
         result = detector.analyze
 
         eager_fix = result[:suggested_fixes].find { |f| f[:type] == "eager_loading" }
+
         assert_not_nil eager_fix
         assert_includes eager_fix[:code_example], "Model.includes(:association)"
       end
