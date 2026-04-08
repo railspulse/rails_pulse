@@ -10,12 +10,18 @@ module RailsPulse
           ENV["TEST_TYPE"] = "functional"
           super
           @job = rails_pulse_jobs(:report_job)
-          @card = P95Duration.new(job: @job)
-          @index_card = P95Duration.new
+          @card = P95Duration.new(job: @job, period: 7)
+          @index_card = P95Duration.new(period: 7)
           @now = Time.current
+          travel_to @now
 
           # Clean up any existing summaries
           RailsPulse::Summary.delete_all
+        end
+
+        def teardown
+          travel_back
+          super
         end
 
         test "returns a metric card hash for a specific job" do
@@ -25,11 +31,11 @@ module RailsPulse
           assert_equal "jobs_p95_duration", card_data[:id]
           assert_equal "jobs", card_data[:context]
           assert_equal "95th Percentile Duration", card_data[:title]
-          assert card_data.key?(:summary)
-          assert card_data.key?(:chart_data)
-          assert card_data.key?(:trend_icon)
-          assert card_data.key?(:trend_amount)
-          assert card_data.key?(:trend_text)
+          assert_includes card_data.keys, :summary
+          assert_includes card_data.keys, :chart_data
+          assert_includes card_data.keys, :trend_icon
+          assert_includes card_data.keys, :trend_amount
+          assert_includes card_data.keys, :trend_text
         end
 
         test "returns a metric card hash for all jobs (index page)" do
@@ -65,8 +71,8 @@ module RailsPulse
         end
 
         test "generates sparkline data" do
-          # Create summary data for the last 14 days
-          14.times do |i|
+          # Create summary data for the last 7 days (period=7)
+          7.times do |i|
             period_start = (@now - i.days).beginning_of_day
             RailsPulse::Summary.create!(
               summarizable: @job,
@@ -83,8 +89,8 @@ module RailsPulse
           card_data = @card.to_metric_card
 
           assert_kind_of Hash, card_data[:chart_data]
-          # Range is 14 days from now - 14 days to now = 15 days inclusive
-          assert_equal 15, card_data[:chart_data].keys.size
+          # Range is 7 days from now - 7 days to now = 8 days inclusive
+          assert_equal 8, card_data[:chart_data].keys.size
         end
 
         test "calculates trend" do

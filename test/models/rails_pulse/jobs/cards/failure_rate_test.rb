@@ -27,7 +27,7 @@ module RailsPulse
         # Structure Tests
 
         test "card returns hash with required keys" do
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_kind_of Hash, result
@@ -61,7 +61,7 @@ module RailsPulse
             error_count: 1
           )
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           # Total failure rate: 3 errors / 20 runs = 15%
@@ -84,7 +84,7 @@ module RailsPulse
           create_job_summary(job: job1, days_ago: 10, count: 10, error_count: 1)
           create_job_summary(job: job2, days_ago: 10, count: 10, error_count: 1)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: nil)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: nil, period: 7)
           result = card.to_metric_card
 
           # Total failure rate: 7 errors / 40 runs = 17.5%
@@ -98,7 +98,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 10, error_count: 1)
           create_job_summary(job: other_job, days_ago: 3, count: 10, error_count: 5)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           # Should only include report_job's 10% failure rate, not mailer_job's 50%
@@ -111,7 +111,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 10, error_count: 5)
           create_job_summary(job: @job, days_ago: 10, count: 10, error_count: 1)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           # Current 50% vs previous 10% = +400% increase (worse)
@@ -123,7 +123,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 10, error_count: 1)
           create_job_summary(job: @job, days_ago: 10, count: 10, error_count: 5)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           # Current 10% vs previous 50% = -80% decrease (better)
@@ -135,7 +135,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 10, error_count: 1)
           create_job_summary(job: @job, days_ago: 10, count: 10, error_count: 1)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "move-right", result[:trend_icon]
@@ -148,7 +148,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 10, error_count: 2)
           create_job_summary(job: @job, days_ago: 5, count: 10, error_count: 3)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_kind_of Hash, result[:chart_data]
@@ -166,7 +166,7 @@ module RailsPulse
         test "card sparkline includes zero values for days with no data" do
           create_job_summary(job: @job, days_ago: 3, count: 10, error_count: 2)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           # Most days should have 0.0 value (at least 5 out of 8)
@@ -178,7 +178,7 @@ module RailsPulse
         test "card sparkline calculates failure rate percentages correctly" do
           create_job_summary(job: @job, days_ago: 3, count: 10, error_count: 5)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           # Find the day with data
@@ -191,7 +191,7 @@ module RailsPulse
         # Edge Cases
 
         test "card handles job with no summaries" do
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "0.0%", result[:summary]
@@ -203,7 +203,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 10, error_count: 0)
           create_job_summary(job: @job, days_ago: 10, count: 10, error_count: 0)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "0.0%", result[:summary]
@@ -213,7 +213,7 @@ module RailsPulse
         test "card handles 100% failure rate" do
           create_job_summary(job: @job, days_ago: 3, count: 10, error_count: 10)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "100.0%", result[:summary]
@@ -222,7 +222,7 @@ module RailsPulse
         test "card handles only current window data" do
           create_job_summary(job: @job, days_ago: 3, count: 10, error_count: 2)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "20.0%", result[:summary]
@@ -233,7 +233,7 @@ module RailsPulse
         test "card handles only previous window data" do
           create_job_summary(job: @job, days_ago: 10, count: 10, error_count: 3)
 
-          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job)
+          card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "30.0%", result[:summary]

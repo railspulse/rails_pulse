@@ -79,17 +79,33 @@ module RailsPulse
 
       query_ids = query_ids.pluck(:id)
 
-      # Apply filters: include only summaries for filtered routes/queries
-      # If no routes/queries match the filter, we need to ensure nothing is returned
+      # Filter job summaries
+      job_ids = RailsPulse::Job.all
+
+      # Exclude jobs with disabled tags
+      actual_disabled_tags.each do |tag|
+        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
+        job_ids = job_ids.where.not("tags LIKE ?", "%#{sanitized_tag}%")
+      end
+
+      # Exclude non-tagged jobs if show_non_tagged is false
+      job_ids = job_ids.where("tags IS NOT NULL AND tags != '[]'") unless show_non_tagged
+
+      job_ids = job_ids.pluck(:id)
+
+      # Apply filters: include only summaries for filtered routes/queries/jobs
+      # If no routes/queries/jobs match the filter, we need to ensure nothing is returned
       # Use -1 as an impossible ID instead of 0 (which might be used for aggregates)
       relation = relation.where(
         "(" \
         "  (summarizable_type = 'RailsPulse::Route' AND summarizable_id IN (?)) OR " \
         "  (summarizable_type = 'RailsPulse::Query' AND summarizable_id IN (?)) OR " \
+        "  (summarizable_type = 'RailsPulse::Job' AND summarizable_id IN (?)) OR " \
         "  (summarizable_type = 'RailsPulse::Request')" \
         ")",
         route_ids.presence || [ -1 ],
-        query_ids.presence || [ -1 ]
+        query_ids.presence || [ -1 ],
+        job_ids.presence || [ -1 ]
       )
 
       relation

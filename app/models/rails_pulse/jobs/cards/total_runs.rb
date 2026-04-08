@@ -12,24 +12,12 @@ module RailsPulse
 
         def to_metric_card
           base_query = RailsPulse::Summary
-            .joins("INNER JOIN rails_pulse_jobs ON rails_pulse_jobs.id = rails_pulse_summaries.summarizable_id")
+            .with_tag_filters(@disabled_tags, @show_non_tagged)
             .where(
               summarizable_type: "RailsPulse::Job",
               period_type: @period_type,
               period_start: range_start..now
             )
-
-          # Apply tag filters
-          actual_disabled_tags = @disabled_tags.reject { |tag| tag == "non_tagged" }
-          actual_disabled_tags.each do |tag|
-            sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
-            base_query = base_query.where.not("rails_pulse_jobs.tags LIKE ?", "%#{sanitized_tag}%")
-          end
-
-          unless @show_non_tagged
-            base_query = base_query.where("rails_pulse_jobs.tags IS NOT NULL AND rails_pulse_jobs.tags != '[]'")
-          end
-
           base_query = base_query.where(summarizable_id: @job.id) if @job
 
           metrics = base_query.select(
