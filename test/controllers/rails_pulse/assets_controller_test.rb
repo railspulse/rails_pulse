@@ -98,6 +98,7 @@ class RailsPulse::AssetsControllerTest < ActionDispatch::IntegrationTest
 
     dangerous_paths.each do |path|
       get rails_pulse.asset_path(asset_name: path)
+
       assert_response :not_found, "Failed to block: #{path}"
     end
   end

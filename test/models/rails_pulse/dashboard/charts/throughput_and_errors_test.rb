@@ -142,6 +142,7 @@ module RailsPulse
 
           assert_equal 8, result[:labels].length
           total_requests = result[:series][0][:data].sum
+
           assert_equal 100, total_requests
         end
 
@@ -157,6 +158,7 @@ module RailsPulse
           ).to_chart_data
 
           yesterday_index = result[:labels].index(1.day.ago.to_date.strftime("%b %-d"))
+
           assert_equal 100, result[:series][0][:data][yesterday_index]
         end
 
@@ -170,6 +172,7 @@ module RailsPulse
           ).to_chart_data
 
           yesterday_index = result[:labels].index(1.day.ago.to_date.strftime("%b %-d"))
+
           assert_equal 100, result[:series][0][:data][yesterday_index]
         end
 

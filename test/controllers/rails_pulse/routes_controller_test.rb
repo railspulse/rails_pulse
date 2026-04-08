@@ -119,7 +119,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     ransack_query = assigns(:ransack_query)
     # Check that default sort is applied
-    assert ransack_query.sorts.any?
+    assert_predicate ransack_query.sorts, :any?
     assert_equal "occurred_at", ransack_query.sorts.first.name
     assert_equal "desc", ransack_query.sorts.first.dir
   end
@@ -140,6 +140,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     pagination = assigns(:pagination)
+
     assert_not_nil pagination
     assert_equal 10, pagination.limit
   end
@@ -457,6 +458,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     # Default should be approximately 14 days
     time_diff = assigns(:end_time) - assigns(:start_time)
+
     assert_operator time_diff, :>, 13.days.to_i
     assert_operator time_diff, :<, 15.days.to_i
   end
@@ -468,6 +470,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     time_diff = assigns(:end_time) - assigns(:start_time)
+
     assert_operator time_diff, :<=, 25.hours.to_i
   end
 
@@ -478,6 +481,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     time_diff = assigns(:end_time) - assigns(:start_time)
+
     assert_operator time_diff, :>, 6.days.to_i
     assert_operator time_diff, :<, 8.days.to_i
   end
@@ -489,6 +493,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     time_diff = assigns(:end_time) - assigns(:start_time)
+
     assert_operator time_diff, :>, 13.days.to_i
     assert_operator time_diff, :<, 15.days.to_i
   end
@@ -867,6 +872,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     pagination = assigns(:pagination)
+
     assert_not_nil pagination
     # Paginator is an object with page, limit, and count methods
     assert_respond_to pagination, :page

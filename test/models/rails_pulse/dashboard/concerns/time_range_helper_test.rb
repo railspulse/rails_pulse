@@ -49,6 +49,7 @@ module RailsPulse
           start_time, _end_time = instance.send(:period_range)
 
           expected_start = 7.days.ago.beginning_of_day
+
           assert_equal expected_start, start_time
         end
 
@@ -64,6 +65,7 @@ module RailsPulse
           start_time, _end_time = instance.send(:period_range)
 
           expected_start = 30.days.ago.beginning_of_day
+
           assert_equal expected_start, start_time
         end
 
@@ -72,6 +74,7 @@ module RailsPulse
           start_time, _end_time = instance.send(:period_range)
 
           expected_start = 14.days.ago.beginning_of_day
+
           assert_equal expected_start, start_time
         end
 
@@ -82,6 +85,7 @@ module RailsPulse
           start_time, end_time = instance.send(:period_range)
 
           days_difference = ((end_time - start_time) / 1.day).round
+
           assert_equal 7, days_difference
         end
 
@@ -90,6 +94,7 @@ module RailsPulse
           start_time, end_time = instance.send(:period_range)
 
           days_difference = ((end_time - start_time) / 1.day).round
+
           assert_equal 30, days_difference
         end
 
@@ -117,6 +122,7 @@ module RailsPulse
           start_time, _end_time = instance.send(:period_range)
 
           expected_start = 365.days.ago.beginning_of_day
+
           assert_equal expected_start, start_time
         end
 
@@ -152,8 +158,8 @@ module RailsPulse
         test "period_range is private method" do
           instance = TestClass.new(period: 7)
 
-          refute instance.respond_to?(:period_range)
-          assert instance.respond_to?(:period_range, true)
+          refute_respond_to instance, :period_range
+          assert_respond_to instance, :period_range
         end
       end
     end

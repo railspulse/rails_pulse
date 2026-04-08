@@ -74,7 +74,7 @@ module RailsPulse
           name: "P50",
           data: p50_data,
           type: "line",
-          color: RailsPulse::ChartColors::DEFAULT,
+          color: RailsPulse::ChartColors::DEFAULT
         }
 
         p95_data = daily_data.values.map { |data| data[:p95] }
@@ -82,7 +82,7 @@ module RailsPulse
           name: "P95",
           data: p95_data,
           type: "line",
-          color: RailsPulse::ChartColors::P95,
+          color: RailsPulse::ChartColors::P95
         }
 
         p99_data = daily_data.values.map { |data| data[:p99] }

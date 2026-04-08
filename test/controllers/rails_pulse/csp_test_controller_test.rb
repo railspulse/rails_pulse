@@ -20,6 +20,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     json = JSON.parse(response.body)
+
     assert_equal "ok", json["status"]
     assert_equal "CSP test endpoint working", json["message"]
   end
@@ -59,6 +60,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.csp_test_path
 
     csp = response.headers["Content-Security-Policy"]
+
     assert_includes csp, "default-src 'self'"
   end
 
@@ -66,6 +68,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.csp_test_path
 
     csp = response.headers["Content-Security-Policy"]
+
     assert_match /script-src 'self' 'nonce-[A-Za-z0-9+\/=]+'/, csp
   end
 
@@ -73,6 +76,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.csp_test_path
 
     csp = response.headers["Content-Security-Policy"]
+
     assert_match /style-src 'self' 'nonce-[A-Za-z0-9+\/=]+'/, csp
   end
 
@@ -80,6 +84,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.csp_test_path
 
     csp = response.headers["Content-Security-Policy"]
+
     assert_includes csp, "img-src 'self' data:"
   end
 
@@ -87,6 +92,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.csp_test_path
 
     csp = response.headers["Content-Security-Policy"]
+
     assert_includes csp, "frame-src 'none'"
   end
 
@@ -94,6 +100,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.csp_test_path
 
     csp = response.headers["Content-Security-Policy"]
+
     assert_includes csp, "object-src 'none'"
   end
 
@@ -101,6 +108,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.csp_test_path
 
     csp = response.headers["Content-Security-Policy"]
+
     assert_includes csp, "base-uri 'self'"
   end
 
@@ -108,6 +116,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.csp_test_path
 
     csp = response.headers["Content-Security-Policy"]
+
     assert_includes csp, "form-action 'self'"
   end
 
@@ -131,6 +140,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
 
     csp = response.headers["Content-Security-Policy"]
     directives = csp.split(";").map(&:strip)
+
     assert_operator directives.count, :>, 5
   end
 
@@ -153,6 +163,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
 
     csp = response.headers["Content-Security-Policy"]
     nonce_match = csp.match(/'nonce-([A-Za-z0-9+\/=]+)'/)
+
     assert_not_nil nonce_match
     assert_operator nonce_match[1].length, :>, 20
   end
@@ -162,6 +173,7 @@ class RailsPulse::CspTestControllerTest < ActionDispatch::IntegrationTest
 
     csp = response.headers["Content-Security-Policy"]
     nonce = csp.match(/'nonce-([A-Za-z0-9+\/=]+)'/)[1]
+
     assert_match /^[A-Za-z0-9+\/=]+$/, nonce
   end
 

@@ -241,18 +241,21 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse_engine.queries_path
 
     card = assigns(:percentile_query_times_metric_card)
+
     assert_includes card.keys, :id
     assert_includes card.keys, :title
     assert_includes card.keys, :summary
     assert_includes card.keys, :chart_data
 
     card2 = assigns(:execution_rate_metric_card)
+
     assert_includes card2.keys, :id
     assert_includes card2.keys, :title
     assert_includes card2.keys, :summary
     assert_includes card2.keys, :chart_data
 
     card3 = assigns(:database_load_metric_card)
+
     assert_includes card3.keys, :id
     assert_includes card3.keys, :title
     assert_includes card3.keys, :summary
@@ -266,6 +269,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse_engine.queries_path
 
     chart = assigns(:query_performance_chart_data)
+
     assert_kind_of Hash, chart
     assert_includes chart.keys, :series
     assert_includes chart.keys, :labels
@@ -277,6 +281,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse_engine.queries_path
 
     chart = assigns(:execution_volume_chart_data)
+
     assert_kind_of Hash, chart
     assert_includes chart.keys, :series
     assert_includes chart.keys, :labels
@@ -288,6 +293,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse_engine.queries_path
 
     chart = assigns(:database_load_chart_data)
+
     assert_kind_of Hash, chart
     assert_includes chart.keys, :series
     assert_includes chart.keys, :labels
@@ -316,6 +322,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     # Default should be approximately 7 days
     time_diff = assigns(:end_time) - assigns(:start_time)
+
     assert_operator time_diff, :>, 6.days.to_i
     assert_operator time_diff, :<, 8.days.to_i
   end
@@ -353,6 +360,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     time_diff_hours = (assigns(:end_time) - assigns(:start_time)) / 3600.0
+
     assert_operator time_diff_hours, :<=, 25
   end
 
@@ -363,6 +371,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     time_diff_hours = (assigns(:end_time) - assigns(:start_time)) / 3600.0
+
     assert_operator time_diff_hours, :>, 25
   end
 
@@ -488,6 +497,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     pagination = assigns(:pagination)
+
     assert_not_nil pagination
   end
 
@@ -507,6 +517,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     pagination = assigns(:pagination)
+
     assert_not_nil pagination
   end
 
@@ -710,7 +721,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     ransack_query = assigns(:ransack_query)
     # Check that default sort is applied
-    assert ransack_query.sorts.any?
+    assert_predicate ransack_query.sorts, :any?
     assert_equal "period_start", ransack_query.sorts.first.name
     assert_equal "desc", ransack_query.sorts.first.dir
   end
@@ -731,6 +742,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     pagination = assigns(:pagination)
+
     assert_not_nil pagination
     assert_equal 10, pagination.limit
   end

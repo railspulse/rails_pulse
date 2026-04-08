@@ -49,12 +49,12 @@ module RailsPulse
           labels = execution_data.keys.map { |timestamp| timestamp * 1000 }
 
           # Build series data
-          series = [{
+          series = [ {
             name: "Executions",
             data: execution_data.values,
             type: "bar",
             color: RailsPulse::ChartColors::DEFAULT
-          }]
+          } ]
 
           {
             labels: labels,

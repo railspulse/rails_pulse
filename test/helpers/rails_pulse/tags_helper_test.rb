@@ -139,7 +139,7 @@ class RailsPulse::TagsHelperTest < ActionView::TestCase
   end
 
   test "display_tag_badges parses empty JSON array" do
-    json_string = '[]'
+    json_string = "[]"
     html = display_tag_badges(json_string)
 
     assert_includes html, "-"

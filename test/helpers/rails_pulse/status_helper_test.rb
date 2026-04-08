@@ -141,6 +141,7 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
 
     # All percentages should sum to 100 (or close due to rounding)
     total = breakdown.values.sum
+
     assert_in_delta 100.0, total, 1.0
   end
 
@@ -248,7 +249,7 @@ class RailsPulse::StatusHelperTest < ActionView::TestCase
     options = duration_threshold_filter_options(:route)
 
     assert_kind_of Array, options
-    assert options.length > 0
+    assert_operator options.length, :>, 0
     assert_equal "All Routes", options.first[0]
     assert_nil options.first[1]
 

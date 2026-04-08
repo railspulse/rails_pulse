@@ -36,7 +36,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   # ============================================================================
 
   test "time_range_selector renders with preset mode" do
-    time_range_options = [["Last 24 Hours", :last_24_hours], ["Last Week", :last_week]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ], [ "Last Week", :last_week ] ]
 
     form_for(@form_object, url: "/test") do |form|
       html = time_range_selector(form,
@@ -52,7 +52,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   end
 
   test "time_range_selector renders select with options" do
-    time_range_options = [["Last 24 Hours", :last_24_hours], ["Last Week", :last_week]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ], [ "Last Week", :last_week ] ]
 
     form_for(@form_object, url: "/test") do |form|
       html = time_range_selector(form,
@@ -68,7 +68,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   end
 
   test "time_range_selector renders hidden custom picker by default" do
-    time_range_options = [["Last 24 Hours", :last_24_hours], ["Custom", :custom]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ], [ "Custom", :custom ] ]
 
     form_for(@form_object, url: "/test") do |form|
       html = time_range_selector(form,
@@ -87,7 +87,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   # ============================================================================
 
   test "time_range_selector shows custom picker when custom selected" do
-    time_range_options = [["Last 24 Hours", :last_24_hours], ["Custom", :custom]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ], [ "Custom", :custom ] ]
     @controller.params = { q: { custom_date_range: "2024-01-01 to 2024-01-31" } }
 
     form_for(@form_object, url: "/test") do |form|
@@ -103,7 +103,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   end
 
   test "time_range_selector uses global date range when custom selected" do
-    time_range_options = [["Last 24 Hours", :last_24_hours], ["Custom", :custom]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ], [ "Custom", :custom ] ]
     @controller.session[:global_filters] = {
       "start_time" => "2024-01-01 00:00:00",
       "end_time" => "2024-01-31 23:59:59"
@@ -125,7 +125,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   # ============================================================================
 
   test "time_range_selector renders with recent_custom mode" do
-    time_range_options = [["Recent", :recent], ["Custom", :custom]]
+    time_range_options = [ [ "Recent", :recent ], [ "Custom", :custom ] ]
 
     form_for(@form_object, url: "/test") do |form|
       html = time_range_selector(form,
@@ -143,7 +143,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   # ============================================================================
 
   test "time_range_selector includes Stimulus controller attributes" do
-    time_range_options = [["Last 24 Hours", :last_24_hours]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ] ]
 
     form_for(@form_object, url: "/test") do |form|
       html = time_range_selector(form,
@@ -159,7 +159,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   end
 
   test "time_range_selector includes datepicker controller" do
-    time_range_options = [["Last 24 Hours", :last_24_hours]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ] ]
 
     form_for(@form_object, url: "/test") do |form|
       html = time_range_selector(form,
@@ -176,7 +176,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   end
 
   test "time_range_selector includes close button" do
-    time_range_options = [["Last 24 Hours", :last_24_hours]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ] ]
 
     form_for(@form_object, url: "/test") do |form|
       html = time_range_selector(form,
@@ -195,7 +195,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   # ============================================================================
 
   test "time_range_selector handles empty custom date value" do
-    time_range_options = [["Last 24 Hours", :last_24_hours]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ] ]
 
     form_for(@form_object, url: "/test") do |form|
       html = time_range_selector(form,
@@ -209,7 +209,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   end
 
   test "time_range_selector handles empty string selected_time_range" do
-    time_range_options = [["Last 24 Hours", :last_24_hours]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ] ]
 
     form_for(@form_object, url: "/test") do |form|
       html = time_range_selector(form,
@@ -223,7 +223,7 @@ class RailsPulse::FormHelperTest < ActionView::TestCase
   end
 
   test "time_range_selector handles string selected_time_range" do
-    time_range_options = [["Last 24 Hours", :last_24_hours]]
+    time_range_options = [ [ "Last 24 Hours", :last_24_hours ] ]
 
     form_for(@form_object, url: "/test") do |form|
       html = time_range_selector(form,

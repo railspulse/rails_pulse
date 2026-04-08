@@ -32,7 +32,7 @@ module RailsPulse
         test "returns ActiveRecord relation" do
           results = create_table
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "result has required route attributes" do
@@ -40,6 +40,7 @@ module RailsPulse
 
           if results.any?
             first_result = results.first
+
             assert_includes first_result.attributes.keys, "route_id"
             assert_includes first_result.attributes.keys, "path"
             assert_includes first_result.attributes.keys, "route_method"
@@ -51,6 +52,7 @@ module RailsPulse
 
           if results.any?
             first_result = results.first
+
             assert_includes first_result.attributes.keys, "avg_duration"
             assert_includes first_result.attributes.keys, "p95_duration"
             assert_includes first_result.attributes.keys, "p99_duration"
@@ -63,6 +65,7 @@ module RailsPulse
 
           if results.any?
             first_result = results.first
+
             assert_includes first_result.attributes.keys, "count"
             assert_includes first_result.attributes.keys, "error_count"
             assert_includes first_result.attributes.keys, "success_count"
@@ -74,6 +77,7 @@ module RailsPulse
 
           # Each route should appear only once
           route_ids = results.map(&:route_id)
+
           assert_equal route_ids.uniq.length, route_ids.length
         end
 
@@ -156,6 +160,7 @@ module RailsPulse
 
           if results.any?
             result = results.first
+
             assert result.error_count.nil? || result.error_count.is_a?(Numeric)
           end
         end
@@ -165,6 +170,7 @@ module RailsPulse
 
           if results.any?
             result = results.first
+
             assert result.success_count.nil? || result.success_count.is_a?(Numeric)
           end
         end
@@ -174,14 +180,14 @@ module RailsPulse
           results = create_table
 
           # Should not raise division by zero error
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "multiple summaries for same route aggregate correctly" do
           results = create_table
 
           # Routes should be grouped and aggregated
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "single summary returns correct values" do
@@ -200,28 +206,28 @@ module RailsPulse
           results = create_table
 
           # Should only include route summaries, not query or job summaries
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "only includes records matching period_type" do
           results = create_table
 
           # Should only include summaries with specified period_type
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "respects ransack time range" do
           # Time range is implicit via ransack_query
           results = create_table
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "disabled_tags excludes routes with actual tags" do
-          results = create_table(disabled_tags: ["api"])
+          results = create_table(disabled_tags: [ "api" ])
 
           # Should exclude routes tagged with "api"
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
           if results.any?
             results.each do |result|
               tags = result.tags
@@ -231,7 +237,7 @@ module RailsPulse
         end
 
         test "disabled_tags with non_tagged excludes non-tagged routes" do
-          results = create_table(disabled_tags: ["non_tagged"])
+          results = create_table(disabled_tags: [ "non_tagged" ])
 
           # Should exclude routes without tags
           if results.any?
@@ -259,21 +265,21 @@ module RailsPulse
           results = create_table(show_non_tagged: true)
 
           # Should include all routes
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "handles empty disabled_tags array" do
           results = create_table(disabled_tags: [])
 
           # Should show all routes
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "multiple disabled tags all excluded" do
-          results = create_table(disabled_tags: ["api", "maintenance"])
+          results = create_table(disabled_tags: [ "api", "maintenance" ])
 
           # Should exclude routes with either tag
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
           if results.any?
             results.each do |result|
               tags = result.tags
@@ -284,18 +290,18 @@ module RailsPulse
         end
 
         test "tag matching uses SQL LIKE with wildcards" do
-          results = create_table(disabled_tags: ["api"])
+          results = create_table(disabled_tags: [ "api" ])
 
           # Should use LIKE pattern matching
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "sanitizes LIKE patterns" do
           # Should handle special characters safely
-          results = create_table(disabled_tags: ["%malicious%"])
+          results = create_table(disabled_tags: [ "%malicious%" ])
 
           # Should not cause SQL injection
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         # Sorting Tests
@@ -310,7 +316,7 @@ module RailsPulse
           results = create_table
 
           # Should be sorted by p95 descending
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "sorts by avg_duration_sort" do
@@ -327,9 +333,10 @@ module RailsPulse
           if results_array.length > 1
             first_avg = results_array.first.avg_duration || 0
             last_avg = results_array.last.avg_duration || 0
+
             assert_operator first_avg, :<=, last_avg
           else
-            assert results.is_a?(ActiveRecord::Relation)
+            assert_kind_of ActiveRecord::Relation, results
           end
         end
 
@@ -342,7 +349,7 @@ module RailsPulse
 
           results = create_table
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "sorts by p95_duration_sort" do
@@ -354,7 +361,7 @@ module RailsPulse
 
           results = create_table
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "sorts by p99_duration_sort" do
@@ -366,7 +373,7 @@ module RailsPulse
 
           results = create_table
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "sorts by count_sort" do
@@ -382,9 +389,10 @@ module RailsPulse
           if results_array.length > 1
             first_count = results_array.first.count || 0
             last_count = results_array.last.count || 0
+
             assert_operator first_count, :>=, last_count
           else
-            assert results.is_a?(ActiveRecord::Relation)
+            assert_kind_of ActiveRecord::Relation, results
           end
         end
 
@@ -398,7 +406,7 @@ module RailsPulse
           results = create_table
 
           # request_count_sort is an alias for count_sort
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "sorts by requests_per_minute" do
@@ -410,7 +418,7 @@ module RailsPulse
 
           results = create_table
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "sorts by error_rate_percentage" do
@@ -422,7 +430,7 @@ module RailsPulse
 
           results = create_table
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "sorts by route_path" do
@@ -437,9 +445,10 @@ module RailsPulse
 
           if results_array.length > 1
             paths = results_array.map(&:path)
+
             assert_equal paths.sort, paths
           else
-            assert results.is_a?(ActiveRecord::Relation)
+            assert_kind_of ActiveRecord::Relation, results
           end
         end
 
@@ -462,8 +471,8 @@ module RailsPulse
 
           results_desc = create_table
 
-          assert results_asc.is_a?(ActiveRecord::Relation)
-          assert results_desc.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results_asc
+          assert_kind_of ActiveRecord::Relation, results_desc
         end
 
         test "unknown sort field falls back to default" do
@@ -476,7 +485,7 @@ module RailsPulse
           results = create_table
 
           # Should use default sort instead of erroring
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "uses Arel.sql for safe sorting" do
@@ -489,57 +498,57 @@ module RailsPulse
           results = create_table
 
           # Should not raise SQL injection error
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         # Tag Filtering Edge Cases
 
         test "distinguishes non_tagged virtual tag from actual tags" do
           # "non_tagged" should not be treated as a real tag to match
-          results = create_table(disabled_tags: ["non_tagged"])
+          results = create_table(disabled_tags: [ "non_tagged" ])
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "handles tags with special characters" do
-          results = create_table(disabled_tags: ["special-tag_123"])
+          results = create_table(disabled_tags: [ "special-tag_123" ])
 
           # Should sanitize and handle safely
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "empty tags array shows all routes" do
           results = create_table(disabled_tags: [])
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "handles tag with brackets" do
-          results = create_table(disabled_tags: ["[tag]"])
+          results = create_table(disabled_tags: [ "[tag]" ])
 
           # Should sanitize brackets
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "handles tag with percent" do
-          results = create_table(disabled_tags: ["%tag%"])
+          results = create_table(disabled_tags: [ "%tag%" ])
 
           # Should sanitize LIKE wildcards
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "handles tag with underscore" do
-          results = create_table(disabled_tags: ["_tag"])
+          results = create_table(disabled_tags: [ "_tag" ])
 
           # Should sanitize LIKE wildcards
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "multiple tags in disabled_tags array" do
-          results = create_table(disabled_tags: ["api", "users", "maintenance"])
+          results = create_table(disabled_tags: [ "api", "users", "maintenance" ])
 
           # Should exclude all specified tags
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         # Integration Tests
@@ -547,7 +556,7 @@ module RailsPulse
         test "works with ransack query object" do
           results = create_table
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
 
         test "handles empty result sets" do
@@ -566,7 +575,7 @@ module RailsPulse
           results = create_table
 
           # Should return an ActiveRecord::Relation that can be paginated
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
           # The relation will be paginated by the controller using Kaminari
           assert_operator results.to_a.length, :>=, 0
         end
@@ -577,6 +586,7 @@ module RailsPulse
 
           # Each route should have its own aggregated row
           route_ids = results_array.map(&:route_id).uniq
+
           assert_equal results_array.length, route_ids.length
         end
 
@@ -587,9 +597,10 @@ module RailsPulse
           # Single route across multiple time periods should be one row
           if results_array.any?
             route_ids = results_array.map(&:route_id)
+
             assert_equal route_ids.uniq.length, route_ids.length
           else
-            assert results.is_a?(ActiveRecord::Relation)
+            assert_kind_of ActiveRecord::Relation, results
           end
         end
 
@@ -597,7 +608,7 @@ module RailsPulse
           @params = { page: 1, limit: 10 }
           results = create_table
 
-          assert results.is_a?(ActiveRecord::Relation)
+          assert_kind_of ActiveRecord::Relation, results
         end
       end
     end

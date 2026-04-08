@@ -123,7 +123,7 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          assert_equal [0, 0, 0, 0], data[:series][0][:itemStyle][:borderRadius]
+          assert_equal [ 0, 0, 0, 0 ], data[:series][0][:itemStyle][:borderRadius]
         end
 
         test "top series has rounded top corners only" do
@@ -136,7 +136,7 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          assert_equal [5, 5, 0, 0], data[:series][1][:itemStyle][:borderRadius]
+          assert_equal [ 5, 5, 0, 0 ], data[:series][1][:itemStyle][:borderRadius]
         end
 
         test "4xx Errors series color is ChartColors::P99" do
@@ -194,6 +194,7 @@ module RailsPulse
           # Values should be percentages or nil
           data[:series][0][:data].each do |value|
             next if value.nil?
+
             assert_kind_of Numeric, value
             assert_operator value, :>=, 0
             assert_operator value, :<=, 100
@@ -213,6 +214,7 @@ module RailsPulse
           # Values should be percentages or nil
           data[:series][1][:data].each do |value|
             next if value.nil?
+
             assert_kind_of Numeric, value
             assert_operator value, :>=, 0
             assert_operator value, :<=, 100
@@ -236,6 +238,7 @@ module RailsPulse
             str = value.to_s
             if str.include?(".")
               decimals = str.split(".")[1]
+
               assert_operator decimals.length, :<=, 2
             end
           end
@@ -377,7 +380,7 @@ module RailsPulse
             period_type: :day,
             start_time: @start_time,
             end_time: @end_time,
-            disabled_tags: ["api"]
+            disabled_tags: [ "api" ]
           )
 
           data = chart.to_chart_data
@@ -407,7 +410,7 @@ module RailsPulse
             period_type: :day,
             start_time: @start_time,
             end_time: @end_time,
-            disabled_tags: ["maintenance"],
+            disabled_tags: [ "maintenance" ],
             show_non_tagged: true
           )
 
@@ -454,6 +457,7 @@ module RailsPulse
           # If there are zero errors, rate should be 0.0 or nil
           data[:series][0][:data].each do |value|
             next if value.nil?
+
             assert_operator value, :>=, 0.0
           end
         end
@@ -471,6 +475,7 @@ module RailsPulse
           # Error rate should never exceed 100%
           data[:series][0][:data].each do |value|
             next if value.nil?
+
             assert_operator value, :<=, 100.0
           end
         end
@@ -535,6 +540,7 @@ module RailsPulse
 
           if data[:labels].length > 1
             step = (data[:labels][1] - data[:labels][0]) / 1000
+
             assert_equal 3600, step
           end
         end
@@ -554,6 +560,7 @@ module RailsPulse
 
           if data[:labels].length > 1
             step = (data[:labels][1] - data[:labels][0]) / 1000
+
             assert_equal 86400, step
           end
         end

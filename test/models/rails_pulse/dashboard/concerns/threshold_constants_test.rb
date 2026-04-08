@@ -16,19 +16,19 @@ module RailsPulse
         # Constant Value Tests
 
         test "defines CRITICAL_ERROR_RATE constant" do
-          assert_equal 10.0, TestClass::CRITICAL_ERROR_RATE
+          assert_in_delta(10.0, TestClass::CRITICAL_ERROR_RATE)
         end
 
         test "defines WARNING_ERROR_RATE constant" do
-          assert_equal 5.0, TestClass::WARNING_ERROR_RATE
+          assert_in_delta(5.0, TestClass::WARNING_ERROR_RATE)
         end
 
         test "defines CRITICAL_JOB_FAILURE_RATE constant" do
-          assert_equal 10.0, TestClass::CRITICAL_JOB_FAILURE_RATE
+          assert_in_delta(10.0, TestClass::CRITICAL_JOB_FAILURE_RATE)
         end
 
         test "defines WARNING_JOB_FAILURE_RATE constant" do
-          assert_equal 5.0, TestClass::WARNING_JOB_FAILURE_RATE
+          assert_in_delta(5.0, TestClass::WARNING_JOB_FAILURE_RATE)
         end
 
         # Type Tests
@@ -53,10 +53,10 @@ module RailsPulse
         # Integration Tests
 
         test "constants are accessible from including class instance" do
-          assert_equal 10.0, @test_instance.class::CRITICAL_ERROR_RATE
-          assert_equal 5.0, @test_instance.class::WARNING_ERROR_RATE
-          assert_equal 10.0, @test_instance.class::CRITICAL_JOB_FAILURE_RATE
-          assert_equal 5.0, @test_instance.class::WARNING_JOB_FAILURE_RATE
+          assert_in_delta(10.0, @test_instance.class::CRITICAL_ERROR_RATE)
+          assert_in_delta(5.0, @test_instance.class::WARNING_ERROR_RATE)
+          assert_in_delta(10.0, @test_instance.class::CRITICAL_JOB_FAILURE_RATE)
+          assert_in_delta(5.0, @test_instance.class::WARNING_JOB_FAILURE_RATE)
         end
 
         # Edge Cases

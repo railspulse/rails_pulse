@@ -175,6 +175,7 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     # Recent mode should work without time constraints
     assert_not_nil assigns(:table_data)
     requests = assigns(:table_data)
+
     assert_operator requests.size, :>, 0
   end
 
@@ -210,6 +211,7 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
 
     # All returned requests should meet the slow threshold
     slow_threshold = RailsPulse.configuration.request_thresholds[:slow] || 500
+
     requests.each do |req|
       assert_operator req.duration, :>=, slow_threshold
     end
@@ -223,6 +225,7 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
 
     # All returned requests should meet the very_slow threshold
     very_slow_threshold = RailsPulse.configuration.request_thresholds[:very_slow] || 1000
+
     requests.each do |req|
       assert_operator req.duration, :>=, very_slow_threshold
     end
@@ -236,6 +239,7 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
 
     # All returned requests should meet the critical threshold
     critical_threshold = RailsPulse.configuration.request_thresholds[:critical] || 2000
+
     requests.each do |req|
       assert_operator req.duration, :>=, critical_threshold
     end

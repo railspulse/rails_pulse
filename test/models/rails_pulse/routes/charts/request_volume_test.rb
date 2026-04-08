@@ -165,6 +165,7 @@ module RailsPulse
           # Check step size is 1 hour (3600 seconds in milliseconds)
           if data[:labels].length > 1
             step = (data[:labels][1] - data[:labels][0]) / 1000
+
             assert_equal 3600, step
           end
         end
@@ -187,6 +188,7 @@ module RailsPulse
           # Check step size is 1 day (86400 seconds in milliseconds)
           if data[:labels].length > 1
             step = (data[:labels][1] - data[:labels][0]) / 1000
+
             assert_equal 86400, step
           end
         end
@@ -295,7 +297,7 @@ module RailsPulse
             period_type: :day,
             start_time: @start_time,
             end_time: @end_time,
-            disabled_tags: ["api"]
+            disabled_tags: [ "api" ]
           )
 
           data = chart.to_chart_data
@@ -325,7 +327,7 @@ module RailsPulse
             period_type: :day,
             start_time: @start_time,
             end_time: @end_time,
-            disabled_tags: ["maintenance"],
+            disabled_tags: [ "maintenance" ],
             show_non_tagged: true
           )
 
@@ -433,6 +435,7 @@ module RailsPulse
 
           if data[:labels].length > 1
             step = (data[:labels][1] - data[:labels][0]) / 1000
+
             assert_equal 3600, step
           end
         end
@@ -452,6 +455,7 @@ module RailsPulse
 
           if data[:labels].length > 1
             step = (data[:labels][1] - data[:labels][0]) / 1000
+
             assert_equal 86400, step
           end
         end

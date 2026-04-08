@@ -53,9 +53,9 @@ class RailsPulse::RouteHelperTest < ActionView::TestCase
   test "rails_pulse respond_to_missing? returns true for engine routes" do
     helper = rails_pulse
 
-    assert helper.respond_to?(:root_path)
-    assert helper.respond_to?(:routes_path)
-    refute helper.respond_to?(:non_existent_route_path)
+    assert_respond_to helper, :root_path
+    assert_respond_to helper, :routes_path
+    refute_respond_to helper, :non_existent_route_path
   end
 
   # ============================================================================

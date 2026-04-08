@@ -54,12 +54,12 @@ module RailsPulse
           labels = daily_data.keys.map { |timestamp| timestamp * 1000 }
 
           # Build series data
-          series = [{
+          series = [ {
             name: "Client Error Rate",
             data: daily_data.values,
             type: "line",
             color: RailsPulse::ChartColors::P99
-          }]
+          } ]
 
           {
             labels: labels,
