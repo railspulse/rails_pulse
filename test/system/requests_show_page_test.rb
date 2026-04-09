@@ -21,7 +21,7 @@ class RequestsShowPageTest < ApplicationSystemTestCase
   def test_request_trace_panel_is_present
     visit_rails_pulse_path "/requests/#{@users_request_1.id}"
 
-    assert_text "Request Trace"
+    assert_text /request trace/i
     assert_selector ".flame-trace"
     assert_selector ".flame-bar", minimum: 1
   end

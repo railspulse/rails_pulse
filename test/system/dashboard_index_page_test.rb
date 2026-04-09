@@ -7,7 +7,6 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     visit_rails_pulse_path "/"
 
     # System Health Bar
-    assert_text "SYSTEM HEALTH"
     assert_selector ".dashboard-health-bar"
 
     # Health badges

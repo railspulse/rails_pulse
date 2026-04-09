@@ -39,6 +39,7 @@ module RailsPulse
         @reporter.report
 
         output_text = @output.string
+
         assert_includes output_text, "Rails Pulse Cleanup Configuration"
         assert_includes output_text, "Cleanup enabled"
         assert_includes output_text, "Retention period"
@@ -49,6 +50,7 @@ module RailsPulse
         @reporter.report
 
         output_text = @output.string
+
         assert_includes output_text, "Current table sizes"
       end
 
@@ -59,6 +61,7 @@ module RailsPulse
         @reporter.report
 
         output_text = @output.string
+
         assert_includes output_text, "Records older than"
       ensure
         RailsPulse.configuration.full_retention_period = original
@@ -71,6 +74,7 @@ module RailsPulse
         @reporter.report
 
         output_text = @output.string
+
         refute_includes output_text, "Records older than"
       ensure
         RailsPulse.configuration.full_retention_period = original
@@ -82,6 +86,7 @@ module RailsPulse
         @reporter.send(:print_configuration)
 
         output_text = @output.string
+
         assert_includes output_text, "Cleanup enabled:"
       end
 
@@ -89,6 +94,7 @@ module RailsPulse
         @reporter.send(:print_configuration)
 
         output_text = @output.string
+
         assert_includes output_text, "Retention period:"
       end
 
@@ -96,6 +102,7 @@ module RailsPulse
         @reporter.send(:print_configuration)
 
         output_text = @output.string
+
         assert_includes output_text, "Table limits:"
       end
 
@@ -105,6 +112,7 @@ module RailsPulse
         @reporter.send(:print_table_sizes)
 
         output_text = @output.string
+
         assert_includes output_text, "rails_pulse_requests"
         assert_includes output_text, "rails_pulse_operations"
         assert_includes output_text, "rails_pulse_routes"
@@ -115,6 +123,7 @@ module RailsPulse
         @reporter.send(:print_table_sizes)
 
         output_text = @output.string
+
         assert_match /\d+ records/, output_text
       end
 
@@ -124,6 +133,7 @@ module RailsPulse
         @reporter.send(:print_table_count, "rails_pulse_requests", "RailsPulse::Request")
 
         output_text = @output.string
+
         assert_includes output_text, "rails_pulse_requests"
         assert_match /\d+ records/, output_text
       end
@@ -146,6 +156,7 @@ module RailsPulse
         @reporter.send(:print_table_count, "rails_pulse_unknown", "RailsPulse::Unknown")
 
         output_text = @output.string
+
         assert_includes output_text, "Model not found"
       end
 
@@ -155,6 +166,7 @@ module RailsPulse
         @reporter.send(:print_table_count, "rails_pulse_requests", "RailsPulse::Request")
 
         output_text = @output.string
+
         assert_includes output_text, "Error"
       end
 
@@ -167,6 +179,7 @@ module RailsPulse
         @reporter.send(:print_old_records_count)
 
         output_text = @output.string
+
         assert_includes output_text, "Records older than"
       ensure
         RailsPulse.configuration.full_retention_period = original
@@ -179,6 +192,7 @@ module RailsPulse
         @reporter.send(:print_old_records_count)
 
         output_text = @output.string
+
         assert_includes output_text, "rails_pulse_requests:"
         assert_includes output_text, "rails_pulse_operations:"
       ensure
@@ -192,6 +206,7 @@ module RailsPulse
         @reporter.send(:print_old_records_count)
 
         output_text = @output.string
+
         assert_match /\d+ old records/, output_text
       ensure
         RailsPulse.configuration.full_retention_period = original
@@ -205,6 +220,7 @@ module RailsPulse
         @reporter.send(:print_old_records_count)
 
         output_text = @output.string
+
         assert_includes output_text, "Error calculating old records"
       ensure
         RailsPulse.configuration.full_retention_period = original

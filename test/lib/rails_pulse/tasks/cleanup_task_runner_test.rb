@@ -134,6 +134,7 @@ module RailsPulse
         @runner.send(:print_results, stats)
 
         output_text = @output.string
+
         assert_includes output_text, "Total: 8"
       end
 
@@ -147,6 +148,7 @@ module RailsPulse
         @runner.send(:print_results, stats)
 
         output_text = @output.string
+
         assert_includes output_text, "Time-based cleanup: 8"
       end
 
@@ -160,6 +162,7 @@ module RailsPulse
         @runner.send(:print_results, stats)
 
         output_text = @output.string
+
         assert_includes output_text, "Count-based cleanup: 10"
       end
 
@@ -173,6 +176,7 @@ module RailsPulse
         @runner.send(:print_results, stats)
 
         output_text = @output.string
+
         assert_includes output_text, "Breakdown by table"
       end
 
@@ -186,6 +190,7 @@ module RailsPulse
         @runner.send(:print_results, stats)
 
         output_text = @output.string
+
         refute_includes output_text, "Breakdown by table"
       end
 
@@ -200,6 +205,7 @@ module RailsPulse
         @runner.send(:print_breakdown, stats)
 
         output_text = @output.string
+
         assert_includes output_text, "rails_pulse_requests (time-based): 5"
         assert_includes output_text, "rails_pulse_routes (time-based): 3"
       end
@@ -213,6 +219,7 @@ module RailsPulse
         @runner.send(:print_breakdown, stats)
 
         output_text = @output.string
+
         assert_includes output_text, "rails_pulse_operations (count-based): 10"
         assert_includes output_text, "rails_pulse_queries (count-based): 7"
       end
@@ -226,6 +233,7 @@ module RailsPulse
         @runner.send(:print_breakdown, stats)
 
         output_text = @output.string
+
         assert_includes output_text, "rails_pulse_requests"
         refute_includes output_text, "rails_pulse_routes"
         refute_includes output_text, "rails_pulse_operations"
@@ -239,6 +247,7 @@ module RailsPulse
         @runner.send(:handle_error, error)
 
         output_text = @output.string
+
         assert_includes output_text, "Cleanup failed"
         assert_includes output_text, "Something went wrong"
       end
@@ -248,11 +257,12 @@ module RailsPulse
         ENV["VERBOSE"] = "true"
 
         error = StandardError.new("Test error")
-        error.set_backtrace(["lib/foo.rb:10", "lib/bar.rb:20"])
+        error.set_backtrace([ "lib/foo.rb:10", "lib/bar.rb:20" ])
 
         @runner.send(:handle_error, error)
 
         output_text = @output.string
+
         assert_includes output_text, "lib/foo.rb:10"
         assert_includes output_text, "lib/bar.rb:20"
       ensure
@@ -264,11 +274,12 @@ module RailsPulse
         ENV.delete("VERBOSE")
 
         error = StandardError.new("Test error")
-        error.set_backtrace(["lib/foo.rb:10"])
+        error.set_backtrace([ "lib/foo.rb:10" ])
 
         @runner.send(:handle_error, error)
 
         output_text = @output.string
+
         refute_includes output_text, "lib/foo.rb:10"
       ensure
         ENV["VERBOSE"] = original_verbose if original_verbose
@@ -289,6 +300,7 @@ module RailsPulse
 
         assert result
         output_text = @output.string
+
         assert_includes output_text, "Starting Rails Pulse data cleanup"
         assert_includes output_text, "Cleanup completed"
         assert_includes output_text, "Total: 15"

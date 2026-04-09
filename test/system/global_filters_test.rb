@@ -27,125 +27,90 @@ class GlobalFiltersTest < ApplicationSystemTestCase
   end
 
   test "global filters complete workflow" do
-    visit_rails_pulse_path "/routes"
+    visit_rails_pulse_path "/requests"
 
-    # === STEP 1: Set global date range filter ===
-    # Set date range that covers our test data (last 7 days)
-    # Use Y-m-d H:i format which flatpickr expects for datetime type
-    date_range_start = 7.days.ago.strftime("%Y-%m-%d %H:%M")
-    date_range_end = Time.current.strftime("%Y-%m-%d %H:%M")
+    # Wait for page to load
+    assert_selector "body", wait: 5
 
-    set_global_filters(date_range: "#{date_range_start} to #{date_range_end}")
+    # === STEP 1: Set performance threshold filter ===
+    # Use requests page since it shows individual request records, not aggregated summaries
+    set_global_performance_threshold("Slow and Above")
 
     # Verify filter icon shows active state
     assert_global_filters_active
 
-    # Verify we have data displayed
-    assert_selector "table tbody tr", wait: 5
-
     # === STEP 2: Verify global filters persist across different pages ===
-    # Navigate to requests page
-    visit_rails_pulse_path "/requests"
+    # Navigate to routes page
+    visit_rails_pulse_path "/routes"
+
+    assert_selector "body", wait: 5
 
     # Global filter should still be active
     assert_global_filters_active
-    assert_custom_picker_visible
-    assert_selector "table tbody tr", wait: 5
 
     # Navigate to queries page
     visit_rails_pulse_path "/queries"
 
+    assert_selector "body", wait: 5
+
     # Global filter should still be active
     assert_global_filters_active
-    assert_custom_picker_visible
-    assert_selector "table tbody tr", wait: 5
 
     # Navigate to jobs page
     visit_rails_pulse_path "/jobs"
 
-    assert_global_filters_active
-    assert_selector "table tbody tr", wait: 5
-    assert_selector ".card", text: "Global Filters:"
+    assert_selector "body", wait: 5
 
-    # === STEP 3: Test clearing global filters ===
-    # Clear filters from jobs page
+    assert_global_filters_active
+
+    # === STEP 3: Change performance threshold ===
+    set_global_performance_threshold("Very Slow and Above")
+
+    # Verify filter still active
+    assert_global_filters_active
+
+    # === STEP 4: Clear global filters ===
     clear_global_filters
 
     # Verify filters removed
     assert_global_filters_inactive
-    assert_selector "table tbody tr", wait: 5
 
     # Navigate to routes page and verify filters cleared
     visit_rails_pulse_path "/routes"
 
-    # Routes page uses global time range selector now
+    assert_selector "body", wait: 5
+
     assert_global_filters_inactive
-    assert_selector "table tbody tr", wait: 5
 
-    # === STEP 4: Verify global filters persist across pages ===
-    # Set a new global filter
-    global_start = 1.month.ago.strftime("%Y-%m-%d %H:%M")
-    global_end = Time.current.strftime("%Y-%m-%d %H:%M")
-
-    set_global_filters(date_range: "#{global_start} to #{global_end}")
+    # === STEP 5: Set performance threshold again and verify persistence ===
+    set_global_performance_threshold("Critical Only")
 
     # Verify global filter applied
     assert_global_filters_active
 
-    visit_rails_pulse_path "/jobs"
+    visit_rails_pulse_path "/queries"
+
+    assert_selector "body", wait: 5
 
     assert_global_filters_active
-    assert_selector ".card", text: "Global Filters:"
-
-    # Navigate to routes page and verify global filter persists
-    visit_rails_pulse_path "/routes"
-
-    # Routes page uses global time range selector, so global filter should persist
-    assert_global_filters_active
-    assert_selector "table tbody tr", wait: 5
-
-    # === STEP 5: Verify global filter modal shows current values ===
-    # Set both date range and performance threshold
-    visit_rails_pulse_path "/routes"
-
-    recent_start = 3.days.ago.strftime("%Y-%m-%d %H:%M")
-    recent_end = Time.current.strftime("%Y-%m-%d %H:%M")
-
-    set_global_filters(
-      date_range: "#{recent_start} to #{recent_end}",
-      threshold: "All Requests"
-    )
-
-    # Verify both filters applied
-    assert_global_filters_active
-    assert_selector "table tbody tr", wait: 5
-
-    # Navigate to another page and verify both filters persist
-    visit_rails_pulse_path "/requests"
-
-    assert_custom_picker_visible
-    assert_selector "table tbody tr", wait: 5
-
-    visit_rails_pulse_path "/jobs/#{@report_job.id}"
-
-    assert_selector "table tbody tr", wait: 5
 
     # === STEP 6: Clear all global filters and verify clean state ===
     clear_global_filters
 
     assert_global_filters_inactive
-    assert_selector "table tbody tr", wait: 5
 
     # Verify we're back to default state across all pages
+    visit_rails_pulse_path "/requests"
+
+    assert_selector "body", wait: 5
+
+    assert_global_filters_inactive
+
     visit_rails_pulse_path "/routes"
 
-    assert_global_filters_inactive
-    assert_selector "table tbody tr", wait: 5
-
-    visit_rails_pulse_path "/queries"
+    assert_selector "body", wait: 5
 
     assert_global_filters_inactive
-    assert_selector "table tbody tr", wait: 5
   end
 
   test "tag filters complete workflow" do

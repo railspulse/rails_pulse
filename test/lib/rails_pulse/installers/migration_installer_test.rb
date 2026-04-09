@@ -23,8 +23,8 @@ module RailsPulse
       end
 
       test "stats initializes with empty arrays" do
-        assert_equal [], @installer.stats[:copied]
-        assert_equal [], @installer.stats[:skipped]
+        assert_empty @installer.stats[:copied]
+        assert_empty @installer.stats[:skipped]
       end
 
       test "class method install creates instance and calls install" do
@@ -50,6 +50,7 @@ module RailsPulse
         @installer.install
 
         output_text = @output.string
+
         assert_includes output_text, "Copying migrations"
       end
 
@@ -140,8 +141,8 @@ module RailsPulse
         path2 = @installer.send(:build_destination_path, "create_requests.rb", 1)
 
         # Timestamps should differ by 1 second
-        assert path1.include?("20240101120000")
-        assert path2.include?("20240101120001")
+        assert_includes path1, "20240101120000"
+        assert_includes path2, "20240101120001"
       end
 
       test "build_destination_path includes rails_pulse suffix" do
@@ -160,13 +161,13 @@ module RailsPulse
       # Find Source File Tests
 
       test "find_source_file uses glob to locate migration" do
-        Dir.expects(:glob).with { |pattern| pattern.include?("create_routes.rb") }.returns(["/path/to/file"])
+        Dir.expects(:glob).with { |pattern| pattern.include?("create_routes.rb") }.returns([ "/path/to/file" ])
 
         @installer.send(:find_source_file, "create_routes.rb")
       end
 
       test "find_source_file returns first match" do
-        Dir.stubs(:glob).returns(["/path/first", "/path/second"])
+        Dir.stubs(:glob).returns([ "/path/first", "/path/second" ])
 
         result = @installer.send(:find_source_file, "create_routes.rb")
 
@@ -176,7 +177,7 @@ module RailsPulse
       # Migration Exists Tests
 
       test "migration_exists? returns true when migration found" do
-        Dir.stubs(:glob).returns(["/path/to/existing/migration"])
+        Dir.stubs(:glob).returns([ "/path/to/existing/migration" ])
 
         result = @installer.send(:migration_exists?, "create_routes.rb")
 
@@ -197,7 +198,7 @@ module RailsPulse
         # Mock finding all source files
         Dir.stubs(:glob).with { |pattern|
           pattern.include?("db/migrate") && !pattern.include?(Rails.root.to_s)
-        }.returns(["/source/file"])
+        }.returns([ "/source/file" ])
 
         # No existing migrations in destination
         Dir.stubs(:glob).with { |pattern| pattern.include?(Rails.root.to_s) }.returns([])
@@ -213,11 +214,11 @@ module RailsPulse
         # Mock finding source files
         Dir.stubs(:glob).with { |pattern|
           pattern.include?("db/migrate") && !pattern.include?(Rails.root.to_s)
-        }.returns(["/source/file"])
+        }.returns([ "/source/file" ])
 
         # All migrations already exist
         Dir.stubs(:glob).with { |pattern| pattern.include?(Rails.root.to_s) }
-          .returns(["/existing/migration"])
+          .returns([ "/existing/migration" ])
 
         @installer.install
 

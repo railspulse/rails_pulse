@@ -11,8 +11,15 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
 
   def setup
     super
+    # Clear existing summaries to avoid conflicts with fixtures
+    # Delete both query and route summaries that might overlap with what we create
+    RailsPulse::Summary.where(summarizable_type: "RailsPulse::Query").delete_all
+    RailsPulse::Summary.where(
+      summarizable_type: "RailsPulse::Route",
+      summarizable_id: rails_pulse_routes(:api_users).id
+    ).delete_all
     create_chart_summaries
-    visit_rails_pulse_path "/queries?q[period_start_range]=last_month"
+    visit_rails_pulse_path "/queries?q[period_start_range]=last_30_days"
     # Wait for chart to render before running tests
     page.has_selector?("#query_performance_chart[data-chart-rendered='true']", wait: 10)
   end
@@ -77,7 +84,7 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
 
   test "zooming any chart updates the url" do
     [ :execution_volume, :database_load ].each do |chart_type|
-      visit_rails_pulse_path "/queries?q[period_start_range]=last_month"
+      visit_rails_pulse_path "/queries?q[period_start_range]=last_30_days"
 
       assert_selector "#query_performance_chart[data-chart-rendered='true']", wait: 10
 
@@ -321,19 +328,14 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
     # Query summaries feed query_performance and execution_volume charts.
     # Route summaries feed the database_load chart (which compares query total_duration
     # vs route total_duration).
-    query = rails_pulse_queries(:simple_query)
-    route = rails_pulse_routes(:api_users)
 
-    30.downto(1) do |days_ago|
-      period_start = days_ago.days.ago.beginning_of_day
-      count = 50 + (days_ago * 3)
-      avg_duration = 25.0 + (days_ago * 2)
+    # Create summaries for ALL queries in fixtures to ensure aggregate charts have data
+    RailsPulse::Query.find_each do |query|
+      30.downto(1) do |days_ago|
+        period_start = days_ago.days.ago.beginning_of_day
+        count = 50 + (days_ago * 3)
+        avg_duration = 25.0 + (days_ago * 2)
 
-      unless RailsPulse::Summary.exists?(
-        summarizable: query,
-        period_type: "day",
-        period_start: period_start
-      )
         RailsPulse::Summary.create!(
           summarizable: query,
           period_type: "day",
@@ -350,13 +352,12 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
           success_count: count
         )
       end
+    end
 
-      next if RailsPulse::Summary.exists?(
-        summarizable: route,
-        period_type: "day",
-        period_start: period_start
-      )
-
+    # Create route summaries for database load chart
+    route = rails_pulse_routes(:api_users)
+    30.downto(1) do |days_ago|
+      period_start = days_ago.days.ago.beginning_of_day
       route_count = 80 + (days_ago * 4)
       route_avg_duration = 150.0 + (days_ago * 5)
 

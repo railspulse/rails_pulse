@@ -5,31 +5,6 @@ module GlobalFiltersHelpers
     assert_selector ".dialog__content", wait: 3
   end
 
-  def set_global_date_range(start_date, end_date)
-    open_global_filters_modal
-
-    # Wait for flatpickr to initialize
-    sleep 0.5
-
-    # Set the date range using flatpickr API (similar to custom range)
-    page.execute_script(<<~JS)
-      var hiddenInput = document.querySelector('input[name="date_range"]');
-      if (hiddenInput && hiddenInput._flatpickr) {
-        hiddenInput._flatpickr.setDate(['#{start_date}', '#{end_date}'], true);
-      }
-    JS
-
-    sleep 0.3
-
-    within(".dialog__content") do
-      # Wait for button to be ready
-      assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
-      click_button "Apply Filters"
-    end
-
-    assert_no_selector ".dialog__content", wait: 3
-  end
-
   def set_global_performance_threshold(threshold)
     open_global_filters_modal
 
@@ -37,49 +12,6 @@ module GlobalFiltersHelpers
       # Wait for button to be ready
       assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
       select threshold, from: "performance_threshold"
-      click_button "Apply Filters"
-    end
-
-    assert_no_selector ".dialog__content", wait: 3
-  end
-
-  def set_global_filters(date_range: nil, threshold: nil)
-    open_global_filters_modal
-
-    # Wait for flatpickr to initialize if date range is being set
-    sleep 0.5 if date_range
-
-    # Set date range using flatpickr API if provided
-    if date_range
-      # Parse the date range string "Start to End" and convert to array for flatpickr
-      if date_range.include?(" to ")
-        dates = date_range.split(" to ").map(&:strip)
-        page.execute_script(<<~JS)
-          var hiddenInput = document.querySelector('input[name="date_range"]');
-          if (hiddenInput && hiddenInput._flatpickr) {
-            hiddenInput._flatpickr.setDate(['#{dates[0]}', '#{dates[1]}'], true);
-          }
-        JS
-      else
-        page.execute_script(<<~JS)
-          var hiddenInput = document.querySelector('input[name="date_range"]');
-          if (hiddenInput && hiddenInput._flatpickr) {
-            hiddenInput._flatpickr.setDate('#{date_range}', true);
-          }
-        JS
-      end
-
-      sleep 1 # Give more time for flatpickr to process and update
-    end
-
-    # Wait for modal to be fully visible and button to be ready
-    within(".dialog__content") do
-      # Explicitly wait for the Apply Filters button to be visible and enabled
-      assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
-
-      select threshold, from: "performance_threshold" if threshold
-
-      # Click the button
       click_button "Apply Filters"
     end
 
@@ -110,41 +42,57 @@ module GlobalFiltersHelpers
   end
 
   def select_custom_date_range(start_date, end_date)
-    select "Custom Range...", from: "q[period_start_range]"
+    # Click the time range trigger button to open the popover
+    find(".time-range-trigger").click
 
-    # Wait for custom picker to appear
-    assert_selector '[data-rails-pulse--custom-range-target="pickerWrapper"]', visible: true, wait: 2
+    # Wait for popover menu to appear
+    assert_selector '[data-rails-pulse--popover-target="menu"]', visible: true, wait: 3
+
+    # Click "Custom Range..." button to open the modal
+    find("button", text: "Custom Range...").click
+
+    # Wait for modal to appear
+    assert_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true, wait: 3
 
     # Wait for flatpickr to initialize
     sleep 0.5
 
-    # Find the hidden input with flatpickr instance and set the date range
-    # The setDate method with second param 'true' triggers change events
-    # which updates both the hidden input (form value) and alt input (display)
+    # Set the date range using flatpickr API on the date input
     page.execute_script(<<~JS)
-      var hiddenInput = document.querySelector('input[name="q[custom_date_range]"]');
-      if (hiddenInput && hiddenInput._flatpickr) {
-        hiddenInput._flatpickr.setDate(['#{start_date}', '#{end_date}'], true);
+      var dateInput = document.querySelector('[data-rails-pulse--time-range-target="dateInput"]');
+      if (dateInput && dateInput._flatpickr) {
+        dateInput._flatpickr.setDate(['#{start_date}', '#{end_date}'], true);
       }
     JS
 
     sleep 0.3
+
+    # Click Apply button to apply the custom range
+    within('[data-rails-pulse--time-range-target="modal"]') do
+      click_button "Apply"
+    end
+
+    # Wait for modal to close
+    assert_no_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true, wait: 3
   end
 
   def assert_custom_picker_visible
-    assert_selector '[data-rails-pulse--custom-range-target="pickerWrapper"]', visible: true, wait: 3
-    assert_selector '[data-rails-pulse--custom-range-target="selectWrapper"]', visible: false
+    assert_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true, wait: 5
   end
 
-  def assert_dropdown_visible
-    assert_selector '[data-rails-pulse--custom-range-target="selectWrapper"]', visible: true
-    assert_selector '[data-rails-pulse--custom-range-target="pickerWrapper"]', visible: false
+  def assert_time_range_label(expected_text)
+    label = find('[data-rails-pulse--time-range-target="label"]')
+
+    assert_includes label.text, expected_text
   end
 
-  def close_custom_range_picker
-    find('[data-action*="custom-range#showSelect"]').click
+  def close_custom_range_modal
+    within('[data-rails-pulse--time-range-target="modal"]') do
+      # Click the Cancel button (not the X button)
+      click_button "Cancel"
+    end
 
-    assert_dropdown_visible
+    assert_no_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true, wait: 3
   end
 
   # Tag filtering helpers

@@ -182,7 +182,7 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
     dir_path.stubs(:exist?).returns(true)
     Rails.root.stubs(:join).with("db/rails_pulse_migrate").returns(dir_path)
 
-    assert separate_database_setup?
+    assert_predicate self, :separate_database_setup?
   end
 
   test "separate_database_setup_helper checks database configuration" do
@@ -195,7 +195,7 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
     result = separate_database_setup?
 
     # Either true or false is valid depending on actual config
-    assert [true, false].include?(result)
+    assert_includes [ true, false ], result
   end
 
   test "db:prepare hook is defined" do
@@ -226,5 +226,4 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
     assert_includes output, "Creating hourly summaries"
     assert_includes output, "15"
   end
-
 end

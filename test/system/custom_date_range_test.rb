@@ -10,159 +10,147 @@ class CustomDateRangeTest < ApplicationSystemTestCase
   end
 
   test "custom date range picker complete workflow" do
-    skip "Skipping in CI due to timing issues with flatpickr" if ENV["CI"]
-
     visit_rails_pulse_path "/routes"
 
-    # === STEP 1: Verify initial state ===
-    # When page loads, dropdown should be visible (not custom picker)
-    assert_dropdown_visible
+    # Wait for page to fully load
+    assert_selector "body", wait: 5
+    sleep 0.5
 
-    # === STEP 2: Select "Custom Range..." option ===
-    # This should hide the dropdown and show the custom picker
-    select "Custom Range...", from: "q[period_start_range]"
+    # === STEP 1: Verify time range selector is visible ===
+    assert_selector ".time-range-trigger", visible: true
 
-    # Verify UI swapped correctly
+    # === STEP 2: Open custom date range modal ===
+    # Click the time range trigger to open popover
+    find(".time-range-trigger").click
+
+    assert_selector '[data-rails-pulse--popover-target="menu"]', visible: true, wait: 3
+
+    # Click "Custom Range..." to open modal
+    find("button", text: "Custom Range...").click
+
+    # Verify modal appears
     assert_custom_picker_visible
 
-    # Verify datepicker is configured to show 2 months
-    assert_selector 'input[data-rails-pulse--datepicker-show-months-value="2"]', visible: false
+    # Verify datepicker is configured to show 2 months (hidden input element)
+    assert_selector '[data-rails-pulse--datepicker-show-months-value="2"]', visible: :all, wait: 3
 
     # Verify close button (X) is visible
-    assert_selector '[data-action*="custom-range#showSelect"]', visible: true
+    assert_selector '[data-action*="time-range#cancelCustom"]', visible: true
 
-    # Wait for flatpickr to be fully initialized and auto-opened
-    # (The custom_range_controller automatically opens the calendar with a 50ms delay)
-    assert_selector ".flatpickr-calendar.open", visible: true, wait: 2
-
-    # === STEP 3: Select a custom date range and submit ===
-    # Pick dates that will match our fixture data (custom_range_recent is 1 day ago)
+    # === STEP 3: Set custom date range ===
     start_date = 2.days.ago.strftime("%Y-%m-%d %H:%M")
     end_date = Time.current.strftime("%Y-%m-%d %H:%M")
 
     # Wait for flatpickr to initialize
     sleep 0.5
 
-    # Use flatpickr API to set the date range (simulates user selecting dates from calendar)
-    # This directly sets the dates without needing to interact with the dropdown
+    # Set the date range using flatpickr API
     page.execute_script(<<~JS)
-      var hiddenInput = document.querySelector('input[name="q[custom_date_range]"]');
-      if (hiddenInput && hiddenInput._flatpickr) {
-        hiddenInput._flatpickr.setDate(['#{start_date}', '#{end_date}'], true);
-        // Close the flatpickr to ensure all change events have fired
-        hiddenInput._flatpickr.close();
-      }
-    JS
-
-    # Wait for flatpickr to close and all change events to complete
-    assert_no_selector ".flatpickr-calendar.open", wait: 3
-
-    # Verify the hidden input has a value before submitting
-    hidden_input_value = find('input[name="q[custom_date_range]"]', visible: :all).value
-
-    assert_predicate hidden_input_value, :present?, "Hidden input should have a value before form submission"
-    assert_includes hidden_input_value, " to ", "Hidden input should contain date range with ' to ' separator"
-
-    # Verify that period_start_range is set to 'custom'
-    period_range_value = find('select[name="q[period_start_range]"]', visible: :all).value
-
-    assert_equal "custom", period_range_value, "period_start_range should be 'custom' when using custom date picker"
-
-    # Add extra delay for CI to ensure all event handlers and DOM mutations complete
-    sleep 1
-
-    # Submit the form
-    click_button "Search"
-
-    # Wait for page navigation to complete
-    assert_selector "table", wait: 5
-
-    # === STEP 4: Verify custom range was applied ===
-    # The custom date range picker should still be visible with the selected dates
-    assert_custom_picker_visible
-
-    # Verify the date range is still displayed in the picker
-    displayed_dates = find('input[placeholder*="Pick date range"]').value
-
-    assert_predicate displayed_dates, :present?, "Custom date picker should show selected date range"
-
-    # Verify we have results (the fixture data should match our date range)
-    assert_selector "table tbody tr", minimum: 1, wait: 3
-
-    # === STEP 5: Test that custom picker can be closed ===
-    # (Skip URL persistence test as custom date ranges may not persist in URL)
-
-    # === STEP 6: Test closing custom picker ===
-    # Click the X button to close custom picker and show dropdown again
-    close_custom_range_picker
-
-    # Dropdown should now be visible
-    assert_dropdown_visible
-
-    # Dropdown should reset to default value (Last 24 hours)
-    dropdown_value = find("select[name='q[period_start_range]']").value
-
-    assert_equal "last_day", dropdown_value, "Dropdown should reset to 'Last 24 hours' default"
-
-    # === STEP 7: Test switching to a preset range ===
-    # Navigate to a preset range (simulates selecting "Last Week" from dropdown)
-    visit_rails_pulse_path "/routes?q[period_start_range]=last_week"
-
-    # Verify results are shown
-    assert_selector "table tbody tr", wait: 5
-
-    # URL should have the preset parameter (check for both encoded and unencoded versions)
-    assert page.current_url.include?("period_start_range]=last_week") || page.current_url.include?("period_start_range%5D=last_week"),
-      "URL should have last_week preset. Got: #{page.current_url}"
-
-    # URL should NOT have custom_date_range with a value
-    refute_match(/custom_date_range[=%\]][^&]+/, page.current_url,
-      "URL should NOT have custom_date_range with a value. Got: #{page.current_url}")
-
-    # Dropdown should be visible (not custom picker)
-    assert_dropdown_visible
-
-    # Dropdown should show "Last Week"
-    dropdown_value_final = find("select[name='q[period_start_range]']").value
-
-    assert_equal "last_week", dropdown_value_final, "Dropdown should show last_week"
-
-    # === STEP 8: Test UI updates with different date ranges ===
-    # Verify the custom picker can be used multiple times with different dates
-    visit_rails_pulse_path "/routes"
-
-    # Select "Custom Range..." to show the picker
-    select "Custom Range...", from: "q[period_start_range]"
-
-    assert_custom_picker_visible
-
-    # Set older date range to verify the UI updates
-    start_date_old = 10.days.ago.strftime("%Y-%m-%d %H:%M")
-    end_date_old = 3.days.ago.strftime("%Y-%m-%d %H:%M")
-
-    sleep 0.5
-
-    page.execute_script(<<~JS)
-      var hiddenInput = document.querySelector('input[name="q[custom_date_range]"]');
-      if (hiddenInput && hiddenInput._flatpickr) {
-        hiddenInput._flatpickr.setDate(['#{start_date_old}', '#{end_date_old}'], true);
+      var dateInput = document.querySelector('[data-rails-pulse--time-range-target="dateInput"]');
+      if (dateInput && dateInput._flatpickr) {
+        dateInput._flatpickr.setDate(['#{start_date}', '#{end_date}'], true);
       }
     JS
 
     sleep 0.3
 
-    # Verify the visible input shows the updated date range
-    # The flatpickr alt input should display the formatted dates
-    date_display = find('input[placeholder*="Pick date range"]').value
+    # Verify the date input has a value (wait for it to be available)
+    date_input_value = find('[data-rails-pulse--time-range-target="dateInput"]', visible: :all, wait: 5).value
 
-    assert_predicate date_display, :present?, "Date picker should show selected dates"
+    assert_predicate date_input_value, :present?, "Date input should have a value"
 
-    # Verify the hidden input has the correct value format
-    hidden_value = find('input[name="q[custom_date_range]"]', visible: :all).value
+    # === STEP 4: Apply custom range ===
+    within('[data-rails-pulse--time-range-target="modal"]') do
+      click_button "Apply"
+    end
 
-    assert_includes hidden_value, " to ", "Hidden input should contain date range in 'start to end' format"
+    # Modal should close
+    assert_no_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true, wait: 3
 
-    # Custom picker should still be visible
+    # Wait for page to reload with custom range
+    assert_selector "table", wait: 5
+
+    # === STEP 5: Verify custom range was applied ===
+    # The time range trigger should show the custom date range in its label
+    label_text = find('[data-rails-pulse--time-range-target="label"]').text
+
+    assert_predicate label_text, :present?, "Time range label should show custom dates"
+
+    # Verify we have data displayed
+    assert_selector "table tbody tr", minimum: 1, wait: 3
+
+    # === STEP 6: Test canceling custom range modal ===
+    # Open the modal again
+    find(".time-range-trigger").click
+
+    assert_selector '[data-rails-pulse--popover-target="menu"]', visible: true, wait: 3
+    find("button", text: "Custom Range...").click
+
     assert_custom_picker_visible
+
+    # Click cancel button
+    close_custom_range_modal
+
+    # Modal should be closed
+    assert_no_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true
+
+    # === STEP 7: Test switching to a preset range ===
+    # Open time range selector
+    find(".time-range-trigger").click
+
+    assert_selector '[data-rails-pulse--popover-target="menu"]', visible: true, wait: 3
+
+    # Select "Last 7 days" preset
+    find('button[data-preset="last_7_days"]').click
+
+    # Wait for page to reload
+    assert_selector "table", wait: 5
+
+    # Verify label updated to show "Last 7 days"
+    assert_time_range_label "Last 7 days"
+
+    # === STEP 8: Test persistence across pages ===
+    # The time range should persist when navigating to another page
+    visit_rails_pulse_path "/queries"
+
+    # Wait for page load
+    assert_selector "body", wait: 5
+    sleep 0.5
+
+    # Time range label should still show "Last 7 days"
+    assert_time_range_label "Last 7 days"
+
+    # === STEP 9: Set another custom range ===
+    start_date_new = 10.days.ago.strftime("%Y-%m-%d %H:%M")
+    end_date_new = 3.days.ago.strftime("%Y-%m-%d %H:%M")
+
+    find(".time-range-trigger").click
+
+    assert_selector '[data-rails-pulse--popover-target="menu"]', visible: true, wait: 3
+    find("button", text: "Custom Range...").click
+
+    assert_custom_picker_visible
+
+    sleep 0.5
+
+    page.execute_script(<<~JS)
+      var dateInput = document.querySelector('[data-rails-pulse--time-range-target="dateInput"]');
+      if (dateInput && dateInput._flatpickr) {
+        dateInput._flatpickr.setDate(['#{start_date_new}', '#{end_date_new}'], true);
+      }
+    JS
+
+    sleep 0.3
+
+    within('[data-rails-pulse--time-range-target="modal"]') do
+      click_button "Apply"
+    end
+
+    assert_no_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true, wait: 3
+
+    # Verify custom range label is displayed
+    label_text_final = find('[data-rails-pulse--time-range-target="label"]').text
+
+    assert_predicate label_text_final, :present?, "Time range label should show new custom dates"
   end
 end

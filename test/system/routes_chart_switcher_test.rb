@@ -16,7 +16,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     super
     load_shared_test_data
     create_chart_summaries
-    visit_rails_pulse_path "/routes?q[period_start_range]=last_month"
+    visit_rails_pulse_path "/routes?q[period_start_range]=last_30_days"
     # Wait for chart to render before running tests
     page.has_selector?("#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10)
   end
@@ -79,7 +79,7 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
 
   test "zooming any chart updates the url" do
     [ :request_rate, :error_rate ].each do |chart_type|
-      visit_rails_pulse_path "/routes?q[period_start_range]=last_month"
+      visit_rails_pulse_path "/routes?q[period_start_range]=last_30_days"
 
       assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
 

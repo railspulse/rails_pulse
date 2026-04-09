@@ -5,6 +5,7 @@ require "capybara/minitest"
 # Explicitly require support modules
 require_relative "database_helpers"
 require_relative "factory_helpers"
+require_relative "smoke_test_helpers"
 
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   driven_by :selenium, using: :chrome, screen_size: [ 1400, 1400 ] do |options|
@@ -21,6 +22,7 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   # Include test helpers
   include DatabaseHelpers
   include FactoryHelpers
+  include SmokeTestHelpers
 
   def setup
     setup_test_database

@@ -89,6 +89,7 @@ module RailsPulse
         destination = @installer.send(:destination_file)
 
         expected = File.join(Rails.root, "config/initializers/rails_pulse.rb")
+
         assert_equal expected, destination
       end
 
@@ -162,7 +163,7 @@ module RailsPulse
 
         result = @installer.install
 
-        assert result[:path].present?
+        assert_predicate result[:path], :present?
         assert_includes result[:path], "config/initializers/rails_pulse.rb"
       end
     end
