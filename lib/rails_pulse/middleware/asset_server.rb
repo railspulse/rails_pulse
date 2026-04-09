@@ -26,9 +26,6 @@ module RailsPulse
         # Log asset requests for debugging
         RailsPulse.logger.debug "Asset request: #{env['PATH_INFO']}"
 
-        # Set proper MIME type based on file extension
-        set_content_type(env)
-
         # Call parent Rack::Static with error handling
         begin
           status, headers, body = super(env)
@@ -52,15 +49,6 @@ module RailsPulse
 
       def rails_pulse_asset_request?(env)
         env["PATH_INFO"]&.start_with?("/rails-pulse-assets/")
-      end
-
-      def set_content_type(env)
-        path = env["PATH_INFO"]
-        extension = File.extname(path)
-
-        if MIME_TYPES.key?(extension)
-          env["rails_pulse.content_type"] = MIME_TYPES[extension]
-        end
       end
 
       def cache_headers

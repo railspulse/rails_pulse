@@ -41,105 +41,74 @@ module RailsPulse
 
         # Returns database-specific SQL for extracting date from timestamp
         def date_sql(column)
-          adapter = connection.adapter_name.downcase
-
-          case adapter
-          when "postgresql"
-            "DATE(#{column})"
-          when "mysql", "mysql2"
-            "DATE(#{column})"
-          when "sqlite"
-            "DATE(#{column})"
-          else
-            # Fallback for unknown adapters
-            "DATE(#{column})"
-          end
+          "DATE(#{column})"
         end
 
         # Returns database-specific SQL for extracting datetime truncated to hour
         def hour_sql(column)
-          adapter = connection.adapter_name.downcase
-
-          case adapter
-          when "postgresql"
-            "DATE_TRUNC('hour', #{column})"
+          case connection.adapter_name.downcase
           when "mysql", "mysql2"
             "DATE_FORMAT(#{column}, '%Y-%m-%d %H:00:00')"
           when "sqlite"
             "STRFTIME('%Y-%m-%d %H:00:00', #{column})"
           else
-            # Fallback for unknown adapters
+            # PostgreSQL and unknown adapters
             "DATE_TRUNC('hour', #{column})"
           end
+        end
+      end
+
+      # Shared base for transforming aggregation result hash keys.
+      # Include this module and implement #parse_key to specialize.
+      module ResultTransformer
+        def sum(*args)
+          super.transform_keys { |k| parse_key(k) }
+        end
+
+        def count(*args)
+          result = super
+          # count can return an integer or a hash depending on whether group is used
+          result.is_a?(Hash) ? result.transform_keys { |k| parse_key(k) } : result
+        end
+
+        def average(*args)
+          super.transform_keys { |k| parse_key(k) }
+        end
+
+        def maximum(*args)
+          super.transform_keys { |k| parse_key(k) }
+        end
+
+        def minimum(*args)
+          super.transform_keys { |k| parse_key(k) }
+        end
+
+        def pluck(*args)
+          result = super
+          result.is_a?(Hash) ? result.transform_keys { |k| parse_key(k) } : result
         end
       end
 
       # Module to transform aggregation result keys from strings to Date objects
       # This makes the API match Groupdate's behavior
       module DateResultTransformer
-        def sum(*args)
-          super.transform_keys { |date_str| Date.parse(date_str.to_s) }
-        end
+        include ResultTransformer
 
-        def count(*args)
-          result = super
-          # count can return an integer or a hash depending on whether group is used
-          result.is_a?(Hash) ? result.transform_keys { |date_str| Date.parse(date_str.to_s) } : result
-        end
+        private
 
-        def average(*args)
-          super.transform_keys { |date_str| Date.parse(date_str.to_s) }
-        end
-
-        def maximum(*args)
-          super.transform_keys { |date_str| Date.parse(date_str.to_s) }
-        end
-
-        def minimum(*args)
-          super.transform_keys { |date_str| Date.parse(date_str.to_s) }
-        end
-
-        def pluck(*args)
-          result = super
-          # If grouping, transform the keys
-          result.is_a?(Hash) ? result.transform_keys { |date_str| Date.parse(date_str.to_s) } : result
+        def parse_key(date_str)
+          Date.parse(date_str.to_s)
         end
       end
 
       # Module to transform aggregation result keys from strings to Time objects
       # Used for hourly grouping
       module HourResultTransformer
-        def sum(*args)
-          super.transform_keys { |time_str| parse_time(time_str) }
-        end
-
-        def count(*args)
-          result = super
-          # count can return an integer or a hash depending on whether group is used
-          result.is_a?(Hash) ? result.transform_keys { |time_str| parse_time(time_str) } : result
-        end
-
-        def average(*args)
-          super.transform_keys { |time_str| parse_time(time_str) }
-        end
-
-        def maximum(*args)
-          super.transform_keys { |time_str| parse_time(time_str) }
-        end
-
-        def minimum(*args)
-          super.transform_keys { |time_str| parse_time(time_str) }
-        end
-
-        def pluck(*args)
-          result = super
-          # If grouping, transform the keys
-          result.is_a?(Hash) ? result.transform_keys { |time_str| parse_time(time_str) } : result
-        end
+        include ResultTransformer
 
         private
 
-        def parse_time(time_str)
+        def parse_key(time_str)
           return time_str if time_str.is_a?(Time)
           return nil if time_str.nil? || time_str.to_s.strip.empty?
           # Parse as UTC since STRFTIME returns UTC strings from the database

@@ -18,6 +18,7 @@ SimpleCov.start do
   add_filter "/config/"
   add_filter "/test/dummy/"
   add_filter "/db/"
+  add_filter "/lib/generators/rails_pulse/templates/"
 
   # Groups - organize coverage by component type
   add_group "Models", "app/models"

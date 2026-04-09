@@ -93,10 +93,6 @@ module RailsPulse
       RailsPulse::Subscribers::OperationSubscriber.subscribe!
     end
 
-    initializer "rails_pulse.ransack", after: "ransack.initialize" do
-      # Ensure Ransack is loaded before our models
-    end
-
     initializer "rails_pulse.active_job" do
       ActiveSupport.on_load(:active_job) do
         include RailsPulse::ActiveJobExtensions
@@ -119,17 +115,6 @@ module RailsPulse
         require "rails_pulse/adapters/delayed_job_plugin"
         Delayed::Worker.plugins << RailsPulse::Adapters::DelayedJobPlugin
       end
-    end
-
-    initializer "rails_pulse.database_configuration", before: "active_record.initialize_timezone" do
-      # Ensure database configuration is applied early in the initialization process
-      # This allows models to properly connect to configured databases
-    end
-
-    initializer "rails_pulse.timezone" do
-      # Configure Rails Pulse to always use UTC for consistent time operations
-      # Note: We don't set Time.zone_default as it would affect the entire application
-      # Our custom group_by_date extension works regardless of ActiveRecord.default_timezone
     end
 
     # CSP helper methods

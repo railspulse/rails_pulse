@@ -1,0 +1,263 @@
+require "test_helper"
+
+module RailsPulse
+  class ConfigurationTest < ActiveSupport::TestCase
+    def build_config(&block)
+      config = Configuration.new
+      config.instance_eval(&block) if block
+      config.validate_configuration!
+      config
+    end
+
+    # Default Values Tests
+
+    test "enabled defaults to true" do
+      config = Configuration.new
+
+      assert config.enabled
+    end
+
+    test "track_jobs defaults to false" do
+      config = Configuration.new
+
+      refute config.track_jobs
+    end
+
+    test "track_assets defaults to false" do
+      config = Configuration.new
+
+      refute config.track_assets
+    end
+
+    test "async defaults to true" do
+      config = Configuration.new
+
+      assert config.async
+    end
+
+    test "archiving_enabled defaults to true" do
+      config = Configuration.new
+
+      assert config.archiving_enabled
+    end
+
+    test "capture_job_arguments defaults to false" do
+      config = Configuration.new
+
+      refute config.capture_job_arguments
+    end
+
+    test "warn_on_stale_summaries defaults to true" do
+      config = Configuration.new
+
+      assert config.warn_on_stale_summaries
+    end
+
+    test "mount_dashboard defaults to true" do
+      config = Configuration.new
+
+      assert config.mount_dashboard
+    end
+
+    test "route_thresholds has slow very_slow and critical keys" do
+      config = Configuration.new
+
+      assert_includes config.route_thresholds.keys, :slow
+      assert_includes config.route_thresholds.keys, :very_slow
+      assert_includes config.route_thresholds.keys, :critical
+    end
+
+    test "max_table_records has all expected table keys" do
+      config = Configuration.new
+
+      expected_tables = %i[
+        rails_pulse_operations rails_pulse_requests rails_pulse_job_runs
+        rails_pulse_queries rails_pulse_routes rails_pulse_jobs
+      ]
+
+      expected_tables.each do |key|
+        assert_includes config.max_table_records.keys, key
+      end
+    end
+
+    test "full_retention_period defaults to 30 days" do
+      config = Configuration.new
+
+      assert_equal 30.days, config.full_retention_period
+    end
+
+    test "tags defaults to an array of strings" do
+      config = Configuration.new
+
+      assert_kind_of Array, config.tags
+      config.tags.each { |tag| assert_kind_of String, tag }
+    end
+
+    test "service_level_objectives defaults to empty array" do
+      config = Configuration.new
+
+      assert_empty config.service_level_objectives
+    end
+
+    # ignored_routes Tests
+
+    test "ignored_routes merges user routes with default asset patterns when track_assets is false" do
+      config = Configuration.new
+      config.instance_variable_set(:@ignored_routes, [ "/custom" ])
+      config.instance_variable_set(:@track_assets, false)
+
+      routes = config.ignored_routes
+
+      assert_includes routes, "/custom"
+      # Default asset patterns include common asset file extensions
+      assert routes.any? { |r| r.is_a?(Regexp) }
+    end
+
+    test "ignored_routes does not add asset patterns when track_assets is true" do
+      config = Configuration.new
+      config.instance_variable_set(:@ignored_routes, [ "/custom" ])
+      config.instance_variable_set(:@track_assets, true)
+      config.instance_variable_set(:@custom_asset_patterns, [])
+
+      routes = config.ignored_routes
+
+      assert_equal [ "/custom" ], routes
+    end
+
+    test "ignored_routes includes custom_asset_patterns when track_assets is false" do
+      config = Configuration.new
+      config.instance_variable_set(:@ignored_routes, [])
+      config.instance_variable_set(:@track_assets, false)
+      config.instance_variable_set(:@custom_asset_patterns, [ "/my-cdn" ])
+
+      routes = config.ignored_routes
+
+      assert_includes routes, "/my-cdn"
+    end
+
+    # Validation Tests
+
+    test "validate_configuration! raises for non-positive route threshold" do
+      config = Configuration.new
+      config.instance_variable_set(:@route_thresholds, { slow: -1, very_slow: 1500, critical: 3000 })
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! raises for non-numeric threshold" do
+      config = Configuration.new
+      config.instance_variable_set(:@route_thresholds, { slow: "fast", very_slow: 1500, critical: 3000 })
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! raises for invalid pattern type" do
+      config = Configuration.new
+      config.instance_variable_set(:@ignored_routes, [ 42 ])
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! accepts string and regexp patterns" do
+      config = Configuration.new
+      config.instance_variable_set(:@ignored_routes, [ "/health", /^\/api/ ])
+
+      assert_nothing_raised { config.validate_configuration! }
+    end
+
+    test "validate_configuration! raises for non-boolean track_jobs" do
+      config = Configuration.new
+      config.instance_variable_set(:@track_jobs, "yes")
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! raises for non-array tags" do
+      config = Configuration.new
+      config.instance_variable_set(:@tags, "invalid")
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! raises for non-string tag entries" do
+      config = Configuration.new
+      config.instance_variable_set(:@tags, [ :symbol_tag ])
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! raises for invalid authentication_method type" do
+      config = Configuration.new
+      config.instance_variable_set(:@authentication_method, 42)
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! accepts proc as authentication_method" do
+      config = Configuration.new
+      config.instance_variable_set(:@authentication_method, -> { true })
+
+      assert_nothing_raised { config.validate_configuration! }
+    end
+
+    test "validate_configuration! raises for SLO entry missing percentile key" do
+      config = Configuration.new
+      config.instance_variable_set(:@service_level_objectives, [ { threshold: 200 } ])
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! raises for SLO percentile not 95 or 99" do
+      config = Configuration.new
+      config.instance_variable_set(:@service_level_objectives, [ { percentile: 50, threshold: 200 } ])
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! accepts valid SLO entries" do
+      config = Configuration.new
+      config.instance_variable_set(:@service_level_objectives, [
+        { percentile: 95, threshold: 200 },
+        { percentile: 99, threshold: 500 }
+      ])
+
+      assert_nothing_raised { config.validate_configuration! }
+    end
+
+    test "validate_configuration! raises for non-boolean async" do
+      config = Configuration.new
+      config.instance_variable_set(:@async, "true")
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! raises for non-integer max_table_records value" do
+      config = Configuration.new
+      config.instance_variable_set(:@max_table_records, { rails_pulse_operations: "lots" })
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+  end
+end

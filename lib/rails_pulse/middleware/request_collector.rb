@@ -17,18 +17,12 @@ module RailsPulse
         # Skip RailsPulse engine requests
         mount_path = RailsPulse.configuration.mount_path || "/rails_pulse"
         if req.path.start_with?(mount_path)
-          RequestStore.store[:skip_recording_rails_pulse_activity] = true
-          result = @app.call(env)
-          RequestStore.store[:skip_recording_rails_pulse_activity] = false
-          return result
+          return with_recording_suppressed { @app.call(env) }
         end
 
         # Check if route should be ignored based on configuration
         if should_ignore_route?(req)
-          RequestStore.store[:skip_recording_rails_pulse_activity] = true
-          result = @app.call(env)
-          RequestStore.store[:skip_recording_rails_pulse_activity] = false
-          return result
+          return with_recording_suppressed { @app.call(env) }
         end
 
         # Clear any previous request data and set a placeholder ID
@@ -69,6 +63,13 @@ module RailsPulse
       end
 
       private
+
+      def with_recording_suppressed
+        RequestStore.store[:skip_recording_rails_pulse_activity] = true
+        yield
+      ensure
+        RequestStore.store[:skip_recording_rails_pulse_activity] = false
+      end
 
       def should_ignore_route?(req)
         # Get ignored routes from configuration
