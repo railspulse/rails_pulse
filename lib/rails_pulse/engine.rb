@@ -39,6 +39,22 @@ module RailsPulse
     autoload :HttpSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/http_suggestions_service", __dir__)
   end
 
+  # Installer services
+  module Installers
+    autoload :MigrationInstaller, File.expand_path("installers/migration_installer", __dir__)
+    autoload :ConfigInstaller, File.expand_path("installers/config_installer", __dir__)
+  end
+
+  # Stats reporting services
+  module Stats
+    autoload :CleanupStatsReporter, File.expand_path("stats/cleanup_stats_reporter", __dir__)
+  end
+
+  # Task runners
+  module Tasks
+    autoload :CleanupTaskRunner, File.expand_path("tasks/cleanup_task_runner", __dir__)
+  end
+
   class Engine < ::Rails::Engine
     isolate_namespace RailsPulse
 

@@ -53,7 +53,7 @@ namespace :rails_pulse do
       earliest_operation.beginning_of_day
     else
       puts "No Rails Pulse data found - skipping summary generation"
-      return
+      next
     end
 
     historical_end_time = Time.current

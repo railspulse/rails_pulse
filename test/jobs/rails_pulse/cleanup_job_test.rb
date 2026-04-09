@@ -333,5 +333,126 @@ module RailsPulse
       assert_not_nil result
       assert_kind_of Hash, result
     end
+
+    # ============================================================================
+    # Error Handling Tests
+    # ============================================================================
+
+    test "perform logs error and re-raises when CleanupService raises exception" do
+      RailsPulse.configuration.archiving_enabled = true
+
+      error = StandardError.new("Cleanup failed!")
+      RailsPulse::CleanupService.stubs(:perform).raises(error)
+
+      # Capture logged messages
+      log_messages = []
+      original_logger = RailsPulse.logger
+      test_logger = Object.new
+      test_logger.define_singleton_method(:info) { |msg| log_messages << [ :info, msg ] }
+      test_logger.define_singleton_method(:error) { |msg| log_messages << [ :error, msg ] }
+
+      RailsPulse.stubs(:logger).returns(test_logger)
+
+      # Should re-raise the error
+      exception_raised = assert_raises StandardError do
+        CleanupJob.new.perform
+      end
+
+      assert_equal "Cleanup failed!", exception_raised.message
+
+      # Verify logging occurred
+      assert log_messages.any? { |level, msg| level == :info && msg == "[CleanupJob] Starting scheduled cleanup" }
+      assert log_messages.any? { |level, msg| level == :error && msg == "[CleanupJob] Cleanup failed: Cleanup failed!" }
+      assert log_messages.any? { |level, msg| level == :error && msg.is_a?(String) }
+
+      RailsPulse::CleanupService.unstub(:perform)
+      RailsPulse.unstub(:logger)
+    end
+
+    test "perform logs error backtrace when exception occurs" do
+      RailsPulse.configuration.archiving_enabled = true
+
+      error = StandardError.new("Test error")
+      error.set_backtrace([ "line 1", "line 2", "line 3" ])
+
+      RailsPulse::CleanupService.stubs(:perform).raises(error)
+
+      # Capture logged messages
+      log_messages = []
+      test_logger = Object.new
+      test_logger.define_singleton_method(:info) { |msg| log_messages << [ :info, msg ] }
+      test_logger.define_singleton_method(:error) { |msg| log_messages << [ :error, msg ] }
+
+      RailsPulse.stubs(:logger).returns(test_logger)
+
+      assert_raises StandardError do
+        CleanupJob.new.perform
+      end
+
+      # Verify error message logged
+      assert log_messages.any? { |level, msg| level == :error && msg == "[CleanupJob] Cleanup failed: Test error" }
+
+      # Verify backtrace logged
+      backtrace_message = log_messages.find { |level, msg| level == :error && msg.include?("line 1") }
+
+      assert_not_nil backtrace_message, "Expected backtrace to be logged"
+      assert_includes backtrace_message[1], "line 2", "Expected full backtrace to be logged"
+
+      RailsPulse::CleanupService.unstub(:perform)
+      RailsPulse.unstub(:logger)
+    end
+
+    # ============================================================================
+    # Logging Tests
+    # ============================================================================
+
+    test "perform logs start message before cleanup" do
+      # Clean up existing data
+      RailsPulse::Operation.delete_all
+      RailsPulse::JobRun.delete_all
+      RailsPulse::Request.delete_all
+
+      RailsPulse.configuration.archiving_enabled = true
+
+      # Capture logged messages
+      log_messages = []
+      test_logger = Object.new
+      test_logger.define_singleton_method(:info) { |msg| log_messages << [ :info, msg ] }
+
+      RailsPulse.stubs(:logger).returns(test_logger)
+
+      CleanupJob.new.perform
+
+      # Verify start message logged
+      assert log_messages.any? { |level, msg| level == :info && msg == "[CleanupJob] Starting scheduled cleanup" }
+
+      RailsPulse.unstub(:logger)
+    end
+
+    test "perform logs completion message with stats" do
+      # Clean up existing data
+      RailsPulse::Operation.delete_all
+      RailsPulse::JobRun.delete_all
+      RailsPulse::Request.delete_all
+
+      RailsPulse.configuration.archiving_enabled = true
+
+      # Capture logged messages
+      log_messages = []
+      test_logger = Object.new
+      test_logger.define_singleton_method(:info) { |msg| log_messages << [ :info, msg ] }
+
+      RailsPulse.stubs(:logger).returns(test_logger)
+
+      CleanupJob.new.perform
+
+      # Verify completion message logged with record count
+      completion_msg = log_messages.find { |level, msg| level == :info && msg.start_with?("[CleanupJob] Cleanup completed - ") }
+
+      assert_not_nil completion_msg, "Expected completion message to be logged"
+      assert_match(/\d+ records deleted/, completion_msg[1], "Expected completion message to include record count")
+
+      RailsPulse.unstub(:logger)
+    end
   end
 end

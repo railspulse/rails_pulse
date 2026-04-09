@@ -374,6 +374,170 @@ module RailsPulse
         assert_not_nil sequential_issue
       end
 
+      # ============================================================================
+      # SQL Sanitization Tests
+      # ============================================================================
+
+      test "sanitize_sql_for_explain removes trailing semicolon" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+
+        sql = "SELECT * FROM users WHERE id = 1;"
+        sanitized = analyzer.send(:sanitize_sql_for_explain, sql)
+
+        assert_equal "SELECT * FROM users WHERE id = 1", sanitized
+      end
+
+      test "sanitize_sql_for_explain removes multiple trailing semicolons" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+
+        sql = "SELECT * FROM users WHERE id = 1;;;"
+        sanitized = analyzer.send(:sanitize_sql_for_explain, sql)
+
+        assert_equal "SELECT * FROM users WHERE id = 1", sanitized
+      end
+
+      test "sanitize_sql_for_explain removes trailing semicolon with whitespace" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+
+        sql = "SELECT * FROM users WHERE id = 1;  \n"
+        sanitized = analyzer.send(:sanitize_sql_for_explain, sql)
+
+        assert_equal "SELECT * FROM users WHERE id = 1", sanitized
+      end
+
+      test "sanitize_sql_for_explain strips leading and trailing whitespace" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+
+        sql = "  \n SELECT * FROM users WHERE id = 1  \n  "
+        sanitized = analyzer.send(:sanitize_sql_for_explain, sql)
+
+        assert_equal "SELECT * FROM users WHERE id = 1", sanitized
+      end
+
+      test "sanitize_sql_for_explain handles already clean SQL" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+
+        sql = "SELECT * FROM users WHERE id = 1"
+        sanitized = analyzer.send(:sanitize_sql_for_explain, sql)
+
+        assert_equal "SELECT * FROM users WHERE id = 1", sanitized
+      end
+
+      # ============================================================================
+      # PostgreSQL Edge Cases
+      # ============================================================================
+
+      test "detects multiple hash joins in PostgreSQL" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+        analyzer.mock_database_adapter = "postgresql"
+        postgres_plan = <<~PLAN
+          Hash Join  (cost=100.00..500.00 rows=15000 width=100)
+          -> Hash Join  (cost=50.00..250.00 rows=20000 width=50)
+        PLAN
+        analyzer.mock_explain_plan = postgres_plan
+
+        result = analyzer.analyze
+
+        hash_join_issues = result[:issues].select { |i| i[:type] == "large_hash_join" }
+
+        # Should detect at least one large hash join
+        assert_operator hash_join_issues.size, :>=, 1
+      end
+
+      test "handles PostgreSQL EXPLAIN with no cost information" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+        analyzer.mock_database_adapter = "postgresql"
+        postgres_plan = "Seq Scan on users"
+        analyzer.mock_explain_plan = postgres_plan
+
+        result = analyzer.analyze
+
+        # Should not raise error, sequential scan should still be detected
+        sequential_issue = result[:issues].find { |i| i[:type] == "sequential_scan" }
+
+        assert_not_nil sequential_issue
+      end
+
+      # ============================================================================
+      # MySQL Edge Cases
+      # ============================================================================
+
+      test "detects full scan with different type formatting in MySQL" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+        analyzer.mock_database_adapter = "mysql2"
+        mysql_plan = "type: ALL extra_data rows: 10000"
+        analyzer.mock_explain_plan = mysql_plan
+
+        result = analyzer.analyze
+
+        full_scan_issue = result[:issues].find { |i| i[:type] == "full_scan_large_table" }
+
+        assert_not_nil full_scan_issue
+      end
+
+      test "handles MySQL EXPLAIN with low row count" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+        analyzer.mock_database_adapter = "mysql2"
+        mysql_plan = "type: ALL  rows: 10"
+        analyzer.mock_explain_plan = mysql_plan
+
+        result = analyzer.analyze
+
+        # Should not flag full scan on small table (< 1000 rows)
+        full_scan_issue = result[:issues].find { |i| i[:type] == "full_scan_large_table" }
+
+        assert_nil full_scan_issue
+      end
+
+      # ============================================================================
+      # SQLite Edge Cases
+      # ============================================================================
+
+      test "detects SQLite SCAN TABLE without USING INDEX" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+        analyzer.mock_database_adapter = "sqlite"
+        sqlite_plan = "SCAN TABLE users"
+        analyzer.mock_explain_plan = sqlite_plan
+
+        result = analyzer.analyze
+
+        table_scan_issue = result[:issues].find { |i| i[:type] == "table_scan" }
+
+        assert_not_nil table_scan_issue
+      end
+
+      test "does not flag SQLite SCAN TABLE with USING INDEX" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+        analyzer.mock_database_adapter = "sqlite"
+        sqlite_plan = "SCAN TABLE users USING INDEX idx_users"
+        analyzer.mock_explain_plan = sqlite_plan
+
+        result = analyzer.analyze
+
+        # Should still flag table_scan but not no_index_usage
+        table_scan_issue = result[:issues].find { |i| i[:type] == "table_scan" }
+        no_index_issue = result[:issues].find { |i| i[:type] == "no_index_usage" }
+
+        assert_not_nil table_scan_issue, "Should detect table scan"
+        assert_nil no_index_issue, "Should not flag no_index_usage when using index"
+      end
+
+      test "detects SQLite SCAN TABLE with WHERE clause but no index" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+        analyzer.mock_database_adapter = "sqlite"
+        sqlite_plan = "SCAN TABLE users WHERE condition"
+        analyzer.mock_explain_plan = sqlite_plan
+
+        result = analyzer.analyze
+
+        # Should detect both table_scan and no_index_usage
+        table_scan_issue = result[:issues].find { |i| i[:type] == "table_scan" }
+        no_index_issue = result[:issues].find { |i| i[:type] == "no_index_usage" }
+
+        assert_not_nil table_scan_issue
+        assert_not_nil no_index_issue
+      end
+
       private
 
       def create_operation(attributes = {})
