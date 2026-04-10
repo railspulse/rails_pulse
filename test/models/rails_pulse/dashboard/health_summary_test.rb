@@ -18,13 +18,14 @@ module RailsPulse
 
       # Structure Tests
 
-      test "returns hash with routes, queries, and jobs keys" do
+      test "returns hash with routes, queries, jobs, and storage keys" do
         result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
 
         assert_kind_of Hash, result
         assert_includes result.keys, :routes
         assert_includes result.keys, :queries
         assert_includes result.keys, :jobs
+        assert_includes result.keys, :storage
       end
 
       test "routes and queries values have healthy, slow, and critical keys" do
@@ -376,6 +377,56 @@ module RailsPulse
       end
 
       private
+
+      # Storage Health Badge Tests
+
+      test "storage value has healthy, slow, and critical keys" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+
+        result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
+
+        assert_includes result[:storage].keys, :healthy
+        assert_includes result[:storage].keys, :slow
+        assert_includes result[:storage].keys, :critical
+      end
+
+      test "storage is healthy when summary is fresh" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+
+        result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
+
+        assert_equal 1, result[:storage][:healthy]
+        assert_equal 0, result[:storage][:slow]
+        assert_equal 0, result[:storage][:critical]
+      end
+
+      test "storage is slow when summary is 3 hours stale" do
+        create_overall_hourly_summary(period_end: 3.hours.ago)
+
+        result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
+
+        assert_equal 1, result[:storage][:slow]
+        assert_equal 0, result[:storage][:critical]
+      end
+
+      test "storage is critical when summary job has never run" do
+        result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
+
+        assert_equal 1, result[:storage][:critical]
+        assert_equal 0, result[:storage][:healthy]
+      end
+
+      def create_overall_hourly_summary(period_end:)
+        RailsPulse::Summary.create!(
+          summarizable_type: "RailsPulse::Request",
+          summarizable_id:   0,
+          period_type:       "hour",
+          period_start:      period_end.beginning_of_hour,
+          period_end:        period_end,
+          count:             1,
+          avg_duration:      100.0
+        )
+      end
 
       def create_route_summary(route:, count:, errors:, p95:, days_ago: 2)
         period_start = days_ago.days.ago.beginning_of_day

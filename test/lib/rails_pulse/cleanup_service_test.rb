@@ -7,6 +7,7 @@ module RailsPulse
 
     def setup
       super
+      RailsPulse::Summary.delete_all
       RailsPulse::Operation.delete_all
       RailsPulse::JobRun.delete_all
       RailsPulse::Request.delete_all
@@ -140,6 +141,109 @@ module RailsPulse
       end
     end
 
+    # Summarization Guard Tests
+
+    test "count-based request cleanup does nothing when no summaries exist" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,
+        rails_pulse_requests: 2,
+        rails_pulse_job_runs: 10_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 10_000,
+        rails_pulse_jobs: 10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      route = RailsPulse::Route.create!(method: "GET", path: "/guard-test")
+      3.times do
+        RailsPulse::Request.create!(
+          route: route, duration: 100.0, status: 200, is_error: false,
+          request_uuid: SecureRandom.uuid, occurred_at: 3.hours.ago
+        )
+      end
+
+      assert_no_difference -> { RailsPulse::Request.count } do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based request cleanup deletes requests older than summarization cutoff" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,
+        rails_pulse_requests: 2,
+        rails_pulse_job_runs: 10_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 10_000,
+        rails_pulse_jobs: 10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      # Summary covering 3 hours ago — anything before period_end is safe to delete
+      period_end = 2.hours.ago
+      create_overall_hourly_summary(period_end: period_end)
+
+      route = RailsPulse::Route.create!(method: "GET", path: "/guard-test-2")
+      3.times do
+        RailsPulse::Request.create!(
+          route: route, duration: 100.0, status: 200, is_error: false,
+          request_uuid: SecureRandom.uuid, occurred_at: 3.hours.ago
+        )
+      end
+
+      # 3 requests exist, max is 2 — 1 should be deleted since they're before cutoff
+      assert_difference -> { RailsPulse::Request.count }, -1 do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based request cleanup does not delete requests newer than summarization cutoff" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,
+        rails_pulse_requests: 2,
+        rails_pulse_job_runs: 10_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 10_000,
+        rails_pulse_jobs: 10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      # Summary only covers up to 3 hours ago
+      create_overall_hourly_summary(period_end: 3.hours.ago)
+
+      route = RailsPulse::Route.create!(method: "GET", path: "/guard-test-3")
+      3.times do
+        # Requests are from 30 minutes ago — newer than the summarization cutoff
+        RailsPulse::Request.create!(
+          route: route, duration: 100.0, status: 200, is_error: false,
+          request_uuid: SecureRandom.uuid, occurred_at: 30.minutes.ago
+        )
+      end
+
+      assert_no_difference -> { RailsPulse::Request.count } do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based operations cleanup does nothing when no summaries exist" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 2,
+        rails_pulse_requests: 10_000,
+        rails_pulse_job_runs: 10_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 10_000,
+        rails_pulse_jobs: 10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      job = create_job("OpsGuardJob")
+      run = create_job_run(job, occurred_at: 3.hours.ago)
+      3.times { create_operation(job_run: run, occurred_at: 3.hours.ago) }
+
+      assert_no_difference -> { RailsPulse::Operation.count } do
+        CleanupService.perform
+      end
+    end
+
     # Edge Cases
 
     test "handles empty tables gracefully" do
@@ -151,6 +255,19 @@ module RailsPulse
     end
 
     private
+
+    def create_overall_hourly_summary(period_end:)
+      period_start = period_end.beginning_of_hour
+      RailsPulse::Summary.create!(
+        summarizable_type: "RailsPulse::Request",
+        summarizable_id:   0,
+        period_type:       "hour",
+        period_start:      period_start,
+        period_end:        period_end,
+        count:             1,
+        avg_duration:      100.0
+      )
+    end
 
     def create_job(name)
       RailsPulse::Job.create!(name: name, queue_name: "default", runs_count: 0, failures_count: 0)

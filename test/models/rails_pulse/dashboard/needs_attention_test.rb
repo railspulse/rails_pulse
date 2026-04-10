@@ -357,7 +357,9 @@ module RailsPulse
 
       # Edge Cases
 
-      test "returns empty results when no summaries exist" do
+      test "returns empty results when no route or query issues exist and summary is fresh" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+
         result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
 
         assert_equal 0, result[:total]
@@ -407,7 +409,66 @@ module RailsPulse
         assert query_item[:monospace]
       end
 
+      # Storage Pressure Tests
+
+      test "storage pressure critical item appears in critical when summary job has never run" do
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+
+        storage_items = result[:critical].select { |i| i[:type] == "STORAGE" }
+        assert_operator storage_items.size, :>=, 1
+      end
+
+      test "storage pressure items appear outside the 10-item cap" do
+        # Fill cap with 10 critical route items
+        routes = [
+          rails_pulse_routes(:api_users), rails_pulse_routes(:api_posts),
+          rails_pulse_routes(:api_test), rails_pulse_routes(:api_other),
+          rails_pulse_routes(:api_cleanup)
+        ]
+        queries = [
+          rails_pulse_queries(:simple_query), rails_pulse_queries(:complex_query),
+          rails_pulse_queries(:analyzed_query), rails_pulse_queries(:stale_analyzed_query)
+        ]
+        routes.each  { |r| create_route_summary(route: r, count: 100, errors: 20, p95: 200.0) }
+        queries.each { |q| create_query_summary(query: q, count: 100, p95: 200.0) }
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+
+        # Storage items should appear even though cap is full
+        storage_items = (result[:critical] + result[:warning]).select { |i| i[:type] == "STORAGE" }
+        assert_operator storage_items.size, :>=, 1
+      end
+
+      test "no storage pressure items when summary is fresh" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+
+        storage_items = (result[:critical] + result[:warning]).select { |i| i[:type] == "STORAGE" }
+        assert_empty storage_items
+      end
+
+      test "total count includes storage pressure items" do
+        # No summaries exist → will generate a storage critical item
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+
+        assert_equal result[:total], result[:critical].size + result[:warning].size
+        assert_operator result[:total], :>=, 1
+      end
+
       private
+
+      def create_overall_hourly_summary(period_end:)
+        RailsPulse::Summary.create!(
+          summarizable_type: "RailsPulse::Request",
+          summarizable_id:   0,
+          period_type:       "hour",
+          period_start:      period_end.beginning_of_hour,
+          period_end:        period_end,
+          count:             1,
+          avg_duration:      100.0
+        )
+      end
 
       def create_route_summary(route:, count:, errors:, p95:, days_ago: 2)
         period_start = days_ago.days.ago.beginning_of_day

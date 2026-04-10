@@ -58,17 +58,9 @@ namespace :rails_pulse do
 
     historical_end_time = Time.current
 
-    # Generate daily summaries from beginning of data
-    puts "\nCreating daily summaries from #{historical_start_time.strftime('%B %d, %Y')} to #{historical_end_time.strftime('%B %d, %Y')}"
-    RailsPulse::BackfillSummariesJob.perform_now(historical_start_time, historical_end_time, [ "day" ])
-
-    # Generate hourly summaries for past 26 hours
-    puts "\nCreating hourly summaries for the past 26 hours..."
-    hourly_start_time = 26.hours.ago
-    hourly_end_time = Time.current
-
-    puts "From #{hourly_start_time.strftime('%B %d at %I:%M %p')} to #{hourly_end_time.strftime('%B %d at %I:%M %p')}"
-    RailsPulse::BackfillSummariesJob.perform_now(hourly_start_time, hourly_end_time, [ "hour" ])
+    # Generate hourly and daily summaries from beginning of data
+    puts "\nCreating hourly and daily summaries from #{historical_start_time.strftime('%B %d, %Y')} to #{historical_end_time.strftime('%B %d, %Y')}"
+    RailsPulse::BackfillSummariesJob.perform_now(historical_start_time, historical_end_time, [ "hour", "day" ])
 
     puts "\nSummary backfill completed!"
     puts "Total summaries: #{RailsPulse::Summary.count}"

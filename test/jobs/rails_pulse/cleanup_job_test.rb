@@ -252,6 +252,18 @@ module RailsPulse
         rails_pulse_requests: 5
       }
 
+      # Create a summary covering up to 1 hour ago so older requests are eligible
+      # for count-based cleanup (the summarization guard requires a summary to exist)
+      RailsPulse::Summary.create!(
+        summarizable_type: "RailsPulse::Request",
+        summarizable_id:   0,
+        period_type:       "hour",
+        period_start:      10.hours.ago.beginning_of_hour,
+        period_end:        1.hour.ago,
+        count:             10,
+        avg_duration:      100.0
+      )
+
       # Create 10 requests (all recent, so time-based won't delete them)
       created_ids = []
       10.times do |i|
@@ -260,7 +272,7 @@ module RailsPulse
           duration: 100,
           status: 200,
           request_uuid: SecureRandom.uuid,
-          occurred_at: i.hours.ago
+          occurred_at: (i + 2).hours.ago  # 2–11 hours ago, all before the summary cutoff
         )
         created_ids << req.id
       end

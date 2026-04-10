@@ -15,9 +15,10 @@ module RailsPulse
 
       def to_health_data
         {
-          routes:  route_counts,
-          queries: query_counts,
-          jobs:    job_counts
+          routes:   route_counts,
+          queries:  query_counts,
+          jobs:     job_counts,
+          storage:  storage_counts
         }
       end
 
@@ -82,6 +83,10 @@ module RailsPulse
         end
 
         { healthy: healthy, slow: slow, critical: critical }
+      end
+
+      def storage_counts
+        StoragePressure.new.storage_counts
       end
 
       def job_counts

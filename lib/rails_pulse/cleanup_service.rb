@@ -20,6 +20,7 @@ module RailsPulse
 
       perform_time_based_cleanup
       perform_count_based_cleanup
+      perform_summary_cleanup
 
       log_cleanup_summary
       @stats
@@ -34,7 +35,9 @@ module RailsPulse
     def perform_time_based_cleanup
       return unless @config.full_retention_period
 
-      cutoff_time = @config.full_retention_period.ago
+      # Enforce a 1-hour minimum so records always have time to be summarized
+      # before deletion, regardless of how short full_retention_period is set.
+      cutoff_time = [ @config.full_retention_period.ago, 1.hour.ago ].min
       RailsPulse.logger.info "Time-based cleanup: removing records older than #{cutoff_time}"
 
       # Clean up in order that respects foreign key constraints
@@ -51,8 +54,16 @@ module RailsPulse
 
       RailsPulse.logger.info "Count-based cleanup: enforcing table record limits"
 
+      # Only delete records from periods that have already been summarized.
+      # This prevents count-based cleanup from removing data before the summary
+      # job has had a chance to aggregate it.
+      cutoff = latest_summarized_cutoff
+
+      # Operations: only delete those before the summarization cutoff
+      ops_scope = cutoff ? RailsPulse::Operation.where("occurred_at < ?", cutoff) : RailsPulse::Operation.none
+
       # Clean up in order that respects foreign key constraints
-      @stats[:count_based][:operations] = cleanup_by_count(RailsPulse::Operation, :rails_pulse_operations, order_column: :occurred_at)
+      @stats[:count_based][:operations] = cleanup_by_count(RailsPulse::Operation, :rails_pulse_operations, order_column: :occurred_at, scope: ops_scope)
       @stats[:count_based][:job_runs]   = cleanup_by_count(RailsPulse::JobRun, :rails_pulse_job_runs, order_column: :occurred_at)
       @stats[:count_based][:requests]   = cleanup_requests_by_count
       @stats[:count_based][:queries]    = cleanup_queries_by_count
@@ -122,14 +133,24 @@ module RailsPulse
       max_records = @config.max_table_records[:rails_pulse_requests]
       return 0 unless max_records
 
+      # Only delete requests from periods that have already been summarized
+      cutoff = latest_summarized_cutoff
+      return 0 unless cutoff
+
       current_count = RailsPulse::Request.count
       return 0 if current_count <= max_records
 
       records_to_delete = current_count - max_records
-      ids_to_delete = RailsPulse::Request.order(occurred_at: :asc).limit(records_to_delete).pluck(:id)
+      ids_to_delete = RailsPulse::Request
+        .where("occurred_at < ?", cutoff)
+        .order(occurred_at: :asc)
+        .limit(records_to_delete)
+        .pluck(:id)
+      return 0 if ids_to_delete.empty?
+
       RailsPulse::Operation.where(request_id: ids_to_delete).delete_all
       RailsPulse::Request.where(id: ids_to_delete).delete_all
-      records_to_delete
+      ids_to_delete.size
     end
 
     def cleanup_queries_by_count
@@ -148,6 +169,23 @@ module RailsPulse
       job_ids_with_runs = RailsPulse::JobRun.distinct.pluck(:job_id).compact
       scope = RailsPulse::Job.where.not(id: job_ids_with_runs)
       cleanup_by_count(RailsPulse::Job, :rails_pulse_jobs, order_column: :created_at, scope: scope)
+    end
+
+    def perform_summary_cleanup
+      # Hourly summaries are only used for the 1-day time range view — anything
+      # older than 2 days is unreachable in the UI and safe to delete.
+      cutoff = 2.days.ago
+      deleted = RailsPulse::Summary.where(period_type: "hour").where("period_start < ?", cutoff).delete_all
+      @stats[:time_based][:hourly_summaries] = deleted
+    end
+
+    # Returns the period_end of the most recent completed hourly overall-request
+    # summary, or nil if the summary job has never run. Records with occurred_at
+    # before this timestamp have been fully aggregated and are safe to delete.
+    def latest_summarized_cutoff
+      RailsPulse::Summary
+        .where(summarizable_type: "RailsPulse::Request", summarizable_id: 0, period_type: "hour")
+        .maximum(:period_end)
     end
 
     def log_cleanup_summary

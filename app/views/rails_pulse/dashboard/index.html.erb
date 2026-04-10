@@ -15,6 +15,10 @@
         health: @health_summary[:jobs],
         critical_label: "failing" %>
       <% end %>
+      <%= render "rails_pulse/dashboard/health_badge",
+      name: "Storage",
+      health: @health_summary[:storage],
+      critical_label: "critical" %>
     </div>
   </div>
 </div>

@@ -22,14 +22,24 @@ module RailsPulse
 
         capped = (critical + warning).first(MAX_ITEMS)
 
+        # Storage pressure items are infrastructure signals — always shown,
+        # never subject to the 10-item app-level cap, always prepended.
+        storage        = storage_pressure_items
+        storage_crit   = storage.select { |i| i[:severity] == :critical }
+        storage_warn   = storage.select { |i| i[:severity] == :warning }
+
         {
-          critical: capped.select { |i| i[:severity] == :critical },
-          warning:  capped.select { |i| i[:severity] == :warning },
-          total:    capped.size
+          critical: storage_crit + capped.select { |i| i[:severity] == :critical },
+          warning:  storage_warn + capped.select { |i| i[:severity] == :warning },
+          total:    capped.size + storage.size
         }
       end
 
       private
+
+      def storage_pressure_items
+        StoragePressure.new.pressure_items
+      end
 
       def url_helpers
         RailsPulse::Engine.routes.url_helpers
