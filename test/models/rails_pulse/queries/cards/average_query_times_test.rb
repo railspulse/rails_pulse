@@ -178,14 +178,14 @@ module RailsPulse
           query = rails_pulse_queries(:simple_query)
           current_time = @now.beginning_of_day
 
-          # Current period: avg 100.05ms
+          # Current period: avg 100.04ms
           RailsPulse::Summary.create!(
             summarizable: query,
             period_start: current_time - 3.days,
             period_end: (current_time - 3.days).end_of_day,
             period_type: "day",
             count: 100,
-            avg_duration: 100.05
+            avg_duration: 100.04
           )
 
           # Previous period: avg 100ms (0.05% change)

@@ -24,6 +24,8 @@ class RailsPulse::AssetsControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "serves source map with correct content type" do
+    skip "Source maps not built (run npm run build)" unless File.exist?(RailsPulse::Engine.root.join("public/rails-pulse-assets/rails-pulse.js.map"))
+
     get rails_pulse.asset_path(asset_name: "rails-pulse.js.map")
 
     assert_response :success
@@ -143,6 +145,8 @@ class RailsPulse::AssetsControllerTest < ActionDispatch::IntegrationTest
   # Edge Cases
 
   test "handles multiple file extensions correctly" do
+    skip "Source maps not built (run npm run build)" unless File.exist?(RailsPulse::Engine.root.join("public/rails-pulse-assets/rails-pulse.js.map"))
+
     get rails_pulse.asset_path(asset_name: "rails-pulse.js.map")
 
     assert_response :success
