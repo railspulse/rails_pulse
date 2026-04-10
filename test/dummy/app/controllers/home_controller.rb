@@ -75,14 +75,7 @@ class HomeController < ApplicationController
     )
   end
 
-  # Error prone action - simulates potential failures
-  def error_prone
-    # Simulate random errors for testing
-    if rand < 0.3
-      raise StandardError, "Simulated database timeout"
-    end
-
-    # Heavy query that might timeout
+  def errors
     @complex_data = Post.joins(:user)
                        .joins("LEFT JOIN comments ON posts.id = comments.post_id")
                        .group("posts.id", "users.name")
@@ -90,7 +83,6 @@ class HomeController < ApplicationController
                        .order("COUNT(comments.id) DESC")
                        .limit(50)
 
-    # Simulate potential N+1 issue
     @post_details = []
     Post.limit(10).each do |post|
       @post_details << {
@@ -100,6 +92,10 @@ class HomeController < ApplicationController
         recent_comments: post.comments.recent.limit(3)
       }
     end
+  end
+
+  def raise_error
+    raise StandardError, "Simulated error raised from test app"
   end
 
   # Search action - various search patterns

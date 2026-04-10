@@ -1,44 +1,56 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title><%= content_for(:title) || "Dummy" %></title>
+    <title><%= content_for(:title) || "Rails Pulse Test App" %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="mobile-web-app-capable" content="yes">
     <%= csrf_meta_tags %>
     <%= csp_meta_tag %>
-
     <%= yield :head %>
-
-    <%# Enable PWA manifest for installable apps (make sure to enable in config/routes.rb too!) %>
-    <%#= tag.link rel: "manifest", href: pwa_manifest_path(format: :json) %>
-
-    <%# Includes all stylesheet files in app/assets/stylesheets %>
     <%= stylesheet_link_tag :app %>
-    <%= javascript_include_tag "https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.js" %>
-    <%= javascript_include_tag "https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3/dist/chartjs-adapter-date-fns.bundle.min.js" %>
     <%= javascript_importmap_tags if defined?(Importmap) %>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: system-ui, sans-serif; font-size: 14px; color: #111; background: #fff; display: flex; min-height: 100vh; }
+      nav { width: 200px; min-width: 200px; background: #f5f5f5; border-right: 1px solid #e0e0e0; display: flex; flex-direction: column; padding: 20px 0; }
+      nav .brand { padding: 0 16px 16px; border-bottom: 1px solid #e0e0e0; margin-bottom: 12px; font-weight: 600; font-size: 13px; color: #333; }
+      nav .brand span { display: block; font-weight: 400; font-size: 11px; color: #888; margin-top: 2px; }
+      nav a { display: block; padding: 7px 16px; text-decoration: none; color: #444; font-size: 13px; }
+      nav a:hover { background: #eaeaea; color: #111; }
+main { flex: 1; padding: 28px 32px; overflow: auto; }
+      h1 { font-size: 20px; margin: 0 0 6px; }
+      h2 { font-size: 16px; margin: 0 0 12px; }
+      h3 { font-size: 14px; margin: 0 0 10px; }
+      h4 { font-size: 13px; margin: 0 0 8px; }
+      .section { border: 1px solid #e0e0e0; border-radius: 6px; padding: 18px; }
+      .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+      .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; }
+      .grid-auto { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+      .card { border: 1px solid #e8e8e8; border-radius: 4px; padding: 14px; }
+      .meta { color: #666; font-size: 12px; }
+      .note { background: #f9f9f9; border-radius: 4px; padding: 14px; margin-top: 16px; font-size: 13px; color: #555; }
+      ul { margin: 0; padding-left: 18px; }
+      li { margin-bottom: 4px; }
+      pre { margin: 0; white-space: pre-wrap; font-size: 12px; }
+      code { font-size: 12px; background: #f0f0f0; padding: 1px 4px; border-radius: 3px; }
+    </style>
   </head>
 
   <body>
-    <nav style="background-color: #f8f9fa; padding: 15px; border-bottom: 1px solid #dee2e6; margin-bottom: 20px;">
-      <div style="max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 20px;">
-        <h2 style="margin: 0; color: #333;">Rails Pulse Test App</h2>
-        <div style="display: flex; gap: 15px; flex-wrap: wrap;">
-          <%= link_to "Dashboard", root_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #007bff; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #007bff;" %>
-          <%= link_to "Fast Queries", fast_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #28a745; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #28a745;" %>
-          <%= link_to "Slow Queries", slow_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #ffc107; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #ffc107;" %>
-          <%= link_to "Error Prone", error_prone_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #dc3545; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #dc3545;" %>
-          <%= link_to "Search", search_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #6f42c1; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #6f42c1;" %>
-          <%= link_to "API Simple", api_simple_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #17a2b8; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #17a2b8;" %>
-          <%= link_to "API Complex", api_complex_path, data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: #6c757d; padding: 8px 12px; border-radius: 4px; background: white; border: 1px solid #6c757d;" %>
-          <%= link_to "Rails Pulse", "/rails_pulse", data: { turbo_prefetch: "false" }, style: "text-decoration: none; color: white; padding: 8px 12px; border-radius: 4px; background: #fd7e14; border: 1px solid #fd7e14; font-weight: bold;" %>
-        </div>
-      </div>
+    <nav>
+      <div class="brand">Rails Pulse<span>Test App</span></div>
+      <%= link_to "Dashboard",   root_path,        data: { turbo_prefetch: "false" } %>
+      <%= link_to "Fast Queries", fast_path,        data: { turbo_prefetch: "false" } %>
+      <%= link_to "Slow Queries", slow_path,        data: { turbo_prefetch: "false" } %>
+      <%= link_to "Errors",        errors_path,      data: { turbo_prefetch: "false" } %>
+      <%= link_to "Search",       search_path,      data: { turbo_prefetch: "false" } %>
+      <%= link_to "API Simple",   api_simple_path,  data: { turbo_prefetch: "false" } %>
+      <%= link_to "API Complex",  api_complex_path, data: { turbo_prefetch: "false" } %>
+      <%= link_to "Jobs",          jobs_path,        data: { turbo_prefetch: "false" } %>
+      <%= link_to "Rails Pulse →", "/rails_pulse",  data: { turbo_prefetch: "false" }, style: "display: block; padding: 7px 16px; text-decoration: none; color: #444; font-size: 13px; font-weight: 600;" %>
     </nav>
 
-    <div style="max-width: 1200px; margin: 0 auto; padding: 0 20px;">
+    <main>
       <%= yield %>
-    </div>
+    </main>
   </body>
 </html>

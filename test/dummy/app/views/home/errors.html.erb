@@ -1,0 +1,49 @@
+<h1>Errors</h1>
+<p class="meta" style="margin-bottom: 16px;">Heavy queries and N+1 patterns. Use the button below to raise an error and generate a 500 in Rails Pulse.</p>
+
+<div style="margin-bottom: 20px;">
+  <%= button_to "Raise Error", raise_error_path,
+        style: "padding: 8px 16px; background: #333; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;" %>
+</div>
+
+<div style="display: grid; gap: 16px;">
+  <div class="section">
+    <h2>Complex Data</h2>
+    <% if @complex_data.any? %>
+      <div class="grid-auto">
+        <% @complex_data.each do |post| %>
+          <div class="card">
+            <h4><%= post.title %></h4>
+            <p class="meta">By <%= post.user&.name || "Unknown" %></p>
+            <p><%= truncate(post.content, length: 100) %></p>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="meta">No data found.</p>
+    <% end %>
+  </div>
+
+  <div class="section">
+    <h2>Post Details (N+1 Pattern)</h2>
+    <% if @post_details.any? %>
+      <div style="display: grid; gap: 10px;">
+        <% @post_details.each do |detail| %>
+          <div class="card">
+            <h4><%= detail[:post].title %></h4>
+            <p><strong>Author:</strong> <%= detail[:author]&.name || "Unknown" %> &middot; <strong>Comments:</strong> <%= detail[:comment_count] %></p>
+            <% if detail[:recent_comments].any? %>
+              <ul>
+                <% detail[:recent_comments].each do |comment| %>
+                  <li class="meta"><%= truncate(comment.content, length: 60) %></li>
+                <% end %>
+              </ul>
+            <% end %>
+          </div>
+        <% end %>
+      </div>
+    <% else %>
+      <p class="meta">No post details available.</p>
+    <% end %>
+  </div>
+</div>

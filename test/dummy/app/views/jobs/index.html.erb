@@ -1,0 +1,133 @@
+<h1>Background Job Adapters</h1>
+<p class="meta" style="margin-bottom: 20px;">Trigger demo jobs through each adapter's tracking path and verify Rails Pulse records them correctly. No worker processes or Redis required.</p>
+
+<%# Adapter Status Panel %>
+<div class="section" style="margin-bottom: 16px;">
+  <h2>Adapter Detection</h2>
+  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
+    <% @adapters.each do |adapter| %>
+      <div class="card" style="text-align: center;">
+        <div style="font-weight: 600; font-size: 13px; margin-bottom: 6px;"><%= adapter[:label] %></div>
+        <% if adapter[:tracking] == "enhanced" %>
+          <div style="display: inline-block; background: #dbeafe; color: #1d4ed8; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-bottom: 8px;">Enhanced</div>
+        <% else %>
+          <div style="display: inline-block; background: #f3f4f6; color: #6b7280; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-bottom: 8px;">Universal</div>
+        <% end %>
+        <div class="meta">
+          <% if adapter[:installed] %>
+            <span style="color: #16a34a;">✓ Installed</span>
+          <% else %>
+            <span style="color: #d97706;">○ Not installed</span>
+          <% end %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+  <div class="note" style="margin-top: 12px;">
+    <strong>Enhanced</strong> adapters capture adapter-specific metadata via middleware/plugin (e.g. Sidekiq jid, retry count).
+    <strong>Universal</strong> adapters use the ActiveJob <code>around_perform</code> hook — same data regardless of which gem is installed.
+  </div>
+</div>
+
+<%# Last Result %>
+<% if @last_result %>
+  <% result = @last_result %>
+  <% success = result["status"] == "success" %>
+  <div class="section" style="margin-bottom: 16px; border-color: <%= success ? '#86efac' : '#fca5a5' %>; background: <%= success ? '#f0fdf4' : '#fef2f2' %>;">
+    <h2 style="color: <%= success ? '#166534' : '#991b1b' %>;">
+      Last Result — <%= success ? "✓ Success" : "✗ Failed" %>
+    </h2>
+    <div class="grid-2">
+      <div>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          <li style="margin-bottom: 6px;"><span class="meta">Adapter triggered:</span> <strong><%= result["adapter"] %></strong></li>
+          <li style="margin-bottom: 6px;"><span class="meta">Job class:</span> <code><%= result["class_name"] %></code></li>
+          <li style="margin-bottom: 6px;"><span class="meta">Job type:</span> <%= result["job_type"] %></li>
+          <li style="margin-bottom: 6px;"><span class="meta">Status recorded:</span> <strong><%= result["status"] %></strong></li>
+        </ul>
+      </div>
+      <div>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          <li style="margin-bottom: 6px;"><span class="meta">Adapter recorded:</span> <code><%= result["adapter_recorded"] || "—" %></code></li>
+          <li style="margin-bottom: 6px;"><span class="meta">Duration:</span> <%= result["duration"] ? "#{result["duration"]} ms" : "—" %></li>
+          <li style="margin-bottom: 6px;"><span class="meta">Run ID:</span> <code><%= result["run_id"] %>…</code></li>
+          <% if result["error"] %>
+            <li style="margin-bottom: 6px;"><span class="meta">Error:</span> <span style="color: #991b1b;"><%= result["error"] %></span></li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  </div>
+<% end %>
+
+<%# Adapter Trigger Cards %>
+<div class="section" style="margin-bottom: 16px;">
+  <h2>Trigger Jobs</h2>
+  <div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px;">
+    <% @adapters.each do |adapter| %>
+      <div class="card">
+        <div style="margin-bottom: 10px;">
+          <div style="font-weight: 600; font-size: 13px; margin-bottom: 3px;"><%= adapter[:label] %></div>
+          <div class="meta"><%= adapter[:description] %></div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 6px;">
+          <%= button_to "Fast Job", trigger_job_path,
+                params: { adapter: adapter[:key], job_type: "fast" },
+                form_style: "display: block;",
+                style: "width: 100%; padding: 6px 10px; font-size: 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; text-align: left;" %>
+          <%= button_to "Slow Job (~1-2s)", trigger_job_path,
+                params: { adapter: adapter[:key], job_type: "slow" },
+                form_style: "display: block;",
+                style: "width: 100%; padding: 6px 10px; font-size: 12px; background: #f3f4f6; border: 1px solid #d1d5db; border-radius: 4px; cursor: pointer; text-align: left;" %>
+          <%= button_to "Failing Job", trigger_job_path,
+                params: { adapter: adapter[:key], job_type: "failing" },
+                form_style: "display: block;",
+                style: "width: 100%; padding: 6px 10px; font-size: 12px; background: #fef2f2; border: 1px solid #fca5a5; border-radius: 4px; cursor: pointer; text-align: left; color: #991b1b;" %>
+        </div>
+      </div>
+    <% end %>
+  </div>
+</div>
+
+<%# Recent Job Runs %>
+<div class="section">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+    <h2 style="margin: 0;">Recent Job Runs</h2>
+    <%= link_to "View all in Rails Pulse →", "/rails_pulse/job_runs", style: "font-size: 12px; color: #6b7280;" %>
+  </div>
+
+  <% if @recent_runs.any? %>
+    <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+      <thead>
+        <tr style="border-bottom: 1px solid #e0e0e0; text-align: left;">
+          <th style="padding: 6px 8px; color: #6b7280; font-weight: 500;">Adapter</th>
+          <th style="padding: 6px 8px; color: #6b7280; font-weight: 500;">Job Class</th>
+          <th style="padding: 6px 8px; color: #6b7280; font-weight: 500;">Status</th>
+          <th style="padding: 6px 8px; color: #6b7280; font-weight: 500;">Duration</th>
+          <th style="padding: 6px 8px; color: #6b7280; font-weight: 500;">Attempts</th>
+          <th style="padding: 6px 8px; color: #6b7280; font-weight: 500;">Occurred At</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% @recent_runs.each do |run| %>
+          <tr style="border-bottom: 1px solid #f3f4f6;">
+            <td style="padding: 6px 8px;"><code><%= run.adapter %></code></td>
+            <td style="padding: 6px 8px;"><%= run.job&.name %></td>
+            <td style="padding: 6px 8px;">
+              <% color = { "success" => "#16a34a", "failed" => "#dc2626", "running" => "#2563eb", "discarded" => "#9333ea" }.fetch(run.status, "#6b7280") %>
+              <span style="color: <%= color %>; font-weight: 500;"><%= run.status %></span>
+              <% if run.error_class %>
+                <div class="meta"><%= run.error_class %></div>
+              <% end %>
+            </td>
+            <td style="padding: 6px 8px;"><%= run.duration ? "#{run.duration.round(1)} ms" : "—" %></td>
+            <td style="padding: 6px 8px;"><%= run.attempts %></td>
+            <td style="padding: 6px 8px;" class="meta"><%= run.occurred_at&.strftime("%H:%M:%S") %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <p class="meta">No job runs yet. Trigger a job above to see results here.</p>
+  <% end %>
+</div>

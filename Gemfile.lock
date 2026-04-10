@@ -123,6 +123,13 @@ GEM
     debug (1.11.0)
       irb (~> 1.10)
       reline (>= 0.3.8)
+    delayed_job (4.2.0)
+      activesupport (>= 3.0, < 9.0)
+      benchmark
+      logger
+    delayed_job_active_record (4.1.11)
+      activerecord (>= 3.0, < 9.0)
+      delayed_job (>= 3.0, < 5)
     docile (1.4.1)
     dotenv (3.1.8)
     dotenv-rails (3.1.8)
@@ -131,12 +138,24 @@ GEM
     drb (2.2.3)
     erb (6.0.1)
     erubi (1.13.1)
+    et-orbi (1.4.0)
+      tzinfo
     fiber-annotation (0.2.0)
     fiber-local (1.1.0)
       fiber-storage
     fiber-storage (1.0.1)
+    fugit (1.12.1)
+      et-orbi (~> 1.4)
+      raabro (~> 1.4)
     globalid (1.2.1)
       activesupport (>= 6.1)
+    good_job (4.15.0)
+      activejob (>= 6.1.0)
+      activerecord (>= 6.1.0)
+      concurrent-ruby (>= 1.3.1)
+      fugit (>= 1.11.0)
+      railties (>= 6.1.0)
+      thor (>= 1.0.0)
     i18n (1.14.7)
       concurrent-ruby (~> 1.0)
     importmap-rails (2.2.2)
@@ -173,6 +192,10 @@ GEM
       ruby-progressbar
     mocha (2.7.1)
       ruby2_keywords (>= 0.0.5)
+    mono_logger (1.1.2)
+    multi_json (1.19.1)
+    mustermann (3.0.4)
+      ruby2_keywords (~> 0.0.1)
     mysql2 (0.5.6)
     net-imap (0.5.9)
       date
@@ -220,8 +243,13 @@ GEM
     public_suffix (6.0.2)
     puma (6.6.1)
       nio4r (~> 2.0)
+    raabro (1.4.0)
     racc (1.8.1)
     rack (3.2.0)
+    rack-protection (4.2.1)
+      base64 (>= 0.1.0)
+      logger (>= 1.6.0)
+      rack (>= 3.0.0, < 4)
     rack-session (2.1.1)
       base64 (>= 0.1.0)
       rack (>= 3.0.0)
@@ -272,11 +300,25 @@ GEM
       erb
       psych (>= 4.0.0)
       tsort
+    redis (5.4.1)
+      redis-client (>= 0.22.0)
+    redis-client (0.28.0)
+      connection_pool
+    redis-namespace (1.11.0)
+      redis (>= 4)
     regexp_parser (2.10.0)
     reline (0.6.2)
       io-console (~> 0.5)
     request_store (1.7.0)
       rack (>= 1.4)
+    resque (3.0.0)
+      base64 (~> 0.1)
+      logger
+      mono_logger (~> 1)
+      multi_json (~> 1.0)
+      redis (>= 4.0)
+      redis-namespace (~> 1.6)
+      sinatra (>= 2.0)
     rexml (3.4.1)
     rubocop (1.79.0)
       json (~> 2.3)
@@ -323,12 +365,32 @@ GEM
       websocket (~> 1.0)
     shoulda-matchers (6.5.0)
       activesupport (>= 5.2.0)
+    sidekiq (8.0.10)
+      connection_pool (>= 2.5.0)
+      json (>= 2.9.0)
+      logger (>= 1.6.2)
+      rack (>= 3.1.0)
+      redis-client (>= 0.23.2)
     simplecov (0.22.0)
       docile (~> 1.1)
       simplecov-html (~> 0.11)
       simplecov_json_formatter (~> 0.1)
     simplecov-html (0.13.2)
     simplecov_json_formatter (0.1.4)
+    sinatra (4.2.1)
+      logger (>= 1.6.0)
+      mustermann (~> 3.0)
+      rack (>= 3.0.0, < 4)
+      rack-protection (= 4.2.1)
+      rack-session (>= 2.0.0, < 3)
+      tilt (~> 2.0)
+    solid_queue (1.4.0)
+      activejob (>= 7.1)
+      activerecord (>= 7.1)
+      concurrent-ruby (>= 1.3.1)
+      fugit (~> 1.11)
+      railties (>= 7.1)
+      thor (>= 1.3.1)
     sqlite3 (2.7.3-aarch64-linux-gnu)
     sqlite3 (2.7.3-aarch64-linux-musl)
     sqlite3 (2.7.3-arm-linux-gnu)
@@ -339,6 +401,7 @@ GEM
     sqlite3 (2.7.3-x86_64-linux-musl)
     stringio (3.2.0)
     thor (1.4.0)
+    tilt (2.7.0)
     timecop (0.9.10)
     timeout (0.4.3)
     traces (0.18.2)
@@ -378,7 +441,9 @@ DEPENDENCIES
   capybara
   css-zero (~> 1.1, >= 1.1.4)
   debug
+  delayed_job_active_record
   dotenv-rails
+  good_job
   importmap-rails
   minitest (>= 5.0)
   minitest-reporters
@@ -389,11 +454,14 @@ DEPENDENCIES
   puma
   rails-controller-testing (>= 1.0)
   rails_pulse!
+  resque
   rubocop-minitest
   rubocop-rails-omakase
   selenium-webdriver
   shoulda-matchers
+  sidekiq
   simplecov
+  solid_queue
   sqlite3 (>= 1.4)
   timecop
 
