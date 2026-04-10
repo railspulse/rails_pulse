@@ -12,6 +12,5 @@ module Dummy
 
     # For compatibility with applications that use this config
     config.action_controller.include_all_helpers = false
-
   end
 end
