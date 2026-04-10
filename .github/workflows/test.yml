@@ -6,6 +6,8 @@ on:
   pull_request:
     branches: [ main ]
   workflow_dispatch:
+  schedule:
+    - cron: '0 6 * * 1'  # Every Monday at 6am UTC
 
 jobs:
   test:
@@ -14,8 +16,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        ruby: ["3.2", "3.4"]
+        rails: ["7.2", "8.0", "8.1"]
         database: ["sqlite3", "postgresql"]
-        rails: ["7.2", "8.0"]
 
     services:
       postgres:
@@ -31,12 +34,10 @@ jobs:
         ports:
           - 5432:5432
 
-
     env:
       RAILS_ENV: test
       DB: ${{ matrix.database }}
       CI: true
-      # PostgreSQL configuration for CI
       POSTGRES_USERNAME: postgres
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST: localhost
@@ -48,65 +49,115 @@ jobs:
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
+        ruby-version: ${{ matrix.ruby }}
+        bundler-cache: false
+
+    - name: Map Rails version to gemfile
+      id: gemfile
+      run: |
+        case "${{ matrix.rails }}" in
+          "7.2") echo "path=gemfiles/rails_7_2.gemfile" >> $GITHUB_OUTPUT; echo "appraisal=rails-7-2" >> $GITHUB_OUTPUT ;;
+          "8.0") echo "path=gemfiles/rails_8_0.gemfile" >> $GITHUB_OUTPUT; echo "appraisal=rails-8-0" >> $GITHUB_OUTPUT ;;
+          "8.1") echo "path=gemfiles/rails_8_1.gemfile" >> $GITHUB_OUTPUT; echo "appraisal=rails-8-1" >> $GITHUB_OUTPUT ;;
+        esac
+
+    - name: Install dependencies
+      run: BUNDLE_GEMFILE=${{ steps.gemfile.outputs.path }} bundle install
+
+    - name: Setup database
+      run: |
+        if [[ "${{ matrix.database }}" == "postgresql" ]]; then
+          pg_isready -h localhost -p 5432 || exit 1
+        fi
+        BUNDLE_GEMFILE=${{ steps.gemfile.outputs.path }} bundle exec rake \
+          "test_setup_for_version[${{ matrix.database }},${{ steps.gemfile.outputs.appraisal }}]"
+
+    - name: Run tests
+      run: |
+        DB=${{ matrix.database }} BUNDLE_GEMFILE=${{ steps.gemfile.outputs.path }} \
+          bundle exec appraisal ${{ steps.gemfile.outputs.appraisal }} rake test
+
+  mysql:
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: password
+          MYSQL_DATABASE: rails_pulse_test
+        options: >-
+          --health-cmd "mysqladmin ping -h 127.0.0.1 -u root -ppassword"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 3306:3306
+
+    env:
+      RAILS_ENV: test
+      DB: mysql2
+      CI: true
+      MYSQL_USERNAME: root
+      MYSQL_PASSWORD: password
+      MYSQL_HOST: 127.0.0.1
+      MYSQL_PORT: 3306
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
         ruby-version: '3.4'
         bundler-cache: false
 
     - name: Install dependencies
-      run: |
-        # Map Rails version to gemfile
-        case "${{ matrix.rails }}" in
-          "7.2") GEMFILE=gemfiles/rails_7_2.gemfile ;;
-          "8.0") GEMFILE=gemfiles/rails_8_0.gemfile ;;
-        esac
-
-        BUNDLE_GEMFILE=$GEMFILE bundle install
+      run: BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile bundle install
 
     - name: Setup database
       run: |
-        # Map Rails version to appraisal version and gemfile
-        case "${{ matrix.rails }}" in
-          "7.2")
-            RAILS_VERSION="rails-7-2"
-            GEMFILE=gemfiles/rails_7_2.gemfile
-            ;;
-          "8.0")
-            RAILS_VERSION="rails-8-0"
-            GEMFILE=gemfiles/rails_8_0.gemfile
-            ;;
-        esac
-
-        if [[ "${{ matrix.database }}" == "postgresql" ]]; then
-          echo "Setting up PostgreSQL database..."
-          pg_isready -h localhost -p 5432 || exit 1
-        else
-          echo "Setting up SQLite database..."
-        fi
-
-        # Use our new test_setup_for_version task with correct gemfile
-        BUNDLE_GEMFILE=$GEMFILE bundle exec rake "test_setup_for_version[${{ matrix.database }},$RAILS_VERSION]"
+        BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile bundle exec rake \
+          "test_setup_for_version[mysql2,rails-8-0]"
 
     - name: Run tests
       run: |
-        # Map Rails version to appraisal version and gemfile
-        case "${{ matrix.rails }}" in
-          "7.2")
-            RAILS_VERSION="rails-7-2"
-            GEMFILE=gemfiles/rails_7_2.gemfile
-            ;;
-          "8.0")
-            RAILS_VERSION="rails-8-0"
-            GEMFILE=gemfiles/rails_8_0.gemfile
-            ;;
-        esac
+        DB=mysql2 BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile \
+          bundle exec appraisal rails-8-0 rake test
 
-        # Run tests with the specific Rails version and database using correct gemfile
-        if [[ "${{ matrix.database }}" == "sqlite3" && "$RAILS_VERSION" == "rails-8-0" ]]; then
-          # Default combination
-          BUNDLE_GEMFILE=$GEMFILE bundle exec rake test
-        else
-          # Use appraisal for other combinations
-          DB=${{ matrix.database }} BUNDLE_GEMFILE=$GEMFILE bundle exec appraisal $RAILS_VERSION rake test
-        fi
+  system:
+    runs-on: ubuntu-latest
+
+    env:
+      RAILS_ENV: test
+      DB: sqlite3
+      CI: true
+      PARALLEL_WORKERS: 1
+
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.4'
+        bundler-cache: false
+
+    - name: Set up Chrome
+      uses: browser-actions/setup-chrome@v1
+
+    - name: Install dependencies
+      run: BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile bundle install
+
+    - name: Setup database
+      run: |
+        BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile bundle exec rake \
+          "test_setup_for_version[sqlite3,rails-8-0]"
+
+    - name: Run system tests
+      run: |
+        BUNDLE_GEMFILE=gemfiles/rails_8_0.gemfile \
+          bundle exec appraisal rails-8-0 bundle exec rails test test/system/
 
   lint:
     runs-on: ubuntu-latest

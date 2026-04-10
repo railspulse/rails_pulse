@@ -3,10 +3,18 @@ updates:
 - package-ecosystem: bundler
   directory: "/"
   schedule:
-    interval: daily
-  open-pull-requests-limit: 10
+    interval: weekly
+    day: monday
+  open-pull-requests-limit: 5
+- package-ecosystem: bundler
+  directory: "/gemfiles"
+  schedule:
+    interval: weekly
+    day: monday
+  open-pull-requests-limit: 5
 - package-ecosystem: github-actions
   directory: "/"
   schedule:
-    interval: daily
-  open-pull-requests-limit: 10
+    interval: weekly
+    day: monday
+  open-pull-requests-limit: 5

@@ -32,8 +32,8 @@ group :development, :test do
   gem "debug"
 end
 
-# Background job adapters for the /jobs demo page in test/dummy
-group :development do
+# Background job adapters — used by the /jobs demo page and adapter tests
+group :development, :test do
   gem "sidekiq"
   gem "good_job"
   gem "delayed_job_active_record"

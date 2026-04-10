@@ -140,7 +140,7 @@ task :test do
   puts "=" * 50
   puts
 
-  sh "rails test test/controllers test/helpers test/instrumentation test/jobs test/models test/services"
+  sh "rails test test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb"
 end
 
 desc "Run test suite with code coverage"

@@ -13,6 +13,7 @@ group :test do
   gem "mocha"
   gem "selenium-webdriver"
   gem "shoulda-matchers"
+  gem "simplecov", require: false
   gem "timecop"
 end
 
@@ -24,6 +25,11 @@ end
 
 group :development, :test do
   gem "debug"
+  gem "sidekiq"
+  gem "good_job"
+  gem "delayed_job_active_record"
+  gem "solid_queue"
+  gem "resque"
 end
 
 gemspec path: "../"
