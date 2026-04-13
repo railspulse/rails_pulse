@@ -231,6 +231,10 @@ module RailsPulse
       start_time = 2.months.ago.beginning_of_month
       end_time = 1.month.ago.end_of_month
 
+      travel_to 6.weeks.ago do
+        create_request_with_operation(duration: 100)
+      end
+
       BackfillSummariesJob.new.perform(start_time, end_time, [ "month" ])
 
       summaries = RailsPulse::Summary.where(period_type: "month")
