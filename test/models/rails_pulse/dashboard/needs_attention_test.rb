@@ -415,6 +415,7 @@ module RailsPulse
         result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
 
         storage_items = result[:critical].select { |i| i[:type] == "STORAGE" }
+
         assert_operator storage_items.size, :>=, 1
       end
 
@@ -436,6 +437,7 @@ module RailsPulse
 
         # Storage items should appear even though cap is full
         storage_items = (result[:critical] + result[:warning]).select { |i| i[:type] == "STORAGE" }
+
         assert_operator storage_items.size, :>=, 1
       end
 
@@ -445,6 +447,7 @@ module RailsPulse
         result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
 
         storage_items = (result[:critical] + result[:warning]).select { |i| i[:type] == "STORAGE" }
+
         assert_empty storage_items
       end
 

@@ -65,7 +65,7 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
     end
 
     assert_includes output, "Starting Rails Pulse summary backfill"
-    assert_includes output, "Creating daily summaries"
+    assert_includes output, "Creating hourly and daily summaries"
   end
 
   test "backfill_summaries uses earliest operation when only operations exist" do
@@ -80,7 +80,7 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
     end
 
     assert_includes output, "Starting Rails Pulse summary backfill"
-    assert_includes output, "Creating hourly summaries"
+    assert_includes output, "Creating hourly and daily summaries"
   end
 
   test "backfill_summaries uses earliest of request and operation" do
@@ -107,12 +107,10 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
     daily_job_call = false
     hourly_job_call = false
 
+    combined_job_call = false
+
     RailsPulse::BackfillSummariesJob.stubs(:perform_now).with { |_start, _end, types|
-      if types == [ "day" ]
-        daily_job_call = true
-      elsif types == [ "hour" ]
-        hourly_job_call = true
-      end
+      combined_job_call = true if types == [ "hour", "day" ]
       true
     }
     RailsPulse::Summary.stubs(:count).returns(3)
@@ -121,8 +119,7 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
       Rake::Task["rails_pulse:backfill_summaries"].invoke
     end
 
-    assert daily_job_call, "Expected daily summaries job to be called"
-    assert hourly_job_call, "Expected hourly summaries job to be called"
+    assert combined_job_call, "Expected daily summaries job to be called"
   end
 
   test "backfill_summaries outputs completion message with count" do
@@ -222,8 +219,7 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
       Rake::Task["rails_pulse:backfill_summaries"].invoke
     end
 
-    assert_includes output, "Creating daily summaries"
-    assert_includes output, "Creating hourly summaries"
+    assert_includes output, "Creating hourly and daily summaries"
     assert_includes output, "15"
   end
 end

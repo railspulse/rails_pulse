@@ -8,12 +8,13 @@ AllCops:
   NewCops: enable
   SuggestExtensions: false
   Exclude:
-    - 'tmp/**/*'
-    - 'test/dummy/db/schema.rb'
-    - 'test/dummy/db/rails_pulse_schema.rb'
-    - 'lib/generators/rails_pulse/templates/migrations/*.rb'
-    - 'test/tmp/generator_test/db/migrate/20251018150730_upgrade_rails_pulse_tables.rb'
     - 'gemfiles/**/*'
+    - 'lib/generators/rails_pulse/templates/migrations/*.rb'
+    - 'test/dummy/db/rails_pulse_schema.rb'
+    - 'test/dummy/db/schema.rb'
+    - 'test/tmp/**/*'
+    - 'test/tmp/generator_test/db/migrate/20251018150730_upgrade_rails_pulse_tables.rb'
+    - 'tmp/**/*'
 
 # Ignore Minitest style preferences in test files
 Minitest/NonPublicTestMethod:
