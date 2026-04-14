@@ -79,6 +79,8 @@ module RailsPulse
 
         required_tables.all? { |table| connection.table_exists?(table) }
       rescue
+        false
+      end
 
       def get_rails_pulse_table_names
         # Load the schema file to get the table names dynamically
