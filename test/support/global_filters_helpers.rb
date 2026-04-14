@@ -113,9 +113,11 @@ module GlobalFiltersHelpers
 
     checkbox_id = "tag_#{tag_name.parameterize.underscore}"
     checkbox = find(".dialog__content ##{checkbox_id}")
+
     assert_predicate checkbox, :checked?, "Expected tag '#{tag_name}' to be enabled"
 
     find('.dialog__content a[aria-label="Close"]').click
+
     assert_no_selector ".dialog__content", wait: 3
   end
 
@@ -124,9 +126,11 @@ module GlobalFiltersHelpers
 
     checkbox_id = "tag_#{tag_name.parameterize.underscore}"
     checkbox = find(".dialog__content ##{checkbox_id}")
+
     assert_not checkbox.checked?, "Expected tag '#{tag_name}' to be disabled"
 
     find('.dialog__content a[aria-label="Close"]').click
+
     assert_no_selector ".dialog__content", wait: 3
   end
 end
