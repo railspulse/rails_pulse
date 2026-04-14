@@ -266,9 +266,13 @@ module RailsPulse
       end
 
       test "finds peak execution periods" do
-        # Create operations with one peak period
-        normal_ops = create_operations(count: 2, base_time: Time.current)
-        peak_ops = create_operations(count: 10, base_time: Time.current + 6.minutes, time_spacing: 5.seconds)
+        # Align to the start of a 5-minute window boundary. The detector groups operations
+        # into 5-minute windows; if peak_ops (spanning 45s) straddle a boundary they split
+        # and neither half exceeds the 1.5× threshold, causing a ~15% flake rate.
+        window_start = Time.at((Time.current.to_i / 300) * 300)
+
+        normal_ops = create_operations(count: 2, base_time: window_start)
+        peak_ops = create_operations(count: 10, base_time: window_start + 10.minutes, time_spacing: 5.seconds)
         all_operations = normal_ops + peak_ops
 
         detector = NPlusOneDetector.new(@query, all_operations)
