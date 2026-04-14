@@ -11,6 +11,41 @@ module GeneratorTestHelpers
     YAML
   end
 
+  def single_database_yml_with_aliases
+    <<~YAML
+      default: &default
+        adapter: sqlite3
+        pool: 5
+
+      development:
+        <<: *default
+        database: db/development.sqlite3
+
+      test:
+        <<: *default
+        database: db/test.sqlite3
+    YAML
+  end
+
+  def separate_database_yml_with_aliases
+    <<~YAML
+      default: &default
+        adapter: sqlite3
+        pool: 5
+
+      development:
+        <<: *default
+        database: db/development.sqlite3
+
+      test:
+        <<: *default
+        rails_pulse:
+          adapter: sqlite3
+          database: db/test_rails_pulse.sqlite3
+          migrations_paths: db/rails_pulse_migrate
+    YAML
+  end
+
   def separate_database_yml
     <<~YAML
       development:

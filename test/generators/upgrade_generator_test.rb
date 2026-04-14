@@ -46,6 +46,26 @@ test "detects separate database setup from database.yml" do
     assert_match(/Detected database setup: separate/, output)
   end
 
+  test "detects single database setup when database.yml uses YAML aliases" do
+    File.write(File.join(destination_root, "config/database.yml"), single_database_yml_with_aliases)
+
+    output = mock_tables_exist do
+      run_generator([], {})
+    end
+
+    assert_match(/Detected database setup: single/, output)
+  end
+
+  test "detects separate database setup when database.yml uses YAML aliases" do
+    File.write(File.join(destination_root, "config/database.yml"), separate_database_yml_with_aliases)
+
+    output = mock_tables_exist do
+      run_generator([], {})
+    end
+
+    assert_match(/Detected database setup: separate/, output)
+  end
+
   test "detects schema_only when schema exists but no tables" do
     output = mock_no_tables_exist do
       run_generator([], {})

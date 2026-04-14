@@ -60,11 +60,11 @@ module RailsPulse
         return false unless File.exist?(config_path)
 
         require "yaml"
-        db_config = YAML.safe_load(File.read(config_path))
+        db_config = YAML.safe_load(File.read(config_path), aliases: true)
 
         # Check if any environment has a rails_pulse database configuration
         db_config.values.any? { |env| env.is_a?(Hash) && env.key?("rails_pulse") }
-      rescue Psych::SyntaxError, Errno::ENOENT
+      rescue Psych::SyntaxError, Psych::AliasesNotEnabled, Errno::ENOENT
         # If we can't read or parse the file, assume single database
         false
       end

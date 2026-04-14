@@ -168,6 +168,33 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     assert_equal "#{main_app.rails_pulse_path.chomp('/')}/jobs/#{@job.id}/runs", runs_breadcrumb[:path]
   end
 
+  # ============================================================================
+  # Multi-Segment Mount Point Tests
+  # ============================================================================
+
+  test "breadcrumbs works when engine is mounted under a multi-segment path" do
+    RailsPulse::Engine.routes.stubs(:find_script_name).returns("/backstage/devtools/rails_pulse")
+    setup_request_path("/backstage/devtools/rails_pulse/routes")
+
+    crumbs = breadcrumbs
+
+    assert_equal 2, crumbs.length
+    assert_equal "Home", crumbs[0][:title]
+    assert_equal "Routes", crumbs[1][:title]
+  end
+
+  test "breadcrumbs works for resource path under a multi-segment mount point" do
+    RailsPulse::Engine.routes.stubs(:find_script_name).returns("/backstage/devtools/rails_pulse")
+    setup_request_path("/backstage/devtools/rails_pulse/routes/#{@route.id}")
+
+    crumbs = breadcrumbs
+
+    assert_equal 3, crumbs.length
+    assert_equal "Home", crumbs[0][:title]
+    assert_equal "Routes", crumbs[1][:title]
+    assert_equal @route.to_breadcrumb, crumbs[2][:title]
+  end
+
   # Error Handling Tests
 
   test "breadcrumbs handles missing resources gracefully" do
