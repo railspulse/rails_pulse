@@ -69,6 +69,10 @@ module RailsPulse
       parent.table[:occurred_at]
     end
 
+    def to_breadcrumb
+      label.to_s.truncate(60)
+    end
+
     def to_s
       id
     end

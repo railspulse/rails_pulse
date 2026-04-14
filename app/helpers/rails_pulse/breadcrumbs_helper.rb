@@ -1,5 +1,11 @@
 module RailsPulse
   module BreadcrumbsHelper
+    # Maps singularized path segments to their actual model class names
+    # when the default classify convention doesn't match
+    SEGMENT_CLASS_OVERRIDES = {
+      "run" => "JobRun"
+    }.freeze
+
     def breadcrumbs
       # Get the engine's mount point by removing the leading slash and splitting
       mount_point = RailsPulse::Engine.routes.find_script_name({}).sub(/^\//, "")
@@ -34,8 +40,9 @@ module RailsPulse
         title = if segment =~ /^\d+$/
           # If it's a numeric ID, try to find a title from the resource
           resource_name = path_segments[index - 1]&.singularize
-          # Look up the class in the RailsPulse namespace
-          resource_class = "RailsPulse::#{resource_name&.classify}".safe_constantize
+          # Look up the class in the RailsPulse namespace, with override map for non-conventional names
+          class_name = SEGMENT_CLASS_OVERRIDES[resource_name] || resource_name&.classify
+          resource_class = "RailsPulse::#{class_name}".safe_constantize
           if resource_class
             resource = resource_class.find(segment)
             # Try to_breadcrumb first, fall back to to_s
@@ -71,6 +78,17 @@ module RailsPulse
       end
 
       crumbs
+    end
+    def page_title
+      crumbs = breadcrumbs
+      return "Rails Pulse" if crumbs.empty?
+
+      current = crumbs.last
+      if current[:current] && current[:title] != "Home"
+        "#{current[:title]} — Rails Pulse"
+      else
+        "Rails Pulse"
+      end
     end
   end
 end

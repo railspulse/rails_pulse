@@ -73,7 +73,7 @@ module RailsPulse
     end
 
     def to_breadcrumb
-      name
+      name.split("/").map(&:camelize).join("::")
     end
   end
 end

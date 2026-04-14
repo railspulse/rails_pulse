@@ -39,6 +39,10 @@ module RailsPulse
 
     after_commit :apply_to_job_caches, on: %i[create update], if: :finalized?
 
+    def to_breadcrumb
+      occurred_at.getlocal.strftime("%b %d, %Y %l:%M %p")
+    end
+
     def all_tags
       (job.tag_list + tag_list).uniq
     end

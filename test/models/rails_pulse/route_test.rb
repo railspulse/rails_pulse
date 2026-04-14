@@ -52,10 +52,10 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
     assert_equal expected_associations.sort, RailsPulse::Route.ransackable_associations.sort
   end
 
-  test "should return path as breadcrumb" do
+  test "should return method and path as breadcrumb" do
     route = rails_pulse_routes(:api_users)
 
-    assert_equal "/api/users", route.to_breadcrumb
+    assert_equal "GET /api/users", route.to_breadcrumb
   end
 
   test "should return path and method" do
@@ -203,7 +203,7 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
     assert_equal "/api/users/:id/posts GET", route.path_and_method
   end
 
-  test "to_breadcrumb should return path for different path formats" do
+  test "to_breadcrumb should return method and path for different path formats" do
     paths = [
       "/api/users/:id",
       "/api/v1/posts/:post_id/comments",
@@ -213,7 +213,7 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
     paths.each do |path_value|
       route = RailsPulse::Route.create!(method: "GET", path: path_value)
 
-      assert_equal path_value, route.to_breadcrumb
+      assert_equal "GET #{path_value}", route.to_breadcrumb
     end
   end
 

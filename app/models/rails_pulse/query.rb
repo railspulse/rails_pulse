@@ -104,6 +104,10 @@ module RailsPulse
       issues_by_severity["warning"]&.count || 0
     end
 
+    def to_breadcrumb
+      normalized_sql.to_s.truncate(60)
+    end
+
     def to_s
       id
     end

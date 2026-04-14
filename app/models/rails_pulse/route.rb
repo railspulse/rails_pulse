@@ -60,7 +60,7 @@ module RailsPulse
     end
 
     def to_breadcrumb
-      path
+      "#{method.upcase} #{path}".truncate(60)
     end
 
     def self.average_response_time
