@@ -62,12 +62,12 @@ module RailsPulse
         return false unless File.exist?(config_path)
 
         require "yaml"
-        db_config = YAML.load_file(config_path)
+        db_config = YAML.safe_load(File.read(config_path), aliases: true)
 
         # Check if any environment has a rails_pulse database configuration
         db_config.values.any? { |env| env.is_a?(Hash) && env.key?("rails_pulse") }
-      rescue => e
-        # If we can't read the file, assume single database
+      rescue Psych::SyntaxError, Psych::AliasesNotEnabled, Errno::ENOENT
+        # If we can't read or parse the file, assume single database
         false
       end
 
@@ -79,8 +79,6 @@ module RailsPulse
 
         required_tables.all? { |table| connection.table_exists?(table) }
       rescue
-        false
-      end
 
       def get_rails_pulse_table_names
         # Load the schema file to get the table names dynamically
