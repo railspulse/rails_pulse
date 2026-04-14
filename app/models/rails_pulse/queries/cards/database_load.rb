@@ -41,12 +41,12 @@ module RailsPulse
           overall_db_percentage = has_data ? (total_query_time.to_f / total_request_time * 100).round(1) : 0
 
           # Calculate current and previous period percentages using base class quote helper
-          current_query_time = query_summaries.where("period_start >= #{quote(last_n_units)}").sum(:total_duration)
-          current_request_time = route_summaries.where("period_start >= #{quote(last_n_units)}").sum(:total_duration)
+          current_query_time = query_summaries.where("period_start >= ?", last_n_units).sum(:total_duration)
+          current_request_time = route_summaries.where("period_start >= ?", last_n_units).sum(:total_duration)
           current_percentage = current_request_time > 0 ? (current_query_time.to_f / current_request_time * 100) : 0
 
-          previous_query_time = query_summaries.where("period_start >= #{quote(previous_n_units)} AND period_start < #{quote(last_n_units)}").sum(:total_duration)
-          previous_request_time = route_summaries.where("period_start >= #{quote(previous_n_units)} AND period_start < #{quote(last_n_units)}").sum(:total_duration)
+          previous_query_time = query_summaries.where("period_start >= ? AND period_start < ?", previous_n_units, last_n_units).sum(:total_duration)
+          previous_request_time = route_summaries.where("period_start >= ? AND period_start < ?", previous_n_units, last_n_units).sum(:total_duration)
           previous_percentage = previous_request_time > 0 ? (previous_query_time.to_f / previous_request_time * 100) : 0
 
           if has_data

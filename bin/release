@@ -34,14 +34,15 @@ ${BOLD}Usage:${NC}
 
 ${BOLD}What it does:${NC}
   1. Pre-flight checks (git status, branch, etc.)
-  2. Version bump (calls bin/bump_version)
+  2. Brakeman security scan
   3. Pre-release tests (optional - rake test_release)
-  4. Commit changes (calls bin/commit_release)
-  5. Create git tag (calls bin/tag_release)
-  6. Push to GitHub (calls bin/push_release)
-  7. Wait for CI (optional)
-  8. Publish gem (calls bin/publish_gem)
-  9. Open GitHub releases page
+  4. Version bump (calls bin/bump_version)
+  5. Commit changes (calls bin/commit_release)
+  6. Create git tag (calls bin/tag_release)
+  7. Push to GitHub (calls bin/push_release)
+  8. Wait for CI (optional)
+  9. Publish gem (calls bin/publish_gem)
+  10. Open GitHub releases page
 
 ${BOLD}Individual scripts:${NC}
   bin/bump_version <version>      Update version files
@@ -159,7 +160,30 @@ fi
 echo ""
 
 # ============================================================================
-# STEP 2: Pre-release Tests (Optional)
+# STEP 2: Brakeman Security Scan
+# ============================================================================
+echo -e "${BOLD}${BLUE}🔒 Security Scan (Brakeman)${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+if rake brakeman; then
+  echo ""
+  echo -e "${GREEN}✓ No security issues found${NC}"
+else
+  echo ""
+  echo -e "${RED}❌ Brakeman found security issues!${NC}"
+  if ! ask_yes_no "Continue anyway?"; then
+    echo "Aborted. Fix security issues and try again."
+    exit 1
+  fi
+fi
+
+echo ""
+read -p "Press Enter to continue..."
+echo ""
+
+# ============================================================================
+# STEP 3: Pre-release Tests (Optional)
 # ============================================================================
 echo -e "${BOLD}${BLUE}🧪 Pre-release Tests${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -168,6 +192,7 @@ echo ""
 echo "This will run:"
 echo "  • Git status check"
 echo "  • RuboCop linting"
+echo "  • Brakeman security scan"
 echo "  • Asset building"
 echo "  • Gem build verification"
 echo "  • Generator tests"
@@ -199,7 +224,7 @@ read -p "Press Enter to continue..."
 echo ""
 
 # ============================================================================
-# STEP 3: Version Bump
+# STEP 4: Version Bump
 # ============================================================================
 echo -e "${BOLD}${BLUE}📦 Version Bump${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -246,7 +271,7 @@ read -p "Press Enter to continue..."
 echo ""
 
 # ============================================================================
-# STEP 4: Commit Version Bump
+# STEP 5: Commit Version Bump
 # ============================================================================
 echo -e "${BOLD}${BLUE}💾 Commit Version Bump${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -259,7 +284,7 @@ read -p "Press Enter to continue..."
 echo ""
 
 # ============================================================================
-# STEP 5: Create Git Tag
+# STEP 6: Create Git Tag
 # ============================================================================
 echo -e "${BOLD}${BLUE}🏷️  Create Git Tag${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -281,7 +306,7 @@ read -p "Press Enter to continue..."
 echo ""
 
 # ============================================================================
-# STEP 6: Push to GitHub
+# STEP 7: Push to GitHub
 # ============================================================================
 echo -e "${BOLD}${BLUE}↑ Push to GitHub${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -313,7 +338,7 @@ read -p "Press Enter to continue..."
 echo ""
 
 # ============================================================================
-# STEP 7: Publish Gem
+# STEP 8: Publish Gem
 # ============================================================================
 echo -e "${BOLD}${BLUE}💎 Publish Gem to RubyGems${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -337,7 +362,7 @@ read -p "Press Enter to continue..."
 echo ""
 
 # ============================================================================
-# STEP 8: GitHub Release
+# STEP 9: GitHub Release
 # ============================================================================
 echo -e "${BOLD}${BLUE}🌐 GitHub Release${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
