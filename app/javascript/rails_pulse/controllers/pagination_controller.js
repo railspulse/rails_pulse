@@ -22,12 +22,8 @@ export default class extends Controller {
     currentUrl.searchParams.set('limit', limit)
     currentUrl.searchParams.delete('page')
 
-    // Use Turbo.visit for smooth navigation that preserves query params
-    if (typeof Turbo !== 'undefined') {
-      Turbo.visit(currentUrl.toString(), { action: 'replace' })
-    } else {
-      window.location.href = currentUrl.toString()
-    }
+    // Navigate to the new URL with updated limit
+    window.location.href = currentUrl.toString()
   }
 
   // Restore the pagination limit from URL or session storage on page load

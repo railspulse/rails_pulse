@@ -38,18 +38,16 @@
       <% end %>
     </div>
 
-    <% if turbo_frame_request? %>
-      <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
-        <%= render "rails_pulse/queries/table" %>
-      <% end %>
-    <% elsif @has_data %>
+    <% if @has_data %>
       <% if @has_chart_data %>
         <%= render "rails_pulse/queries/chart_tabs" %>
       <% end %>
 
-      <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
-        <%= render "rails_pulse/queries/table" %>
-      <% end %>
+      <div data-controller="rails-pulse--table-sort">
+        <div id="index_table" data-rails-pulse--index-target="indexTable" data-rails-pulse--table-sort-target="tableFrame">
+          <%= render "rails_pulse/queries/table" %>
+        </div>
+      </div>
     <% else %>
       <%= render "rails_pulse/components/empty_state",
       title: "No query data found for the selected filters.",

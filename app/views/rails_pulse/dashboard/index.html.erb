@@ -23,8 +23,7 @@
   </div>
 </div>
 
-<turbo-frame id="dashboard_data">
-  <% metric_strip_cards = [
+<% metric_strip_cards = [
     @percentile_response_times_metric_card&.merge(
       link_url: routes_path(chart_type: "response_time"),
     ),
@@ -187,5 +186,3 @@
       </div>
     <% end %>
   </div>
-
-</turbo-frame>

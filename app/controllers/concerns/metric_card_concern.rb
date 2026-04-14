@@ -19,9 +19,9 @@ module MetricCardConcern
   private
 
   # Sets up all metric cards defined by the controller.
-  # Skips setup for turbo frame requests to avoid unnecessary computation.
+  # Skips setup for partial requests to avoid unnecessary computation.
   def setup_metric_cards
-    return if turbo_frame_request?
+    return if partial_request?
 
     card_params = metric_card_params
 

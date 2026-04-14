@@ -21,29 +21,24 @@ module RailsPulse
         @analysis_results = QueryAnalysisService.analyze_query(@query.id)
 
         respond_to do |format|
-          format.turbo_stream {
-            render turbo_stream: turbo_stream.replace(
-              "query_analysis",
-              partial: "rails_pulse/queries/analysis_section",
-              locals: { query: @query.reload }
-            )
-          }
-          format.html {
-            redirect_to query_path(@query), notice: "Query analysis completed successfully."
-          }
+          if partial_request?
+            # Reload query to get updated analysis data
+            @query.reload
+
+            # Render just the analysis wrapper for partial updates
+            format.html { render partial: "analysis_wrapper", locals: { query: @query }, layout: false }
+          else
+            format.html { redirect_to query_path(@query), notice: "Query analysis completed successfully." }
+          end
         end
       rescue => e
         respond_to do |format|
-          format.turbo_stream {
-            render turbo_stream: turbo_stream.replace(
-              "query_analysis",
-              partial: "rails_pulse/queries/analysis_section",
-              locals: { query: @query, error_message: "Analysis failed: #{e.message}" }
-            )
-          }
-          format.html {
-            redirect_to query_path(@query), alert: "Query analysis failed: #{e.message}"
-          }
+          if partial_request?
+            # Render error state in the analysis wrapper
+            format.html { render partial: "analysis_wrapper", locals: { query: @query, error_message: e.message }, layout: false }
+          else
+            format.html { redirect_to query_path(@query), alert: "Query analysis failed: #{e.message}" }
+          end
         end
       end
     end
@@ -75,7 +70,7 @@ module RailsPulse
     # Override to handle database_load card which has different params
     def setup_metric_cards
       super
-      return if turbo_frame_request?
+      return if partial_request?
 
       # Database load card only shows on index page and doesn't accept query param
       if current_resource.nil?

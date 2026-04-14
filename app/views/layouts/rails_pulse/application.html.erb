@@ -34,9 +34,9 @@
     </script>
 
     <!-- Rails Pulse Pre-compiled Assets (CSP-safe) -->
-    <%= stylesheet_link_tag rails_pulse.asset_path('rails-pulse.css'), 'data-turbo-track': 'reload' %>
-    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse-icons.js'), 'data-turbo-track': 'reload', defer: true, nonce: rails_pulse_csp_nonce %>
-    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse.js'), 'data-turbo-track': 'reload', defer: true, nonce: rails_pulse_csp_nonce %>
+    <%= stylesheet_link_tag rails_pulse.asset_path('rails-pulse.css') %>
+    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse-icons.js'), defer: true, nonce: rails_pulse_csp_nonce %>
+    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse.js'), defer: true, nonce: rails_pulse_csp_nonce %>
   </head>
 
   <body class="header-layout">

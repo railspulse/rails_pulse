@@ -105,15 +105,15 @@
       <!-- Index Controller Test -->
       <div class="card">
         <div class="p-4">
-          <h2 class="text-lg font-semibold mb-3">Index Controller Test (Turbo Frame)</h2>
-          <p class="text-subtle mb-4">Testing CSP-safe DOM manipulation for Turbo Frame updates:</p>
+          <h2 class="text-lg font-semibold mb-3">Index Controller Test (Dynamic Updates)</h2>
+          <p class="text-subtle mb-4">Testing CSP-safe DOM manipulation for partial updates:</p>
 
-          <turbo-frame id="csp-test-frame">
+          <div id="csp-test-frame">
             <div class="bg-shade border border-main rounded-md p-4">
-              <p class="mb-2">This content can be updated via Turbo Frame requests using CSP-safe DOM methods.</p>
+              <p class="mb-2">This content can be updated via fetch requests using CSP-safe DOM methods.</p>
               <p class="text-subtle">No innerHTML usage - only DOM parser and appendChild methods.</p>
             </div>
-          </turbo-frame>
+          </div>
         </div>
       </div>
 

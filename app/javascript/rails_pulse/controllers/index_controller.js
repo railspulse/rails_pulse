@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { fetchAndReplace } from "../utils/fetch_helpers"
 
 export default class extends Controller {
   static targets = ["chart", "paginationLimit", "indexTable"]
@@ -8,7 +9,7 @@ export default class extends Controller {
   }
 
   // Add properties for improved debouncing
-  lastTurboFrameRequestAt = 0;
+  lastFrameRequestAt = 0;
   pendingRequestTimeout = null;
   pendingRequestData = null;
   selectedColumnIndex = null;
@@ -293,7 +294,7 @@ export default class extends Controller {
     if (newDataString !== currentDataString) {
       this.visibleData = newVisibleData;
       this.updateUrlWithZoomParams(newVisibleData);
-      this.sendTurboFrameRequest(newVisibleData);
+      this.sendFrameRequest(newVisibleData);
     }
   }
 
@@ -327,9 +328,9 @@ export default class extends Controller {
     }
 
   // Improved debouncing with guaranteed final request
-  sendTurboFrameRequest(data) {
+  sendFrameRequest(data) {
     const now = Date.now();
-    const timeSinceLastRequest = now - this.lastTurboFrameRequestAt;
+    const timeSinceLastRequest = now - this.lastFrameRequestAt;
 
     // Store the latest data for potential delayed execution
     this.pendingRequestData = data;
@@ -341,20 +342,20 @@ export default class extends Controller {
 
     // If enough time has passed since last request, execute immediately
     if (timeSinceLastRequest >= 1000) {
-      this.executeTurboFrameRequest(data);
+      this.executeFrameRequest(data);
     } else {
       // Otherwise, schedule execution for later to ensure final request goes through
       const remainingTime = 1000 - timeSinceLastRequest;
       this.pendingRequestTimeout = setTimeout(() => {
-        this.executeTurboFrameRequest(this.pendingRequestData);
+        this.executeFrameRequest(this.pendingRequestData);
         this.pendingRequestTimeout = null;
       }, remainingTime);
     }
   }
 
   // Execute the actual AJAX request
-  executeTurboFrameRequest(data) {
-    this.lastTurboFrameRequestAt = Date.now();
+  executeFrameRequest(data) {
+    this.lastFrameRequestAt = Date.now();
 
     // Start with the current page's URL to preserve all existing parameters including sort
     const url = new URL(window.location.href);
@@ -377,83 +378,9 @@ export default class extends Controller {
     // Update the URL's search parameters
     url.search = currentParams.toString();
 
-    fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/vnd.turbo-stream.html, text/html',
-        'Turbo-Frame': this.indexTableTarget.id,
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    })
-    .then(response => {
-      return response.text();
-    })
-    .then(html => {
-      // Find the turbo-frame in the document using the target
-      const frame = this.indexTableTarget;
-      if (frame) {
-        // Parse the response HTML
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        // Find the turbo-frame in the response using the frame's ID
-        const responseFrame = doc.querySelector(`turbo-frame#${frame.id}`);
-        if (responseFrame) {
-          // CSP-safe content replacement using DOM methods
-          this.replaceFrameContent(frame, responseFrame);
-        } else {
-          // No turbo frame in response (e.g. no data for selected period) — clear the table
-          while (frame.firstChild) frame.removeChild(frame.firstChild);
-        }
-      }
-    })
-    .catch(error => console.error('[IndexController] Fetch error:', error));
-  }
-
-  // CSP-safe method to replace frame content using DOM methods
-  replaceFrameContent(targetFrame, sourceFrame) {
-    try {
-      // Clear existing content using DOM methods
-      while (targetFrame.firstChild) {
-        targetFrame.removeChild(targetFrame.firstChild);
-      }
-
-      // Clone and append all child nodes from source frame
-      const children = Array.from(sourceFrame.childNodes);
-      children.forEach(child => {
-        const clonedChild = child.cloneNode(true);
-        targetFrame.appendChild(clonedChild);
-      });
-    } catch (error) {
-      console.error('Error replacing frame content:', error);
-      // Fallback to innerHTML as last resort (not ideal for CSP)
-      targetFrame.innerHTML = sourceFrame.innerHTML;
-    }
-  }
-
-  // CSP-safe fallback method for parsing raw HTML
-  replaceFrameContentFromHTML(targetFrame, html) {
-    try {
-      // Parse HTML safely
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-
-      // Clear existing content
-      while (targetFrame.firstChild) {
-        targetFrame.removeChild(targetFrame.firstChild);
-      }
-
-      // If the HTML contains a single root element, use its children
-      const bodyChildren = Array.from(doc.body.childNodes);
-      bodyChildren.forEach(child => {
-        const clonedChild = child.cloneNode(true);
-        targetFrame.appendChild(clonedChild);
-      });
-    } catch (error) {
-      console.error('Error parsing HTML content:', error);
-      // Last resort fallback
-      targetFrame.innerHTML = html;
-    }
+    // Fetch and replace the index table
+    fetchAndReplace(url.toString(), this.indexTableTarget)
+      .catch(error => console.error('[IndexController] Fetch error:', error));
   }
 
   handleColumnClick(params) {
@@ -620,8 +547,8 @@ export default class extends Controller {
     // Update browser URL to persist column selection
     window.history.replaceState({}, '', url);
 
-    // Send the turbo frame request
-    this.executeTurboFrameRequestForColumn(url);
+    // Send the partial request
+    this.executeFrameRequestForColumn(url);
   }
 
   sendColumnDeselectionRequest() {
@@ -642,42 +569,13 @@ export default class extends Controller {
     // Update browser URL to remove column selection
     window.history.replaceState({}, '', url);
 
-    // Send the turbo frame request to restore default/zoom view
-    this.executeTurboFrameRequestForColumn(url);
+    // Send the partial request to restore default/zoom view
+    this.executeFrameRequestForColumn(url);
   }
 
-  executeTurboFrameRequestForColumn(url) {
-    fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/vnd.turbo-stream.html, text/html',
-        'Turbo-Frame': this.indexTableTarget.id,
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    })
-    .then(response => {
-      return response.text();
-    })
-    .then(html => {
-      // Find the turbo-frame in the document using the target
-      const frame = this.indexTableTarget;
-      if (frame) {
-        // Parse the response HTML
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        // Find the turbo-frame in the response using the frame's ID
-        const responseFrame = doc.querySelector(`turbo-frame#${frame.id}`);
-        if (responseFrame) {
-          // CSP-safe content replacement using DOM methods
-          this.replaceFrameContent(frame, responseFrame);
-        } else {
-          // No turbo frame in response (e.g. no data for selected period) — clear the table
-          while (frame.firstChild) frame.removeChild(frame.firstChild);
-        }
-      }
-    })
-    .catch(error => console.error('[IndexController] Column selection fetch error:', error));
+  executeFrameRequestForColumn(url) {
+    fetchAndReplace(url.toString(), this.indexTableTarget)
+      .catch(error => console.error('[IndexController] Column selection fetch error:', error));
   }
 
   initializeZoomFromUrl() {

@@ -12,31 +12,25 @@ module RailsPulse
       # Validate tag name
       error_message = validate_tag(tag)
       if error_message
-        render_error(error_message)
-        return
+        flash[:alert] = error_message
+      elsif @taggable.add_tag(tag)
+        flash[:notice] = "Tag added"
+      else
+        flash[:alert] = "Failed to add tag"
       end
 
-      # Add tag to taggable
-      unless @taggable.add_tag(tag)
-        render_error("Failed to add tag")
-        return
-      end
-
-      @taggable.reload
-
-      render turbo_stream: turbo_stream.replace("tag_manager_#{@taggable.class.name.demodulize.underscore}_#{@taggable.id}",
-        partial: "rails_pulse/tags/tag_manager",
-        locals: { taggable: @taggable })
+      redirect_back(fallback_location: root_path)
     end
 
     def destroy
       tag = params[:tag]
-      @taggable.remove_tag(tag)
-      @taggable.reload
+      if @taggable.remove_tag(tag)
+        flash[:notice] = "Tag removed"
+      else
+        flash[:alert] = "Failed to remove tag"
+      end
 
-      render turbo_stream: turbo_stream.replace("tag_manager_#{@taggable.class.name.demodulize.underscore}_#{@taggable.id}",
-        partial: "rails_pulse/tags/tag_manager",
-        locals: { taggable: @taggable })
+      redirect_back(fallback_location: root_path)
     end
 
     private
@@ -46,12 +40,6 @@ module RailsPulse
       return "Tag must be #{MAX_TAG_LENGTH} characters or less" if tag.length > MAX_TAG_LENGTH
       return "Tag can only contain letters, numbers, hyphens, and underscores" unless tag.match?(TAG_NAME_REGEX)
       nil
-    end
-
-    def render_error(message)
-      render turbo_stream: turbo_stream.replace("tag_manager_#{@taggable.class.name.demodulize.underscore}_#{@taggable.id}",
-        partial: "rails_pulse/tags/tag_manager",
-        locals: { taggable: @taggable, error: message })
     end
 
     def set_taggable

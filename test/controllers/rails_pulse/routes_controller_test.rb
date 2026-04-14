@@ -154,10 +154,10 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:table_data)
   end
 
-  test "show action skips metric cards on turbo frame request" do
+  test "show action skips metric cards on partial request" do
     setup_basic_test_data
 
-    get rails_pulse.route_path(@route), headers: { "Turbo-Frame" => "table_frame" }
+    get rails_pulse.route_path(@route), headers: { "X-Partial-Request" => "true" }
 
     assert_response :success
     assert_nil assigns(:percentile_response_times_metric_card)
@@ -423,13 +423,13 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:error_rates_metric_card)
   end
 
-  test "metric cards skipped when Turbo-Frame header present" do
+  test "metric cards skipped when X-Partial-Request header present" do
     setup_basic_test_data
 
-    get rails_pulse.routes_path, headers: { "Turbo-Frame" => "table_frame" }
+    get rails_pulse.routes_path, headers: { "X-Partial-Request" => "true" }
 
     assert_response :success
-    # Metric cards should be nil on turbo frame requests
+    # Metric cards should be nil on partial requests
     assert_nil assigns(:percentile_response_times_metric_card)
     assert_nil assigns(:request_count_totals_metric_card)
     assert_nil assigns(:error_rates_metric_card)

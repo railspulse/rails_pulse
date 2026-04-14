@@ -40,20 +40,20 @@
       <% end %>
     </div>
 
-    <% unless turbo_frame_request? %>
-      <% if @has_chart_data %>
-        <%= render "rails_pulse/jobs/chart_tabs" %>
-      <% end %>
+    <% if @has_chart_data %>
+      <%= render "rails_pulse/jobs/chart_tabs" %>
     <% end %>
 
-    <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
-      <% if @table_data && @table_data.any? %>
-        <%= render 'rails_pulse/jobs/job_runs_table' %>
-      <% else %>
-        <%= render 'rails_pulse/components/empty_state',
-            title: 'No runs found for the selected filters.',
-            description: 'Try adjusting your time range or filters to see results.' %>
-      <% end %>
-    <% end %>
+    <div data-controller="rails-pulse--table-sort">
+      <div id="index_table" data-rails-pulse--index-target="indexTable" data-rails-pulse--table-sort-target="tableFrame">
+        <% if @table_data && @table_data.any? %>
+          <%= render 'rails_pulse/jobs/job_runs_table' %>
+        <% else %>
+          <%= render 'rails_pulse/components/empty_state',
+              title: 'No runs found for the selected filters.',
+              description: 'Try adjusting your time range or filters to see results.' %>
+        <% end %>
+      </div>
+    </div>
   <% end %>
 </div>

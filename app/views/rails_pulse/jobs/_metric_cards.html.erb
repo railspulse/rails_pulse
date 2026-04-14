@@ -1,9 +1,7 @@
-<% unless turbo_frame_request? %>
-  <% link_url_for = ->(chart_type) { @job ? job_path(@job, chart_type: chart_type) : jobs_path(chart_type: chart_type) } %>
-  <% metric_cards = [
-    @total_runs_metric_card&.merge(link_url: link_url_for.call("duration")),
-    @failure_rate_metric_card&.merge(link_url: link_url_for.call("failure_rate")),
-    @p95_duration_metric_card&.merge(link_url: link_url_for.call("duration")),
-  ].compact %>
-  <%= render "rails_pulse/components/metric_strip", metrics_data: metric_cards %>
-<% end %>
+<% link_url_for = ->(chart_type) { @job ? job_path(@job, chart_type: chart_type) : jobs_path(chart_type: chart_type) } %>
+<% metric_cards = [
+  @total_runs_metric_card&.merge(link_url: link_url_for.call("duration")),
+  @failure_rate_metric_card&.merge(link_url: link_url_for.call("failure_rate")),
+  @p95_duration_metric_card&.merge(link_url: link_url_for.call("duration")),
+].compact %>
+<%= render "rails_pulse/components/metric_strip", metrics_data: metric_cards %>

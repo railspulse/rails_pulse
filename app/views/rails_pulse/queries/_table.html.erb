@@ -6,7 +6,7 @@
   { field: nil, label: 'Tags', class: 'w-32' }
 ] %>
 
-<table class="table table-fixed mbs-4" data-controller="rails-pulse--table-sort">
+<table class="table table-fixed mbs-4">
   <%= render "rails_pulse/components/table_head", columns: columns %>
 
   <tbody>
@@ -14,7 +14,7 @@
       <tr>
         <td class="truncate-cell">
           <div>
-            <%= link_to html_escape(truncate_sql(summary.normalized_sql)), query_path(summary.query_id), data: { turbo_frame: '_top', } %>
+            <%= link_to html_escape(truncate_sql(summary.normalized_sql)), query_path(summary.query_id) %>
           </div>
         </td>
         <td class="whitespace-nowrap"><%= summary.p95_duration.to_i %> ms</td>

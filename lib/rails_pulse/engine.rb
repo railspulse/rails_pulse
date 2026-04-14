@@ -9,7 +9,6 @@ require "rails_pulse/extensions/active_record"
 require "request_store"
 require "rack/static"
 require "ransack"
-require "turbo-rails"
 
 module RailsPulse
   # Manually load services to avoid Zeitwerk autoload issues

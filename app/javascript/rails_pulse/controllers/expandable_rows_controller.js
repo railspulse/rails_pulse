@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { fetchAndReplace } from "../utils/fetch_helpers"
 
 export default class extends Controller {
   toggle(event) {
@@ -40,10 +41,19 @@ export default class extends Controller {
     triggerRow.classList.add('expanded')
 
     // Lazy load operation details once
-    const frame = detailsRow.querySelector('turbo-frame')
-    if (frame && !frame.getAttribute('src')) {
-      const url = frame.dataset.operationUrl
-      if (url) frame.setAttribute('src', url)
+    const targetDiv = detailsRow.querySelector('[data-operation-url]')
+    if (targetDiv && !targetDiv.dataset.loaded) {
+      const url = targetDiv.dataset.operationUrl
+      if (url) this.loadOperationDetails(url, targetDiv)
+    }
+  }
+
+  async loadOperationDetails(url, targetDiv) {
+    try {
+      await fetchAndReplace(url, targetDiv)
+      targetDiv.dataset.loaded = 'true'
+    } catch (error) {
+      console.error('Operation details fetch error:', error)
     }
   }
 

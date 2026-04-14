@@ -42,7 +42,6 @@ class RailsPulse::TagsHelperTest < ActionView::TestCase
     assert_includes html, "tag-remove"
     assert_includes html, "button"
     assert_includes html, "×"
-    assert_includes html, "data-turbo-frame=\"_top\""
   end
 
   test "render_tag_badge removable without taggable info renders simple badge" do

@@ -33,9 +33,11 @@
   <% end %>
 
   <% if @has_data %>
-    <%= turbo_frame_tag :index_table do %>
-      <%= render 'rails_pulse/requests/table' %>
-    <% end %>
+    <div data-controller="rails-pulse--table-sort">
+      <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">
+        <%= render 'rails_pulse/requests/table' %>
+      </div>
+    </div>
   <% else %>
     <%= render 'rails_pulse/components/empty_state',
         title: 'No request data found for the selected filters.',

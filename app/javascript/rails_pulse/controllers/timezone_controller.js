@@ -6,7 +6,6 @@ export default class extends Controller {
   connect() {
     this.updateTimestamp()
     this.setupObserver()
-    this.setupTurboFrameListener()
   }
 
   disconnect() {
@@ -18,9 +17,6 @@ export default class extends Controller {
     }
     if (this.documentObserver) {
       this.documentObserver.disconnect()
-    }
-    if (this.turboFrameListener) {
-      document.removeEventListener('turbo:frame-load', this.turboFrameListener)
     }
   }
 
@@ -58,19 +54,6 @@ export default class extends Controller {
 
   cachedAtValueChanged() {
     this.updateTimestamp()
-  }
-
-  setupTurboFrameListener() {
-    if (this.targetFrameValue) {
-      this.turboFrameListener = (event) => {
-        // Check if the loaded frame matches our target frame
-        if (event.target && event.target.id === this.targetFrameValue) {
-          // Update timestamp when our target frame loads
-          this.updateTimestamp()
-        }
-      }
-      document.addEventListener('turbo:frame-load', this.turboFrameListener)
-    }
   }
 
   updateTimestamp() {

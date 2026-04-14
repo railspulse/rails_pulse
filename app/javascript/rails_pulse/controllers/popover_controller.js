@@ -1,5 +1,6 @@
 import { Controller } from "@hotwired/stimulus"
 import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/dom"
+import { fetchAndReplace } from "../utils/fetch_helpers"
 
 /**
  * Popover Stimulus Controller
@@ -21,7 +22,7 @@ import { computePosition, flip, shift, offset, autoUpdate } from "@floating-ui/d
  *
  * Features:
  *   - Auto-positioning with collision detection
- *   - Lazy loading of operation details via Turbo frames
+ *   - Lazy loading of operation details via fetch
  *   - CSP-compliant styling using CSS custom properties
  */
 
@@ -89,17 +90,20 @@ export default class extends Controller {
     const operationUrl = this.menuTarget.dataset.operationUrl
     if (!operationUrl) return
 
-    // Find the turbo frame inside the popover
-    const turboFrame = this.menuTarget.querySelector('turbo-frame')
-    if (!turboFrame) return
+    // Find the container inside the popover
+    const targetDiv = this.menuTarget.querySelector('[data-operation-url]')
+    if (!targetDiv || targetDiv.dataset.loaded) return
 
     // Only load if not already loaded (check if still shows loading content)
-    // Use CSP-safe method to check for loading content
-    const hasLoadingContent = this.hasLoadingContent(turboFrame)
+    const hasLoadingContent = this.hasLoadingContent(targetDiv)
     if (!hasLoadingContent) return
 
-    // Set the src attribute to trigger the turbo frame loading
-    turboFrame.src = operationUrl
+    // Fetch and load the operation details
+    fetchAndReplace(operationUrl, targetDiv)
+      .then(() => {
+        targetDiv.dataset.loaded = 'true'
+      })
+      .catch(error => console.error('Popover details fetch error:', error))
   }
 
   // CSP-safe method to check for loading content

@@ -23,7 +23,7 @@ module ChartTableConcern
   def setup_chart_and_table_data
     ransack_params = params[:q] || {}
 
-    unless turbo_frame_request?
+    unless partial_request?
       # Setup chart data first using original time range (no sorting from table)
       setup_chart_data(ransack_params)
       @has_chart_data = meaningful_chart_data?

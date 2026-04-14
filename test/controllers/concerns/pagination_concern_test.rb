@@ -27,7 +27,7 @@ class PaginationConcernTest < ActionController::TestCase
       @action_name_value
     end
 
-    def turbo_frame_request?
+    def partial_request?
       @turbo_frame_request_value
     end
 
@@ -119,7 +119,7 @@ class PaginationConcernTest < ActionController::TestCase
     assert_equal({ json: { status: "ok" } }, @controller.rendered)
   end
 
-  test "set_pagination_limit does not render JSON for turbo frame XHR requests" do
+  test "set_pagination_limit does not render JSON for partial XHR requests" do
     @controller.params = ActionController::Parameters.new({ limit: 25 })
     @controller.xhr = true
     @controller.turbo_frame_request_value = true

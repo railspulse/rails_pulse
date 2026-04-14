@@ -1,6 +1,5 @@
 import * as echarts from "echarts";
 import "./theme";
-import * as Turbo from "@hotwired/turbo";
 import { Application } from "@hotwired/stimulus";
 
 // CSS Zero Controllers
@@ -28,6 +27,7 @@ import FlameGraphController from "./controllers/flame_graph_controller";
 import ChartSwitcherController from "./controllers/chart_switcher_controller";
 import PeriodSelectorController from "./controllers/period_selector_controller";
 import TimeRangeController from "./controllers/time_range_controller";
+import QueryAnalyzerController from "./controllers/query_analyzer_controller";
 
 const application = Application.start();
 
@@ -37,9 +37,6 @@ window.Stimulus = application;
 
 // Make ECharts available globally for chart rendering
 window.echarts = echarts;
-
-// Make Turbo available globally
-window.Turbo = Turbo;
 
 application.register("rails-pulse--context-menu", ContextMenuController);
 application.register("rails-pulse--datepicker", DatePickerController);
@@ -64,39 +61,7 @@ application.register("rails-pulse--flame-graph", FlameGraphController);
 application.register("rails-pulse--chart-switcher", ChartSwitcherController);
 application.register("rails-pulse--period-selector", PeriodSelectorController);
 application.register("rails-pulse--time-range", TimeRangeController);
-
-// Ensure Turbo Frames are loaded after page load
-document.addEventListener('DOMContentLoaded', () => {
-  // Force Turbo to process any frames with src attributes
-  const frames = document.querySelectorAll('turbo-frame[src]:not([complete])');
-  frames.forEach(frame => {
-    // Trigger frame loading by temporarily removing and re-adding src
-    const src = frame.getAttribute('src');
-    if (src) {
-      frame.removeAttribute('src');
-      setTimeout(() => frame.setAttribute('src', src), 10);
-    }
-  });
-});
-
-// Also handle frames that are added dynamically
-const observer = new MutationObserver((mutations) => {
-  mutations.forEach((mutation) => {
-    if (mutation.type === 'childList') {
-      mutation.addedNodes.forEach((node) => {
-        if (node.nodeType === 1 && node.tagName === 'TURBO-FRAME' && node.hasAttribute('src') && !node.hasAttribute('complete')) {
-          const src = node.getAttribute('src');
-          if (src) {
-            node.removeAttribute('src');
-            setTimeout(() => node.setAttribute('src', src), 10);
-          }
-        }
-      });
-    }
-  });
-});
-
-observer.observe(document.body, { childList: true, subtree: true });
+application.register("rails-pulse--query-analyzer", QueryAnalyzerController);
 
 // Register ECharts theme for Rails Pulse
 echarts.registerTheme('railspulse', {

@@ -6,14 +6,14 @@
   { field: nil, label: 'Tags', class: 'w-32', sortable: false }
 ] %>
 
-<table class="table mbs-4" data-controller="rails-pulse--table-sort">
+<table class="table mbs-4">
   <%= render "rails_pulse/components/table_head", columns: columns %>
 
   <tbody>
     <% @table_data.each do |run| %>
       <tr>
         <td>
-          <%= link_to run.occurred_at.strftime("%b %d, %Y %l:%M %p"), job_run_path(@job, run), data: { turbo_frame: '_top' } %>
+          <%= link_to run.occurred_at.strftime("%b %d, %Y %l:%M %p"), job_run_path(@job, run) %>
         </td>
         <td>
           <%= run.status.humanize %>

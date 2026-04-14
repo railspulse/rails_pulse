@@ -32,21 +32,21 @@
       <% end %>
     </div>
 
-    <% unless turbo_frame_request? %>
-      <% if @has_chart_data %>
-        <%= render "rails_pulse/queries/chart_tabs" %>
-      <% end %>
+    <% if @has_chart_data %>
+      <%= render "rails_pulse/queries/chart_tabs" %>
     <% end %>
 
-    <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
-      <% if @table_data && @table_data.any? %>
-        <%= render 'rails_pulse/queries/show_table' %>
-      <% else %>
-        <%= render 'rails_pulse/components/empty_state',
-            title: 'No query responses found for the selected filters.',
-            description: 'Try adjusting your time range or filters to see results.' %>
-      <% end %>
-    <% end %>
+    <div data-controller="rails-pulse--table-sort">
+      <div id="index_table" data-rails-pulse--index-target="indexTable" data-rails-pulse--table-sort-target="tableFrame">
+        <% if @table_data && @table_data.any? %>
+          <%= render 'rails_pulse/queries/show_table' %>
+        <% else %>
+          <%= render 'rails_pulse/components/empty_state',
+              title: 'No query responses found for the selected filters.',
+              description: 'Try adjusting your time range or filters to see results.' %>
+        <% end %>
+      </div>
+    </div>
   <% end %>
 </div>
 
@@ -54,9 +54,7 @@
   <%= render 'rails_pulse/components/code_panel', { title: 'Normalized Query', value: @query.normalized_sql } %>
 </div>
 
-<%= turbo_frame_tag "query_analysis", class: "mb-4" do %>
-  <%= render 'rails_pulse/queries/analysis_section', query: @query %>
-<% end %>
+<%= render 'rails_pulse/queries/analysis_wrapper', query: @query %>
 
 <%= render 'rails_pulse/components/panel', { title: 'Query Locations' } do %>
   <table class="table">

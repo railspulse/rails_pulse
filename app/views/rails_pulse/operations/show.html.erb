@@ -3,7 +3,7 @@
 <h1>Operation <%= @operation.id %></h1>
 
 <div class="card">
-  <%= turbo_frame_tag "operation_#{@operation.id}_details" do %>
+  <div id="operation_<%= @operation.id %>_details">
     <% if @operation.operation_type == "sql" %>
       <div class="mbe-4">
         <%= render 'rails_pulse/components/code_panel', { value: @operation.label } %>
@@ -79,5 +79,5 @@
         </dd>
       <% end %>
     </dl>
-  <% end %>
+  </div>
 </div>

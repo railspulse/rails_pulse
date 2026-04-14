@@ -23,7 +23,7 @@ class TagsTest < ApplicationSystemTestCase
     visit_rails_pulse_path "/jobs/#{@job.id}"
 
     # Wait for page to load
-    assert_selector "body", wait: 5
+    assert_selector ".tag-manager", wait: 5
 
     # === Add a tag ===
     # Click the "tag +" button to open the tag menu
@@ -37,11 +37,11 @@ class TagsTest < ApplicationSystemTestCase
       click_button "Critical"
     end
 
-    # Wait for page to reload after adding tag
-    assert_selector "body", wait: 5
+    # Brief pause to allow full page redirect to complete
+    sleep 0.1
 
     # Verify tag was added and appears in the tag list
-    assert_selector ".badge", text: "Critical"
+    assert_selector ".badge", text: "Critical", wait: 5
 
     # === Remove the tag ===
     # Find and click the remove button (X) on the tag
@@ -53,11 +53,11 @@ class TagsTest < ApplicationSystemTestCase
       end
     end
 
-    # Wait for page to reload after removing tag
-    assert_selector "body", wait: 5
+    # Brief pause to allow full page redirect to complete
+    sleep 0.1
 
     # Verify tag was removed
-    assert_no_selector ".badge", text: "Critical"
+    assert_no_selector ".badge", text: "Critical", wait: 5
 
     # === Add multiple tags ===
     # Click the "tag +" button again
@@ -69,8 +69,10 @@ class TagsTest < ApplicationSystemTestCase
       click_button "Monitoring"
     end
 
-    assert_selector "body", wait: 5
-    assert_selector ".badge", text: "Monitoring"
+    # Brief pause to allow full page redirect to complete
+    sleep 0.1
+
+    assert_selector ".badge", text: "Monitoring", wait: 5
 
     # Add another tag
     find(".tag-add-button", text: "tag +").click
@@ -81,10 +83,11 @@ class TagsTest < ApplicationSystemTestCase
       click_button "Scheduled"
     end
 
-    assert_selector "body", wait: 5
+    # Brief pause to allow full page redirect to complete
+    sleep 0.1
 
     # Verify both tags are present
-    assert_selector ".badge", text: "Monitoring"
+    assert_selector ".badge", text: "Monitoring", wait: 5
     assert_selector ".badge", text: "Scheduled"
 
     # === Remove one of the tags ===
@@ -95,10 +98,11 @@ class TagsTest < ApplicationSystemTestCase
       end
     end
 
-    assert_selector "body", wait: 5
+    # Brief pause to allow full page redirect to complete
+    sleep 0.1
 
     # Verify only one tag remains
-    assert_no_selector ".badge", text: "Monitoring"
+    assert_no_selector ".badge", text: "Monitoring", wait: 5
     assert_selector ".badge", text: "Scheduled"
   end
 end

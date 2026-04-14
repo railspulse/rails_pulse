@@ -44,7 +44,7 @@ class MetricCardConcernTest < ActionController::TestCase
       (session[:global_filters] || {})["disabled_tags"] || []
     end
 
-    def turbo_frame_request?
+    def partial_request?
       false
     end
   end
@@ -63,8 +63,8 @@ class MetricCardConcernTest < ActionController::TestCase
 
   # setup_metric_cards Tests
 
-  test "setup_metric_cards skips when turbo_frame_request returns true" do
-    @controller.stubs(:turbo_frame_request?).returns(true)
+  test "setup_metric_cards skips when partial_request returns true" do
+    @controller.stubs(:partial_request?).returns(true)
     @controller.instance_variable_set(:@start_time, 7.days.ago.to_i)
     @controller.instance_variable_set(:@end_time, @now.to_i)
 
@@ -75,7 +75,7 @@ class MetricCardConcernTest < ActionController::TestCase
   end
 
   test "setup_metric_cards instantiates cards from metric_card_definitions" do
-    @controller.stubs(:turbo_frame_request?).returns(false)
+    @controller.stubs(:partial_request?).returns(false)
     @controller.instance_variable_set(:@start_time, 7.days.ago.to_i)
     @controller.instance_variable_set(:@end_time, @now.to_i)
 
@@ -86,7 +86,7 @@ class MetricCardConcernTest < ActionController::TestCase
   end
 
   test "setup_metric_cards sets instance variable for each card" do
-    @controller.stubs(:turbo_frame_request?).returns(false)
+    @controller.stubs(:partial_request?).returns(false)
     @controller.instance_variable_set(:@start_time, 7.days.ago.to_i)
     @controller.instance_variable_set(:@end_time, @now.to_i)
 
@@ -99,7 +99,7 @@ class MetricCardConcernTest < ActionController::TestCase
   end
 
   test "setup_metric_cards passes metric_card_params to each card" do
-    @controller.stubs(:turbo_frame_request?).returns(false)
+    @controller.stubs(:partial_request?).returns(false)
     @controller.instance_variable_set(:@start_time, 7.days.ago.to_i)
     @controller.instance_variable_set(:@end_time, @now.to_i)
     @controller.session[:global_filters] = { "disabled_tags" => [ "tag1" ] }
@@ -113,7 +113,7 @@ class MetricCardConcernTest < ActionController::TestCase
   end
 
   test "setup_metric_cards calls to_metric_card on each card class" do
-    @controller.stubs(:turbo_frame_request?).returns(false)
+    @controller.stubs(:partial_request?).returns(false)
     @controller.instance_variable_set(:@start_time, 7.days.ago.to_i)
     @controller.instance_variable_set(:@end_time, @now.to_i)
 
@@ -128,7 +128,7 @@ class MetricCardConcernTest < ActionController::TestCase
 
   test "setup_metric_cards handles empty metric_card_definitions" do
     @controller.stubs(:metric_card_definitions).returns({})
-    @controller.stubs(:turbo_frame_request?).returns(false)
+    @controller.stubs(:partial_request?).returns(false)
     @controller.instance_variable_set(:@start_time, 7.days.ago.to_i)
     @controller.instance_variable_set(:@end_time, @now.to_i)
 

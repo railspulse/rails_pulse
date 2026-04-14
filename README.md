@@ -832,8 +832,7 @@ Rails Pulse is built using modern, battle-tested technologies that ensure reliab
 ### **Frontend Technologies**
 - **[CSS Zero](https://github.com/lazaronixon/css-zero)** - Modern utility-first CSS framework bundled for asset independence
 - **[Stimulus](https://stimulus.hotwired.dev/)** - Progressive JavaScript framework for enhanced interactivity
-- **[Turbo](https://turbo.hotwired.dev/)** - Fast navigation and real-time updates without full page reloads
-- **[Turbo Frames](https://turbo.hotwired.dev/handbook/frames)** - Lazy loading and partial page updates for optimal performance
+- **Fetch API + DOMParser** - Lightweight partial page updates with CSP-safe DOM manipulation
 
 ### **Data Visualization**
 - **[Apache ECharts](https://echarts.apache.org/)** - Powerful, interactive charting library

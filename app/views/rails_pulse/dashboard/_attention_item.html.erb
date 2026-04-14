@@ -59,7 +59,6 @@
         href="<%= item[:link] %>"
         class="font-semibold text-sm text-primary"
         style="color: var(--color-link); <%= item[:monospace] ? "font-family: monospace; font-size: 0.8em;" : "" %>"
-        data-turbo="false"
       ><%= item[:name] %></a>
     <% end %>
     <p class="text-xs text-subtle mbs-0"><%= item[:reason] %></p>

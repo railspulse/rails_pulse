@@ -13,8 +13,8 @@ module PaginationConcern
     validated_limit = validate_pagination_limit(limit)
     session[:pagination_limit] = validated_limit if limit.present?
 
-    # Render JSON for direct API calls or AJAX requests (but not turbo frame requests)
-    if (request.xhr? && !turbo_frame_request?) || (request.patch? && action_name == "set_pagination_limit")
+    # Render JSON for direct API calls or AJAX requests (but not partial requests)
+    if (request.xhr? && !partial_request?) || (request.patch? && action_name == "set_pagination_limit")
         render json: { status: "ok" }
     end
   end

@@ -83,10 +83,6 @@ body {
   text-rendering: optimizeLegibility;
 }
 
-.turbo-progress-bar {
-  background-color: #4a8136
-}
-
 ::selection {
   background-color: var(--color-selected);
 }

@@ -68,6 +68,10 @@ module RailsPulse
 
     private
 
+    def partial_request?
+      request.headers["X-Partial-Request"] == "true"
+    end
+
     def logger
       RailsPulse.logger
     end

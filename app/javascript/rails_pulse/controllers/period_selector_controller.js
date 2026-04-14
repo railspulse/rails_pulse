@@ -1,8 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 // Handles the 7d/14d/30d period toggle on the dashboard.
-// Optimistically updates button active state on click; Turbo handles the
-// frame navigation via data-turbo-frame on the anchor tags.
+// Optimistically updates button active state on click.
 export default class extends Controller {
   static targets = ["button"]
 

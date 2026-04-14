@@ -6,7 +6,6 @@
 
   <% if query.has_recent_operations? %>
     <%= button_to analyze_query_path(query), method: :post,
-        data: { turbo_frame: "query_analysis" },
         class: "btn btn--primary" do %>
       Analyze Query
     <% end %>

@@ -53,9 +53,9 @@
               </td>
 
               <td>
-                <%= link_to rails_pulse_icon('eye', width: '16', class: 'inline-block mbi-2'), operation_path(bar.operation), title: 'View details', data: { turbo_frame: "_top" } %>
+                <%= link_to rails_pulse_icon('eye', width: '16', class: 'inline-block mbi-2'), operation_path(bar.operation), title: 'View details' %>
                 <% if bar.operation.operation_type == "sql" && bar.operation.query.present? %>
-                  <%= link_to rails_pulse_icon('database', width: '16', class: 'inline-block'), query_path(bar.operation.query), title: 'View query', data: { turbo_frame: "_top" } %>
+                  <%= link_to rails_pulse_icon('database', width: '16', class: 'inline-block'), query_path(bar.operation.query), title: 'View query' %>
                 <% end %>
               </td>
             </tr>
@@ -66,8 +66,8 @@
               data-operation-id="<%= bar.operation.id %>"
             >
               <td colspan="7" class="pi-8 pb-4">
-                <%= turbo_frame_tag "operation_#{bar.operation.id}_details", data: { "operation-url": operation_path(bar.operation) } do %>
-                <% end %>
+                <div id="operation_<%= bar.operation.id %>_details" data-operation-url="<%= operation_path(bar.operation) %>">
+                </div>
               </td>
             </tr>
         <% end %>

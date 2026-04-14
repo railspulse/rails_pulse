@@ -38,7 +38,7 @@ class ChartTableConcernTest < ActionController::TestCase
     def current_resource; nil; end
     def chart_options; {}; end
 
-    def turbo_frame_request?; false; end
+    def partial_request?; false; end
     def action_name; "index"; end
   end
 
@@ -108,7 +108,7 @@ class ChartTableConcernTest < ActionController::TestCase
   # New Tests - setup_chart_and_table_data
 
   test "setup_chart_and_table_data calls setup_chart_data when not turbo frame" do
-    @controller.stubs(:turbo_frame_request?).returns(false)
+    @controller.stubs(:partial_request?).returns(false)
     @controller.expects(:setup_chart_data).once
     @controller.stubs(:setup_table_data)
     @controller.stubs(:meaningful_chart_data?).returns(true)
@@ -118,7 +118,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "setup_chart_and_table_data skips chart setup for turbo frame requests" do
-    @controller.stubs(:turbo_frame_request?).returns(true)
+    @controller.stubs(:partial_request?).returns(true)
     @controller.expects(:setup_chart_data).never
     @controller.stubs(:setup_table_data)
     @controller.stubs(:has_meaningful_data?).returns(true)
@@ -127,7 +127,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "setup_chart_and_table_data always calls setup_table_data" do
-    @controller.stubs(:turbo_frame_request?).returns(true)
+    @controller.stubs(:partial_request?).returns(true)
     @controller.expects(:setup_table_data).once
     @controller.stubs(:has_meaningful_data?).returns(true)
 
@@ -135,7 +135,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "setup_chart_and_table_data sets @has_chart_data" do
-    @controller.stubs(:turbo_frame_request?).returns(false)
+    @controller.stubs(:partial_request?).returns(false)
     @controller.stubs(:setup_chart_data)
     @controller.stubs(:setup_table_data)
     @controller.stubs(:meaningful_chart_data?).returns(true)
@@ -147,7 +147,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "setup_chart_and_table_data sets @has_data" do
-    @controller.stubs(:turbo_frame_request?).returns(false)
+    @controller.stubs(:partial_request?).returns(false)
     @controller.stubs(:setup_chart_data)
     @controller.stubs(:setup_table_data)
     @controller.stubs(:meaningful_chart_data?).returns(true)
@@ -161,7 +161,7 @@ class ChartTableConcernTest < ActionController::TestCase
   test "setup_chart_and_table_data uses params[:q] or empty hash" do
     q_params = ActionController::Parameters.new({ test: "value" })
     @controller.params = ActionController::Parameters.new({ q: q_params })
-    @controller.stubs(:turbo_frame_request?).returns(false)
+    @controller.stubs(:partial_request?).returns(false)
     @controller.stubs(:meaningful_chart_data?).returns(true)
     @controller.stubs(:has_meaningful_data?).returns(true)
 
