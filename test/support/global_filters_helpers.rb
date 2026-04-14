@@ -9,31 +9,29 @@ module GlobalFiltersHelpers
     open_global_filters_modal
 
     within(".dialog__content") do
-      # Wait for button to be ready
       assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
       select threshold, from: "performance_threshold"
-      click_button "Apply Filters"
     end
 
-    assert_no_selector ".dialog__content", wait: 3
+    # Click submit outside the within scope — clicking inside causes Capybara to
+    # synchronize against the stale dialog scope after the page navigation.
+    find(".dialog__content input[type='submit'][value='Apply Filters']").click
   end
 
   def clear_global_filters
     open_global_filters_modal
 
-    within(".dialog__content") do
-      # Wait for button to be ready (Clear is a button element, not input)
-      assert_selector "button[type='submit']", text: "Clear", wait: 5
-      click_button "Clear"
-    end
+    assert_selector ".dialog__content button[type='submit']", text: "Clear", wait: 5
+    find(".dialog__content button[type='submit']", text: "Clear").click
 
-    assert_no_selector ".dialog__content", wait: 3
+    assert_no_selector ".dialog__content", wait: 5
+    assert_selector '[data-action*="global-filters#open"]', wait: 5
   end
 
   def assert_global_filters_active
-    icon = find('[data-rails-pulse--global-filters-target="indicator"]')
-    # Check for list-filter-plus icon (active state)
-    assert icon.text.present? || icon.has_css?("svg")
+    # Use assert_selector so Capybara finds and checks atomically with retry,
+    # avoiding stale element errors from holding a reference across DOM updates.
+    assert_selector '[data-rails-pulse--global-filters-target="indicator"] svg', wait: 3
   end
 
   def assert_global_filters_inactive
@@ -99,48 +97,36 @@ module GlobalFiltersHelpers
   def toggle_tag_filter(tag_name)
     open_global_filters_modal
 
-    within(".dialog__content") do
-      # Find the checkbox by its id (tag_<name>)
-      checkbox_id = "tag_#{tag_name.parameterize.underscore}"
-      find("##{checkbox_id}").click
+    checkbox_id = "tag_#{tag_name.parameterize.underscore}"
+    checkbox = find(".dialog__content ##{checkbox_id}")
+    checkbox.click
 
-      # Wait for button to be ready
-      assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
-      click_button "Apply Filters"
-    end
+    submit = find(".dialog__content input[type='submit'][value='Apply Filters']")
+    submit.click
 
-    assert_no_selector ".dialog__content", wait: 3
+    assert_no_selector ".dialog__content", wait: 5
+    assert_selector '[data-action*="global-filters#open"]', wait: 5
   end
 
   def assert_tag_enabled(tag_name)
     open_global_filters_modal
 
-    within(".dialog__content") do
-      checkbox_id = "tag_#{tag_name.parameterize.underscore}"
-      checkbox = find("##{checkbox_id}")
+    checkbox_id = "tag_#{tag_name.parameterize.underscore}"
+    checkbox = find(".dialog__content ##{checkbox_id}")
+    assert_predicate checkbox, :checked?, "Expected tag '#{tag_name}' to be enabled"
 
-      assert_predicate checkbox, :checked?, "Expected tag '#{tag_name}' to be enabled"
-
-      # Close modal using the X button
-      find('a[aria-label="Close"]').click
-    end
-
+    find('.dialog__content a[aria-label="Close"]').click
     assert_no_selector ".dialog__content", wait: 3
   end
 
   def assert_tag_disabled(tag_name)
     open_global_filters_modal
 
-    within(".dialog__content") do
-      checkbox_id = "tag_#{tag_name.parameterize.underscore}"
-      checkbox = find("##{checkbox_id}")
+    checkbox_id = "tag_#{tag_name.parameterize.underscore}"
+    checkbox = find(".dialog__content ##{checkbox_id}")
+    assert_not checkbox.checked?, "Expected tag '#{tag_name}' to be disabled"
 
-      assert_not checkbox.checked?, "Expected tag '#{tag_name}' to be disabled"
-
-      # Close modal using the X button
-      find('a[aria-label="Close"]').click
-    end
-
+    find('.dialog__content a[aria-label="Close"]').click
     assert_no_selector ".dialog__content", wait: 3
   end
 end

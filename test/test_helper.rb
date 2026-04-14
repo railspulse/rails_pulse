@@ -31,7 +31,7 @@ class ActiveSupport::TestCase
   # Enable parallel testing for local performance
   # Disable when BROWSER is set to avoid multiple browser windows
   # Disable when COVERAGE is set for accurate coverage tracking
-  parallelize(workers: (ENV["BROWSER"] || ENV["COVERAGE"]) ? 0 : :number_of_processors)
+  parallelize(workers: (ENV["BROWSER"] == "true" || ENV["COVERAGE"] == "true") ? 0 : :number_of_processors)
 
   parallelize_setup do |worker|
     require "mocha/minitest"

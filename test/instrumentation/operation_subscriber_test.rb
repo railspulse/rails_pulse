@@ -232,9 +232,9 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     end
 
     operations = RequestStore.store[:rails_pulse_operations]
-    operation = operations.first
 
-    assert_equal "SELECT * FROM users", operation[:label]
+    assert_not_empty operations, "Expected SQL operation to be captured"
+    assert_equal "SELECT * FROM users", operations.first[:label]
   end
 
   test "should handle HTTP client operations" do

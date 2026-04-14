@@ -22,7 +22,7 @@ class InstallGeneratorTest < Rails::Generators::TestCase
     run_generator
 
     assert_file "db/rails_pulse_schema.rb" do |content|
-      assert_match(/RailsPulse::Schema = lambda/, content)
+      assert_match(/RailsPulse::Schema ||= lambda/, content)
       assert_match(/create_table :rails_pulse_routes/, content)
     end
   end

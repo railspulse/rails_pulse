@@ -4,6 +4,8 @@ module RailsPulse
 
     self.table_name = "rails_pulse_requests"
 
+    attribute :is_error, :boolean, default: false
+
     # Associations
     belongs_to :route, class_name: "RailsPulse::Route"
     has_many :operations, class_name: "RailsPulse::Operation", foreign_key: "request_id", dependent: :destroy

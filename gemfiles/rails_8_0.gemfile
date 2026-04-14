@@ -4,6 +4,7 @@ source "https://rubygems.org"
 
 gem "dotenv-rails", groups: [:development, :test]
 gem "rails", "~> 8.0.0"
+gem "rdoc", ">= 7.2"
 
 group :test do
   gem "appraisal"

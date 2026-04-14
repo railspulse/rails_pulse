@@ -200,15 +200,12 @@ task :test_matrix do
   failed_combinations = []
   total_combinations = databases.size * rails_versions.size
   current = 0
-  latest_rails = rails_versions.last
-  include_system_tests = ENV['BROWSER'] == 'true'
-  base_test_paths = "test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb"
+  base_test_paths = "test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb test/system"
 
   puts "\n" + "=" * 60
   puts "🚀 Rails Pulse Full Test Matrix"
   puts "=" * 60
   puts "Testing #{total_combinations} combinations..."
-  puts "System tests: #{include_system_tests ? "ENABLED on #{latest_rails} only (BROWSER=true)" : 'DISABLED (headless mode)'}"
   puts "=" * 60
 
   databases.each do |database|
@@ -219,15 +216,13 @@ task :test_matrix do
       puts "-" * 50
 
       test_paths = base_test_paths
-      test_paths += " test/system" if include_system_tests && rails_version == latest_rails
-
       begin
         # First setup the database for this specific combination
         Rake::Task[:test_setup_for_version].reenable
         Rake::Task[:test_setup_for_version].invoke(database, rails_version)
 
         # Then run the tests
-        sh "DB=#{database} MYSQL_PASSWORD=#{ENV.fetch('MYSQL_PASSWORD', '')} BROWSER=#{ENV['BROWSER']} bundle exec appraisal #{rails_version} rails test #{test_paths}"
+        sh "DB=#{database} MYSQL_PASSWORD=#{ENV.fetch('MYSQL_PASSWORD', '')} bundle exec appraisal #{rails_version} rails test #{test_paths}"
 
         puts "✅ PASSED: #{database} + #{rails_version}"
 
@@ -437,12 +432,12 @@ task :test_release do
     failed_tasks << "test_generators"
   end
 
-  # Step 11: Run full test matrix with system tests on latest Rails only
+  # Step 11: Run full test matrix
   current_step += 1
   begin
-    puts "\n[#{current_step}/#{total_steps}] Running full test matrix (system tests on latest Rails only)..."
+    puts "\n[#{current_step}/#{total_steps}] Running full test matrix..."
     puts "-" * 70
-    sh "BROWSER=true rake test_matrix"
+    sh "rake test_matrix"
     puts "✅ Test matrix passed!"
   rescue => e
     puts "❌ Test matrix failed!"
