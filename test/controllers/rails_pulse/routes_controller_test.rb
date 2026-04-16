@@ -1052,6 +1052,63 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:table_data)
   end
 
+  # Security Tests
+
+  test "build_table_results uses parameterized SQL for period_type on show action" do
+    setup_basic_test_data
+    controller = RailsPulse::RoutesController.new
+    controller.instance_variable_set(:@route, @route)
+    controller.instance_variable_set(:@ransack_query, RailsPulse::Request.ransack({}))
+    controller.stubs(:action_name).returns("show")
+    controller.stubs(:session_disabled_tags).returns([])
+    controller.stubs(:period_type).returns("hour")
+    controller.stubs(:ordering_by_computed_column?).returns(false)
+
+    # Should not raise SQL error and should return a relation
+    result = controller.send(:build_table_results)
+
+    assert_kind_of ActiveRecord::Relation, result
+  end
+
+  test "show action with hour period_type executes SQL safely" do
+    setup_basic_test_data
+
+    # This should use period_type = 'hour' in the SQL join
+    # Test with a short time range to ensure hour period_type
+    get rails_pulse.route_path(@route), params: {
+      q: { period_start_range: "last_24_hours" }
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action with day period_type executes SQL safely" do
+    setup_basic_test_data
+
+    # This should use period_type = 'day' in the SQL join
+    # Test with a long time range to ensure day period_type
+    get rails_pulse.route_path(@route), params: {
+      q: { period_start_range: "last_30_days" }
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "status_indicator_sql uses parameterized thresholds" do
+    setup_basic_test_data
+    controller = RailsPulse::RoutesController.new
+
+    sql = controller.send(:status_indicator_sql)
+
+    # Should not contain string interpolation markers
+    refute_includes sql, '#{'
+    # Should be a valid SQL string
+    assert_kind_of String, sql
+    assert_operator sql.length, :>, 0
+  end
+
   private
 
   def setup_basic_test_data

@@ -223,6 +223,44 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:table_data)
   end
 
+  # Security Tests
+
+  test "build_table_results uses parameterized SQL for period_type on show action" do
+    controller = RailsPulse::JobsController.new
+    controller.instance_variable_set(:@job, @job)
+    controller.instance_variable_set(:@ransack_query, RailsPulse::JobRun.ransack({}))
+    controller.stubs(:action_name).returns("show")
+    controller.stubs(:session_disabled_tags).returns([])
+    controller.stubs(:period_type).returns("hour")
+
+    # Should not raise SQL error and should return a relation
+    result = controller.send(:build_table_results)
+
+    assert_kind_of ActiveRecord::Relation, result
+  end
+
+  test "show action with hour period_type executes SQL safely" do
+    # This should use period_type = 'hour' in the SQL join
+    # Test with a short time range to ensure hour period_type
+    get rails_pulse.job_path(@job), params: {
+      q: { period_start_range: "last_24_hours" }
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action with day period_type executes SQL safely" do
+    # This should use period_type = 'day' in the SQL join
+    # Test with a long time range to ensure day period_type
+    get rails_pulse.job_path(@job), params: {
+      q: { period_start_range: "last_30_days" }
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
   private
 
   def rails_pulse

@@ -82,15 +82,20 @@ module RailsPulse
     def build_table_results
       if show_action?
         # For show action, query JobRun directly but join to summaries for consistency
-        base_query = @ransack_query.result
-          .joins(<<~SQL)
+        # Use sanitize_sql_array to safely parameterize period_type
+        join_sql = ActiveRecord::Base.sanitize_sql_array([
+          <<~SQL,
             INNER JOIN rails_pulse_summaries ON
               rails_pulse_summaries.summarizable_id = rails_pulse_job_runs.job_id AND
               rails_pulse_summaries.summarizable_type = 'RailsPulse::Job' AND
-              rails_pulse_summaries.period_type = '#{period_type}' AND
+              rails_pulse_summaries.period_type = ? AND
               rails_pulse_job_runs.occurred_at >= rails_pulse_summaries.period_start AND
               rails_pulse_job_runs.occurred_at < rails_pulse_summaries.period_end
           SQL
+          period_type
+        ])
+
+        base_query = @ransack_query.result.joins(join_sql)
         base_query.distinct
       else
         # For index action, use aggregated summaries

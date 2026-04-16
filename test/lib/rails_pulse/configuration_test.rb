@@ -259,5 +259,128 @@ module RailsPulse
         config.validate_configuration!
       end
     end
+
+    # Threshold Setter Validation Tests (Security Fix)
+
+    test "route_thresholds= validates hash type" do
+      config = Configuration.new
+
+      error = assert_raises ArgumentError do
+        config.route_thresholds = "not a hash"
+      end
+
+      assert_match(/must be a hash/i, error.message)
+    end
+
+    test "route_thresholds= validates numeric values" do
+      config = Configuration.new
+
+      error = assert_raises ArgumentError do
+        config.route_thresholds = { slow: "fast", very_slow: 1500, critical: 3000 }
+      end
+
+      assert_match(/must be a positive number/i, error.message)
+    end
+
+    test "route_thresholds= validates positive values" do
+      config = Configuration.new
+
+      error = assert_raises ArgumentError do
+        config.route_thresholds = { slow: -100, very_slow: 1500, critical: 3000 }
+      end
+
+      assert_match(/must be a positive number/i, error.message)
+    end
+
+    test "route_thresholds= accepts valid thresholds" do
+      config = Configuration.new
+
+      assert_nothing_raised do
+        config.route_thresholds = { slow: 500, very_slow: 1500, critical: 3000 }
+      end
+
+      assert_equal 500, config.route_thresholds[:slow]
+    end
+
+    test "request_thresholds= validates hash type" do
+      config = Configuration.new
+
+      error = assert_raises ArgumentError do
+        config.request_thresholds = [ 100, 200 ]
+      end
+
+      assert_match(/must be a hash/i, error.message)
+    end
+
+    test "request_thresholds= validates numeric values" do
+      config = Configuration.new
+
+      error = assert_raises ArgumentError do
+        config.request_thresholds = { slow: 700, very_slow: nil, critical: 4000 }
+      end
+
+      assert_match(/must be a positive number/i, error.message)
+    end
+
+    test "request_thresholds= accepts valid thresholds" do
+      config = Configuration.new
+
+      assert_nothing_raised do
+        config.request_thresholds = { slow: 700, very_slow: 2000, critical: 4000 }
+      end
+
+      assert_equal 2000, config.request_thresholds[:very_slow]
+    end
+
+    test "query_thresholds= validates numeric values" do
+      config = Configuration.new
+
+      error = assert_raises ArgumentError do
+        config.query_thresholds = { slow: 100, very_slow: "500", critical: 1000 }
+      end
+
+      assert_match(/must be a positive number/i, error.message)
+    end
+
+    test "query_thresholds= accepts valid thresholds" do
+      config = Configuration.new
+
+      assert_nothing_raised do
+        config.query_thresholds = { slow: 100, very_slow: 500, critical: 1000 }
+      end
+
+      assert_equal 1000, config.query_thresholds[:critical]
+    end
+
+    test "job_thresholds= validates numeric values" do
+      config = Configuration.new
+
+      error = assert_raises ArgumentError do
+        config.job_thresholds = { slow: 5_000, very_slow: 30_000, critical: {} }
+      end
+
+      assert_match(/must be a positive number/i, error.message)
+    end
+
+    test "job_thresholds= accepts valid thresholds" do
+      config = Configuration.new
+
+      assert_nothing_raised do
+        config.job_thresholds = { slow: 5_000, very_slow: 30_000, critical: 60_000 }
+      end
+
+      assert_equal 30_000, config.job_thresholds[:very_slow]
+    end
+
+    test "threshold setters prevent SQL injection via configuration" do
+      config = Configuration.new
+
+      # Attempt to set a malicious threshold that could be used in SQL injection
+      error = assert_raises ArgumentError do
+        config.request_thresholds = { slow: "500; DROP TABLE users;", very_slow: 2000, critical: 4000 }
+      end
+
+      assert_match(/must be a positive number/i, error.message)
+    end
   end
 end

@@ -1,10 +1,6 @@
 module RailsPulse
   class Configuration
     attr_accessor :enabled,
-                  :route_thresholds,
-                  :request_thresholds,
-                  :query_thresholds,
-                  :job_thresholds,
                   :ignored_routes,
                   :ignored_requests,
                   :ignored_queries,
@@ -31,6 +27,12 @@ module RailsPulse
                   :service_level_objectives,
                   :query_service_level_objectives,
                   :warn_on_stale_summaries
+
+    # Read-only access to thresholds (use setters for validation)
+    attr_reader :route_thresholds,
+                :request_thresholds,
+                :query_thresholds,
+                :job_thresholds
 
     def initialize
       @enabled = true
@@ -93,6 +95,28 @@ module RailsPulse
       validate_configuration!
     end
 
+    # Custom setters for thresholds with validation to prevent SQL injection
+    # via configuration values interpolated into queries
+    def route_thresholds=(value)
+      validate_threshold_hash!(value, "route_thresholds")
+      @route_thresholds = value
+    end
+
+    def request_thresholds=(value)
+      validate_threshold_hash!(value, "request_thresholds")
+      @request_thresholds = value
+    end
+
+    def query_thresholds=(value)
+      validate_threshold_hash!(value, "query_thresholds")
+      @query_thresholds = value
+    end
+
+    def job_thresholds=(value)
+      validate_threshold_hash!(value, "job_thresholds")
+      @job_thresholds = value
+    end
+
     # Get all routes to ignore, including asset patterns if track_assets is false
     def ignored_routes
       routes = @ignored_routes.dup
@@ -122,14 +146,23 @@ module RailsPulse
 
     private
 
-    def validate_thresholds!
-      [ @route_thresholds, @request_thresholds, @query_thresholds, @job_thresholds ].each do |thresholds|
-        thresholds.each do |key, value|
-          unless value.is_a?(Numeric) && value > 0
-            raise ArgumentError, "Threshold #{key} must be a positive number, got #{value}"
-          end
+    def validate_threshold_hash!(thresholds, name)
+      unless thresholds.is_a?(Hash)
+        raise ArgumentError, "#{name} must be a hash, got #{thresholds.class}"
+      end
+
+      thresholds.each do |key, value|
+        unless value.is_a?(Numeric) && value > 0
+          raise ArgumentError, "#{name}[:#{key}] must be a positive number, got #{value.inspect}"
         end
       end
+    end
+
+    def validate_thresholds!
+      validate_threshold_hash!(@route_thresholds, "route_thresholds")
+      validate_threshold_hash!(@request_thresholds, "request_thresholds")
+      validate_threshold_hash!(@query_thresholds, "query_thresholds")
+      validate_threshold_hash!(@job_thresholds, "job_thresholds")
     end
 
     def validate_retention_settings!

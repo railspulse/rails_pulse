@@ -50,7 +50,7 @@
         >
           <div class="flex flex-col">
             <h3 class="font-semibold leading-none mbe-2 uppercase text-sm"><%= item[:popover_title] %></h3>
-            <p class="text-sm text-subtle"><%= item[:popover_body].html_safe %></p>
+            <p class="text-sm text-subtle"><%= sanitize(item[:popover_body], tags: %w[code strong br], attributes: []) %></p>
           </div>
         </div>
       </div>

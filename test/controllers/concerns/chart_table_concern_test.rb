@@ -177,28 +177,43 @@ class ChartTableConcernTest < ActionController::TestCase
 
   # period_type Tests
 
-  test "period_type returns :hour when time_diff_hours <= 25" do
+  test "period_type returns hour string when time_diff_hours <= 25" do
     @controller.instance_variable_set(:@time_diff_hours, 20.0)
 
     result = @controller.send(:period_type)
 
-    assert_equal :hour, result
+    assert_equal "hour", result
+    assert_kind_of String, result
   end
 
-  test "period_type returns :day when time_diff_hours > 25" do
+  test "period_type returns day string when time_diff_hours > 25" do
     @controller.instance_variable_set(:@time_diff_hours, 30.0)
 
     result = @controller.send(:period_type)
 
-    assert_equal :day, result
+    assert_equal "day", result
+    assert_kind_of String, result
   end
 
-  test "period_type returns :day when time_diff_hours nil" do
+  test "period_type returns day string when time_diff_hours nil" do
     @controller.instance_variable_set(:@time_diff_hours, nil)
 
     result = @controller.send(:period_type)
 
-    assert_equal :day, result
+    assert_equal "day", result
+    assert_kind_of String, result
+  end
+
+  test "period_type validates returned value is in VALID_PERIOD_TYPES" do
+    @controller.instance_variable_set(:@time_diff_hours, 20.0)
+
+    result = @controller.send(:period_type)
+
+    assert_includes ChartTableConcern::VALID_PERIOD_TYPES, result
+  end
+
+  test "period_type constant contains only hour and day" do
+    assert_equal %w[hour day], ChartTableConcern::VALID_PERIOD_TYPES
   end
 
   # meaningful_chart_data? Tests

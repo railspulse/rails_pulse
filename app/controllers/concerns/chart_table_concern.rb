@@ -9,6 +9,9 @@
 module ChartTableConcern
   extend ActiveSupport::Concern
 
+  # Valid period types for summary data - constrained to prevent SQL injection
+  VALID_PERIOD_TYPES = %w[hour day].freeze
+
   included do
     include TimeRangeConcern
     include ResponseRangeConcern
@@ -88,9 +91,21 @@ module ChartTableConcern
 
 
   def period_type
-    # Default to :day for "recent" mode or when time_diff isn't set
-    return :day if @time_diff_hours.nil?
-    @time_diff_hours <= 25 ? :hour : :day
+    # Determine period type based on time range
+    type = if @time_diff_hours.nil?
+      "day"  # Default to day for "recent" mode or when time_diff isn't set
+    elsif @time_diff_hours <= 25
+      "hour"
+    else
+      "day"
+    end
+
+    # Validate period type to prevent SQL injection via string interpolation
+    unless VALID_PERIOD_TYPES.include?(type)
+      raise ArgumentError, "Invalid period_type: #{type}. Must be one of: #{VALID_PERIOD_TYPES.join(", ")}"
+    end
+
+    type
   end
 
   def meaningful_chart_data?
