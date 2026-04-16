@@ -244,6 +244,43 @@ module RailsPulse
       end
     end
 
+    # Foreign Key Safety Tests
+
+    test "time-based cleanup does not raise FK violation when job run operation has newer occurred_at than job run" do
+      RailsPulse.configuration.full_retention_period = 30.days
+
+      old_job = create_job("FKTimeJob")
+      old_run = create_job_run(old_job, occurred_at: 40.days.ago)
+      create_operation(job_run: old_run, occurred_at: 5.days.ago)
+
+      assert_nothing_raised do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based cleanup does not raise FK violation when job runs have associated operations" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,  # high — operations won't be deleted
+        rails_pulse_requests:   10_000,
+        rails_pulse_job_runs:   1,       # low — oldest job_run will be a deletion target
+        rails_pulse_queries:    10_000,
+        rails_pulse_routes:     10_000,
+        rails_pulse_jobs:       10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      create_overall_hourly_summary(period_end: 2.hours.ago)
+
+      job = create_job("FKCountJob")
+      old_run = create_job_run(job, occurred_at: 3.hours.ago)
+      create_operation(job_run: old_run, occurred_at: 3.hours.ago)
+      create_job_run(job, occurred_at: 30.minutes.ago)  # newer run keeps count at 2 > max of 1
+
+      assert_nothing_raised do
+        CleanupService.perform
+      end
+    end
+
     # Edge Cases
 
     test "handles empty tables gracefully" do

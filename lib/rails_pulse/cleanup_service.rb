@@ -64,7 +64,7 @@ module RailsPulse
 
       # Clean up in order that respects foreign key constraints
       @stats[:count_based][:operations] = cleanup_by_count(RailsPulse::Operation, :rails_pulse_operations, order_column: :occurred_at, scope: ops_scope)
-      @stats[:count_based][:job_runs]   = cleanup_by_count(RailsPulse::JobRun, :rails_pulse_job_runs, order_column: :occurred_at)
+      @stats[:count_based][:job_runs]   = cleanup_job_runs_by_count
       @stats[:count_based][:requests]   = cleanup_requests_by_count
       @stats[:count_based][:queries]    = cleanup_queries_by_count
       @stats[:count_based][:routes]     = cleanup_routes_by_count
@@ -116,7 +116,12 @@ module RailsPulse
     end
 
     def cleanup_job_runs_by_time(cutoff_time)
-      RailsPulse::JobRun.where("occurred_at < ?", cutoff_time).delete_all
+      job_run_ids = RailsPulse::JobRun.where("occurred_at < ?", cutoff_time).pluck(:id)
+      return 0 if job_run_ids.empty?
+
+      RailsPulse::Operation.where(job_run_id: job_run_ids).delete_all
+      RailsPulse::JobRun.where(id: job_run_ids).delete_all
+      job_run_ids.size
     end
 
     def cleanup_jobs_by_time(cutoff_time)
@@ -150,6 +155,22 @@ module RailsPulse
 
       RailsPulse::Operation.where(request_id: ids_to_delete).delete_all
       RailsPulse::Request.where(id: ids_to_delete).delete_all
+      ids_to_delete.size
+    end
+
+    def cleanup_job_runs_by_count
+      max_records = @config.max_table_records[:rails_pulse_job_runs]
+      return 0 unless max_records
+
+      current_count = RailsPulse::JobRun.count
+      return 0 if current_count <= max_records
+
+      records_to_delete = current_count - max_records
+      ids_to_delete = RailsPulse::JobRun.order(occurred_at: :asc).limit(records_to_delete).pluck(:id)
+      return 0 if ids_to_delete.empty?
+
+      RailsPulse::Operation.where(job_run_id: ids_to_delete).delete_all
+      RailsPulse::JobRun.where(id: ids_to_delete).delete_all
       ids_to_delete.size
     end
 
