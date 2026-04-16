@@ -85,32 +85,24 @@ module RailsPulse
     def cleanup_queries_by_time(cutoff_time)
       return 0 unless defined?(RailsPulse::Query)
 
-      # Only delete queries that have no associated operations
-      query_ids_with_operations = RailsPulse::Operation.distinct.pluck(:query_id).compact
-      count = RailsPulse::Query
+      # Only delete queries that have no associated operations (atomic subquery avoids race condition)
+      scope = RailsPulse::Query
         .where("created_at < ?", cutoff_time)
-        .where.not(id: query_ids_with_operations)
-        .count
-      RailsPulse::Query
-        .where("created_at < ?", cutoff_time)
-        .where.not(id: query_ids_with_operations)
-        .delete_all
+        .where("id NOT IN (SELECT DISTINCT query_id FROM rails_pulse_operations WHERE query_id IS NOT NULL)")
+      count = scope.count
+      scope.delete_all
       count
     end
 
     def cleanup_routes_by_time(cutoff_time)
       return 0 unless defined?(RailsPulse::Route)
 
-      # Only delete routes that have no associated requests
-      route_ids_with_requests = RailsPulse::Request.distinct.pluck(:route_id).compact
-      count = RailsPulse::Route
+      # Only delete routes that have no associated requests (atomic subquery avoids race condition)
+      scope = RailsPulse::Route
         .where("created_at < ?", cutoff_time)
-        .where.not(id: route_ids_with_requests)
-        .count
-      RailsPulse::Route
-        .where("created_at < ?", cutoff_time)
-        .where.not(id: route_ids_with_requests)
-        .delete_all
+        .where("id NOT IN (SELECT DISTINCT route_id FROM rails_pulse_requests WHERE route_id IS NOT NULL)")
+      count = scope.count
+      scope.delete_all
       count
     end
 
@@ -126,12 +118,12 @@ module RailsPulse
     def cleanup_jobs_by_time(cutoff_time)
       return 0 unless defined?(RailsPulse::Job)
 
-      job_ids_with_runs = RailsPulse::JobRun.distinct.pluck(:job_id).compact
-      jobs = RailsPulse::Job
+      # Only delete jobs that have no associated runs (atomic subquery avoids race condition)
+      scope = RailsPulse::Job
         .where("created_at < ?", cutoff_time)
-        .where.not(id: job_ids_with_runs)
-      count = jobs.count
-      jobs.delete_all
+        .where("id NOT IN (SELECT DISTINCT job_id FROM rails_pulse_job_runs WHERE job_id IS NOT NULL)")
+      count = scope.count
+      scope.delete_all
       count
     end
 
@@ -183,9 +175,10 @@ module RailsPulse
       max_records = @config.max_table_records[:rails_pulse_queries]
       return 0 unless max_records
 
-      # Only consider queries that have no associated operations
-      query_ids_with_operations = RailsPulse::Operation.distinct.pluck(:query_id).compact
-      available_queries = RailsPulse::Query.where.not(id: query_ids_with_operations)
+      # Only consider queries that have no associated operations (atomic subquery avoids race condition)
+      available_queries = RailsPulse::Query.where(
+        "id NOT IN (SELECT DISTINCT query_id FROM rails_pulse_operations WHERE query_id IS NOT NULL)"
+      )
       current_count = available_queries.count
       return 0 if current_count <= max_records
 
@@ -205,9 +198,10 @@ module RailsPulse
       max_records = @config.max_table_records[:rails_pulse_routes]
       return 0 unless max_records
 
-      # Only consider routes that have no associated requests
-      route_ids_with_requests = RailsPulse::Request.distinct.pluck(:route_id).compact
-      available_routes = RailsPulse::Route.where.not(id: route_ids_with_requests)
+      # Only consider routes that have no associated requests (atomic subquery avoids race condition)
+      available_routes = RailsPulse::Route.where(
+        "id NOT IN (SELECT DISTINCT route_id FROM rails_pulse_requests WHERE route_id IS NOT NULL)"
+      )
       current_count = available_routes.count
       return 0 if current_count <= max_records
 
@@ -246,8 +240,10 @@ module RailsPulse
       max_records = @config.max_table_records[:rails_pulse_jobs]
       return 0 unless max_records
 
-      job_ids_with_runs = RailsPulse::JobRun.distinct.pluck(:job_id).compact
-      available_jobs = RailsPulse::Job.where.not(id: job_ids_with_runs)
+      # Only consider jobs that have no associated runs (atomic subquery avoids race condition)
+      available_jobs = RailsPulse::Job.where(
+        "id NOT IN (SELECT DISTINCT job_id FROM rails_pulse_job_runs WHERE job_id IS NOT NULL)"
+      )
       current_count = available_jobs.count
       return 0 if current_count <= max_records
 
