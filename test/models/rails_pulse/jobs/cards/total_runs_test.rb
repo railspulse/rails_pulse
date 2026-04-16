@@ -39,7 +39,7 @@ module RailsPulse
           assert_includes result.keys, :trend_icon
           assert_includes result.keys, :trend_amount
           assert_includes result.keys, :trend_text
-          assert_equal "Compared to previous week", result[:trend_text]
+          assert_equal "Compared to previous 7 days", result[:trend_text]
         end
 
         test "card returns hash with required keys for all jobs" do

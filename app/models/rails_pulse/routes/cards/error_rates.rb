@@ -34,10 +34,8 @@ module RailsPulse
           client_rate = has_data ? (total_4xx.to_f / total_requests * 100).round(2) : 0
 
           # Use base class trend calculation
-          trend_icon, trend_amount = if has_data
-            trend_for(current_total, previous_total)
-          else
-            [ "move-right", "—" ]
+          if show_trend?
+            trend_icon, trend_amount = has_data ? trend_for(current_total, previous_total) : [ "move-right", "—" ]
           end
 
           # Build sparkline data using base class helpers
@@ -63,7 +61,8 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week",
+            trend_text: (show_trend? ? comparison_period_text : nil),
+            period_stat: has_data ? "#{format_number(total_errors + total_4xx)} errors" : period_date_range,
             help_heading: "Error Rates",
             help_text: "Combined 5xx and 4xx error rate over the last 2 weeks. 5xx server errors indicate bugs or infrastructure issues. 4xx client errors may indicate broken API consumers or deprecated endpoints."
           }

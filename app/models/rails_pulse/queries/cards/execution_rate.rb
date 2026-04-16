@@ -26,7 +26,7 @@ module RailsPulse
           previous_period_count = metrics.previous_count || 0
 
           # Use base class trend calculation
-          trend_icon, trend_amount = trend_for(current_period_count, previous_period_count)
+          trend_icon, trend_amount = trend_for(current_period_count, previous_period_count) if show_trend?
 
           # Create a query for sparkline data using only the current period
           sparkline_query = RailsPulse::Summary
@@ -70,7 +70,8 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week",
+            trend_text: (show_trend? ? comparison_period_text : nil),
+            period_stat: total_execution_count > 0 ? "#{format_number(total_execution_count)} executions" : period_date_range,
             help_heading: "Query Execution Rate",
             help_text: "Total database queries executed over the last 14 days, expressed as an average rate. Spikes may indicate N+1 queries or inefficient data access patterns."
           }

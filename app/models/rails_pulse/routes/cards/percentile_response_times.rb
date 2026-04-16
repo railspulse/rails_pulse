@@ -29,10 +29,8 @@ module RailsPulse
           has_data = metrics.total_count.to_i > 0
 
           # Use base class trend calculation
-          trend_icon, trend_amount = if has_data
-            trend_for(current_period_p95, previous_period_p95)
-          else
-            [ "move-right", "—" ]
+          if show_trend?
+            trend_icon, trend_amount = has_data ? trend_for(current_period_p95, previous_period_p95) : [ "move-right", "—" ]
           end
 
           # Build sparkline data using base class helpers
@@ -58,7 +56,8 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week",
+            trend_text: (show_trend? ? comparison_period_text : nil),
+            period_stat: has_data ? "Across #{format_number(metrics.total_count.to_i)} requests" : period_date_range,
             help_heading: "P95 Response Time",
             help_text: "The 95th percentile response time — 95% of requests are faster than this. Weighted by request volume across all routes. A rising P95 indicates increasing slowness affecting your users."
           }

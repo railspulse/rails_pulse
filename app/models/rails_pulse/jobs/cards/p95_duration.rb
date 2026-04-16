@@ -40,7 +40,7 @@ module RailsPulse
           current_p95 = weighted_average(current_weighted_p95, current_runs)
           previous_p95 = weighted_average(previous_weighted_p95, previous_runs)
 
-          trend_icon, trend_amount = trend_for(current_p95, previous_p95)
+          trend_icon, trend_amount = trend_for(current_p95, previous_p95) if show_trend?
 
           grouped_weighted = base_query
             .group_by_date(:period_start)
@@ -61,7 +61,8 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to previous week",
+            trend_text: (show_trend? ? comparison_period_text : nil),
+            period_stat: total_runs > 0 ? "Across #{format_number(total_runs)} runs" : period_date_range,
             help_heading: "P95 Duration",
             help_text: "The 95th percentile execution time — 95% of jobs complete faster than this. Weighted by job volume across all classes. A rising P95 indicates jobs are becoming slower, which may cause queue backlog."
           }

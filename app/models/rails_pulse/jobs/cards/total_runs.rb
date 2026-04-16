@@ -30,7 +30,7 @@ module RailsPulse
           current_runs = metrics&.current_count.to_i
           previous_runs = metrics&.previous_count.to_i
 
-          trend_icon, trend_amount = trend_for(current_runs, previous_runs)
+          trend_icon, trend_amount = trend_for(current_runs, previous_runs) if show_trend?
 
           grouped_runs = base_query
             .group_by_date(:period_start)
@@ -45,7 +45,8 @@ module RailsPulse
             chart_data: sparkline_from(grouped_runs),
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to previous week",
+            trend_text: (show_trend? ? comparison_period_text : nil),
+            period_stat: period_date_range,
             help_heading: "Job Runs",
             help_text: "Total background job executions over the last 14 days. Includes all job classes and queues. Use this to understand job throughput and spot unexpected spikes or drops in processing volume."
           }

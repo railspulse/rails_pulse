@@ -63,13 +63,17 @@
           <%= render_stimulus_chart data[:chart_data], type: 'bar', height: "100%", options: chart_options %>
         </div>
       <% end %>
-      <div class="metric-strip__trend">
-        <span class="badge <%= badge %> badge--trend metric-strip__trend-badge p-0">
-          <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
-          <span class="badge__trend-amount"><%= data[:trend_amount] %></span>
-        </span>
-        <p class="metric-strip__trend-label mis-2 text-subtle text-xs"><%= data[:trend_text] || "Week over week" %></p>
-      </div>
+      <% if trend_icon %>
+        <div class="metric-strip__trend">
+          <span class="badge <%= badge %> badge--trend metric-strip__trend-badge p-0">
+            <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
+            <span class="badge__trend-amount"><%= data[:trend_amount] %></span>
+          </span>
+          <p class="metric-strip__trend-label mis-2 text-subtle text-xs"><%= data[:trend_text] %></p>
+        </div>
+      <% elsif data[:period_stat] %>
+        <p class="metric-strip__trend-label text-subtle text-xs"><%= data[:period_stat] %></p>
+      <% end %>
     </div>
   <% end %>
 </div>

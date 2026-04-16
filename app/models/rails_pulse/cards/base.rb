@@ -34,8 +34,12 @@ module RailsPulse
         end
       end
 
+      def show_trend?
+        window_days <= 14
+      end
+
       def range_start
-        previous_window_start
+        show_trend? ? previous_window_start : current_window_start
       end
 
       # Base query helper for common summary query pattern
@@ -127,6 +131,30 @@ module RailsPulse
           sparkline_query.group_by_hour(:period_start).sum(sum_field)
         else
           sparkline_query.group_by_date(:period_start).sum(sum_field)
+        end
+      end
+
+      def period_date_range
+        start_date = current_window_start.to_date
+        end_date = now.to_date
+        if start_date.year == end_date.year
+          "#{start_date.strftime("%b %-d")} – #{end_date.strftime("%b %-d")}"
+        else
+          "#{start_date.strftime("%b %-d, %Y")} – #{end_date.strftime("%b %-d, %Y")}"
+        end
+      end
+
+      def comparison_period_text
+        if period_type_hours?
+          "Compared to previous 24 hours"
+        else
+          case window_days
+          when 1  then "Compared to previous day"
+          when 7  then "Compared to previous 7 days"
+          when 14 then "Compared to previous 14 days"
+          when 30 then "Compared to previous 30 days"
+          else         "Compared to previous #{window_days} days"
+          end
         end
       end
 

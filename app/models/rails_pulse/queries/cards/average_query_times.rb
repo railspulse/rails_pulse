@@ -29,7 +29,7 @@ module RailsPulse
           previous_period_avg = metrics.previous_requests.to_i > 0 ? (metrics.previous_weighted_duration / metrics.previous_requests) : 0
 
           # Use base class trend calculation
-          trend_icon, trend_amount = trend_for(current_period_avg, previous_period_avg)
+          trend_icon, trend_amount = trend_for(current_period_avg, previous_period_avg) if show_trend?
 
           # Sparkline data with zero-filled periods
           grouped_weighted = base_query
@@ -57,7 +57,8 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week"
+            trend_text: (show_trend? ? comparison_period_text : nil),
+            period_stat: metrics.total_requests.to_i > 0 ? "Across #{format_number(metrics.total_requests.to_i)} queries" : period_date_range
           }
         end
       end

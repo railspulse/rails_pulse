@@ -45,18 +45,20 @@ module RailsPulse
           current_request_time = route_summaries.where("period_start >= ?", last_n_units).sum(:total_duration)
           current_percentage = current_request_time > 0 ? (current_query_time.to_f / current_request_time * 100) : 0
 
-          previous_query_time = query_summaries.where("period_start >= ? AND period_start < ?", previous_n_units, last_n_units).sum(:total_duration)
-          previous_request_time = route_summaries.where("period_start >= ? AND period_start < ?", previous_n_units, last_n_units).sum(:total_duration)
-          previous_percentage = previous_request_time > 0 ? (previous_query_time.to_f / previous_request_time * 100) : 0
+          if show_trend?
+            previous_query_time = query_summaries.where("period_start >= ? AND period_start < ?", previous_n_units, last_n_units).sum(:total_duration)
+            previous_request_time = route_summaries.where("period_start >= ? AND period_start < ?", previous_n_units, last_n_units).sum(:total_duration)
+            previous_percentage = previous_request_time > 0 ? (previous_query_time.to_f / previous_request_time * 100) : 0
 
-          if has_data
-            percentage = previous_percentage.zero? ? 0 : ((current_percentage - previous_percentage) / previous_percentage * 100).abs.round(1)
-            # For DB load, trending UP is bad (more time in DB), trending DOWN is good
-            trend_icon = percentage < 0.1 ? "move-right" : current_percentage > previous_percentage ? "trending-up" : "trending-down"
-            trend_amount = previous_percentage.zero? ? "0%" : "#{percentage}%"
-          else
-            trend_icon = "move-right"
-            trend_amount = "—"
+            if has_data
+              percentage = previous_percentage.zero? ? 0 : ((current_percentage - previous_percentage) / previous_percentage * 100).abs.round(1)
+              # For DB load, trending UP is bad (more time in DB), trending DOWN is good
+              trend_icon = percentage < 0.1 ? "move-right" : current_percentage > previous_percentage ? "trending-up" : "trending-down"
+              trend_amount = previous_percentage.zero? ? "0%" : "#{percentage}%"
+            else
+              trend_icon = "move-right"
+              trend_amount = "—"
+            end
           end
 
           # Sparkline data - group by hour or day depending on period_type
@@ -153,7 +155,8 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week",
+            trend_text: (show_trend? ? comparison_period_text : nil),
+            period_stat: period_date_range,
             help_heading: "Database Load",
             help_text: "Percentage of total response time spent executing database queries. <25% is healthy (Ruby/views are the bottleneck, as expected). >40% means your database is your bottleneck — focus on query optimization, indexes, and N+1 elimination."
           }

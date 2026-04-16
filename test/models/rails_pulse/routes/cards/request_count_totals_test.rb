@@ -63,10 +63,10 @@ module RailsPulse
           assert card[:trend_amount] == "—" || card[:trend_amount].end_with?("%")
         end
 
-        test "trend_text is Compared to last week" do
+        test "trend_text reflects the selected period" do
           card = RailsPulse::Routes::Cards::RequestCountTotals.new.to_metric_card
 
-          assert_equal "Compared to last week", card[:trend_text]
+          assert_equal "Compared to previous 7 days", card[:trend_text]
         end
 
         test "7-day period has correct sparkline size" do
@@ -142,7 +142,9 @@ module RailsPulse
           card = RailsPulse::Routes::Cards::RequestCountTotals.new(period: 90).to_metric_card
           # Should return valid structure regardless of data availability
           assert_kind_of String, card[:summary]
-          assert_kind_of String, card[:trend_amount]
+          # Trend is hidden for periods > 14 days
+          assert_nil card[:trend_amount]
+          assert_nil card[:trend_icon]
         end
 
         test "uses hourly summaries for period_type hour" do

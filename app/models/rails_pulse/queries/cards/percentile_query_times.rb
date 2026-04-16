@@ -16,6 +16,7 @@ module RailsPulse
 
           metrics = base_query.select(
             "SUM(p95_duration * count) / NULLIF(SUM(count), 0) AS overall_p95",
+            "SUM(count) AS total_count",
             "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN count ELSE 0 END), 0) AS current_p95",
             "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN count ELSE 0 END), 0) AS previous_p95"
           ).take
@@ -26,7 +27,7 @@ module RailsPulse
           previous_period_p95 = metrics.previous_p95 || 0
 
           # Use base class trend calculation
-          trend_icon, trend_amount = trend_for(current_period_p95, previous_period_p95)
+          trend_icon, trend_amount = trend_for(current_period_p95, previous_period_p95) if show_trend?
 
           # Create a query for sparkline data using only the current period
           sparkline_query = RailsPulse::Summary
@@ -64,7 +65,8 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week",
+            trend_text: (show_trend? ? comparison_period_text : nil),
+            period_stat: metrics.total_count.to_i > 0 ? "Across #{format_number(metrics.total_count.to_i)} queries" : period_date_range,
             help_heading: "P95 Query Time",
             help_text: "The 95th percentile database query duration — 95% of queries complete faster than this. Weighted by execution frequency across all queries. Slow queries are often caused by missing indexes or N+1 patterns."
           }

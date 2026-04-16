@@ -28,10 +28,8 @@ module RailsPulse
           has_data = total_request_count > 0
 
           # Use base class trend calculation
-          trend_icon, trend_amount = if has_data
-            trend_for(current_period_count, previous_period_count)
-          else
-            [ "move-right", "—" ]
+          if show_trend?
+            trend_icon, trend_amount = has_data ? trend_for(current_period_count, previous_period_count) : [ "move-right", "—" ]
           end
 
           # Create sparkline query using only the current period
@@ -81,7 +79,8 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to last week",
+            trend_text: (show_trend? ? comparison_period_text : nil),
+            period_stat: has_data ? "#{format_number(total_request_count)} requests" : period_date_range,
             help_heading: "Request Throughput",
             help_text: "Total HTTP requests served over the last 14 days, expressed as an average rate. Use this to understand traffic patterns and capacity planning needs."
           }

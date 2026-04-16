@@ -6,7 +6,8 @@ summary = data[:summary]
 chart_data = data[:chart_data]
 trend_icon = data[:trend_icon]
 trend_amount = data[:trend_amount]
-trend_text = data[:trend_text] %>
+trend_text = data[:trend_text]
+period_stat = data[:period_stat] %>
 <div class="grid-item" id="<%= id %>">
   <%= render 'rails_pulse/components/panel', { title: title, card_classes: 'card-compact' } do %>
     <div
@@ -50,23 +51,27 @@ trend_text = data[:trend_text] %>
         </div>
       </div>
     </div>
-    <div class="mbs-2" style="height: 10px;">
-      <% badge =
-        case trend_icon
-        when "trending-up"
-          "badge--negative-inverse"
-        when "trending-down"
-          "badge--positive-inverse"
-        else
-          "badge--primary-inverse"
-        end %>
-      <div class="flex items-center justify-between">
-        <span class="badge <%= badge %> badge--trend p-0">
-          <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
-          <span class="badge__trend-amount"><%= trend_amount %></span>
-          <p class="mis-2 text-subtle text-xs"><%= trend_text %></p>
-        </span>
+    <% if trend_icon %>
+      <div class="mbs-2" style="height: 10px;">
+        <% badge =
+          case trend_icon
+          when "trending-up"
+            "badge--negative-inverse"
+          when "trending-down"
+            "badge--positive-inverse"
+          else
+            "badge--primary-inverse"
+          end %>
+        <div class="flex items-center justify-between">
+          <span class="badge <%= badge %> badge--trend p-0">
+            <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
+            <span class="badge__trend-amount"><%= trend_amount %></span>
+            <p class="mis-2 text-subtle text-xs"><%= trend_text %></p>
+          </span>
+        </div>
       </div>
-    </div>
+    <% elsif period_stat %>
+      <p class="text-subtle text-xs mbs-2"><%= period_stat %></p>
+    <% end %>
   <% end %>
 </div>

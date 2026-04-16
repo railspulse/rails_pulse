@@ -40,7 +40,7 @@ module RailsPulse
           current_rate = rate_for(current_errors, current_runs)
           previous_rate = rate_for(previous_errors, previous_runs)
 
-          trend_icon, trend_amount = trend_for(current_rate, previous_rate)
+          trend_icon, trend_amount = trend_for(current_rate, previous_rate) if show_trend?
 
           # Create a separate query for sparkline data using only the current period
           sparkline_query = RailsPulse::Summary
@@ -71,7 +71,8 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: "Compared to previous week",
+            trend_text: (show_trend? ? comparison_period_text : nil),
+            period_stat: total_runs > 0 ? "#{format_number(total_errors)} failures · #{format_number(total_runs)} runs" : period_date_range,
             help_heading: "Failure Rate",
             help_text: "Percentage of job executions that raised an error over the last 14 days. A rising failure rate may indicate bugs, external dependency issues, or jobs receiving invalid data."
           }
