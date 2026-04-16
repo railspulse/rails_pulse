@@ -244,6 +244,177 @@ module RailsPulse
       end
     end
 
+    # Race Condition Tests
+
+    test "time-based route cleanup does not delete a route that has an associated request" do
+      # The old implementation used a two-step pluck+delete, which had a race window:
+      # a request created after the pluck but before the delete_all could cause an FK
+      # violation (MySQL) or silent data loss (SQLite without FK enforcement).
+      # The fix uses an atomic subquery so the existence check and delete happen together.
+      RailsPulse.configuration.full_retention_period = 1.hour
+
+      old_route = RailsPulse::Route.create!(method: "GET", path: "/api/stale", created_at: 2.hours.ago)
+      RailsPulse::Request.create!(
+        route: old_route,
+        duration: 100.0, status: 200, is_error: false,
+        request_uuid: SecureRandom.uuid,
+        controller_action: "Api::StaleController#index",
+        occurred_at: Time.current
+      )
+
+      begin
+        CleanupService.perform
+      rescue ActiveRecord::InvalidForeignKey
+        flunk "FK constraint violated: route was deleted despite having an associated request"
+      end
+
+      assert RailsPulse::Route.exists?(old_route.id),
+        "Route was deleted despite having an associated request"
+    end
+
+    test "count-based route cleanup does not delete a route that has an associated request" do
+      # Same race condition as the time-based variant — fixed by using an atomic subquery.
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,
+        rails_pulse_requests:   10_000,
+        rails_pulse_job_runs:   10_000,
+        rails_pulse_queries:    10_000,
+        rails_pulse_routes:     1,
+        rails_pulse_jobs:       10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      # Two routes so count (2) exceeds max (1) — oldest is a deletion candidate
+      old_route = RailsPulse::Route.create!(method: "GET", path: "/api/old", created_at: 3.hours.ago)
+      RailsPulse::Route.create!(method: "GET", path: "/api/new", created_at: 1.hour.ago)
+
+      # old_route has a request — it must not be deleted even though it's the oldest
+      RailsPulse::Request.create!(
+        route: old_route,
+        duration: 100.0, status: 200, is_error: false,
+        request_uuid: SecureRandom.uuid,
+        controller_action: "Api::OldController#index",
+        occurred_at: Time.current
+      )
+
+      begin
+        CleanupService.perform
+      rescue ActiveRecord::InvalidForeignKey
+        flunk "FK constraint violated: route was deleted despite having an associated request"
+      end
+
+      assert RailsPulse::Route.exists?(old_route.id),
+        "Route was deleted despite having an associated request"
+    end
+
+    test "time-based query cleanup does not delete a query that has an associated operation" do
+      # Operation's before_validation callback (associate_query) manages the query association
+      # via find_or_create_by(hashed_sql), so we bootstrap the query through the callback.
+      RailsPulse.configuration.full_retention_period = 1.hour
+
+      job = create_job("QueryRaceJob")
+      run = create_job_run(job, occurred_at: Time.current)
+      op = RailsPulse::Operation.create!(
+        job_run: run, operation_type: "sql", label: "SELECT * FROM users WHERE id = 1",
+        duration: 1.0, occurred_at: Time.current, start_time: Time.current.to_f
+      )
+      old_query = op.query
+      old_query.update_column(:created_at, 2.hours.ago)
+
+      begin
+        CleanupService.perform
+      rescue ActiveRecord::InvalidForeignKey
+        flunk "FK constraint violated: query was deleted despite having an associated operation"
+      end
+
+      assert RailsPulse::Query.exists?(old_query.id),
+        "Query was deleted despite having an associated operation"
+    end
+
+    test "count-based query cleanup does not delete a query that has an associated operation" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,
+        rails_pulse_requests:   10_000,
+        rails_pulse_job_runs:   10_000,
+        rails_pulse_queries:    1,
+        rails_pulse_routes:     10_000,
+        rails_pulse_jobs:       10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      # Create old_query via the callback
+      job = create_job("QueryCountRaceJob")
+      run = create_job_run(job, occurred_at: Time.current)
+      op = RailsPulse::Operation.create!(
+        job_run: run, operation_type: "sql", label: "SELECT * FROM orders WHERE id = 1",
+        duration: 1.0, occurred_at: Time.current, start_time: Time.current.to_f
+      )
+      old_query = op.query
+      old_query.update_column(:created_at, 3.hours.ago)
+
+      # A second query so count (2) exceeds max (1) — old_query is the deletion candidate
+      job2 = create_job("QueryCountRaceJob2")
+      run2 = create_job_run(job2, occurred_at: Time.current)
+      RailsPulse::Operation.create!(
+        job_run: run2, operation_type: "sql", label: "SELECT * FROM products WHERE id = 1",
+        duration: 1.0, occurred_at: Time.current, start_time: Time.current.to_f
+      )
+
+      begin
+        CleanupService.perform
+      rescue ActiveRecord::InvalidForeignKey
+        flunk "FK constraint violated: query was deleted despite having an associated operation"
+      end
+
+      assert RailsPulse::Query.exists?(old_query.id),
+        "Query was deleted despite having an associated operation"
+    end
+
+    test "time-based job cleanup does not delete a job that has an associated job run" do
+      RailsPulse.configuration.full_retention_period = 1.hour
+
+      old_job = create_job("StaleJob")
+      old_job.update_column(:created_at, 2.hours.ago)
+      create_job_run(old_job, occurred_at: Time.current)
+
+      begin
+        CleanupService.perform
+      rescue ActiveRecord::InvalidForeignKey
+        flunk "FK constraint violated: job was deleted despite having an associated job run"
+      end
+
+      assert RailsPulse::Job.exists?(old_job.id),
+        "Job was deleted despite having an associated job run"
+    end
+
+    test "count-based job cleanup does not delete a job that has an associated job run" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,
+        rails_pulse_requests:   10_000,
+        rails_pulse_job_runs:   10_000,
+        rails_pulse_queries:    10_000,
+        rails_pulse_routes:     10_000,
+        rails_pulse_jobs:       1
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      old_job = create_job("OldCountJob")
+      old_job.update_column(:created_at, 3.hours.ago)
+      create_job_run(old_job, occurred_at: Time.current)
+
+      # A second job so count (2) exceeds max (1) — old_job is the deletion candidate
+      create_job("NewCountJob")
+
+      begin
+        CleanupService.perform
+      rescue ActiveRecord::InvalidForeignKey
+        flunk "FK constraint violated: job was deleted despite having an associated job run"
+      end
+
+      assert RailsPulse::Job.exists?(old_job.id),
+        "Job was deleted despite having an associated job run"
+    end
+
     # Foreign Key Safety Tests
 
     test "time-based cleanup does not raise FK violation when job run operation has newer occurred_at than job run" do

@@ -100,18 +100,16 @@ module RailsPulse
     end
 
     def cleanup_queries_by_time(cutoff_time)
-      query_ids_with_operations = RailsPulse::Operation.distinct.pluck(:query_id).compact
       RailsPulse::Query
         .where("created_at < ?", cutoff_time)
-        .where.not(id: query_ids_with_operations)
+        .where("id NOT IN (SELECT DISTINCT query_id FROM rails_pulse_operations WHERE query_id IS NOT NULL)")
         .delete_all
     end
 
     def cleanup_routes_by_time(cutoff_time)
-      route_ids_with_requests = RailsPulse::Request.distinct.pluck(:route_id).compact
       RailsPulse::Route
         .where("created_at < ?", cutoff_time)
-        .where.not(id: route_ids_with_requests)
+        .where("id NOT IN (SELECT DISTINCT route_id FROM rails_pulse_requests WHERE route_id IS NOT NULL)")
         .delete_all
     end
 
@@ -125,10 +123,9 @@ module RailsPulse
     end
 
     def cleanup_jobs_by_time(cutoff_time)
-      job_ids_with_runs = RailsPulse::JobRun.distinct.pluck(:job_id).compact
       RailsPulse::Job
         .where("created_at < ?", cutoff_time)
-        .where.not(id: job_ids_with_runs)
+        .where("id NOT IN (SELECT DISTINCT job_id FROM rails_pulse_job_runs WHERE job_id IS NOT NULL)")
         .delete_all
     end
 
@@ -175,20 +172,23 @@ module RailsPulse
     end
 
     def cleanup_queries_by_count
-      query_ids_with_operations = RailsPulse::Operation.distinct.pluck(:query_id).compact
-      scope = RailsPulse::Query.where.not(id: query_ids_with_operations)
+      scope = RailsPulse::Query.where(
+        "id NOT IN (SELECT DISTINCT query_id FROM rails_pulse_operations WHERE query_id IS NOT NULL)"
+      )
       cleanup_by_count(RailsPulse::Query, :rails_pulse_queries, order_column: :created_at, scope: scope)
     end
 
     def cleanup_routes_by_count
-      route_ids_with_requests = RailsPulse::Request.distinct.pluck(:route_id).compact
-      scope = RailsPulse::Route.where.not(id: route_ids_with_requests)
+      scope = RailsPulse::Route.where(
+        "id NOT IN (SELECT DISTINCT route_id FROM rails_pulse_requests WHERE route_id IS NOT NULL)"
+      )
       cleanup_by_count(RailsPulse::Route, :rails_pulse_routes, order_column: :created_at, scope: scope)
     end
 
     def cleanup_jobs_by_count
-      job_ids_with_runs = RailsPulse::JobRun.distinct.pluck(:job_id).compact
-      scope = RailsPulse::Job.where.not(id: job_ids_with_runs)
+      scope = RailsPulse::Job.where(
+        "id NOT IN (SELECT DISTINCT job_id FROM rails_pulse_job_runs WHERE job_id IS NOT NULL)"
+      )
       cleanup_by_count(RailsPulse::Job, :rails_pulse_jobs, order_column: :created_at, scope: scope)
     end
 
