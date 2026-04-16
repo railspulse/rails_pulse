@@ -152,19 +152,19 @@ module RailsPulse
         rand_val = rand
         status = if rand_val < job_def[:error_rate]
                   [ "failed", "discarded" ].sample
-                elsif rand_val < job_def[:error_rate] + 0.03
+        elsif rand_val < job_def[:error_rate] + 0.03
                   "retried"
-                else
+        else
                   "success"
-                end
+        end
 
         attempts = case status
-                  when "success"    then 1
-                  when "retried"    then rand(2..3)
-                  when "failed"     then rand(1..3)
-                  when "discarded"  then rand(3..5)
-                  else 1
-                  end
+        when "success"    then 1
+        when "retried"    then rand(2..3)
+        when "failed"     then rand(1..3)
+        when "discarded"  then rand(3..5)
+        else 1
+        end
 
         error_class = error_message = nil
         if [ "failed", "discarded" ].include?(status)
@@ -185,26 +185,26 @@ module RailsPulse
 
       def self.create_job_operations(job_run, job_def, queries, occurred_at)
         operation_count = case job_def[:name]
-                         when "UserMailerJob", "NotificationJob" then rand(1..3)
-                         when "DataExportJob", "ReportGeneratorJob", "AnalyticsJob", "ImportJob" then rand(3..8)
-                         when "ImageProcessingJob" then rand(2..5)
-                         when "CacheWarmingJob" then rand(2..4)
-                         when "WebhookDeliveryJob" then rand(1..3)
-                         when "CleanupJob" then rand(2..5)
-                         else rand(1..3)
-                         end
+        when "UserMailerJob", "NotificationJob" then rand(1..3)
+        when "DataExportJob", "ReportGeneratorJob", "AnalyticsJob", "ImportJob" then rand(3..8)
+        when "ImageProcessingJob" then rand(2..5)
+        when "CacheWarmingJob" then rand(2..4)
+        when "WebhookDeliveryJob" then rand(1..3)
+        when "CleanupJob" then rand(2..5)
+        else rand(1..3)
+        end
 
         current_time = 0.0
         operation_count.times do
           operation_type = [ "sql", "sql", "sql", "http", "job", "cache_read", "mailer" ].sample
           operation_duration = case operation_type
-                              when "sql"        then rand(2..50)
-                              when "http"       then rand(20..200)
-                              when "job"        then rand(10..80)
-                              when "mailer"     then rand(10..80)
-                              when "cache_read" then rand(1..10)
-                              else rand(5..50)
-                              end
+          when "sql"        then rand(2..50)
+          when "http"       then rand(20..200)
+          when "job"        then rand(10..80)
+          when "mailer"     then rand(10..80)
+          when "cache_read" then rand(1..10)
+          else rand(5..50)
+          end
 
           query = (operation_type == "sql" && queries.any?) ? queries.sample : nil
           label = job_operation_label(operation_type, query)

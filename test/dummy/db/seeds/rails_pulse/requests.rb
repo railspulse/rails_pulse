@@ -50,14 +50,14 @@ module RailsPulse
 
       def self.calculate_duration(route, occurred_at, slowdown_start, slowdown_end)
         base = case route.path
-               when "/"           then rand(45..110)
-               when "/fast"       then rand(5..18)
-               when "/slow"       then rand(190..460)
-               when "/error_prone" then rand(20..90)
-               when "/search"     then rand(50..160)
-               when "/api_simple" then rand(8..28)
-               when "/api_complex" then rand(90..220)
-               else
+        when "/"           then rand(45..110)
+        when "/fast"       then rand(5..18)
+        when "/slow"       then rand(190..460)
+        when "/error_prone" then rand(20..90)
+        when "/search"     then rand(50..160)
+        when "/api_simple" then rand(8..28)
+        when "/api_complex" then rand(90..220)
+        else
                  if route.path.include?("/rails/active_storage/")
                    rand(70..180)
                  elsif route.path.include?("/api/v2/organizations/")
@@ -69,7 +69,7 @@ module RailsPulse
                  else
                    rand(15..65)
                  end
-               end
+        end
 
         duration = base + rand(-base * 0.3..base * 0.5)
         duration = [ duration, 10 ].max
@@ -81,9 +81,9 @@ module RailsPulse
 
       def self.determine_status(route)
         is_error = case route.path
-                   when "/error_prone" then rand < 0.04
-                   else rand < 0.005
-                   end
+        when "/error_prone" then rand < 0.04
+        else rand < 0.005
+        end
 
         status = is_error ? [ 400, 404, 422, 500, 503 ].sample : [ 200, 201, 204 ].sample
         [ is_error, status ]
@@ -91,23 +91,23 @@ module RailsPulse
 
       def self.create_operations(request, route, queries, occurred_at)
         operation_count = case route.path
-                         when "/"           then rand(8..15)
-                         when "/fast"       then rand(1..3)
-                         when "/slow"       then rand(15..30)
-                         when "/error_prone" then rand(5..20)
-                         when "/search"     then rand(6..12)
-                         when "/api_complex" then rand(10..25)
-                         else rand(3..8)
-                         end
+        when "/"           then rand(8..15)
+        when "/fast"       then rand(1..3)
+        when "/slow"       then rand(15..30)
+        when "/error_prone" then rand(5..20)
+        when "/search"     then rand(6..12)
+        when "/api_complex" then rand(10..25)
+        else rand(3..8)
+        end
 
         current_time = 0.0
         operation_count.times do
           operation_type = [ "sql", "template", "controller" ].sample
           operation_duration = case operation_type
-                              when "sql"        then rand(1..35)
-                              when "template"   then rand(5..40)
-                              when "controller" then request.duration
-                              end
+          when "sql"        then rand(1..35)
+          when "template"   then rand(5..40)
+          when "controller" then request.duration
+          end
 
           query = select_query(queries, operation_type)
           label = operation_label(operation_type, query, request)

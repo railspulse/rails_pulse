@@ -109,12 +109,12 @@ module RailsPulse
 
         all_posts.each do |post|
           comment_count = case rand(100)
-                         when 0..20 then 0
-                         when 21..50 then rand(1..3)
-                         when 51..80 then rand(2..8)
-                         when 81..95 then rand(5..15)
-                         else rand(10..25)
-                         end
+          when 0..20 then 0
+          when 21..50 then rand(1..3)
+          when 51..80 then rand(2..8)
+          when 81..95 then rand(5..15)
+          else rand(10..25)
+          end
 
           comment_count.times do
             user = all_users.sample

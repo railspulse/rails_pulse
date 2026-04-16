@@ -21,12 +21,12 @@ module SeedHelpers
     parts = route.path.split("/").reject { |p| p.empty? || p.start_with?(":") }
     controller_name = (parts.last || "home").split("_").map(&:capitalize).join
     action = case route.method
-             when "GET"    then route.path.include?(":id") ? "show" : "index"
-             when "POST"   then "create"
-             when "PUT", "PATCH" then "update"
-             when "DELETE" then "destroy"
-             else "index"
-             end
+    when "GET"    then route.path.include?(":id") ? "show" : "index"
+    when "POST"   then "create"
+    when "PUT", "PATCH" then "update"
+    when "DELETE" then "destroy"
+    else "index"
+    end
     "#{controller_name}Controller##{action}"
   end
 end
