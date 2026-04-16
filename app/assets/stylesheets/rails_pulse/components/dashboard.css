@@ -120,7 +120,7 @@
 .attention-item__badge--warning {
   background: color-mix(in srgb, #eab308 12%, transparent);
   border-color: color-mix(in srgb, #eab308 30%, transparent);
-  color: #854d0e;
+  color: var(--color-warning-text);
 }
 
 .attention-item__content {

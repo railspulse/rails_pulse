@@ -667,11 +667,27 @@ export default class extends Controller {
 
     const scheme = document.documentElement.getAttribute('data-color-scheme')
     const isDark = scheme === 'dark'
-    const axisColor = isDark ? '#ffffff' : '#999999'
+
+    const axisLabelColor = isDark ? 'rgba(255,255,255,0.55)' : '#999999'
+    const gridColor      = isDark ? 'rgba(255,255,255,0.07)' : '#eeeeee'
+    const tooltipBg      = isDark ? 'rgba(24,24,27,0.95)'    : 'rgba(255,255,255,0.95)'
+    const tooltipText    = isDark ? '#e4e4e7'                 : '#18181b'
+    const tooltipBorder  = isDark ? 'rgba(255,255,255,0.12)' : '#cccccc'
 
     this.chart.setOption({
-      xAxis: { axisLabel: { color: axisColor } },
-      yAxis: { axisLabel: { color: axisColor } }
+      xAxis: {
+        axisLabel: { color: axisLabelColor },
+        splitLine: { lineStyle: { color: gridColor } }
+      },
+      yAxis: {
+        axisLabel: { color: axisLabelColor },
+        splitLine: { lineStyle: { color: gridColor } }
+      },
+      tooltip: {
+        backgroundColor: tooltipBg,
+        textStyle: { color: tooltipText },
+        borderColor: tooltipBorder
+      }
     })
   }
 }

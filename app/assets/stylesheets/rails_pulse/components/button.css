@@ -1,5 +1,5 @@
 .btn {
-  --btn-background: var(--color-bg);
+  --btn-background: var(--color-surface, var(--color-bg));
   --hover-color: rgba(0, 0, 0, 0.05);
 
   align-items: center;

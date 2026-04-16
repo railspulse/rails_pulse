@@ -81,7 +81,7 @@
 /* Sheet component styles for mobile menu */
 .sheet {
   border: 0;
-  background: var(--color-bg);
+  background: var(--color-surface, var(--color-bg));
   max-block-size: none;
   max-inline-size: none;
   padding: 0;
