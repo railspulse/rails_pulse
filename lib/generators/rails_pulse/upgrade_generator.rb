@@ -69,6 +69,17 @@ module RailsPulse
         false
       end
 
+      def rails_pulse_tables_exist?
+        return false unless defined?(ActiveRecord::Base)
+
+        connection = ActiveRecord::Base.connection
+        required_tables = get_rails_pulse_table_names
+
+        required_tables.all? { |table| connection.table_exists?(table) }
+      rescue
+        false
+      end
+
       def get_rails_pulse_table_names
         schema_file = File.join(root_path, "db/rails_pulse_schema.rb")
         SchemaParser.new(schema_file).extract_table_names

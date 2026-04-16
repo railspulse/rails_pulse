@@ -1,6 +1,7 @@
 # Add index to rails_pulse_requests.request_uuid for efficient lookups
 class AddIndexToRequestUuid < ActiveRecord::Migration[7.0]
   def up
+    return unless table_exists?(:rails_pulse_requests)
     unless index_exists?(:rails_pulse_requests, :request_uuid)
       add_index :rails_pulse_requests, :request_uuid, unique: true, name: "index_rails_pulse_requests_on_request_uuid"
     end
