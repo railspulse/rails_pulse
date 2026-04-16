@@ -5,7 +5,7 @@ module Statistics
     puts "=" * 80
 
     display_base_stats
-    display_rails_pulse_stats if ENV["GENERATE_HISTORICAL_DATA"] == "true"
+    display_rails_pulse_stats if SeedConfig.days_ago > 0
 
     puts "=" * 80
   end

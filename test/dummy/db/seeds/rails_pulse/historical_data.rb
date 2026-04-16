@@ -12,12 +12,14 @@ module RailsPulse
       def self.seed!
         puts "\nGenerating Rails Pulse historical data..."
 
+        SeedConfig.display_config
+        SeedConfig.validate_config
+
         clear_existing_data
         routes = Routes.seed!
         queries = Queries.seed!
 
-        request_count = ENV["HISTORICAL_REQUEST_COUNT"]&.to_i || 5000
-        Requests.seed!(routes, queries, request_count: request_count)
+        Requests.seed!(routes, queries, request_count: SeedConfig.request_count)
 
         jobs = BackgroundJobs.seed!(queries)
         JobSummaries.seed!(jobs)
@@ -25,7 +27,7 @@ module RailsPulse
         AdditionalUsersAndPosts.seed!
         generate_summaries
 
-        historical_start_time = ::RailsPulse::Request.minimum(:occurred_at)&.beginning_of_day || 5.weeks.ago
+        historical_start_time = ::RailsPulse::Request.minimum(:occurred_at)&.beginning_of_day || SeedConfig.days_ago.days.ago
         historical_end_time = Time.current
 
         QueryAnalysis.seed!(queries, routes, historical_start_time, historical_end_time)
@@ -58,13 +60,54 @@ module RailsPulse
       end
 
       def self.backfill_summaries(start_time, end_time)
-        print "Backfilling day summaries"
+        strategy = SeedConfig.summary_strategy
+
+        case strategy
+        when "none"
+          puts "Skipping summary backfill (strategy: none)"
+        when "minimal"
+          backfill_minimal(end_time)
+        when "smart"
+          backfill_smart(start_time, end_time)
+        when "complete"
+          backfill_complete(start_time, end_time)
+        else
+          puts "⚠️  Unknown summary strategy '#{strategy}', using minimal"
+          backfill_minimal(end_time)
+        end
+      end
+
+      def self.backfill_minimal(end_time)
+        print "Backfilling hour summaries (last 26 hours, strategy: minimal)"
+        hourly_start = 26.hours.ago
+        ::RailsPulse::BackfillSummariesJob.perform_now(hourly_start, end_time, [ "hour" ])
+        puts " ✓"
+      end
+
+      def self.backfill_smart(start_time, end_time)
+        # Backfill enough to cover retention period + buffer
+        retention_days = 14 # Could read from RailsPulse config
+        smart_start = (retention_days + 2).days.ago
+
+        # Only backfill what exists
+        actual_start = [ start_time, smart_start ].max
+
+        print "Backfilling day summaries (strategy: smart)"
+        ::RailsPulse::BackfillSummariesJob.perform_now(actual_start, end_time, [ "day" ])
+        puts " ✓"
+
+        print "Backfilling hour summaries (#{retention_days + 2} days, strategy: smart)"
+        ::RailsPulse::BackfillSummariesJob.perform_now(actual_start, end_time, [ "hour" ])
+        puts " ✓"
+      end
+
+      def self.backfill_complete(start_time, end_time)
+        print "Backfilling day summaries (full period, strategy: complete)"
         ::RailsPulse::BackfillSummariesJob.perform_now(start_time, end_time, [ "day" ])
         puts " ✓"
 
-        print "Backfilling hour summaries (last 26 hours)"
-        hourly_start = 26.hours.ago
-        ::RailsPulse::BackfillSummariesJob.perform_now(hourly_start, end_time, [ "hour" ])
+        print "Backfilling hour summaries (full period, strategy: complete)"
+        ::RailsPulse::BackfillSummariesJob.perform_now(start_time, end_time, [ "hour" ])
         puts " ✓"
       end
     end

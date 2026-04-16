@@ -4,14 +4,20 @@ module RailsPulse
       def self.seed!(routes, queries, request_count: 5000)
         print "Generating #{request_count} requests"
 
-        # 6-hour performance issue period (2 weeks ago)
-        slowdown_start = 2.weeks.ago + 14.hours
-        slowdown_end = slowdown_start + 6.hours
+        start_time = SeedConfig.days_ago.days.ago
+
+        # 6-hour performance issue period (2 weeks ago, only if we have enough history)
+        slowdown_start = nil
+        slowdown_end = nil
+        if SeedConfig.days_ago >= 14
+          slowdown_start = 2.weeks.ago + 14.hours
+          slowdown_end = slowdown_start + 6.hours
+        end
 
         requests_created = []
         request_count.times do |i|
           route = select_route(routes, i, request_count)
-          occurred_at = rand(5.weeks.ago..Time.current)
+          occurred_at = rand(start_time..Time.current)
 
           duration = calculate_duration(route, occurred_at, slowdown_start, slowdown_end)
           is_error, status = determine_status(route)
@@ -74,8 +80,10 @@ module RailsPulse
         duration = base + rand(-base * 0.3..base * 0.5)
         duration = [ duration, 10 ].max
 
-        # 3× slowdown during performance incident
-        duration *= 3.0 if occurred_at >= slowdown_start && occurred_at <= slowdown_end
+        # 3× slowdown during performance incident (if configured)
+        if slowdown_start && slowdown_end && occurred_at >= slowdown_start && occurred_at <= slowdown_end
+          duration *= 3.0
+        end
         duration
       end
 
