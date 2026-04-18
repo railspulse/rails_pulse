@@ -68,13 +68,7 @@
   <h2>Recent Posts</h2>
   <% if @paginated_posts.any? %>
     <div class="grid-auto">
-      <% @paginated_posts.each do |post| %>
-        <div class="card">
-          <h4><%= post.title %></h4>
-          <p class="meta">By <%= post.user&.name || "Unknown" %> &middot; <%= time_ago_in_words(post.created_at) %> ago</p>
-          <p><%= truncate(post.content, length: 100) %></p>
-        </div>
-      <% end %>
+      <%= render partial: "post_card", collection: @paginated_posts, as: :post_card %>
     </div>
   <% else %>
     <p class="meta">No posts found.</p>
@@ -93,5 +87,7 @@
   <ul>
     <li>Recent activity: <%= @has_recent_activity ? "Yes" : "No" %></li>
     <li>Authors: <%= @post_authors.join(", ") %></li>
+    <li>Total users (cached): <%= @cached_user_count %></li>
+    <li>Total posts (cached): <%= @cached_post_count %></li>
   </ul>
 </div>

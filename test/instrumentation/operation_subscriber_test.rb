@@ -319,4 +319,117 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     assert_kind_of Time, operation[:occurred_at]
     assert_operator operation[:occurred_at], :>=, start_time
   end
+
+  # row_count Tests
+
+  test "captures row_count from SQL payload" do
+    payload = { sql: "SELECT * FROM users", name: "User Load", row_count: 42 }
+
+    ActiveSupport::Notifications.instrument("sql.active_record", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_equal 42, operation[:row_count]
+  end
+
+  test "row_count is nil when not present in SQL payload" do
+    payload = { sql: "SELECT * FROM users", name: "User Load" }
+
+    ActiveSupport::Notifications.instrument("sql.active_record", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_nil operation[:row_count]
+  end
+
+  test "row_count zero is captured correctly" do
+    payload = { sql: "SELECT * FROM users WHERE id = 99999", name: "User Load", row_count: 0 }
+
+    ActiveSupport::Notifications.instrument("sql.active_record", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_equal 0, operation[:row_count]
+  end
+
+  test "non-SQL operations do not have row_count" do
+    payload = { identifier: "/app/views/users/index.html.erb" }
+
+    ActiveSupport::Notifications.instrument("render_template.action_view", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_equal "template", operation[:operation_type]
+    assert_nil operation[:row_count]
+  end
+
+  # cache_hit Tests
+
+  test "captures cache_hit true when cache read hits" do
+    payload = { key: "users/count", hit: true }
+
+    ActiveSupport::Notifications.instrument("cache_read.active_support", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_equal "cache_read", operation[:operation_type]
+    assert operation[:cache_hit]
+  end
+
+  test "captures cache_hit false when cache read misses" do
+    payload = { key: "users/count", hit: false }
+
+    ActiveSupport::Notifications.instrument("cache_read.active_support", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    refute operation[:cache_hit]
+  end
+
+  test "cache_hit is nil when not present in cache_read payload" do
+    payload = { key: "users/count" }
+
+    ActiveSupport::Notifications.instrument("cache_read.active_support", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_nil operation[:cache_hit]
+  end
+
+  test "cache_write operations do not have cache_hit" do
+    payload = { key: "users/count" }
+
+    ActiveSupport::Notifications.instrument("cache_write.active_support", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_equal "cache_write", operation[:operation_type]
+    assert_nil operation[:cache_hit]
+  end
+
+  # extra: merge Tests
+
+  test "extra data is merged into operation for SQL" do
+    payload = { sql: "SELECT 1", name: "Test", row_count: 5 }
+
+    ActiveSupport::Notifications.instrument("sql.active_record", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_equal 5, operation[:row_count]
+    assert_equal "sql", operation[:operation_type]
+    assert_operator operation[:duration], :>=, 0
+  end
+
+  test "extra data does not overwrite core operation fields" do
+    payload = { sql: "SELECT * FROM users", name: "User Load", row_count: 10 }
+
+    ActiveSupport::Notifications.instrument("sql.active_record", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_equal "sql", operation[:operation_type]
+    assert_equal "SELECT * FROM users", operation[:label]
+    assert_equal @request.id, operation[:request_id]
+  end
 end

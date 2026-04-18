@@ -46,7 +46,7 @@ module RailsPulse
 
       # Common SQL parsing utilities
       def extract_main_table(sql_string = sql)
-        match = sql_string.match(/FROM\s+(\w+)/i)
+        match = sql_string.match(/FROM\s+["'`]?(\w+)["'`]?/i)
         match ? match[1] : nil
       end
 

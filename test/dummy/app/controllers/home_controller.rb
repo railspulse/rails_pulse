@@ -42,6 +42,10 @@ class HomeController < ApplicationController
     Post.limit(5).each do |post|
       @post_authors << post.user.name if post.user
     end
+
+    # Cache read/write to populate cache_hit field
+    @cached_user_count = Rails.cache.fetch("rails_pulse_demo_user_count", expires_in: 5.minutes) { User.count }
+    @cached_post_count = Rails.cache.fetch("rails_pulse_demo_post_count", expires_in: 5.minutes) { Post.count }
   end
 
   # Fast query action - minimal database operations
@@ -73,6 +77,14 @@ class HomeController < ApplicationController
     ).where(
       id: Comment.where(created_at: 1.week.ago..).select(:user_id)
     )
+
+    # Bound-parameter lookups to populate sample_binds
+    @sample_user = User.where("name LIKE ?", "%a%").first
+    @sample_post = Post.where("title LIKE ?", "%the%").first
+    if @sample_user
+      @user_posts = Post.where("user_id = ?", @sample_user.id).limit(5)
+      @user_comments = Comment.where("user_id = ?", @sample_user.id).limit(5)
+    end
   end
 
   def errors

@@ -91,21 +91,23 @@ module RailsPulse
       def analyze_join_indexes
         recommendations = []
 
-        # Extract JOIN conditions
-        join_matches = sql.scan(/JOIN\s+(\w+)\s+.*?ON\s+(\w+)\.(\w+)\s*=\s*(\w+)\.(\w+)/i)
+        # Extract JOIN conditions — handle both bare and quoted identifiers
+        id_pat = /["'`]?(\w+)["'`]?/
+        join_matches = sql.scan(/JOIN\s+#{id_pat}\s+(?:\w+\s+)?ON\s+#{id_pat}\.#{id_pat}\s*=\s*#{id_pat}\.#{id_pat}/i)
+          .map { |m| m.flatten.compact }
 
         join_matches.each do |join_table, table1, col1, table2, col2|
-          # Recommend indexes on join columns
-          recommendations << build_index_recommendation(
-            join_table, [ col2 ], "single_column", "high",
-            "JOIN condition", "Fast JOIN execution"
-          )
-
-          # Also check the other side of the join if it's not the main table
-          main_table = extract_main_table
-          if table1 != main_table
+          # Recommend index on the foreign key side of the JOIN (skip primary keys)
+          unless col1 == "id"
             recommendations << build_index_recommendation(
               table1, [ col1 ], "single_column", "high",
+              "JOIN condition", "Fast JOIN execution"
+            )
+          end
+
+          unless col2 == "id"
+            recommendations << build_index_recommendation(
+              table2, [ col2 ], "single_column", "high",
               "JOIN condition", "Fast JOIN execution"
             )
           end
@@ -222,7 +224,11 @@ module RailsPulse
 
         order_clause = order_match[1]
         order_clause.split(",").map do |col|
-          col.strip.gsub(/\s+(ASC|DESC)\s*$/i, "").strip
+          col.strip
+             .gsub(/\s+(ASC|DESC)\s*$/i, "")
+             .strip
+             .gsub(/\A["'`](\w+)["'`]\z/, '\1')
+             .gsub(/\A["'`]?\w+["'`]?\.["'`]?(\w+)["'`]?\z/, '\1')
         end
       end
 

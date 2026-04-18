@@ -72,6 +72,61 @@ module RailsPulse
           RailsPulse::Tracker.define_singleton_method(:track_request, original_method)
         end
       end
+
+      test "tracking data includes response_size_bytes" do
+        captured_data = nil
+        original_method = RailsPulse::Tracker.method(:track_request)
+
+        RailsPulse::Tracker.define_singleton_method(:track_request) do |data|
+          captured_data = data
+          original_method.call(data)
+        end
+
+        begin
+          get "/api_simple", as: :json
+
+          assert_not_nil captured_data
+          assert captured_data.key?(:response_size_bytes), "tracking data should include response_size_bytes key"
+        ensure
+          RailsPulse::Tracker.define_singleton_method(:track_request, original_method)
+        end
+      end
+
+      test "n_plus_one detection annotates repeated sql operations" do
+        captured_data = nil
+        original_method = RailsPulse::Tracker.method(:track_request)
+
+        RailsPulse::Tracker.define_singleton_method(:track_request) do |data|
+          captured_data = data
+          original_method.call(data)
+        end
+
+        begin
+          get "/"
+
+          assert_not_nil captured_data
+          sql_ops = captured_data[:operations].select { |op| op[:operation_type] == "sql" }
+          repeated = sql_ops.select { |op| op[:repetition_count] }
+
+          if repeated.any?
+            repeated.each do |op|
+              assert_operator op[:repetition_count], :>=, 2
+              assert_not_nil op[:repeated_query_group]
+            end
+          end
+        ensure
+          RailsPulse::Tracker.define_singleton_method(:track_request, original_method)
+        end
+      end
+
+      test "persists response_size_bytes on request record" do
+        get "/api_simple", as: :json
+
+        request = RailsPulse::Request.last
+
+        assert_not_nil request.response_size_bytes
+        assert_operator request.response_size_bytes, :>, 0
+      end
     end
   end
 end

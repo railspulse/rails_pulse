@@ -40,6 +40,7 @@ module RailsPulse
         # Collect all tracking data
         # Deep copy operations array to prevent race condition in async mode
         operations = RequestStore.store[:rails_pulse_operations] || []
+        detect_n_plus_one(operations)
         tracking_data = {
           method: req.request_method,
           path: req.path,
@@ -49,6 +50,7 @@ module RailsPulse
           request_uuid: req.uuid,
           controller_action: controller_action,
           occurred_at: occurred_at,
+          response_size_bytes: response_size_bytes(headers, response),
           operations: operations.map(&:dup)
         }
 
@@ -69,6 +71,28 @@ module RailsPulse
         yield
       ensure
         RequestStore.store[:skip_recording_rails_pulse_activity] = false
+      end
+
+      def response_size_bytes(headers, response)
+        return headers["Content-Length"].to_i if headers["Content-Length"]
+        body = response.respond_to?(:body) ? response.body : nil
+        body.bytesize if body.is_a?(String)
+      rescue
+        nil
+      end
+
+      def detect_n_plus_one(operations)
+        sql_ops = operations.select { |op| op[:operation_type] == "sql" }
+        return if sql_ops.size < 2
+
+        groups = sql_ops.group_by { |op| RailsPulse::SqlQueryNormalizer.normalize(op[:label].to_s) }
+        groups.each do |normalized_sql, ops|
+          next if ops.size < 2
+          ops.each do |op|
+            op[:repeated_query_group] = normalized_sql
+            op[:repetition_count] = ops.size
+          end
+        end
       end
 
       def should_ignore_route?(req)

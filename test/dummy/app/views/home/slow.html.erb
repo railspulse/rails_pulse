@@ -1,5 +1,5 @@
 <h1>Slow Queries</h1>
-<p class="meta" style="margin-bottom: 20px;">Complex JOINs, GROUP BY, HAVING clauses, and multiple subqueries — significant database load.</p>
+<p class="meta" style="margin-bottom: 20px;">Complex JOINs, GROUP BY, HAVING clauses, multiple subqueries, and bound-parameter lookups.</p>
 
 <div style="display: grid; gap: 16px;">
   <div class="section">
@@ -47,4 +47,22 @@
       <p class="meta">No active users found.</p>
     <% end %>
   </div>
+
+  <% if @sample_user %>
+    <div class="section">
+      <h2>Bound Parameter Lookups (sample_binds)</h2>
+      <p><strong>User #1:</strong> <%= @sample_user.name %> &mdash; <%= @sample_user.email %></p>
+      <% if @sample_post %>
+        <p><strong>Post #1:</strong> <%= @sample_post.title %></p>
+      <% end %>
+      <% if @user_posts&.any? %>
+        <p><strong>Posts by user_id=<%= @sample_user.id %>:</strong></p>
+        <ul>
+          <% @user_posts.each do |post| %>
+            <li><%= post.title %></li>
+          <% end %>
+        </ul>
+      <% end %>
+    </div>
+  <% end %>
 </div>

@@ -142,6 +142,50 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     end
   end
 
+  test "persists response_size_bytes to request record" do
+    data = @tracking_data.merge(response_size_bytes: 4096)
+    RailsPulse::Tracker.track_request(data)
+
+    request = RailsPulse::Request.find_by(request_uuid: data[:request_uuid])
+
+    assert_not_nil request
+    assert_equal 4096, request.response_size_bytes
+  end
+
+  test "persists nil response_size_bytes when not provided" do
+    RailsPulse::Tracker.track_request(@tracking_data)
+
+    request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
+
+    assert_not_nil request
+    assert_nil request.response_size_bytes
+  end
+
+  test "persists operation diagnostic fields" do
+    data = @tracking_data.merge(
+      operations: [
+        {
+          operation_type: "sql",
+          duration: 50.0,
+          label: "SELECT * FROM users WHERE id = 1",
+          occurred_at: Time.current,
+          row_count: 1,
+          repeated_query_group: "SELECT * FROM users WHERE id = ?",
+          repetition_count: 5
+        }
+      ]
+    )
+
+    RailsPulse::Tracker.track_request(data)
+
+    request = RailsPulse::Request.find_by(request_uuid: data[:request_uuid])
+    operation = request.operations.first
+
+    assert_equal 1, operation.row_count
+    assert_equal 5, operation.repetition_count
+    assert_not_nil operation.repeated_query_group
+  end
+
   test "handles deep copied operations in async mode" do
     # Temporarily enable async mode
     original_async = RailsPulse.configuration.async

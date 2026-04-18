@@ -68,6 +68,7 @@ RailsPulse::Schema ||= lambda do |connection|
       t.string :controller_action, comment: "Controller and action handling the request (e.g., PostsController#show)"
       t.timestamp :occurred_at, null: false, comment: "When the request started"
       t.text :tags, comment: "JSON array of tags for filtering and categorization"
+      t.integer :response_size_bytes, comment: "HTTP response body size in bytes"
       t.timestamps
     end
 
@@ -131,6 +132,10 @@ RailsPulse::Schema ||= lambda do |connection|
       t.string :codebase_location, comment: "File and line number (e.g., app/models/user.rb:25)"
       t.float :start_time, null: false, default: 0.0, comment: "Operation start time in milliseconds"
       t.timestamp :occurred_at, null: false, comment: "When the request started"
+      t.integer :row_count, comment: "Number of rows returned (SQL operations, Rails 7.1+)"
+      t.boolean :cache_hit, comment: "Whether a cache_read operation hit the cache"
+      t.text :repeated_query_group, comment: "Normalized SQL key identifying an N+1 group"
+      t.integer :repetition_count, comment: "Number of times this query pattern repeated in the request"
       t.timestamps
     end
 

@@ -20,6 +20,8 @@ module RailsPulse
     serialize :metadata, type: Hash, coder: JSON
     serialize :query_stats, type: Hash, coder: JSON
     serialize :backtrace_analysis, type: Hash, coder: JSON
+    serialize :n_plus_one_analysis, type: Hash, coder: JSON
+    serialize :index_recommendations, type: Array, coder: JSON
     serialize :suggestions, type: Array, coder: JSON
 
     def self.ransackable_attributes(auth_object = nil)

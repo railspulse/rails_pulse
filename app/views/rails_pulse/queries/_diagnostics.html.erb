@@ -1,0 +1,97 @@
+<%= render 'rails_pulse/components/panel', { title: 'Diagnostics' } do %>
+
+  <%# N+1 Detection — from collected operations, no analysis required %>
+  <% if n_plus_one_groups.any? %>
+  <div class="flex items-center gap mbe-3">
+    <h5 style="margin: 0;">N+1 Detection</h5>
+    <span class="badge badge--negative"><%= n_plus_one_groups.size %> <%= n_plus_one_groups.size == 1 ? 'pattern' : 'patterns' %> detected</span>
+  </div>
+    <table class="table mbe-6">
+      <thead>
+        <tr>
+          <th>Repeated Query Pattern</th>
+          <th class="w-32">Max Repetitions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% n_plus_one_groups.each do |pattern, max_count| %>
+          <tr>
+            <td><code class="text-sm"><%= pattern.truncate(120) %></code></td>
+            <td class="text-center"><%= max_count %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% end %>
+
+  <%# Query Characteristics — available if query analysis has been run %>
+  <% if query.query_stats.present? %>
+    <hr class="mb-4" />
+    <h5 class="mbe-3">Query Characteristics</h5>
+    <div class="row mbe-4">
+      <div>
+        <dl class="descriptive-list">
+          <dt>Query Type</dt>
+          <dd><%= query.query_stats['query_type'] %></dd>
+          <dt>Tables</dt>
+          <dd><%= query.query_stats['table_count'] || 0 %></dd>
+          <dt>Joins</dt>
+          <dd><%= query.query_stats['join_count'] || 0 %></dd>
+          <dt>Complexity Score</dt>
+          <dd><%= query.query_stats['estimated_complexity'] || 0 %></dd>
+        </dl>
+      </div>
+      <div>
+        <dl class="descriptive-list">
+          <dt>Has LIMIT</dt>
+          <dd><%= query.query_stats['has_limit'] ? 'Yes' : 'No' %></dd>
+          <dt>Has ORDER BY</dt>
+          <dd><%= query.query_stats['has_order_by'] ? 'Yes' : 'No' %></dd>
+          <dt>Has GROUP BY</dt>
+          <dd><%= query.query_stats['has_group_by'] ? 'Yes' : 'No' %></dd>
+          <dt>Has Subqueries</dt>
+          <dd><%= query.query_stats['has_subqueries'] ? 'Yes' : 'No' %></dd>
+        </dl>
+      </div>
+    </div>
+  <% end %>
+
+  <%# Issues — from analysis %>
+  <% if query.issues.present? && query.issues.any? %>
+    <hr class="mb-4" />
+    <h5 class="mbe-3">Issues Detected</h5>
+    <ul style="list-style-type: disc; padding-left: 20px;">
+      <% query.issues.each do |issue| %>
+        <li class="text-sm mbe-1"><%= issue['description'] %></li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <%# Suggestions — high priority only %>
+  <% high_impact_suggestions = query.suggestions&.select { |s| s['priority'] == 'high' } %>
+  <% if high_impact_suggestions.present? && high_impact_suggestions.any? %>
+    <hr class="mb-4" />
+    <h5 class="mbe-3">Optimization Suggestions</h5>
+    <ul style="list-style-type: disc; padding-left: 20px;">
+      <% high_impact_suggestions.each do |s| %>
+        <li class="text-sm mbe-2">
+          <span class="font-medium"><%= s['action'] %></span>
+          <% if s['benefit'].present? %>
+            <span class="text-subtle"> — <%= s['benefit'] %></span>
+          <% end %>
+          <% if s['migration_code'].present? %>
+            <br><code class="text-xs text-subtle"><%= s['migration_code'] %></code>
+          <% end %>
+        </li>
+      <% end %>
+    </ul>
+  <% end %>
+
+  <%# EXPLAIN Plan — auto-generated on first visit %>
+  <% if query.explain_plan.present? %>
+    <hr class="mb-4" />
+    <h5 class="mbe-3">Execution Plan</h5>
+    <pre class="text-sm" style="overflow: auto; max-height: 300px; white-space: pre-wrap;"><%= query.explain_plan %></pre>
+  <% end %>
+
+<% end %>

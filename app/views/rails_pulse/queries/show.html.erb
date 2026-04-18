@@ -54,25 +54,45 @@
   <%= render 'rails_pulse/components/code_panel', { title: 'Normalized Query', value: @query.normalized_sql } %>
 </div>
 
-<%= render 'rails_pulse/queries/analysis_wrapper', query: @query %>
+<%#= render 'rails_pulse/queries/analysis_wrapper', query: @query %>
+
+<%= render 'rails_pulse/queries/diagnostics', query: @query, n_plus_one_groups: @n_plus_one_groups %>
 
 <%= render 'rails_pulse/components/panel', { title: 'Query Locations' } do %>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Location</th>
-        <th>Average Query Time</th>
-        <th>Count</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @query.operations.group_by(&:codebase_location).each do |codebase_location, operations| %>
+  <%
+    p95 = ->(vals) {
+      sorted = vals.compact.sort
+      next nil if sorted.empty?
+      sorted[[(0.95 * sorted.length).ceil - 1, 0].max]
+    }
+    location_groups = @all_query_operations.group_by(&:codebase_location)
+  %>
+  <% if location_groups.any? %>
+    <table class="table">
+      <thead>
         <tr>
-          <td><%= codebase_location %></td>
-          <td><%= (operations.sum(&:duration) / operations.count).round(2) %></td>
-          <td><%= operations.count %></td>
+          <th>Location</th>
+          <th>P95 Duration (ms)</th>
+          <th>P95 Row Count</th>
+          <th>Count</th>
         </tr>
-      <% end %>
-    </tbody>
-  </table>
+      </thead>
+      <tbody>
+        <% location_groups.each do |codebase_location, ops| %>
+          <tr>
+            <td><code class="text-sm"><%= codebase_location.presence || 'Unknown' %></code></td>
+            <td><%= p95.call(ops.map(&:duration))&.round(2) %></td>
+            <td><%= p95.call(ops.map(&:row_count)) || '—' %></td>
+            <td><%= ops.count %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No location data available.',
+        description: 'Location data is captured when codebase_location is present on operations.' %>
+  <% end %>
 <% end %>
+
+<%= render 'rails_pulse/queries/raw_data', query: @query, all_operations: @all_query_operations %>

@@ -66,7 +66,7 @@ module RailsPulse
           nil
         end
 
-        def capture_operation(event_name, start, finish, payload, operation_type, label_key = nil)
+        def capture_operation(event_name, start, finish, payload, operation_type, label_key = nil, extra: {})
           return unless RailsPulse.configuration.enabled
           return if RequestStore.store[:skip_recording_rails_pulse_activity]
 
@@ -111,7 +111,7 @@ module RailsPulse
             codebase_location: codebase_location,
             start_time: start.to_f,
             occurred_at: Time.zone.at(start)
-          }
+          }.merge(extra)
 
           RequestStore.store[:rails_pulse_operations] ||= []
           RequestStore.store[:rails_pulse_operations] << operation_data
@@ -143,7 +143,7 @@ module RailsPulse
           ActiveSupport::Notifications.subscribe "sql.active_record" do |name, start, finish, id, payload|
             begin
               next if payload[:name] == "SCHEMA"
-              capture_operation(name, start, finish, payload, "sql", :sql)
+              capture_operation(name, start, finish, payload, "sql", :sql, extra: { row_count: payload[:row_count] })
             rescue => e
               RailsPulse.logger.error "Exception in SQL subscriber: #{e.class} - #{e.message}"
             end
@@ -193,7 +193,7 @@ module RailsPulse
         def subscribe_cache_read!
           ActiveSupport::Notifications.subscribe "cache_read.active_support" do |name, start, finish, id, payload|
             begin
-              capture_operation(name, start, finish, payload, "cache_read", :cache)
+              capture_operation(name, start, finish, payload, "cache_read", :cache, extra: { cache_hit: payload[:hit] })
             rescue => e
               RailsPulse.logger.error "Exception in cache_read subscriber: #{e.class} - #{e.message}"
             end

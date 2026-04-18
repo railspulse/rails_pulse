@@ -70,7 +70,7 @@ module RailsPulse
       end
 
       def has_limit?
-        sql.match?(/\bLIMIT\s+\d+/i)
+        sql.match?(/\bLIMIT\s+(\d+|\?)/i)
       end
 
       def has_order_by?
@@ -123,16 +123,6 @@ module RailsPulse
             severity: "info",
             description: "Using SELECT * may retrieve unnecessary columns",
             impact: "Increased memory usage and network transfer"
-          }
-        end
-
-        # Missing LIMIT on potentially large results
-        if sql.match?(/^SELECT.*FROM.*WHERE/i) && !has_limit? && !sql.include?("COUNT")
-          issues << {
-            type: "missing_limit",
-            severity: "warning",
-            description: "Query may return large result sets without LIMIT",
-            impact: "Memory exhaustion and slow response times"
           }
         end
 
