@@ -3,6 +3,8 @@
 module RailsPulse
   module Analysis
     class BaseAnalyzer
+      RECENT_OPERATIONS_WINDOW = 48.hours
+
       attr_reader :query, :operations
 
       def initialize(query, operations = [])
@@ -22,7 +24,7 @@ module RailsPulse
       end
 
       def recent_operations
-        @recent_operations ||= operations.select { |op| op.occurred_at > 48.hours.ago }
+        @recent_operations ||= operations.select { |op| op.occurred_at > RECENT_OPERATIONS_WINDOW.ago }
       end
 
       # Utility method for database adapter detection
@@ -44,7 +46,7 @@ module RailsPulse
 
       # Common SQL parsing utilities
       def extract_main_table(sql_string = sql)
-        match = sql_string.match(/FROM\s+(\w+)/i)
+        match = sql_string.match(/FROM\s+["'`]?(\w+)["'`]?/i)
         match ? match[1] : nil
       end
 

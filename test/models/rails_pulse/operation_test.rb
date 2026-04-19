@@ -92,6 +92,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
       route: route,
       duration: 100,
       status: 200,
+      is_error: false,
       request_uuid: SecureRandom.uuid,
       occurred_at: Time.current
     )
@@ -123,6 +124,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
       route: route,
       duration: 100,
       status: 200,
+      is_error: false,
       request_uuid: SecureRandom.uuid,
       occurred_at: Time.current
     )

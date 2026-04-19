@@ -42,7 +42,8 @@ module RailsPulse
               is_error: data[:is_error],
               request_uuid: data[:request_uuid],
               controller_action: data[:controller_action],
-              occurred_at: data[:occurred_at]
+              occurred_at: data[:occurred_at],
+              response_size_bytes: data[:response_size_bytes]
             )
 
             # Create operation records

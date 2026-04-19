@@ -6,14 +6,14 @@ module RailsPulse
       # Handle links
       if column[:link_to] && row_data[column[:link_to]]
         # Direct link provided
-        link_to value, row_data[column[:link_to]], data: { turbo_frame: "_top" }
+        link_to value, row_data[column[:link_to]]
       elsif column[:link_field] && row_data[column[:link_field]]
         # Generate link based on field type and ID
         case column[:link_field]
         when :query_id
-          link_to value, query_path(row_data[column[:link_field]]), data: { turbo_frame: "_top" }
+          link_to value, query_path(row_data[column[:link_field]])
         when :route_id
-          link_to value, route_path(row_data[column[:link_field]]), data: { turbo_frame: "_top" }
+          link_to value, route_path(row_data[column[:link_field]])
         else
           value
         end

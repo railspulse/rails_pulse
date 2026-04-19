@@ -3,33 +3,19 @@ source "https://rubygems.org"
 # Specify your gem's dependencies in rails_pulse.gemspec.
 gemspec
 
-gem "puma"
-
-gem "sqlite3"
-gem "pg"
-gem "mysql2"
-
 # Load environment variables from .env file
 gem "dotenv-rails", groups: [ :development, :test ]
-
-gem "css-zero"
-gem "importmap-rails"
-gem "ransack"
-gem "turbo-rails"
-gem "request_store"
 
 # Testing dependencies
 group :test do
   gem "appraisal"
+  gem "puma"
   gem "capybara"
-  gem "database_cleaner-active_record"
-  gem "factory_bot_rails"
-  gem "faker"
   gem "minitest-reporters"
   gem "mocha"
-  gem "pry-byebug"
   gem "selenium-webdriver"
   gem "shoulda-matchers"
+  gem "simplecov", require: false
   gem "timecop"
 end
 
@@ -44,4 +30,13 @@ end
 
 group :development, :test do
   gem "debug"
+end
+
+# Background job adapters — used by the /jobs demo page and adapter tests
+group :development, :test do
+  gem "sidekiq"
+  gem "good_job"
+  gem "delayed_job_active_record"
+  gem "solid_queue"
+  gem "resque"
 end

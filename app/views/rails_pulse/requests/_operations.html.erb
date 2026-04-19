@@ -1,4 +1,7 @@
-<%= render 'rails_pulse/components/panel', { title: 'Event Sequence ' } do %>
+<%= render 'rails_pulse/components/panel',
+      title: 'Operations',
+      help_heading: 'How to use this',
+      help_text: 'Sort by Impact to find your biggest wins. Click any row for details and optimisation suggestions. The same SQL appearing multiple times is an N+1 — fix with includes(). A single operation above 50% impact is your highest priority.' do %>
   <% if operations.any? %>
     <table class="table operations-table">
       <thead>
@@ -12,67 +15,89 @@
           <th class="w-16">Actions</th>
         </tr>
       </thead>
-      <tbody data-controller="rails-pulse--expandable-rows" data-action="click->rails-pulse--expandable-rows#toggle">
+      <tbody
+        data-controller="rails-pulse--expandable-rows"
+        data-action="click->rails-pulse--expandable-rows#toggle"
+      >
         <% total_request_duration = @request.duration.to_f %>
         <% @operation_timeline.bars.each_with_index do |bar, index| %>
-            <tr data-operation-id="<%= bar.operation.id %>">
-              <!-- Toggle chevron column -->
-              <td class="text-center cursor-pointer">
-                <div class="chevron mbs-2">
-                  <%= rails_pulse_icon('chevron-right', width: '16', class: 'transition-transform duration-200') %>
-                </div>
-              </td>
+          <tr data-operation-id="<%= bar.operation.id %>">
+            <!-- Toggle chevron column -->
+            <td class="text-center cursor-pointer">
+              <div class="chevron mbs-2">
+                <%= rails_pulse_icon(
+                  "chevron-right",
+                  width: "16",
+                  class: "transition-transform duration-200",
+                ) %>
+              </div>
+            </td>
 
-              <td class="operations-label-cell">
-                <span class="text-link" style="color: <%= event_color(bar.operation.operation_type) %>;">
-                  <%= html_escape(bar.operation.label) %>
-                </span>
-              </td>
+            <td class="operations-label-cell">
+              <span
+                class="text-link"
+                style="color: <%= event_color(bar.operation.operation_type) %>;"
+              >
+                <%= html_escape(bar.operation.label) %>
+              </span>
+            </td>
 
-              <td class="whitespace-nowrap">
-                <%= bar.duration.round(2) %> ms
-              </td>
+            <td class="whitespace-nowrap">
+              <%= bar.duration.round(2) %>
+              ms
+            </td>
 
-              <td class="whitespace-nowrap">
-                <% impact_percentage = total_request_duration > 0 ? (bar.operation.duration / total_request_duration * 100).round(1) : 0 %>
-                <%= impact_percentage %>%
-              </td>
+            <td class="whitespace-nowrap">
+              <% impact_percentage =
+                (
+                  if total_request_duration > 0
+                    (bar.operation.duration / total_request_duration * 100).round(1)
+                  else
+                    0
+                  end
+                ) %>
+              <%= impact_percentage %>%
+            </td>
 
-              <td class="whitespace-nowrap text-center">
-                <%= operation_status_indicator(bar.operation) %>
-              </td>
+            <td class="whitespace-nowrap text-center">
+              <%= operation_status_indicator(bar.operation) %>
+            </td>
 
-              <td class="operations-event-cell">
-                <div
-                  class="operations-event"
-                  style="left: <%= bar.left_pct %>%; width: <%= bar.width_pct %>%; background-color: <%= event_color(bar.operation.operation_type) %>;">
-                </div>
-              </td>
+            <td class="operations-event-cell">
+              <div
+                class="flame-bar"
+                style="left: <%= bar.left_pct %>%; width: <%= [bar.width_pct, 0.3].max %>%; background-color: <%= event_color(bar.operation.operation_type) %>;"
+              >
+              </div>
+            </td>
 
-              <td>
-                <%= link_to rails_pulse_icon('eye', width: '16', class: 'inline-block mbi-2'), operation_path(bar.operation), title: 'View details', data: { turbo_frame: "_top" } %>
-                <% if bar.operation.operation_type == "sql" && bar.operation.query.present? %>
-                  <%= link_to rails_pulse_icon('database', width: '16', class: 'inline-block'), query_path(bar.operation.query), title: 'View query', data: { turbo_frame: "_top" } %>
-                <% end %>
-              </td>
-            </tr>
-
-            <!-- Expandable details row -->
-            <tr
-              class="operation-details-row hidden"
-              data-operation-id="<%= bar.operation.id %>"
-            >
-              <td colspan="7" class="pi-8 pb-4">
-                <%= turbo_frame_tag "operation_#{bar.operation.id}_details", data: { "operation-url": operation_path(bar.operation) } do %>
-                <% end %>
-              </td>
-            </tr>
+            <td>
+              <%= link_to rails_pulse_icon("eye", width: "16", class: "inline-block mbi-2"),
+              operation_path(bar.operation),
+              title: "View details" %>
+              <% if bar.operation.operation_type == "sql" && bar.operation.query.present? %>
+                <%= link_to rails_pulse_icon("database", width: "16", class: "inline-block"),
+                query_path(bar.operation.query),
+                title: "View query" %>
+              <% end %>
+            </td>
+          </tr>
+          <!-- Expandable details row -->
+          <tr
+            class="operation-details-row hidden"
+            data-operation-id="<%= bar.operation.id %>"
+          >
+            <td colspan="7" class="pi-8 pb-4">
+              <div id="operation_<%= bar.operation.id %>_details" data-operation-url="<%= operation_path(bar.operation) %>">
+              </div>
+            </td>
+          </tr>
         <% end %>
       </tbody>
     </table>
   <% else %>
-    <%= render 'rails_pulse/components/empty_state',
-        title: 'No operations found for this request.',
-        description: 'This request may not have had any tracked operations.' %>
+    <%= render "rails_pulse/components/empty_state",
+    title: "No operations found for this request.",
+    description: "This request may not have had any tracked operations." %>
   <% end %>
 <% end %>

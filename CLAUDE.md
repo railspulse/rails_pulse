@@ -86,6 +86,8 @@ Naming conventions:
 
 **Configuration validation is strict.** All thresholds, patterns, and database settings are validated at startup — invalid config fails fast.
 
+**Requests index shows individual records, not aggregates.** Routes and Queries controllers use `Tables::Index` classes to query aggregated summary data, but RequestsController queries individual `RailsPulse::Request` records directly. This is intentional — the requests page displays per-request details (occurred_at, status, tags, route links) that would be lost in aggregation.
+
 ## Adding a New Feature
 
 1. Add config option to `RailsPulse::Configuration` (`lib/rails_pulse/configuration.rb`)

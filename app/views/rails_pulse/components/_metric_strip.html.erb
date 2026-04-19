@@ -1,0 +1,79 @@
+<%
+  metrics_data ||= []
+%>
+<div class="card metric-strip">
+  <% metrics_data.each do |data| %>
+    <%
+      trend_icon = data[:trend_icon]
+      chart_color = data[:chart_color] || RailsPulse::ChartColors::DEFAULT
+
+      # Extract short name for tooltip (e.g., "P95" from "P95 Response Time")
+      short_name = data[:title].to_s.split.first
+
+      chart_options = sparkline_chart_options.deep_merge(
+        color: [chart_color],
+        series: {
+          name: short_name,
+          itemStyle: { color: chart_color }
+        }
+      )
+
+      badge = case trend_icon
+      when "trending-up"   then "badge--negative-inverse"
+      when "trending-down" then "badge--positive-inverse"
+      else                      "badge--primary-inverse"
+      end
+    %>
+    <div class="metric-strip__section" id="<%= data[:id] %>">
+      <div class="flex items-start justify-between gap-2">
+        <h2 class="metric-strip__title font-semibold uppercase text-xs" title="<%= data[:title] %>"><%= data[:title] %></h2>
+        <div class="flex items-center" style="flex-shrink: 0;">
+          <% if data[:help_heading] && data[:help_text] %>
+            <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-end">
+              <a href="#"
+                data-rails-pulse--popover-target="button"
+                data-action="rails-pulse--popover#toggle"
+                data-popovertarget="popover"
+                style="display: block; line-height: 1;">
+                <%= rails_pulse_icon 'message-circle-question', height: "16px", width: "16px" %>
+              </a>
+              <div popover class="popover card" data-rails-pulse--popover-target="menu" style="max-width: 20rem">
+                <div class="flex flex-col">
+                  <h3 class="font-semibold leading-none mbe-2 uppercase text-sm"><%= data[:help_heading] %></h3>
+                  <p class="text-sm text-subtle"><%= data[:help_text] %></p>
+                </div>
+              </div>
+            </div>
+          <% end %>
+          <% if data[:link_url] %>
+            <%= link_to data[:link_url], class: "mis-2", style: "display: block; line-height: 1;", title: "View details" do %>
+              <%= rails_pulse_icon 'external-link', height: "16px", width: "16px" %>
+            <% end %>
+          <% end %>
+        </div>
+      </div>
+      <% if data[:all_clear] %>
+        <div class="metric-strip__all-clear" style="color: var(--color-positive)">
+          <%= rails_pulse_icon "shield-check", height: "18px", width: "18px", class: "metric-strip__all-clear-icon" %>
+          <span class="font-semibold">Under SLO</span>
+        </div>
+      <% else %>
+        <h4 class="text-xl font-bold"><%= data[:summary] %></h4>
+        <div class="metric-strip__chart">
+          <%= render_stimulus_chart data[:chart_data], type: 'bar', height: "100%", options: chart_options %>
+        </div>
+      <% end %>
+      <% if trend_icon %>
+        <div class="metric-strip__trend">
+          <span class="badge <%= badge %> badge--trend metric-strip__trend-badge p-0">
+            <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
+            <span class="badge__trend-amount"><%= data[:trend_amount] %></span>
+          </span>
+          <p class="metric-strip__trend-label mis-2 text-subtle text-xs"><%= data[:trend_text] %></p>
+        </div>
+      <% elsif data[:period_stat] %>
+        <p class="metric-strip__trend-label text-subtle text-xs"><%= data[:period_stat] %></p>
+      <% end %>
+    </div>
+  <% end %>
+</div>

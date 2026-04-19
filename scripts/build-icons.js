@@ -44,7 +44,8 @@ const REQUIRED_ICONS = [
   'trending-down',
   'move-right',
   'eye',
-  'zap'
+  'zap',
+  'shield-check'
 ];
 
 // Icon name mappings for different naming conventions

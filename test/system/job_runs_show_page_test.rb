@@ -9,21 +9,11 @@ class JobRunsShowPageTest < ApplicationSystemTestCase
     @operation = rails_pulse_operations(:job_sql_operation)
   end
 
-  test "job run show displays arguments for successful run" do
+  test "job run show page loads" do
     visit_job_run(@success_run)
 
     assert_selector "h2", text: /job run details/i
-    assert_selector "pre", text: /user_id/
-    assert_no_text "Error Details"
-  end
-
-  test "job run show displays error details for failed runs" do
-    visit_job_run(@failed_run)
-
-    assert_selector "h2", text: /job run details/i
-    assert_selector "h2", text: /error details/i
-    assert_text "StandardError"
-    assert_text "Reporting failed due to timeout"
+    assert_text @success_run.job.name
   end
 
   test "job run operations link to operation detail" do

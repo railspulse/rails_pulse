@@ -42,6 +42,10 @@ class HomeController < ApplicationController
     Post.limit(5).each do |post|
       @post_authors << post.user.name if post.user
     end
+
+    # Cache read/write to populate cache_hit field
+    @cached_user_count = Rails.cache.fetch("rails_pulse_demo_user_count", expires_in: 5.minutes) { User.count }
+    @cached_post_count = Rails.cache.fetch("rails_pulse_demo_post_count", expires_in: 5.minutes) { Post.count }
   end
 
   # Fast query action - minimal database operations
@@ -73,16 +77,17 @@ class HomeController < ApplicationController
     ).where(
       id: Comment.where(created_at: 1.week.ago..).select(:user_id)
     )
+
+    # Bound-parameter lookups to populate sample_binds
+    @sample_user = User.where("name LIKE ?", "%a%").first
+    @sample_post = Post.where("title LIKE ?", "%the%").first
+    if @sample_user
+      @user_posts = Post.where("user_id = ?", @sample_user.id).limit(5)
+      @user_comments = Comment.where("user_id = ?", @sample_user.id).limit(5)
+    end
   end
 
-  # Error prone action - simulates potential failures
-  def error_prone
-    # Simulate random errors for testing
-    if rand < 0.3
-      raise StandardError, "Simulated database timeout"
-    end
-
-    # Heavy query that might timeout
+  def errors
     @complex_data = Post.joins(:user)
                        .joins("LEFT JOIN comments ON posts.id = comments.post_id")
                        .group("posts.id", "users.name")
@@ -90,7 +95,6 @@ class HomeController < ApplicationController
                        .order("COUNT(comments.id) DESC")
                        .limit(50)
 
-    # Simulate potential N+1 issue
     @post_details = []
     Post.limit(10).each do |post|
       @post_details << {
@@ -100,6 +104,10 @@ class HomeController < ApplicationController
         recent_comments: post.comments.recent.limit(3)
       }
     end
+  end
+
+  def raise_error
+    raise StandardError, "Simulated error raised from test app"
   end
 
   # Search action - various search patterns

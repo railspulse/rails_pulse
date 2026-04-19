@@ -7,6 +7,7 @@ module RailsPulse
         ".css" => "text/css",
         ".js" => "application/javascript",
         ".map" => "application/json",
+        ".png" => "image/png",
         ".svg" => "image/svg+xml"
       }.freeze
 
@@ -24,9 +25,6 @@ module RailsPulse
 
         # Log asset requests for debugging
         RailsPulse.logger.debug "Asset request: #{env['PATH_INFO']}"
-
-        # Set proper MIME type based on file extension
-        set_content_type(env)
 
         # Call parent Rack::Static with error handling
         begin
@@ -53,21 +51,16 @@ module RailsPulse
         env["PATH_INFO"]&.start_with?("/rails-pulse-assets/")
       end
 
-      def set_content_type(env)
-        path = env["PATH_INFO"]
-        extension = File.extname(path)
-
-        if MIME_TYPES.key?(extension)
-          env["rails_pulse.content_type"] = MIME_TYPES[extension]
-        end
-      end
-
       def cache_headers
-        {
-          "Cache-Control" => "public, max-age=31536000, immutable",
-          "Vary" => "Accept-Encoding",
-          "Expires" => (Time.now + 1.year).httpdate
-        }
+        if defined?(Rails) && Rails.env.development?
+          { "Cache-Control" => "no-cache, no-store, must-revalidate", "Pragma" => "no-cache" }
+        else
+          {
+            "Cache-Control" => "public, max-age=31536000, immutable",
+            "Vary" => "Accept-Encoding",
+            "Expires" => (Time.now + 1.year).httpdate
+          }
+        end
       end
 
       def log_missing_asset(path)

@@ -68,7 +68,7 @@ module RailsPulse
 
       def ignore_job?(job)
         config = RailsPulse.configuration
-        job_class = job.class.name
+        job_class = job_class_name(job)
         queue_name = job.queue_name
 
         return true if config.ignored_jobs&.include?(job_class)
@@ -79,7 +79,7 @@ module RailsPulse
       end
 
       def find_or_create_job(active_job)
-        RailsPulse::Job.find_or_create_by!(name: active_job.class.name) do |job|
+        RailsPulse::Job.find_or_create_by!(name: job_class_name(active_job)) do |job|
           job.queue_name = active_job.queue_name
         end
       end
@@ -162,6 +162,10 @@ module RailsPulse
         else
           nil
         end
+      end
+
+      def job_class_name(job)
+        job.respond_to?(:class_name) ? job.class_name : job.class.name
       end
 
       def with_recording_suppressed

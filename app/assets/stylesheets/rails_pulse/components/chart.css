@@ -1,3 +1,130 @@
+.panel-icon-bar > a,
+.panel-icon-bar > div,
+.panel-icon-bar > form {
+  display: flex;
+  align-items: center;
+}
+
+.panel-icon-bar > div > a {
+  display: flex;
+  align-items: center;
+}
+
+.panel-icon-bar > form > button {
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--color-link);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
+}
+
+.series-toggle {
+  display: inline-flex;
+  padding: 4px 10px 3px;
+  border-radius: 6px;
+  border: 1px solid currentColor;
+  font-size: 0.75em;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  cursor: pointer;
+  background: transparent;
+  transition: opacity 0.15s;
+  line-height: 1.2;
+  opacity: 0.5;
+}
+
+.series-toggle[data-active="true"] {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.series-toggle[data-active="false"] {
+  opacity: 0.3;
+}
+
+/* Panel tabs — view selector zone */
+.panel-tabs {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: var(--size-2);
+}
+
+.panel-tabs__list {
+  display: flex;
+  gap: var(--size-2);
+  flex-wrap: wrap;
+}
+
+.panel-tabs__toggles {
+  gap: var(--size-1);
+  align-items: center;
+  padding-left: var(--size-3);
+  margin-left: var(--size-1);
+  border-left: 1px solid var(--color-border);
+}
+
+.panel-tab {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 12px 4px;
+  border-radius: 6px;
+  border: 1px solid var(--color-border);
+  font-size: 0.8em;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  background: transparent;
+  transition: all 0.15s;
+  line-height: 1.2;
+}
+
+.panel-tab[data-active="true"] {
+  background: var(--color-brand);
+  color: black;
+  border-color: var(--color-brand);
+}
+
+.panel-tab:hover:not([data-active="true"]) {
+  border-color: var(--color-brand);
+}
+
+/* Filter bar — data filter zone */
+.filter-bar {
+  border-bottom: 1px solid var(--color-border);
+  padding: var(--size-2) 0;
+  margin-bottom: var(--size-2);
+}
+
+.filter-bar__form {
+  display: flex;
+  align-items: center;
+  gap: var(--size-2);
+  flex-wrap: wrap;
+}
+
+.filter-bar__form .input {
+  inline-size: auto;
+  flex: 0 1 auto;
+}
+
+.filter-bar__form input.input {
+  flex: 1 1 auto;
+  min-inline-size: 8rem;
+  max-inline-size: 20rem;
+}
+
+.filter-bar__form select.input {
+  min-inline-size: 9rem;
+}
+
+.filter-bar__form a.btn {
+  text-decoration: none;
+}
+
 .chart-container {
   width: 100%;
   aspect-ratio: 4 / 2;

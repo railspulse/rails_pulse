@@ -7,6 +7,7 @@ module RailsPulse
 
     def setup
       super
+      RailsPulse::Summary.delete_all
       RailsPulse::Operation.delete_all
       RailsPulse::JobRun.delete_all
       RailsPulse::Request.delete_all
@@ -101,14 +102,18 @@ module RailsPulse
     # Count-based Cleanup Tests
 
     test "count-based cleanup deletes oldest jobs beyond max" do
+      # Set limit to 2, create 3 jobs
       RailsPulse.configuration.max_table_records = {
         rails_pulse_operations: 10_000,
-        rails_pulse_requests:   10_000,
-        rails_pulse_job_runs:   10_000,
-        rails_pulse_queries:    10_000,
-        rails_pulse_routes:     10_000,
-        rails_pulse_jobs:       2
+        rails_pulse_requests: 10_000,
+        rails_pulse_job_runs: 10_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 10_000,
+        rails_pulse_jobs: 2
       }
+      RailsPulse.configuration.full_retention_period = nil
+
+      # Disable time-based cleanup
       RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
 
       3.times { |i| create_job("CountJob#{i}") }
@@ -121,11 +126,11 @@ module RailsPulse
     test "count-based cleanup keeps jobs within max limit" do
       RailsPulse.configuration.max_table_records = {
         rails_pulse_operations: 10_000,
-        rails_pulse_requests:   10_000,
-        rails_pulse_job_runs:   10_000,
-        rails_pulse_queries:    10_000,
-        rails_pulse_routes:     10_000,
-        rails_pulse_jobs:       10
+        rails_pulse_requests: 10_000,
+        rails_pulse_job_runs: 10_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 10_000,
+        rails_pulse_jobs: 10
       }
       RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
 
@@ -136,12 +141,116 @@ module RailsPulse
       end
     end
 
+    # Summarization Guard Tests
+
+    test "count-based request cleanup does nothing when no summaries exist" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,
+        rails_pulse_requests: 2,
+        rails_pulse_job_runs: 10_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 10_000,
+        rails_pulse_jobs: 10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      route = RailsPulse::Route.create!(method: "GET", path: "/guard-test")
+      3.times do
+        RailsPulse::Request.create!(
+          route: route, duration: 100.0, status: 200, is_error: false,
+          request_uuid: SecureRandom.uuid, occurred_at: 3.hours.ago
+        )
+      end
+
+      assert_no_difference -> { RailsPulse::Request.count } do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based request cleanup deletes requests older than summarization cutoff" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,
+        rails_pulse_requests: 2,
+        rails_pulse_job_runs: 10_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 10_000,
+        rails_pulse_jobs: 10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      # Summary covering 3 hours ago — anything before period_end is safe to delete
+      period_end = 2.hours.ago
+      create_overall_hourly_summary(period_end: period_end)
+
+      route = RailsPulse::Route.create!(method: "GET", path: "/guard-test-2")
+      3.times do
+        RailsPulse::Request.create!(
+          route: route, duration: 100.0, status: 200, is_error: false,
+          request_uuid: SecureRandom.uuid, occurred_at: 3.hours.ago
+        )
+      end
+
+      # 3 requests exist, max is 2 — 1 should be deleted since they're before cutoff
+      assert_difference -> { RailsPulse::Request.count }, -1 do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based request cleanup does not delete requests newer than summarization cutoff" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,
+        rails_pulse_requests: 2,
+        rails_pulse_job_runs: 10_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 10_000,
+        rails_pulse_jobs: 10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      # Summary only covers up to 3 hours ago
+      create_overall_hourly_summary(period_end: 3.hours.ago)
+
+      route = RailsPulse::Route.create!(method: "GET", path: "/guard-test-3")
+      3.times do
+        # Requests are from 30 minutes ago — newer than the summarization cutoff
+        RailsPulse::Request.create!(
+          route: route, duration: 100.0, status: 200, is_error: false,
+          request_uuid: SecureRandom.uuid, occurred_at: 30.minutes.ago
+        )
+      end
+
+      assert_no_difference -> { RailsPulse::Request.count } do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based operations cleanup does nothing when no summaries exist" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 2,
+        rails_pulse_requests: 10_000,
+        rails_pulse_job_runs: 10_000,
+        rails_pulse_queries: 10_000,
+        rails_pulse_routes: 10_000,
+        rails_pulse_jobs: 10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      job = create_job("OpsGuardJob")
+      run = create_job_run(job, occurred_at: 3.hours.ago)
+      3.times { create_operation(job_run: run, occurred_at: 3.hours.ago) }
+
+      assert_no_difference -> { RailsPulse::Operation.count } do
+        CleanupService.perform
+      end
+    end
+
     # Race Condition Tests
 
     test "time-based route cleanup does not delete a route that has an associated request" do
       # The old implementation used a two-step pluck+delete, which had a race window:
       # a request created after the pluck but before the delete_all could cause an FK
-      # violation (MySQL) or silent data loss. The fix uses an atomic subquery.
+      # violation (MySQL) or silent data loss (SQLite without FK enforcement).
+      # The fix uses an atomic subquery so the existence check and delete happen together.
       RailsPulse.configuration.full_retention_period = 1.hour
 
       old_route = RailsPulse::Route.create!(method: "GET", path: "/api/stale", created_at: 2.hours.ago)
@@ -164,6 +273,7 @@ module RailsPulse
     end
 
     test "count-based route cleanup does not delete a route that has an associated request" do
+      # Same race condition as the time-based variant — fixed by using an atomic subquery.
       RailsPulse.configuration.max_table_records = {
         rails_pulse_operations: 10_000,
         rails_pulse_requests:   10_000,
@@ -174,9 +284,11 @@ module RailsPulse
       }
       RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
 
+      # Two routes so count (2) exceeds max (1) — oldest is a deletion candidate
       old_route = RailsPulse::Route.create!(method: "GET", path: "/api/old", created_at: 3.hours.ago)
       RailsPulse::Route.create!(method: "GET", path: "/api/new", created_at: 1.hour.ago)
 
+      # old_route has a request — it must not be deleted even though it's the oldest
       RailsPulse::Request.create!(
         route: old_route,
         duration: 100.0, status: 200, is_error: false,
@@ -230,6 +342,7 @@ module RailsPulse
       }
       RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
 
+      # Create old_query via the callback
       job = create_job("QueryCountRaceJob")
       run = create_job_run(job, occurred_at: Time.current)
       op = RailsPulse::Operation.create!(
@@ -289,6 +402,7 @@ module RailsPulse
       old_job.update_column(:created_at, 3.hours.ago)
       create_job_run(old_job, occurred_at: Time.current)
 
+      # A second job so count (2) exceeds max (1) — old_job is the deletion candidate
       create_job("NewCountJob")
 
       begin
@@ -299,6 +413,43 @@ module RailsPulse
 
       assert RailsPulse::Job.exists?(old_job.id),
         "Job was deleted despite having an associated job run"
+    end
+
+    # Foreign Key Safety Tests
+
+    test "time-based cleanup does not raise FK violation when job run operation has newer occurred_at than job run" do
+      RailsPulse.configuration.full_retention_period = 30.days
+
+      old_job = create_job("FKTimeJob")
+      old_run = create_job_run(old_job, occurred_at: 40.days.ago)
+      create_operation(job_run: old_run, occurred_at: 5.days.ago)
+
+      assert_nothing_raised do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based cleanup does not raise FK violation when job runs have associated operations" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_operations: 10_000,  # high — operations won't be deleted
+        rails_pulse_requests:   10_000,
+        rails_pulse_job_runs:   1,       # low — oldest job_run will be a deletion target
+        rails_pulse_queries:    10_000,
+        rails_pulse_routes:     10_000,
+        rails_pulse_jobs:       10_000
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      create_overall_hourly_summary(period_end: 2.hours.ago)
+
+      job = create_job("FKCountJob")
+      old_run = create_job_run(job, occurred_at: 3.hours.ago)
+      create_operation(job_run: old_run, occurred_at: 3.hours.ago)
+      create_job_run(job, occurred_at: 30.minutes.ago)  # newer run keeps count at 2 > max of 1
+
+      assert_nothing_raised do
+        CleanupService.perform
+      end
     end
 
     # Edge Cases
@@ -312,6 +463,19 @@ module RailsPulse
     end
 
     private
+
+    def create_overall_hourly_summary(period_end:)
+      period_start = period_end.beginning_of_hour
+      RailsPulse::Summary.create!(
+        summarizable_type: "RailsPulse::Request",
+        summarizable_id:   0,
+        period_type:       "hour",
+        period_start:      period_start,
+        period_end:        period_end,
+        count:             1,
+        avg_duration:      100.0
+      )
+    end
 
     def create_job(name)
       RailsPulse::Job.create!(name: name, queue_name: "default", runs_count: 0, failures_count: 0)

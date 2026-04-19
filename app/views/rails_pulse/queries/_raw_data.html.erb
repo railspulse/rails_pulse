@@ -1,0 +1,83 @@
+<%
+  ops = local_assigns[:all_operations] || []
+
+  p95 = ->(vals) {
+    sorted = vals.compact.sort
+    next nil if sorted.empty?
+    sorted[[(0.95 * sorted.length).ceil - 1, 0].max]
+  }
+
+  avg = ->(vals) {
+    clean = vals.compact
+    next nil if clean.empty?
+    (clean.sum.to_f / clean.size).round(4)
+  }
+
+  location_stats = ops.group_by(&:codebase_location).map do |loc, loc_ops|
+    {
+      location: loc,
+      count: loc_ops.size,
+      p95_duration_ms: p95.call(loc_ops.map(&:duration))&.round(4),
+      p95_row_count: p95.call(loc_ops.map(&:row_count))
+    }
+  end.sort_by { |l| -(l[:count] || 0) }
+
+  n_plus_one_patterns = ops
+    .reject { |op| op.repeated_query_group.nil? }
+    .group_by(&:repeated_query_group)
+    .map { |pattern, g| { pattern: pattern, max_repetitions: g.map(&:repetition_count).compact.max } }
+
+  index_migrations = (query.index_recommendations || []).filter_map { |r|
+    r.is_a?(Hash) ? r['migration_code'] : nil
+  }.uniq
+
+  raw_data = {
+    query: {
+      id: query.id,
+      normalized_sql: query.normalized_sql,
+      analyzed_at: query.analyzed_at
+    },
+    performance: {
+      total_executions: ops.size,
+      p95_duration_ms: p95.call(ops.map(&:duration))&.round(4),
+      avg_duration_ms: avg.call(ops.map(&:duration)),
+      p95_row_count: p95.call(ops.map(&:row_count)),
+      avg_row_count: avg.call(ops.map(&:row_count))
+    },
+    characteristics: query.query_stats,
+    call_locations: location_stats,
+    n_plus_one: n_plus_one_patterns.any? ? {
+      detected: true,
+      patterns: n_plus_one_patterns
+    } : { detected: false },
+    index_recommendations: index_migrations,
+    issues: (query.issues || []).map { |i| i['description'] },
+    explain_plan: query.explain_plan
+  }
+
+  json_output = JSON.pretty_generate(raw_data.compact)
+%>
+
+<div
+  data-controller="rails-pulse--collapsible"
+  data-rails-pulse--collapsible-collapsed-class="collapsed"
+  class="collapsible-code"
+>
+  <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs">
+    Raw Data
+    <button
+      type="button"
+      class="collapsible-toggle"
+      data-rails-pulse--collapsible-target="toggle"
+      data-action="click->rails-pulse--collapsible#toggle"
+    >show</button>
+    <button
+      type="button"
+      class="collapsible-toggle"
+      onclick="navigator.clipboard.writeText(this.closest('.collapsible-code').querySelector('code').textContent).then(() => { this.textContent = 'copied!'; setTimeout(() => this.textContent = 'copy', 1500) })"
+    >copy</button>
+  </h2>
+  <div class="prose max-i-none" data-rails-pulse--collapsible-target="content">
+    <pre class="mbs-0" style="white-space: pre; margin-block-end: 0; margin-block-start: 0;"><code><%= html_escape(json_output) %></code></pre>
+  </div>
+</div>

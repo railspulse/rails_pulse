@@ -5,19 +5,19 @@ RailsPulse::Engine.routes.draw do
   resources :requests, only: %i[index show]
   resources :queries, only: %i[index show] do
     member do
-      post :analyze
+      post :reanalyze
     end
   end
   resources :operations, only: %i[show]
-  resources :caches, only: %i[show], as: :cache
 
   if RailsPulse.configuration.track_jobs
     resources :jobs, only: %i[index show], param: :id do
       resources :runs, only: %i[index show], controller: "job_runs"
     end
   end
-  patch "pagination/limit", to: "application#set_pagination_limit"
-  patch "settings/global_filters", to: "application#set_global_filters"
+  patch "pagination/limit", to: "application#set_pagination_limit", as: :pagination_limit
+  patch "settings/global_filters", to: "application#set_global_filters", as: :settings_global_filters
+  patch "settings/time_range", to: "application#set_time_range", as: :settings_time_range
 
   # Tag management
   post "tags/:taggable_type/:taggable_id/add", to: "tags#create", as: :add_tag

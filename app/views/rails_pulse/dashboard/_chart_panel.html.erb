@@ -1,0 +1,48 @@
+<div class="grid-item" style="<%= flex_style if defined?(flex_style) %>">
+  <div class="card b-full flex flex-col">
+    <div class="flex items-center justify-between mbe-2">
+      <h2 class="font-semibold leading-none uppercase text-xs"><%= title %></h2>
+      <div class="flex items-center gap-half">
+        <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-end">
+          <a href="#"
+            data-rails-pulse--popover-target="button"
+            data-action="rails-pulse--popover#toggle"
+            data-popovertarget="popover"
+            class="block leading-none">
+            <%= rails_pulse_icon 'message-circle-question', height: "16px", width: "16px" %>
+          </a>
+          <div popover class="popover card max-w-lg" data-rails-pulse--popover-target="menu">
+            <div class="flex flex-col">
+              <h3 class="font-semibold leading-none mbe-2 uppercase text-sm"><%= help_title %></h3>
+              <p class="text-sm text-subtle"><%= help_text %></p>
+            </div>
+          </div>
+        </div>
+        <%= link_to link_url, class: "block leading-none", title: "View details" do %>
+          <%= rails_pulse_icon 'external-link', height: "16px", width: "16px" %>
+        <% end %>
+      </div>
+    </div>
+    <% if chart_data %>
+      <div class="panel-icon-bar flex items-center gap-half mbe-2">
+        <%= series_toggles %>
+      </div>
+    <% end %>
+    <div class="chart-container chart-container--slim relative pbs-2 grow">
+      <% if chart_data %>
+        <%= render_stimulus_chart(
+          chart_data,
+          type: chart_type,
+          id: chart_id,
+          height: "100%",
+          options: chart_options
+        ) %>
+      <% else %>
+        <div class="flex flex-col items-center justify-center b-full gap-half">
+          <p class="font-semibold text-sm text-subtle">No data</p>
+          <p class="text-xs text-subtle"><%= empty_message %></p>
+        </div>
+      <% end %>
+    </div>
+  </div>
+</div>

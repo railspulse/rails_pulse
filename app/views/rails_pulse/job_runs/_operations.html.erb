@@ -1,4 +1,7 @@
-<%= render 'rails_pulse/components/panel', { title: 'Event Sequence ' } do %>
+<%= render 'rails_pulse/components/panel',
+      title: 'Operations',
+      help_heading: 'How to use this',
+      help_text: 'Sort by Impact to find your biggest wins. Click any row for details and optimization suggestions. The same SQL appearing multiple times is an N+1 — fix with includes(). A single operation above 50% impact is your highest priority.' do %>
   <% if operations.any? %>
     <table class="table operations-table">
       <thead>
@@ -44,15 +47,15 @@
 
               <td class="operations-event-cell">
                 <div
-                  class="operations-event"
-                  style="left: <%= bar.left_pct %>%; width: <%= bar.width_pct %>%; background-color: <%= event_color(bar.operation.operation_type) %>;">
+                  class="flame-bar"
+                  style="left: <%= bar.left_pct %>%; width: <%= [bar.width_pct, 0.3].max %>%; background-color: <%= event_color(bar.operation.operation_type) %>;">
                 </div>
               </td>
 
               <td>
-                <%= link_to rails_pulse_icon('eye', width: '16', class: 'inline-block mbi-2'), operation_path(bar.operation), title: 'View details', data: { turbo_frame: "_top" } %>
+                <%= link_to rails_pulse_icon('eye', width: '16', class: 'inline-block mbi-2'), operation_path(bar.operation), title: 'View details' %>
                 <% if bar.operation.operation_type == "sql" && bar.operation.query.present? %>
-                  <%= link_to rails_pulse_icon('database', width: '16', class: 'inline-block'), query_path(bar.operation.query), title: 'View query', data: { turbo_frame: "_top" } %>
+                  <%= link_to rails_pulse_icon('database', width: '16', class: 'inline-block'), query_path(bar.operation.query), title: 'View query' %>
                 <% end %>
               </td>
             </tr>
@@ -63,8 +66,8 @@
               data-operation-id="<%= bar.operation.id %>"
             >
               <td colspan="7" class="pi-8 pb-4">
-                <%= turbo_frame_tag "operation_#{bar.operation.id}_details", data: { "operation-url": operation_path(bar.operation) } do %>
-                <% end %>
+                <div id="operation_<%= bar.operation.id %>_details" data-operation-url="<%= operation_path(bar.operation) %>">
+                </div>
               </td>
             </tr>
         <% end %>

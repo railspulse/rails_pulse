@@ -1,10 +1,6 @@
 module RailsPulse
   class Configuration
     attr_accessor :enabled,
-                  :route_thresholds,
-                  :request_thresholds,
-                  :query_thresholds,
-                  :job_thresholds,
                   :ignored_routes,
                   :ignored_requests,
                   :ignored_queries,
@@ -27,7 +23,16 @@ module RailsPulse
                   :capture_job_arguments,
                   :mount_dashboard,
                   :logger,
-                  :async
+                  :async,
+                  :service_level_objectives,
+                  :query_service_level_objectives,
+                  :warn_on_stale_summaries
+
+    # Read-only access to thresholds (use setters for validation)
+    attr_reader :route_thresholds,
+                :request_thresholds,
+                :query_thresholds,
+                :job_thresholds
 
     def initialize
       @enabled = true
@@ -75,6 +80,41 @@ module RailsPulse
 
       # Tracking mode settings
       @async = true
+
+      # Service Level Objectives (default: [] = no SLOs configured)
+      @service_level_objectives = []
+      @query_service_level_objectives = []
+
+      # Show a warning banner when summaries haven't been generated recently
+      @warn_on_stale_summaries = true
+
+      # Validate defaults eagerly so that a misconfigured initializer raises at
+      # boot time rather than at the first request. All SLO defaults are nil so
+      # validation short-circuits harmlessly here; it becomes meaningful when
+      # RailsPulse.configure yields and sets real values.
+      validate_configuration!
+    end
+
+    # Custom setters for thresholds with validation to prevent SQL injection
+    # via configuration values interpolated into queries
+    def route_thresholds=(value)
+      validate_threshold_hash!(value, "route_thresholds")
+      @route_thresholds = value
+    end
+
+    def request_thresholds=(value)
+      validate_threshold_hash!(value, "request_thresholds")
+      @request_thresholds = value
+    end
+
+    def query_thresholds=(value)
+      validate_threshold_hash!(value, "query_thresholds")
+      @query_thresholds = value
+    end
+
+    def job_thresholds=(value)
+      validate_threshold_hash!(value, "job_thresholds")
+      @job_thresholds = value
     end
 
     # Get all routes to ignore, including asset patterns if track_assets is false
@@ -100,18 +140,29 @@ module RailsPulse
       validate_job_settings!
       validate_dashboard_settings!
       validate_tracking_settings!
+      validate_service_level_objectives_settings!
+      validate_query_service_level_objectives_settings!
     end
 
     private
 
-    def validate_thresholds!
-      [ @route_thresholds, @request_thresholds, @query_thresholds, @job_thresholds ].each do |thresholds|
-        thresholds.each do |key, value|
-          unless value.is_a?(Numeric) && value > 0
-            raise ArgumentError, "Threshold #{key} must be a positive number, got #{value}"
-          end
+    def validate_threshold_hash!(thresholds, name)
+      unless thresholds.is_a?(Hash)
+        raise ArgumentError, "#{name} must be a hash, got #{thresholds.class}"
+      end
+
+      thresholds.each do |key, value|
+        unless value.is_a?(Numeric) && value > 0
+          raise ArgumentError, "#{name}[:#{key}] must be a positive number, got #{value.inspect}"
         end
       end
+    end
+
+    def validate_thresholds!
+      validate_threshold_hash!(@route_thresholds, "route_thresholds")
+      validate_threshold_hash!(@request_thresholds, "request_thresholds")
+      validate_threshold_hash!(@query_thresholds, "query_thresholds")
+      validate_threshold_hash!(@job_thresholds, "job_thresholds")
     end
 
     def validate_retention_settings!
@@ -208,6 +259,47 @@ module RailsPulse
     def validate_tracking_settings!
       unless [ true, false ].include?(@async)
         raise ArgumentError, "async must be true or false, got #{@async}"
+      end
+    end
+
+    def validate_service_level_objectives_settings!
+      unless @service_level_objectives.is_a?(Array)
+        raise ArgumentError, "service_level_objectives must be an array, got #{@service_level_objectives.class}"
+      end
+
+      @service_level_objectives.each do |slo|
+        validate_slo_entry!(slo, "service_level_objectives")
+      end
+    end
+
+    def validate_query_service_level_objectives_settings!
+      unless @query_service_level_objectives.is_a?(Array)
+        raise ArgumentError, "query_service_level_objectives must be an array, got #{@query_service_level_objectives.class}"
+      end
+
+      @query_service_level_objectives.each do |slo|
+        validate_slo_entry!(slo, "query_service_level_objectives")
+      end
+    end
+
+    def validate_slo_entry!(slo, config_name)
+      unless slo.is_a?(Hash)
+        raise ArgumentError, "#{config_name} entries must be hashes with :percentile and :threshold keys, got #{slo.class}"
+      end
+
+      unless slo.key?(:percentile) && slo.key?(:threshold)
+        raise ArgumentError, "#{config_name} entries must contain both :percentile and :threshold keys"
+      end
+
+      percentile = slo[:percentile]
+      threshold = slo[:threshold]
+
+      unless [ 95, 99 ].include?(percentile)
+        raise ArgumentError, "#{config_name} entry :percentile must be 95 or 99, got #{percentile}"
+      end
+
+      unless threshold.is_a?(Numeric) && threshold > 0
+        raise ArgumentError, "#{config_name} entry :threshold must be a positive number, got #{threshold}"
       end
     end
 

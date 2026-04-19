@@ -192,6 +192,70 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
     assert_equal 1, query.warning_issues_count
   end
 
+  # recent_operations Tests
+  test "recent_operations returns an array" do
+    query = rails_pulse_queries(:complex_query)
+
+    assert_kind_of Array, query.recent_operations
+  end
+
+  test "recent_operations only returns operations within 30 days" do
+    query = rails_pulse_queries(:complex_query)
+    results = query.recent_operations
+
+    results.each do |op|
+      assert_operator op.occurred_at, :>=, 30.days.ago
+    end
+  end
+
+  # n_plus_one_groups Tests
+  test "n_plus_one_groups returns empty hash when no repeated queries" do
+    query = rails_pulse_queries(:simple_query)
+    ops = query.operations.to_a
+
+    assert_empty(query.n_plus_one_groups(ops))
+  end
+
+  test "n_plus_one_groups returns empty hash for empty array" do
+    query = rails_pulse_queries(:simple_query)
+
+    assert_empty(query.n_plus_one_groups([]))
+  end
+
+  test "n_plus_one_groups groups operations by repeated_query_group" do
+    query = rails_pulse_queries(:complex_query)
+    op1 = RailsPulse::Operation.new(repeated_query_group: "SELECT * FROM users WHERE id = ?", repetition_count: 5)
+    op2 = RailsPulse::Operation.new(repeated_query_group: "SELECT * FROM users WHERE id = ?", repetition_count: 3)
+    op3 = RailsPulse::Operation.new(repeated_query_group: nil, repetition_count: nil)
+
+    groups = query.n_plus_one_groups([ op1, op2, op3 ])
+
+    assert_equal 1, groups.size
+    assert_equal 5, groups["SELECT * FROM users WHERE id = ?"]
+  end
+
+  # ensure_analyzed! Tests
+  test "ensure_analyzed! does nothing when already analyzed" do
+    query = rails_pulse_queries(:analyzed_query)
+
+    RailsPulse::QueryAnalysisService.expects(:analyze_query).never
+    query.ensure_analyzed!
+  end
+
+  test "ensure_analyzed! calls QueryAnalysisService when not analyzed" do
+    query = rails_pulse_queries(:simple_query)
+
+    RailsPulse::QueryAnalysisService.stubs(:analyze_query).returns(true)
+    assert_nothing_raised { query.ensure_analyzed! }
+  end
+
+  test "ensure_analyzed! swallows errors and logs a warning" do
+    query = rails_pulse_queries(:simple_query)
+
+    RailsPulse::QueryAnalysisService.stubs(:analyze_query).raises(StandardError.new("boom"))
+    assert_nothing_raised { query.ensure_analyzed! }
+  end
+
   test "serializes JSON columns correctly" do
     query = rails_pulse_queries(:query_with_issues)
 

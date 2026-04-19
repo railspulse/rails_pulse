@@ -2,8 +2,9 @@ module RailsPulse
   class QueriesController < ApplicationController
     include ChartTableConcern
     include TagFilterConcern
+    include MetricCardConcern
 
-    before_action :set_query, only: [ :show, :analyze ]
+    before_action :set_query, only: [ :show, :reanalyze ]
 
     def index
       setup_metric_cards
@@ -13,43 +14,68 @@ module RailsPulse
     def show
       setup_metric_cards
       setup_chart_and_table_data
+      @all_query_operations = @query.recent_operations
+      @n_plus_one_groups = @query.n_plus_one_groups(@all_query_operations)
+      @query.ensure_analyzed!
     end
 
-    def analyze
-      begin
-        @analysis_results = QueryAnalysisService.analyze_query(@query.id)
+    def reanalyze
+      @query.update_columns(analyzed_at: nil, explain_plan: nil)
+      redirect_to query_path(@query)
+    end
 
-        respond_to do |format|
-          format.turbo_stream {
-            render turbo_stream: turbo_stream.replace(
-              "query_analysis",
-              partial: "rails_pulse/queries/analysis_section",
-              locals: { query: @query.reload }
-            )
-          }
-          format.html {
-            redirect_to query_path(@query), notice: "Query analysis completed successfully."
-          }
-        end
-      rescue => e
-        logger.error("[QueryAnalysis] Analysis failed for query #{@query.id}: #{e.message}")
+    # Override to generate database load chart with custom parameters
+    def setup_chart_data(ransack_params)
+      super
 
-        respond_to do |format|
-          format.turbo_stream {
-            render turbo_stream: turbo_stream.replace(
-              "query_analysis",
-              partial: "rails_pulse/queries/analysis_section",
-              locals: { query: @query, error_message: "Analysis failed: #{e.message}" }
-            )
-          }
-          format.html {
-            redirect_to query_path(@query), alert: "Query analysis failed: #{e.message}"
-          }
-        end
-      end
+      # Database load chart doesn't use ransack_query, so generate it separately
+      @database_load_chart_data = Queries::Charts::DatabaseLoad.new(
+        start_time: @start_time,
+        end_time: @end_time,
+        period_type: period_type,
+        disabled_tags: session_disabled_tags,
+        show_non_tagged: session[:show_non_tagged] != false
+      ).to_chart_data
     end
 
     private
+
+    # Metric card configuration
+    def metric_card_definitions
+      {
+        percentile_query_times_metric_card: Queries::Cards::PercentileQueryTimes,
+        execution_rate_metric_card: Queries::Cards::ExecutionRate
+      }
+    end
+
+    # Override to handle database_load card which has different params
+    def setup_metric_cards
+      super
+      return if partial_request?
+
+      # Database load card only shows on index page and doesn't accept query param
+      if current_resource.nil?
+        @database_load_metric_card = Queries::Cards::DatabaseLoad.new(
+          disabled_tags: session_disabled_tags,
+          show_non_tagged: session[:show_non_tagged] != false,
+          period: ((@end_time - @start_time) / 1.day).round,
+          period_type: period_type.to_s
+        ).to_metric_card
+      end
+    end
+
+    # The parameter name for passing the resource to metric cards
+    def resource_key
+      :query
+    end
+
+    # Chart configuration
+    def chart_definitions
+      {
+        query_performance_chart_data: Queries::Charts::QueryPerformance,
+        execution_volume_chart_data: Queries::Charts::ExecutionVolume
+      }
+    end
 
     def chart_model
       Summary
@@ -59,53 +85,28 @@ module RailsPulse
       Summary
     end
 
-    def chart_class
-      Queries::Charts::AverageQueryTimes
-    end
-
+    # Pass the query to chart classes on show pages
     def chart_options
       show_action? ? { query: @query } : {}
     end
 
-    def build_chart_ransack_params(ransack_params)
-      base_params = ransack_params.except(:s).merge(
-        period_start_gteq: Time.at(@start_time),
-        period_start_lt: Time.at(@end_time),
-        summarizable_type_eq: "RailsPulse::Query"
-      )
-
-      # Only add duration filter if we have a meaningful threshold
-      base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
-
-      if show_action?
-        base_params.merge(
-          summarizable_id_eq: @query.id
-        )
-      else
-        base_params
-      end
+    # Queries use polymorphic summaries, so we need to filter by type
+    def summarizable_type
+      "RailsPulse::Query"
     end
 
-    def build_table_ransack_params(ransack_params)
-      if show_action?
-        # For Summary model on show page
-        params = ransack_params.merge(
-          period_start_gteq: Time.at(@table_start_time),
-          period_start_lt: Time.at(@table_end_time),
-          summarizable_id_eq: @query.id,
-          summarizable_type_eq: "RailsPulse::Query"
-        )
-        params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
-        params
-      else
-        # For Summary model on index page
-        params = ransack_params.merge(
-          period_start_gteq: Time.at(@table_start_time),
-          period_start_lt: Time.at(@table_end_time)
-        )
-        params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
-        params
-      end
+    # Filter to scope table results to a specific query on show pages
+    def show_resource_filter
+      { summarizable_id_eq: @query.id, summarizable_type_eq: "RailsPulse::Query" }
+    end
+
+    # Returns the current query for metric cards and chart params
+    def current_resource
+      @query
+    end
+
+    def default_time_range_key
+      :last_7_days
     end
 
     def default_table_sort
@@ -129,28 +130,7 @@ module RailsPulse
       end
     end
 
-    private
-
-    def setup_metric_cards
-      return if turbo_frame_request?
-
-      # Get tag filter values from session
-      disabled_tags = session_disabled_tags
-      show_non_tagged = session[:show_non_tagged] != false
-
-      @average_query_times_metric_card = RailsPulse::Queries::Cards::AverageQueryTimes.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @percentile_query_times_metric_card = RailsPulse::Queries::Cards::PercentileQueryTimes.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @execution_rate_metric_card = RailsPulse::Queries::Cards::ExecutionRate.new(query: @query, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-    end
-
-    def show_action?
-      action_name == "show"
-    end
-
-    def pagination_method
-      show_action? ? :set_pagination_limit : :store_pagination_limit
-    end
-
+    # Override table data setup to handle custom sorting logic for index page
     def setup_table_data(ransack_params)
       table_ransack_params = build_table_ransack_params(ransack_params)
       @ransack_query = table_model.ransack(table_ransack_params)
@@ -164,11 +144,6 @@ module RailsPulse
       handle_pagination
 
       @pagination, @table_data = paginate(table_results, limit: session_pagination_limit)
-    end
-
-    def handle_pagination
-      method = pagination_method
-      send(method, params[:limit]) if params[:limit].present?
     end
 
     def setup_time_and_response_ranges

@@ -13,13 +13,17 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     @request_record = rails_pulse_requests(:users_request_1)
   end
 
+  # ============================================================================
   # Helper Structure Tests
+  # ============================================================================
 
   test "helper module is included" do
     assert_respond_to self, :breadcrumbs
   end
 
+  # ============================================================================
   # Root Path Tests
+  # ============================================================================
 
   test "breadcrumbs returns empty array for engine root path" do
     setup_request_path("/rails_pulse")
@@ -39,7 +43,9 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     assert_equal 0, crumbs.length
   end
 
+  # ============================================================================
   # Simple Path Tests
+  # ============================================================================
 
   test "breadcrumbs builds path segments after engine mount point" do
     setup_request_path("/rails_pulse/routes")
@@ -78,7 +84,7 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     assert_equal 3, crumbs.length
     assert_equal "Home", crumbs[0][:title]
     assert_equal "Routes", crumbs[1][:title]
-    assert_equal @route.path, crumbs[2][:title]
+    assert_equal @route.to_breadcrumb, crumbs[2][:title]
   end
 
   test "breadcrumbs converts numeric segments to resource names using to_breadcrumb for Job" do
@@ -89,7 +95,7 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     assert_equal 3, crumbs.length
     assert_equal "Home", crumbs[0][:title]
     assert_equal "Jobs", crumbs[1][:title]
-    assert_equal @job.name, crumbs[2][:title]
+    assert_equal @job.to_breadcrumb, crumbs[2][:title]
   end
 
   test "breadcrumbs falls back to to_s when to_breadcrumb not available" do
@@ -139,9 +145,9 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     assert_equal 5, crumbs.length
     assert_equal "Home", crumbs[0][:title]
     assert_equal "Jobs", crumbs[1][:title]
-    assert_equal @job.name, crumbs[2][:title]
+    assert_equal @job.to_breadcrumb, crumbs[2][:title]
     assert_equal "Runs", crumbs[3][:title]
-    assert_equal @job_run.id.to_s, crumbs[4][:title]
+    assert_equal @job_run.to_breadcrumb, crumbs[4][:title]
 
     # The "Runs" breadcrumb should link to the parent job show page, not /jobs/:id/runs
     assert_equal "#{main_app.rails_pulse_path.chomp('/')}/jobs/#{@job.id}", crumbs[3][:path]
@@ -208,7 +214,7 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     assert_equal 5, crumbs.length
     assert_equal "Home", crumbs[0][:title]
     assert_equal "Routes", crumbs[1][:title]
-    assert_equal @route.path, crumbs[2][:title]
+    assert_equal @route.to_breadcrumb, crumbs[2][:title]
     assert_equal "Details", crumbs[3][:title]
     assert_equal "Performance", crumbs[4][:title]
   end

@@ -53,10 +53,10 @@ module RailsPulse
         min_duration: durations.min,
         max_duration: durations.max,
         total_duration: durations.sum,
-        p50_duration: calculate_percentile(durations, 0.5),
-        p95_duration: calculate_percentile(durations, 0.95),
-        p99_duration: calculate_percentile(durations, 0.99),
-        stddev_duration: calculate_stddev(durations, durations.sum.to_f / durations.size),
+        p50_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.5),
+        p95_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.95),
+        p99_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.99),
+        stddev_duration: RailsPulse::Statistics.calculate_stddev(durations, durations.sum.to_f / durations.size),
         error_count: statuses.count { |s| s >= 400 },
         success_count: statuses.count { |s| s < 400 },
         status_2xx: statuses.count { |s| s.between?(200, 299) },
@@ -114,10 +114,10 @@ module RailsPulse
           min_duration: stats[3],
           max_duration: stats[4],
           total_duration: stats[5],
-          p50_duration: calculate_percentile(sorted_durations, 0.5),
-          p95_duration: calculate_percentile(sorted_durations, 0.95),
-          p99_duration: calculate_percentile(sorted_durations, 0.99),
-          stddev_duration: calculate_stddev(sorted_durations, stats[2]),
+          p50_duration: RailsPulse::Statistics.calculate_percentile(sorted_durations, 0.5),
+          p95_duration: RailsPulse::Statistics.calculate_percentile(sorted_durations, 0.95),
+          p99_duration: RailsPulse::Statistics.calculate_percentile(sorted_durations, 0.99),
+          stddev_duration: RailsPulse::Statistics.calculate_stddev(sorted_durations, stats[2]),
           error_count: statuses.count { |s| s >= 400 },
           success_count: statuses.count { |s| s < 400 },
           status_2xx: statuses.count { |s| s.between?(200, 299) },
@@ -171,10 +171,10 @@ module RailsPulse
           min_duration: stats[3],
           max_duration: stats[4],
           total_duration: stats[5],
-          p50_duration: calculate_percentile(durations, 0.5),
-          p95_duration: calculate_percentile(durations, 0.95),
-          p99_duration: calculate_percentile(durations, 0.99),
-          stddev_duration: calculate_stddev(durations, stats[2])
+          p50_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.5),
+          p95_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.95),
+          p99_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.99),
+          stddev_duration: RailsPulse::Statistics.calculate_stddev(durations, stats[2])
         )
 
         summary.save!
@@ -214,34 +214,16 @@ module RailsPulse
           min_duration: duration_values.first,
           max_duration: duration_values.last,
           total_duration: total_duration,
-          p50_duration: calculate_percentile(duration_values, 0.5),
-          p95_duration: calculate_percentile(duration_values, 0.95),
-          p99_duration: calculate_percentile(duration_values, 0.99),
-          stddev_duration: calculate_stddev(duration_values, average_duration),
+          p50_duration: RailsPulse::Statistics.calculate_percentile(duration_values, 0.5),
+          p95_duration: RailsPulse::Statistics.calculate_percentile(duration_values, 0.95),
+          p99_duration: RailsPulse::Statistics.calculate_percentile(duration_values, 0.99),
+          stddev_duration: RailsPulse::Statistics.calculate_stddev(duration_values, average_duration),
           error_count: runs.count(&:failure_like_status?),
           success_count: runs.count { |run| run.status == "success" }
         )
 
         summary.save!
       end
-    end
-
-    def calculate_percentile(sorted_array, percentile)
-      return nil if sorted_array.empty?
-
-      k = (percentile * (sorted_array.length - 1)).floor
-      f = (percentile * (sorted_array.length - 1)) - k
-
-      return sorted_array[k] if f == 0 || k + 1 >= sorted_array.length
-
-      sorted_array[k] + (sorted_array[k + 1] - sorted_array[k]) * f
-    end
-
-    def calculate_stddev(values, mean)
-      return nil if values.empty? || values.size == 1
-
-      sum_of_squares = values.sum { |v| (v - mean) ** 2 }
-      Math.sqrt(sum_of_squares / (values.size - 1))
     end
   end
 end

@@ -1,4 +1,5 @@
 import { Controller } from "@hotwired/stimulus"
+import { fetchAndReplace } from "../utils/fetch_helpers"
 
 export default class extends Controller {
   static targets = ["chart", "paginationLimit", "indexTable"]
@@ -8,13 +9,30 @@ export default class extends Controller {
   }
 
   // Add properties for improved debouncing
-  lastTurboFrameRequestAt = 0;
+  lastFrameRequestAt = 0;
   pendingRequestTimeout = null;
   pendingRequestData = null;
   selectedColumnIndex = null;
-  originalSeriesOption = null;
+  zrClickHandler = null;
+  highlightBarName = '__rp_col_bg__';
+  charts = {};          // all chart instances keyed by container ID
+  chartSetup = {};      // tracks which charts have been fully set up
+  activeChartId = null; // ID of the currently active chart
 
   connect() {
+    // Respect chart_type URL param so the active chart's listeners are set up correctly on load
+    const urlParams = new URLSearchParams(window.location.search)
+    const chartType = urlParams.get('chart_type')
+    const chartTypeMap = {
+      response_time: 'response_time_percentiles_chart',
+      request_rate: 'request_rate_chart',
+      error_rate: 'error_rate_chart',
+      query_performance: 'query_performance_chart',
+      execution_volume: 'execution_volume_chart',
+      database_load: 'database_load_chart'
+    }
+    this.activeChartId = chartTypeMap[chartType] || this.chartIdValue
+
     // Listen for the custom event 'stimulus:echarts:rendered' to set up the chart.
     // This event is dispatched by the chart controller when the chart is ready.
     this.handleChartInitialized = this.onChartInitialized.bind(this);
@@ -27,11 +45,22 @@ export default class extends Controller {
     document.removeEventListener('stimulus:echarts:rendered', this.handleChartInitialized);
 
     // Remove chart event listeners if they exist
-    if (this.hasChartTarget && this.chartTarget) {
-      this.chartTarget.removeEventListener('mousedown', this.handleChartMouseDown);
-      this.chartTarget.removeEventListener('mouseup', this.handleChartMouseUp);
+    const activeContainer = this.getActiveChartContainer()
+    if (activeContainer) {
+      activeContainer.removeEventListener('mousedown', this.handleChartMouseDown);
+      activeContainer.removeEventListener('mouseup', this.handleChartMouseUp);
     }
     document.removeEventListener('mouseup', this.handleDocumentMouseUp);
+
+    // Remove ZRender handlers
+    try {
+      if (this.chart && this.zrClickHandler) {
+        this.chart.getZr().off('click', this.zrClickHandler)
+      }
+      if (this.chart && this.zrMouseMoveHandler) {
+        this.chart.getZr().off('mousemove', this.zrMouseMoveHandler)
+      }
+    } catch (e) { /* chart may already be disposed */ }
 
     // Clear any pending timeout
     if (this.pendingRequestTimeout) {
@@ -41,63 +70,140 @@ export default class extends Controller {
 
   // After the chart is initialized, set up the event listeners and data tracking
   onChartInitialized(event) {
-    if (event.detail.containerId === this.chartIdValue) {
-      // Store the chart instance from the event
-      this.chart = event.detail.chart;
+    const { containerId, chart } = event.detail
+
+    // Store every chart instance as it renders
+    this.charts[containerId] = chart
+
+    // Only fully set up the initially active chart
+    if (containerId === this.activeChartId) {
+      this.chart = chart;
       this.setup();
     }
   }
 
-  setup() {
-    if (this.setupDone) {
-      return; // Prevent multiple setups
+  // Called when the chart switcher changes the active chart
+  handleChartSwitched(event) {
+    const { fromId, toId } = event.detail
+    if (!toId || toId === this.activeChartId) return
+
+    // Capture current zoom state before switching
+    const zoomState = this.captureZoomState()
+
+    // Tear down listeners from the outgoing chart
+    this.teardownActiveChartListeners()
+
+    // Clear cached bar styles so they get re-read from the incoming chart's data.
+    // Keep selectedColumnIndex — initializeColumnSelectionFromUrl will resolve the
+    // correct index for the new chart from the URL's selected_column_time param.
+    this.originalBarItemStyles = null
+
+    // Switch active chart
+    this.activeChartId = toId
+    this.chart = this.charts[toId]
+
+    if (!this.chart) return // chart not initialized yet (shouldn't happen with zoom: false on hidden charts)
+
+    // Apply the same zoom to the new chart
+    if (zoomState) {
+      this.applyZoomState(zoomState)
     }
 
-    // We need both the chart target in DOM and the chart object from the event
-    let hasTarget = false;
+    if (!this.chartSetup[toId]) {
+      // First visit — full setup including highlight series and column restore
+      this.setup()
+    } else {
+      // Returning to a previously-set-up chart — re-attach listeners and restore column
+      this.visibleData = this.getVisibleData()
+      this.setupChartEventListeners()
+      this.initializeColumnSelectionFromUrl()
+    }
+  }
+
+  captureZoomState() {
+    if (!this.chart) return null
     try {
-      hasTarget = !!this.chartTarget;
+      const option = this.chart.getOption()
+      const dataZoom = option.dataZoom?.[1] || option.dataZoom?.[0]
+      if (!dataZoom) return null
+      return { startValue: dataZoom.startValue, endValue: dataZoom.endValue }
     } catch (e) {
-      hasTarget = false;
+      return null
+    }
+  }
+
+  applyZoomState(zoomState) {
+    if (!this.chart || zoomState.startValue === undefined || zoomState.endValue === undefined) return
+    try {
+      this.chart.dispatchAction({ type: 'dataZoom', startValue: zoomState.startValue, endValue: zoomState.endValue })
+      this.visibleData = this.getVisibleData()
+    } catch (e) {}
+  }
+
+  teardownActiveChartListeners() {
+    const container = this.getActiveChartContainer()
+    if (container) {
+      container.removeEventListener('mousedown', this.handleChartMouseDown)
+      container.removeEventListener('mouseup', this.handleChartMouseUp)
+    }
+    try {
+      if (this.chart) {
+        this.chart.off('datazoom')
+        if (this.zrClickHandler) this.chart.getZr().off('click', this.zrClickHandler)
+        if (this.zrMouseMoveHandler) this.chart.getZr().off('mousemove', this.zrMouseMoveHandler)
+      }
+    } catch (e) {}
+    this.zrClickHandler = null
+    this.zrMouseMoveHandler = null
+  }
+
+  getActiveChartContainer() {
+    return this.chartTargets.find(el => el.dataset.chartId === this.activeChartId) || null
+  }
+
+  setup() {
+    if (this.chartSetup[this.activeChartId]) {
+      return; // Prevent multiple setups for the same chart
     }
 
-    // Only proceed if we have BOTH the DOM target and the chart object
-    // (chart is set by onChartInitialized from the event)
-    if (!hasTarget || !this.chart) {
+    // We need both the chart container in DOM and the chart object
+    const container = this.getActiveChartContainer()
+    if (!container || !this.chart) {
       return;
     }
 
     this.visibleData = this.getVisibleData();
 
-    // Store the original series configuration BEFORE any modifications
-    this.storeOriginalSeriesOption();
+    // Add the dedicated background-highlight bar series before setting up listeners
+    this.setupHighlightSeries();
 
     this.setupChartEventListeners();
-    this.setupDone = true;
+    this.chartSetup[this.activeChartId] = true;
 
     // Mark the chart as fully rendered for testing
-    if (hasTarget) {
-      document.getElementById(this.chartIdValue)?.setAttribute('data-chart-rendered', 'true');
-    }
+    document.getElementById(this.activeChartId)?.setAttribute('data-chart-rendered', 'true');
 
-    // Initialize column selection from URL parameters after chart is fully ready
+    // Initialize zoom and column selection from URL parameters after chart is fully ready
     // This must come AFTER storing the original option to avoid storing modified state
+    this.initializeZoomFromUrl();
     this.initializeColumnSelectionFromUrl();
   }
 
   // Add some event listeners to the chart so we can track the zoom changes
   setupChartEventListeners() {
+    const container = this.getActiveChartContainer()
+
     // When clicking on the chart, we want to store the current visible data so we can compare it later
     this.handleChartMouseDown = () => {
       this.visibleData = this.getVisibleData();
     };
-    this.chartTarget.addEventListener('mousedown', this.handleChartMouseDown);
+    container.addEventListener('mousedown', this.handleChartMouseDown);
 
     // When releasing the mouse button, we want to check if the visible data has changed
     this.handleChartMouseUp = () => {
       this.handleZoomChange();
     };
-    this.chartTarget.addEventListener('mouseup', this.handleChartMouseUp);
+    container.addEventListener('mouseup', this.handleChartMouseUp);
 
     // When the chart is zoomed, we want to check if the visible data has changed
     this.chart.on('datazoom', () => {
@@ -110,10 +216,34 @@ export default class extends Controller {
     };
     document.addEventListener('mouseup', this.handleDocumentMouseUp);
 
-    // Add click event handler for bar chart columns
-    this.chart.on('click', (params) => {
-      this.handleColumnClick(params);
-    });
+    // Use ZRender (the underlying canvas renderer) to catch clicks anywhere in the
+    // chart grid — not just on data point markers — then map the pixel position back
+    // to an x-axis category index so any click in a column triggers filtering.
+    this.zrClickHandler = (params) => {
+      const dataCoord = this.chart.convertFromPixel(
+        { seriesIndex: 0 },
+        [params.offsetX, params.offsetY]
+      )
+      if (!dataCoord) return // click was outside the grid area
+
+      const dataIndex = Math.round(dataCoord[0])
+      const option = this.chart.getOption()
+      if (!option.xAxis?.[0]?.data) return
+      if (dataIndex < 0 || dataIndex >= option.xAxis[0].data.length) return
+
+      this.handleColumnClick({ dataIndex })
+    }
+    this.chart.getZr().on('click', this.zrClickHandler)
+
+    // Show a pointer cursor when hovering over the clickable grid area.
+    this.zrMouseMoveHandler = (params) => {
+      const dataCoord = this.chart.convertFromPixel(
+        { seriesIndex: 0 },
+        [params.offsetX, params.offsetY]
+      )
+      this.chart.getZr().setCursorStyle(dataCoord ? 'pointer' : 'default')
+    }
+    this.chart.getZr().on('mousemove', this.zrMouseMoveHandler)
   }
 
   // This returns the visible data from the chart based on the current zoom level.
@@ -164,7 +294,7 @@ export default class extends Controller {
     if (newDataString !== currentDataString) {
       this.visibleData = newVisibleData;
       this.updateUrlWithZoomParams(newVisibleData);
-      this.sendTurboFrameRequest(newVisibleData);
+      this.sendFrameRequest(newVisibleData);
     }
   }
 
@@ -198,9 +328,9 @@ export default class extends Controller {
     }
 
   // Improved debouncing with guaranteed final request
-  sendTurboFrameRequest(data) {
+  sendFrameRequest(data) {
     const now = Date.now();
-    const timeSinceLastRequest = now - this.lastTurboFrameRequestAt;
+    const timeSinceLastRequest = now - this.lastFrameRequestAt;
 
     // Store the latest data for potential delayed execution
     this.pendingRequestData = data;
@@ -212,20 +342,20 @@ export default class extends Controller {
 
     // If enough time has passed since last request, execute immediately
     if (timeSinceLastRequest >= 1000) {
-      this.executeTurboFrameRequest(data);
+      this.executeFrameRequest(data);
     } else {
       // Otherwise, schedule execution for later to ensure final request goes through
       const remainingTime = 1000 - timeSinceLastRequest;
       this.pendingRequestTimeout = setTimeout(() => {
-        this.executeTurboFrameRequest(this.pendingRequestData);
+        this.executeFrameRequest(this.pendingRequestData);
         this.pendingRequestTimeout = null;
       }, remainingTime);
     }
   }
 
   // Execute the actual AJAX request
-  executeTurboFrameRequest(data) {
-    this.lastTurboFrameRequestAt = Date.now();
+  executeFrameRequest(data) {
+    this.lastFrameRequestAt = Date.now();
 
     // Start with the current page's URL to preserve all existing parameters including sort
     const url = new URL(window.location.href);
@@ -248,83 +378,9 @@ export default class extends Controller {
     // Update the URL's search parameters
     url.search = currentParams.toString();
 
-    fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/vnd.turbo-stream.html, text/html',
-        'Turbo-Frame': this.indexTableTarget.id,
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    })
-    .then(response => {
-      return response.text();
-    })
-    .then(html => {
-      // Find the turbo-frame in the document using the target
-      const frame = this.indexTableTarget;
-      if (frame) {
-        // Parse the response HTML
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
-
-        // Find the turbo-frame in the response using the frame's ID
-        const responseFrame = doc.querySelector(`turbo-frame#${frame.id}`);
-        if (responseFrame) {
-          // CSP-safe content replacement using DOM methods
-          this.replaceFrameContent(frame, responseFrame);
-        } else {
-          // Fallback: parse the entire HTML response
-          this.replaceFrameContentFromHTML(frame, html);
-        }
-      }
-    })
-    .catch(error => console.error('[IndexController] Fetch error:', error));
-  }
-
-  // CSP-safe method to replace frame content using DOM methods
-  replaceFrameContent(targetFrame, sourceFrame) {
-    try {
-      // Clear existing content using DOM methods
-      while (targetFrame.firstChild) {
-        targetFrame.removeChild(targetFrame.firstChild);
-      }
-
-      // Clone and append all child nodes from source frame
-      const children = Array.from(sourceFrame.childNodes);
-      children.forEach(child => {
-        const clonedChild = child.cloneNode(true);
-        targetFrame.appendChild(clonedChild);
-      });
-    } catch (error) {
-      console.error('Error replacing frame content:', error);
-      // Fallback to innerHTML as last resort (not ideal for CSP)
-      targetFrame.innerHTML = sourceFrame.innerHTML;
-    }
-  }
-
-  // CSP-safe fallback method for parsing raw HTML
-  replaceFrameContentFromHTML(targetFrame, html) {
-    try {
-      // Parse HTML safely
-      const parser = new DOMParser();
-      const doc = parser.parseFromString(html, 'text/html');
-
-      // Clear existing content
-      while (targetFrame.firstChild) {
-        targetFrame.removeChild(targetFrame.firstChild);
-      }
-
-      // If the HTML contains a single root element, use its children
-      const bodyChildren = Array.from(doc.body.childNodes);
-      bodyChildren.forEach(child => {
-        const clonedChild = child.cloneNode(true);
-        targetFrame.appendChild(clonedChild);
-      });
-    } catch (error) {
-      console.error('Error parsing HTML content:', error);
-      // Last resort fallback
-      targetFrame.innerHTML = html;
-    }
+    // Fetch and replace the index table
+    fetchAndReplace(url.toString(), this.indexTableTarget)
+      .catch(error => console.error('[IndexController] Fetch error:', error));
   }
 
   handleColumnClick(params) {
@@ -343,83 +399,123 @@ export default class extends Controller {
     }
   }
 
-  highlightColumn(selectedIndex) {
+  // Add a bar series on a hidden secondary y-axis (range 0–1) to use as a column
+  // background highlight. markArea on a category axis with timestamp data is
+  // unreliable — it looks up values rather than treating integers as indices, so a
+  // dedicated bar series is the only dependable approach.
+  setupHighlightSeries() {
     try {
-      const option = this.chart.getOption();
-      if (!option.series || !option.series[0] || !option.series[0].data) {
-        return;
-      }
+      const option = this.chart.getOption()
 
-      const seriesData = option.series[0].data;
+      // Bar charts don't use the highlight overlay series — adding a second bar series
+      // causes ECharts to shrink all bars. Bar charts have inherent column distinction.
+      const primaryType = option.series?.[0]?.type
+      if (primaryType === 'bar') return
 
-      // Instead of changing data structure, modify the series itemStyle
-      const currentOption = this.chart.getOption();
-
-      // Get the default color from the chart theme
-      const defaultColor = currentOption.color?.[0] || '#5470c6'; // ECharts default blue
+      const xAxisLength = option.xAxis?.[0]?.data?.length || 0
+      const existingYAxes = Array.isArray(option.yAxis) ? option.yAxis : [option.yAxis || {}]
 
       this.chart.setOption({
-        series: [{
-          data: seriesData, // Keep original data format for tooltips
-          itemStyle: {
-            color: (params) => {
-              return params.dataIndex === selectedIndex ? defaultColor : '#cccccc';
-            }
+        yAxis: [
+          ...existingYAxes,
+          // Hidden secondary axis: bar value of 1 = full chart height
+          { show: false, position: 'right', min: 0, max: 1 }
+        ],
+        series: [
+          ...(option.series || []),
+          {
+            name: this.highlightBarName,
+            type: 'bar',
+            yAxisIndex: existingYAxes.length,
+            barWidth: '100%',
+            itemStyle: { color: 'rgba(0, 0, 0, 0)', borderWidth: 0 },
+            data: Array(xAxisLength).fill(null),
+            silent: true,
+            z: 0,
+            animation: false,
+            legendHoverLink: false,
+            tooltip: { show: false }
           }
-        }]
-      });
+        ]
+      })
     } catch (error) {
-      console.error('Error highlighting column:', error);
+      console.error('Error setting up highlight series:', error)
     }
   }
 
-  storeOriginalSeriesOption() {
+  highlightColumn(selectedIndex) {
     try {
-      const option = this.chart.getOption();
-      if (option.series && option.series[0]) {
-        // Deep clone the original series configuration to restore later
-        const originalSeries = JSON.parse(JSON.stringify(option.series[0]));
+      const option = this.chart.getOption()
+      const xAxisLength = option.xAxis?.[0]?.data?.length
+      if (!xAxisLength || selectedIndex < 0 || selectedIndex >= xAxisLength) return
 
-        // Ensure we don't store any column selection modifications
-        // Remove any custom itemStyle that might have color functions
-        if (originalSeries.itemStyle && typeof originalSeries.itemStyle.color === 'function') {
-          delete originalSeries.itemStyle.color;
+      const isPrimaryBar = option.series?.[0]?.type === 'bar'
+
+      if (isPrimaryBar) {
+        // Cache original item styles before first modification so we can restore colors on reset
+        if (!this.originalBarItemStyles) {
+          const seriesData = option.series?.[0]?.data || []
+          this.originalBarItemStyles = seriesData.map(val =>
+            typeof val === 'object' ? (val.itemStyle || {}) : {}
+          )
         }
 
-        this.originalSeriesOption = originalSeries;
+        // For bar charts: dim non-selected bars by updating per-bar itemStyle opacity
+        this.chart.setOption({
+          series: option.series.slice(0, 1).map(s => ({
+            data: (s.data || []).map((val, i) => ({
+              value: typeof val === 'object' ? val.value : val,
+              itemStyle: { ...(this.originalBarItemStyles[i] || {}), opacity: i === selectedIndex ? 1 : 0.25 }
+            }))
+          }))
+        })
+      } else {
+        // For line charts: use the hidden background bar series
+        const barData = Array(xAxisLength).fill(null)
+        barData[selectedIndex] = 1
+
+        this.chart.setOption({
+          series: option.series.map(s =>
+            s.name === this.highlightBarName
+              ? { itemStyle: { color: 'rgba(128, 128, 128, 0.2)', borderWidth: 0 }, data: barData }
+              : {}
+          )
+        })
       }
     } catch (error) {
-      console.error('Error storing original series option:', error);
+      console.error('Error highlighting column:', error)
     }
   }
 
   resetColumnColors() {
     try {
-      if (!this.originalSeriesOption) {
-        console.warn('No original series option stored, cannot reset properly');
-        return;
+      const option = this.chart.getOption()
+      const xAxisLength = option.xAxis?.[0]?.data?.length || 0
+      const isPrimaryBar = option.series?.[0]?.type === 'bar'
+
+      if (isPrimaryBar) {
+        // Restore full opacity on all bars, preserving original per-bar colors
+        const originalStyles = this.originalBarItemStyles || []
+        this.originalBarItemStyles = null
+        this.chart.setOption({
+          series: option.series.slice(0, 1).map(s => ({
+            data: (s.data || []).map((val, i) => ({
+              value: typeof val === 'object' ? val.value : val,
+              itemStyle: { ...(originalStyles[i] || {}), opacity: 1 }
+            }))
+          }))
+        })
+      } else {
+        this.chart.setOption({
+          series: option.series.map(s =>
+            s.name === this.highlightBarName
+              ? { itemStyle: { color: 'rgba(0, 0, 0, 0)', borderWidth: 0 }, data: Array(xAxisLength).fill(null) }
+              : {}
+          )
+        })
       }
-
-      const option = this.chart.getOption();
-      const seriesData = option.series[0].data;
-
-      // Restore original series configuration but keep current data
-      const restoredOption = {
-        ...this.originalSeriesOption,
-        data: seriesData // Keep current data to preserve tooltips
-      };
-
-      // Explicitly set color back to default yellow theme color
-      if (!restoredOption.itemStyle) {
-        restoredOption.itemStyle = {};
-      }
-      restoredOption.itemStyle.color = '#ffc91f'; // Default yellow from railspulse theme
-
-      this.chart.setOption({
-        series: [restoredOption]
-      }, false); // Use replace mode to ensure clean state
     } catch (error) {
-      console.error('Error resetting column colors:', error);
+      console.error('Error resetting column highlight:', error)
     }
   }
 
@@ -451,8 +547,8 @@ export default class extends Controller {
     // Update browser URL to persist column selection
     window.history.replaceState({}, '', url);
 
-    // Send the turbo frame request
-    this.executeTurboFrameRequestForColumn(url);
+    // Send the partial request
+    this.executeFrameRequestForColumn(url);
   }
 
   sendColumnDeselectionRequest() {
@@ -473,42 +569,35 @@ export default class extends Controller {
     // Update browser URL to remove column selection
     window.history.replaceState({}, '', url);
 
-    // Send the turbo frame request to restore default/zoom view
-    this.executeTurboFrameRequestForColumn(url);
+    // Send the partial request to restore default/zoom view
+    this.executeFrameRequestForColumn(url);
   }
 
-  executeTurboFrameRequestForColumn(url) {
-    fetch(url, {
-      method: 'GET',
-      headers: {
-        'Accept': 'text/vnd.turbo-stream.html, text/html',
-        'Turbo-Frame': this.indexTableTarget.id,
-        'X-Requested-With': 'XMLHttpRequest'
-      }
-    })
-    .then(response => {
-      return response.text();
-    })
-    .then(html => {
-      // Find the turbo-frame in the document using the target
-      const frame = this.indexTableTarget;
-      if (frame) {
-        // Parse the response HTML
-        const parser = new DOMParser();
-        const doc = parser.parseFromString(html, 'text/html');
+  executeFrameRequestForColumn(url) {
+    fetchAndReplace(url.toString(), this.indexTableTarget)
+      .catch(error => console.error('[IndexController] Column selection fetch error:', error));
+  }
 
-        // Find the turbo-frame in the response using the frame's ID
-        const responseFrame = doc.querySelector(`turbo-frame#${frame.id}`);
-        if (responseFrame) {
-          // CSP-safe content replacement using DOM methods
-          this.replaceFrameContent(frame, responseFrame);
-        } else {
-          // Fallback: parse the entire HTML response
-          this.replaceFrameContentFromHTML(frame, html);
-        }
-      }
-    })
-    .catch(error => console.error('[IndexController] Column selection fetch error:', error));
+  initializeZoomFromUrl() {
+    const urlParams = new URLSearchParams(window.location.search)
+    const zoomStartTime = urlParams.get('zoom_start_time')
+    const zoomEndTime = urlParams.get('zoom_end_time')
+    if (!zoomStartTime || !zoomEndTime) return
+
+    const option = this.chart.getOption()
+    if (!option.xAxis?.[0]?.data) return
+
+    const xAxisData = option.xAxis[0].data
+    const startMs = parseInt(zoomStartTime)
+    const endMs = parseInt(zoomEndTime)
+
+    const startIndex = xAxisData.reduce((best, ts, i) =>
+      Math.abs(parseInt(ts) - startMs) < Math.abs(parseInt(xAxisData[best]) - startMs) ? i : best, 0)
+    const endIndex = xAxisData.reduce((best, ts, i) =>
+      Math.abs(parseInt(ts) - endMs) < Math.abs(parseInt(xAxisData[best]) - endMs) ? i : best, 0)
+
+    this.chart.dispatchAction({ type: 'dataZoom', startValue: startIndex, endValue: endIndex })
+    this.visibleData = this.getVisibleData()
   }
 
   initializeColumnSelectionFromUrl() {

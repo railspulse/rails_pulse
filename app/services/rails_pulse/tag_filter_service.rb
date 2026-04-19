@@ -1,0 +1,40 @@
+module RailsPulse
+  class TagFilterService
+    # Filters IDs for a given model based on disabled tags and non-tagged visibility
+    # @param model_class [Class] The model class (Route, Query, or Job)
+    # @param disabled_tags [Array<String>] Tags to exclude
+    # @param show_non_tagged [Boolean] Whether to include non-tagged items
+    # @return [Array<Integer>] Filtered IDs
+    def self.filter_ids(model_class, disabled_tags, show_non_tagged)
+      relation = model_class.all
+
+      # Exclude items with disabled tags
+      disabled_tags.each do |tag|
+        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
+        relation = relation.where.not("tags LIKE ?", "%#{sanitized_tag}%")
+      end
+
+      # Exclude non-tagged items if show_non_tagged is false
+      unless show_non_tagged
+        relation = relation.where("tags IS NOT NULL AND tags != '[]'")
+      end
+
+      relation.pluck(:id)
+    end
+
+    # Main entry point for tag filtering
+    # @param disabled_tags [Array<String>] Tags to filter out
+    # @param show_non_tagged [Boolean] Whether to show items without tags
+    # @return [Hash] Hash with :route_ids, :query_ids, :job_ids keys
+    def self.filter_all(disabled_tags, show_non_tagged)
+      # Separate "non_tagged" from actual tags (it's a virtual tag)
+      actual_disabled_tags = (disabled_tags || []).reject { |tag| tag == "non_tagged" }
+
+      {
+        route_ids: filter_ids(Route, actual_disabled_tags, show_non_tagged),
+        query_ids: filter_ids(Query, actual_disabled_tags, show_non_tagged),
+        job_ids: filter_ids(Job, actual_disabled_tags, show_non_tagged)
+      }
+    end
+  end
+end

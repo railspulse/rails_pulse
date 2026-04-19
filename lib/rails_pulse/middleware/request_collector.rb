@@ -17,18 +17,12 @@ module RailsPulse
         # Skip RailsPulse engine requests
         mount_path = RailsPulse.configuration.mount_path || "/rails_pulse"
         if req.path.start_with?(mount_path)
-          RequestStore.store[:skip_recording_rails_pulse_activity] = true
-          result = @app.call(env)
-          RequestStore.store[:skip_recording_rails_pulse_activity] = false
-          return result
+          return with_recording_suppressed { @app.call(env) }
         end
 
         # Check if route should be ignored based on configuration
         if should_ignore_route?(req)
-          RequestStore.store[:skip_recording_rails_pulse_activity] = true
-          result = @app.call(env)
-          RequestStore.store[:skip_recording_rails_pulse_activity] = false
-          return result
+          return with_recording_suppressed { @app.call(env) }
         end
 
         # Clear any previous request data and set a placeholder ID
@@ -46,6 +40,7 @@ module RailsPulse
         # Collect all tracking data
         # Deep copy operations array to prevent race condition in async mode
         operations = RequestStore.store[:rails_pulse_operations] || []
+        detect_n_plus_one(operations)
         tracking_data = {
           method: req.request_method,
           path: req.path,
@@ -55,6 +50,7 @@ module RailsPulse
           request_uuid: req.uuid,
           controller_action: controller_action,
           occurred_at: occurred_at,
+          response_size_bytes: response_size_bytes(headers, response),
           operations: operations.map(&:dup)
         }
 
@@ -69,6 +65,35 @@ module RailsPulse
       end
 
       private
+
+      def with_recording_suppressed
+        RequestStore.store[:skip_recording_rails_pulse_activity] = true
+        yield
+      ensure
+        RequestStore.store[:skip_recording_rails_pulse_activity] = false
+      end
+
+      def response_size_bytes(headers, response)
+        return headers["Content-Length"].to_i if headers["Content-Length"]
+        body = response.respond_to?(:body) ? response.body : nil
+        body.bytesize if body.is_a?(String)
+      rescue
+        nil
+      end
+
+      def detect_n_plus_one(operations)
+        sql_ops = operations.select { |op| op[:operation_type] == "sql" }
+        return if sql_ops.size < 2
+
+        groups = sql_ops.group_by { |op| RailsPulse::SqlQueryNormalizer.normalize(op[:label].to_s) }
+        groups.each do |normalized_sql, ops|
+          next if ops.size < 2
+          ops.each do |op|
+            op[:repeated_query_group] = normalized_sql
+            op[:repetition_count] = ops.size
+          end
+        end
+      end
 
       def should_ignore_route?(req)
         # Get ignored routes from configuration

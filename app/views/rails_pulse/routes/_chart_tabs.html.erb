@@ -1,0 +1,147 @@
+<%# Zone 1: Chart view selector %>
+<div class="panel-tabs">
+  <div class="panel-tabs__list">
+    <button
+      class="panel-tab"
+      data-chart-type="response_time"
+      data-rails-pulse--chart-switcher-target="button"
+      data-action="click->rails-pulse--chart-switcher#switch"
+    >Response Time</button>
+    <button
+      class="panel-tab"
+      data-chart-type="request_rate"
+      data-rails-pulse--chart-switcher-target="button"
+      data-action="click->rails-pulse--chart-switcher#switch"
+    >Request Rate</button>
+    <button
+      class="panel-tab"
+      data-chart-type="error_rate"
+      data-rails-pulse--chart-switcher-target="button"
+      data-action="click->rails-pulse--chart-switcher#switch"
+    >Error Rate</button>
+    <%# P50/P95/P99 toggles — only shown for Response Time %>
+    <div
+      data-rails-pulse--chart-switcher-target="toggleGroup"
+      data-chart-type="response_time"
+      class="panel-tabs__toggles"
+      style="display: flex;"
+    >
+      <button
+        class="series-toggle"
+        style="color: <%= RailsPulse::ChartColors::DEFAULT %>"
+        data-active="false"
+        data-controller="rails-pulse--series-toggle"
+        data-rails-pulse--series-toggle-series-name-value="P50"
+        data-rails-pulse--series-toggle-chart-id-value="response_time_percentiles_chart"
+        data-action="click->rails-pulse--series-toggle#toggle"
+      >P50</button>
+      <button
+        class="series-toggle"
+        style="color: <%= RailsPulse::ChartColors::P95 %>"
+        data-active="true"
+        data-controller="rails-pulse--series-toggle"
+        data-rails-pulse--series-toggle-series-name-value="P95"
+        data-rails-pulse--series-toggle-chart-id-value="response_time_percentiles_chart"
+        data-action="click->rails-pulse--series-toggle#toggle"
+      >P95</button>
+      <button
+        class="series-toggle"
+        style="color: <%= RailsPulse::ChartColors::P99 %>"
+        data-active="true"
+        data-controller="rails-pulse--series-toggle"
+        data-rails-pulse--series-toggle-series-name-value="P99"
+        data-rails-pulse--series-toggle-chart-id-value="response_time_percentiles_chart"
+        data-action="click->rails-pulse--series-toggle#toggle"
+      >P99</button>
+    </div>
+    <%# 5xx/4xx toggles — only shown for Error Rates %>
+    <div
+      data-rails-pulse--chart-switcher-target="toggleGroup"
+      data-chart-type="error_rate"
+      class="panel-tabs__toggles"
+      style="display: none;"
+    >
+      <button
+        class="series-toggle"
+        style="color: <%= RailsPulse::ChartColors::P95 %>"
+        data-active="true"
+        data-controller="rails-pulse--series-toggle"
+        data-rails-pulse--series-toggle-series-name-value="5xx Errors"
+        data-rails-pulse--series-toggle-chart-id-value="error_rate_chart"
+        data-action="click->rails-pulse--series-toggle#toggle"
+      >5xx</button>
+      <button
+        class="series-toggle"
+        style="color: <%= RailsPulse::ChartColors::P99 %>"
+        data-active="true"
+        data-controller="rails-pulse--series-toggle"
+        data-rails-pulse--series-toggle-series-name-value="4xx Errors"
+        data-rails-pulse--series-toggle-chart-id-value="error_rate_chart"
+        data-action="click->rails-pulse--series-toggle#toggle"
+      >4xx</button>
+    </div>
+  </div>
+</div>
+
+<!-- Response Time Chart -->
+<div
+  class="chart-container chart-container--slim"
+  data-rails-pulse--index-target="chart"
+  data-rails-pulse--chart-switcher-target="chart"
+  data-chart-type="response_time"
+  data-chart-id="response_time_percentiles_chart"
+  style="display: block;"
+>
+  <%= render_stimulus_chart(
+    @response_time_chart_data,
+    type: "line",
+    id: "response_time_percentiles_chart",
+    height: "100%",
+    options:
+      line_chart_options(
+        units: "ms",
+        zoom: true
+      ),
+  ) %>
+</div>
+<!-- Request Volume Chart -->
+<div
+  class="chart-container chart-container--slim"
+  data-rails-pulse--index-target="chart"
+  data-rails-pulse--chart-switcher-target="chart"
+  data-chart-type="request_rate"
+  data-chart-id="request_rate_chart"
+  style="display: none;"
+>
+  <%= render_stimulus_chart(
+    @request_rate_chart_data,
+    type: "bar",
+    id: "request_rate_chart",
+    height: "100%",
+    options:
+      bar_chart_options(
+        zoom: true
+      ),
+  ) %>
+</div>
+<!-- Error Rate Chart -->
+<div
+  class="chart-container chart-container--slim"
+  data-rails-pulse--index-target="chart"
+  data-rails-pulse--chart-switcher-target="chart"
+  data-chart-type="error_rate"
+  data-chart-id="error_rate_chart"
+  style="display: none;"
+>
+  <%= render_stimulus_chart(
+    @error_rate_chart_data,
+    type: "bar",
+    id: "error_rate_chart",
+    height: "100%",
+    options:
+      bar_chart_options(
+        units: "%",
+        zoom: true
+      ),
+  ) %>
+</div>

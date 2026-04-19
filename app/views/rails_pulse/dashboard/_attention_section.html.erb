@@ -1,0 +1,13 @@
+<% label_color = severity == "critical" ? "var(--color-negative)" : "var(--color-warning-text)" %>
+<% divider_class = severity == "critical" ? "attention-section__divider--critical" : "attention-section__divider--warning" %>
+<% label_text = severity == "critical" ? "Critical" : "Warning" %>
+
+<div class="flex items-center gap-half pb-1 <%= add_spacing ? "mbs-2" : "" %> pbe-0">
+  <span class="text-xs font-bold uppercase" style="letter-spacing: 0.05em; color: <%= label_color %>;"><%= label_text %></span>
+  <span class="text-xs text-subtle">· <%= count %></span>
+  <div class="attention-section__divider <%= divider_class %>"></div>
+</div>
+
+<% items.each do |item| %>
+  <%= render "rails_pulse/dashboard/attention_item", item: item, severity: severity %>
+<% end %>

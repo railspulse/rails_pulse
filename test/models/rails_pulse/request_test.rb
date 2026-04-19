@@ -19,7 +19,8 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
     assert validate_presence_of(:occurred_at).matches?(request)
     assert validate_presence_of(:duration).matches?(request)
     assert validate_presence_of(:status).matches?(request)
-    assert validate_presence_of(:request_uuid).matches?(request)
+    # request_uuid presence is validated, but callback auto-generates it before validation
+    # so we test this indirectly through the uniqueness test below
 
     # Numericality validation
     assert validate_numericality_of(:duration).is_greater_than_or_equal_to(0).matches?(request)
@@ -42,11 +43,16 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
 
   test "should generate request_uuid when blank" do
     route = rails_pulse_routes(:api_users)
-    request = RailsPulse::Request.new(route: route, duration: 150.5, status: 200, controller_action: "UsersController#index", occurred_at: 1.hour.ago, request_uuid: nil)
+    request = RailsPulse::Request.create!(
+      route: route,
+      duration: 150.5,
+      status: 200,
+      controller_action: "UsersController#index",
+      occurred_at: 1.hour.ago
+      # request_uuid intentionally omitted - should be auto-generated
+    )
 
-    # Test the private method directly
-    request.send(:set_request_uuid)
-
+    # Test indirectly - UUID should be generated on save via callback
     assert_not_nil request.request_uuid
     assert_match(/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i, request.request_uuid)
   end
@@ -122,18 +128,16 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
 
   test "request_uuid should be auto-generated if not provided" do
     route = rails_pulse_routes(:api_users)
-    request = RailsPulse::Request.new(
+    request = RailsPulse::Request.create!(
       route: route,
       duration: 150.5,
       status: 200,
       controller_action: "UsersController#index",
-      occurred_at: 1.hour.ago,
-      request_uuid: nil
+      occurred_at: 1.hour.ago
+      # request_uuid intentionally omitted
     )
 
-    # Manually trigger the callback that should happen before validation
-    request.send(:set_request_uuid)
-
+    # Test indirectly through public API - callback runs on create
     assert_not_nil request.request_uuid
     assert_match(/\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i, request.request_uuid)
   end

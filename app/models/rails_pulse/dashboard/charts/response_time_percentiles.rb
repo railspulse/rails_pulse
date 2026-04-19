@@ -1,0 +1,171 @@
+module RailsPulse
+  module Dashboard
+    module Charts
+      class ResponseTimePercentiles
+        def initialize(disabled_tags: [], show_non_tagged: true, period: 7, period_type: "day")
+          @disabled_tags = disabled_tags
+          @show_non_tagged = show_non_tagged
+          @period = period
+          @period_type = period_type
+        end
+
+        def to_chart_data
+          if @period_type == "hour"
+            # Create a range of all hours in the selected period
+            start_time = (@period * 24).hours.ago.beginning_of_hour
+            end_time = Time.current.beginning_of_hour
+
+            # Get the actual data from Summary records (routes)
+            summaries = RailsPulse::Summary
+              .with_tag_filters(@disabled_tags, @show_non_tagged)
+              .where(
+                summarizable_type: "RailsPulse::Route",
+                period_type: "hour",
+                period_start: start_time..end_time
+              )
+
+            return nil if summaries.empty?
+
+            # Group by hour and calculate weighted percentiles
+            hourly_data = {}
+            summaries.each do |summary|
+              time_key = summary.period_start.beginning_of_hour
+              count = summary.count || 0
+
+              if hourly_data[time_key]
+                hourly_data[time_key][:total_weighted_p50] += (summary.p50_duration || 0) * count
+                hourly_data[time_key][:total_weighted_p95] += (summary.p95_duration || 0) * count
+                hourly_data[time_key][:total_weighted_p99] += (summary.p99_duration || 0) * count
+                hourly_data[time_key][:total_count] += count
+              else
+                hourly_data[time_key] = {
+                  total_weighted_p50: (summary.p50_duration || 0) * count,
+                  total_weighted_p95: (summary.p95_duration || 0) * count,
+                  total_weighted_p99: (summary.p99_duration || 0) * count,
+                  total_count: count
+                }
+              end
+            end
+
+            # Convert to final values (weighted averages)
+            final_data = hourly_data.transform_values do |data|
+              {
+                p50: data[:total_count] > 0 ? (data[:total_weighted_p50] / data[:total_count]).round(0) : nil,
+                p95: data[:total_count] > 0 ? (data[:total_weighted_p95] / data[:total_count]).round(0) : nil,
+                p99: data[:total_count] > 0 ? (data[:total_weighted_p99] / data[:total_count]).round(0) : nil
+              }
+            end
+
+            # Build hourly time range
+            time_range = []
+            current_time = start_time
+            while current_time <= end_time
+              time_range << current_time
+              current_time += 1.hour
+            end
+
+            # Build labels array (hourly format)
+            labels = time_range.map { |time| time.strftime("%H:%M") }
+
+            # Build series data
+            p50_data = time_range.map { |time| final_data[time]&.[](:p50) }
+            p95_data = time_range.map { |time| final_data[time]&.[](:p95) }
+            p99_data = time_range.map { |time| final_data[time]&.[](:p99) }
+          else
+            # Daily grouping (existing logic)
+            start_date = @period.days.ago.beginning_of_day.to_date
+            end_date = Time.current.to_date
+            date_range = (start_date..end_date)
+
+            summaries = RailsPulse::Summary
+              .with_tag_filters(@disabled_tags, @show_non_tagged)
+              .where(
+                summarizable_type: "RailsPulse::Route",
+                period_type: "day",
+                period_start: start_date.beginning_of_day..end_date.end_of_day
+              )
+
+            return nil if summaries.empty?
+
+            daily_data = {}
+            summaries.each do |summary|
+              date = summary.period_start.to_date
+              count = summary.count || 0
+
+              if daily_data[date]
+                daily_data[date][:total_weighted_p50] += (summary.p50_duration || 0) * count
+                daily_data[date][:total_weighted_p95] += (summary.p95_duration || 0) * count
+                daily_data[date][:total_weighted_p99] += (summary.p99_duration || 0) * count
+                daily_data[date][:total_count] += count
+              else
+                daily_data[date] = {
+                  total_weighted_p50: (summary.p50_duration || 0) * count,
+                  total_weighted_p95: (summary.p95_duration || 0) * count,
+                  total_weighted_p99: (summary.p99_duration || 0) * count,
+                  total_count: count
+                }
+              end
+            end
+
+            # Convert to final values
+            final_data = daily_data.transform_values do |data|
+              {
+                p50: data[:total_count] > 0 ? (data[:total_weighted_p50] / data[:total_count]).round(0) : nil,
+                p95: data[:total_count] > 0 ? (data[:total_weighted_p95] / data[:total_count]).round(0) : nil,
+                p99: data[:total_count] > 0 ? (data[:total_weighted_p99] / data[:total_count]).round(0) : nil
+              }
+            end
+
+            # Build labels array
+            labels = date_range.map { |date| date.strftime("%b %-d") }
+
+            # Build series data
+            p50_data = date_range.map { |date| final_data[date]&.[](:p50) }
+            p95_data = date_range.map { |date| final_data[date]&.[](:p95) }
+            p99_data = date_range.map { |date| final_data[date]&.[](:p99) }
+          end
+
+          # Build series (common for both hourly and daily)
+          series = []
+          series << {
+            name: "P50",
+            data: p50_data,
+            type: "line",
+            color: RailsPulse::ChartColors::DEFAULT
+          }
+          series << {
+            name: "P95",
+            data: p95_data,
+            type: "line",
+            color: RailsPulse::ChartColors::P95
+          }
+          series << {
+            name: "P99",
+            data: p99_data,
+            type: "line",
+            color: RailsPulse::ChartColors::P99
+          }
+
+          # Add Service Level Objective series if configured
+          slo_configs = RailsPulse.configuration.service_level_objectives
+          slo_configs.each do |slo|
+            color = slo[:percentile] == 95 ? RailsPulse::ChartColors::P95 : RailsPulse::ChartColors::P99
+            series.unshift({
+              name: "P#{slo[:percentile]} SLO (#{slo[:threshold]}ms)",
+              data: Array.new(labels.length, slo[:threshold]),
+              type: "line",
+              lineStyle: { type: "dashed", width: 2 },
+              color: color,
+              symbol: "none"
+            })
+          end
+
+          {
+            labels: labels,
+            series: series
+          }
+        end
+      end
+    end
+  end
+end

@@ -1,0 +1,7 @@
+<% link_url_for = ->(chart_type) { @route ? route_path(@route, chart_type: chart_type) : routes_path(chart_type: chart_type) } %>
+<% metric_cards = [
+  @percentile_response_times_metric_card&.merge(link_url: link_url_for.call("response_time")),
+  @request_count_totals_metric_card&.merge(link_url: link_url_for.call("request_rate")),
+  @error_rates_metric_card&.merge(link_url: link_url_for.call("error_rate")),
+].compact %>
+<%= render "rails_pulse/components/metric_strip", metrics_data: metric_cards %>

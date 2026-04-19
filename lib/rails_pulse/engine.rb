@@ -1,4 +1,5 @@
 require "rails_pulse/version"
+require "rails_pulse/statistics"
 require "rails_pulse/middleware/request_collector"
 require "rails_pulse/middleware/asset_server"
 require "rails_pulse/subscribers/operation_subscriber"
@@ -8,13 +9,13 @@ require "rails_pulse/extensions/active_record"
 require "request_store"
 require "rack/static"
 require "ransack"
-require "turbo-rails"
 
 module RailsPulse
   # Manually load services to avoid Zeitwerk autoload issues
   autoload :SqlQueryNormalizer, File.expand_path("../../app/services/rails_pulse/sql_query_normalizer", __dir__)
   autoload :SummaryService, File.expand_path("../../app/services/rails_pulse/summary_service", __dir__)
   autoload :QueryAnalysisService, File.expand_path("../../app/services/rails_pulse/query_analysis_service", __dir__)
+  autoload :TagFilterService, File.expand_path("../../app/services/rails_pulse/tag_filter_service", __dir__)
 
   # Analysis services
   module Analysis
@@ -25,6 +26,32 @@ module RailsPulse
     autoload :NPlusOneDetector, File.expand_path("../../app/services/rails_pulse/analysis/n_plus_one_detector", __dir__)
     autoload :QueryCharacteristicsAnalyzer, File.expand_path("../../app/services/rails_pulse/analysis/query_characteristics_analyzer", __dir__)
     autoload :SuggestionGenerator, File.expand_path("../../app/services/rails_pulse/analysis/suggestion_generator", __dir__)
+  end
+
+  # Optimization suggestion services
+  module Suggestions
+    autoload :Base, File.expand_path("../../app/services/rails_pulse/suggestions/base", __dir__)
+    autoload :SqlSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/sql_suggestions_service", __dir__)
+    autoload :ViewSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/view_suggestions_service", __dir__)
+    autoload :ControllerSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/controller_suggestions_service", __dir__)
+    autoload :CacheSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/cache_suggestions_service", __dir__)
+    autoload :HttpSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/http_suggestions_service", __dir__)
+  end
+
+  # Installer services
+  module Installers
+    autoload :MigrationInstaller, File.expand_path("installers/migration_installer", __dir__)
+    autoload :ConfigInstaller, File.expand_path("installers/config_installer", __dir__)
+  end
+
+  # Stats reporting services
+  module Stats
+    autoload :CleanupStatsReporter, File.expand_path("stats/cleanup_stats_reporter", __dir__)
+  end
+
+  # Task runners
+  module Tasks
+    autoload :CleanupTaskRunner, File.expand_path("tasks/cleanup_task_runner", __dir__)
   end
 
   class Engine < ::Rails::Engine
@@ -81,10 +108,6 @@ module RailsPulse
       RailsPulse::Subscribers::OperationSubscriber.subscribe!
     end
 
-    initializer "rails_pulse.ransack", after: "ransack.initialize" do
-      # Ensure Ransack is loaded before our models
-    end
-
     initializer "rails_pulse.active_job" do
       ActiveSupport.on_load(:active_job) do
         include RailsPulse::ActiveJobExtensions
@@ -107,17 +130,6 @@ module RailsPulse
         require "rails_pulse/adapters/delayed_job_plugin"
         Delayed::Worker.plugins << RailsPulse::Adapters::DelayedJobPlugin
       end
-    end
-
-    initializer "rails_pulse.database_configuration", before: "active_record.initialize_timezone" do
-      # Ensure database configuration is applied early in the initialization process
-      # This allows models to properly connect to configured databases
-    end
-
-    initializer "rails_pulse.timezone" do
-      # Configure Rails Pulse to always use UTC for consistent time operations
-      # Note: We don't set Time.zone_default as it would affect the entire application
-      # Our custom group_by_date extension works regardless of ActiveRecord.default_timezone
     end
 
     # CSP helper methods

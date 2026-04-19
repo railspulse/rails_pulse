@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html data-color-scheme="light">
   <head>
-    <title><%= content_for(:title) || "Rails Pulse" %></title>
+    <title><%= content_for(:title) || page_title %></title>
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="mobile-web-app-capable" content="yes">
@@ -34,12 +34,13 @@
     </script>
 
     <!-- Rails Pulse Pre-compiled Assets (CSP-safe) -->
-    <%= stylesheet_link_tag rails_pulse.asset_path('rails-pulse.css'), 'data-turbo-track': 'reload' %>
-    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse-icons.js'), 'data-turbo-track': 'reload', defer: true, nonce: rails_pulse_csp_nonce %>
-    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse.js'), 'data-turbo-track': 'reload', defer: true, nonce: rails_pulse_csp_nonce %>
+    <%= stylesheet_link_tag rails_pulse.asset_path('rails-pulse.css') %>
+    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse-icons.js'), defer: true, nonce: rails_pulse_csp_nonce %>
+    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse.js'), defer: true, nonce: rails_pulse_csp_nonce %>
   </head>
 
   <body class="header-layout">
+    <% if @has_summaries %>
     <header id="header">
       <div class="flex justify-between container">
         <div class="hide@md" data-controller="rails-pulse--dialog">
@@ -77,6 +78,7 @@
       </div>
 
       <div class="flex items-center gap" style="--column-gap: 0.5rem">
+        <%= render 'layouts/rails_pulse/time_range_selector' %>
         <%= render 'layouts/rails_pulse/global_filters' %>
 
         <div data-controller="rails-pulse--color-scheme">
@@ -86,10 +88,16 @@
         </div>
       </div>
     </header>
+    <% end %>
 
     <main id="main">
       <div class="container flex flex-col gap">
-        <%= yield %>
+        <% if !@has_summaries %>
+          <%= render 'layouts/rails_pulse/setup_screen' %>
+        <% else %>
+          <%= render 'layouts/rails_pulse/onboarding_banner' %>
+          <%= yield %>
+        <% end %>
       </div>
     </main>
   </body>

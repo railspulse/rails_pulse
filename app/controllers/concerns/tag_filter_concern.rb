@@ -1,3 +1,8 @@
+# TagFilterConcern
+#
+# Applies tag-based filtering to queries based on session preferences.
+# Filters out records with disabled tags and optionally excludes non-tagged records.
+# Used by all resource controllers (routes, requests, queries, jobs) to respect tag filters.
 module TagFilterConcern
   extend ActiveSupport::Concern
 

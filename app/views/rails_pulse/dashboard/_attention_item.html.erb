@@ -1,0 +1,70 @@
+<% indicator_class =
+  (
+    if severity == "critical"
+      "attention-item__indicator--critical"
+    else
+      "attention-item__indicator--warning"
+    end
+  ) %>
+<% badge_class =
+  (
+    if severity == "critical"
+      "attention-item__badge--critical"
+    else
+      "attention-item__badge--warning"
+    end
+  ) %>
+<% metric_class =
+  (
+    if severity == "critical"
+      "attention-item__metric-value--critical"
+    else
+      "attention-item__metric-value--warning"
+    end
+  ) %>
+
+<div class="attention-item">
+  <div class="attention-item__indicator <%= indicator_class %>"></div>
+  <span class="badge attention-item__badge <%= badge_class %>"><%= item[:type] %></span>
+  <div class="attention-item__content">
+    <% if item[:popover_title] %>
+      <% popover_id = "storage-popover-#{item[:name].parameterize}" %>
+      <div
+        data-controller="rails-pulse--popover"
+        data-rails-pulse--popover-placement-value="bottom-start"
+        class="inline-flex items-center gap-half"
+      >
+        <button
+          type="button"
+          data-rails-pulse--popover-target="button"
+          data-action="rails-pulse--popover#toggle"
+          data-popovertarget="<%= popover_id %>"
+          class="font-semibold text-sm"
+          style="color: var(--color-link); background: none; border: none; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 2px;"
+        ><%= item[:name] %></button>
+        <div
+          id="<%= popover_id %>"
+          popover
+          class="popover card max-w-lg"
+          data-rails-pulse--popover-target="menu"
+        >
+          <div class="flex flex-col">
+            <h3 class="font-semibold leading-none mbe-2 uppercase text-sm"><%= item[:popover_title] %></h3>
+            <p class="text-sm text-subtle"><%= sanitize(item[:popover_body], tags: %w[code strong br], attributes: []) %></p>
+          </div>
+        </div>
+      </div>
+    <% else %>
+      <a
+        href="<%= item[:link] %>"
+        class="font-semibold text-sm text-primary"
+        style="color: var(--color-link); <%= item[:monospace] ? "font-family: monospace; font-size: 0.8em;" : "" %>"
+      ><%= item[:name] %></a>
+    <% end %>
+    <p class="text-xs text-subtle mbs-0"><%= item[:reason] %></p>
+  </div>
+  <div class="attention-item__metric">
+    <span class="font-semibold text-sm <%= metric_class %>"><%= item[:metric] %></span>
+    <p class="text-xs text-subtle"><%= item[:metric_sub] %></p>
+  </div>
+</div>

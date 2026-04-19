@@ -39,67 +39,41 @@ module RailsPulse
     }
 
     # Tag filtering scope for charts and metrics
-    # Filters summaries based on disabled tags in the underlying route/query
+    # Filters summaries based on disabled tags in the underlying route/query/job
     scope :with_tag_filters, ->(disabled_tags = [], show_non_tagged = true) {
       # Separate "non_tagged" from actual tags (it's a virtual tag)
-      actual_disabled_tags = disabled_tags.reject { |tag| tag == "non_tagged" }
+      actual_disabled_tags = (disabled_tags || []).reject { |tag| tag == "non_tagged" }
 
       # Return early if no filters are applied
       return all if actual_disabled_tags.empty? && show_non_tagged
 
-      # Determine which table to join based on summarizable_type
-      # We need to handle both Route and Query summaries
-      relation = all
+      # Get filtered IDs from TagFilterService
+      filtered_ids = TagFilterService.filter_all(disabled_tags, show_non_tagged)
 
-      # Filter route summaries
-      route_ids = RailsPulse::Route.all
+      route_ids = filtered_ids[:route_ids].presence || [ -1 ]
+      query_ids = filtered_ids[:query_ids].presence || [ -1 ]
+      job_ids = filtered_ids[:job_ids].presence || [ -1 ]
 
-      # Exclude routes with disabled tags
-      actual_disabled_tags.each do |tag|
-        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
-        route_ids = route_ids.where.not("tags LIKE ?", "%#{sanitized_tag}%")
-      end
-
-      # Exclude non-tagged routes if show_non_tagged is false
-      route_ids = route_ids.where("tags IS NOT NULL AND tags != '[]'") unless show_non_tagged
-
-      route_ids = route_ids.pluck(:id)
-
-      # Filter query summaries
-      query_ids = RailsPulse::Query.all
-
-      # Exclude queries with disabled tags
-      actual_disabled_tags.each do |tag|
-        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
-        query_ids = query_ids.where.not("tags LIKE ?", "%#{sanitized_tag}%")
-      end
-
-      # Exclude non-tagged queries if show_non_tagged is false
-      query_ids = query_ids.where("tags IS NOT NULL AND tags != '[]'") unless show_non_tagged
-
-      query_ids = query_ids.pluck(:id)
-
-      # Apply filters: include only summaries for filtered routes/queries
-      # If no routes/queries match the filter, we need to ensure nothing is returned
-      # Use -1 as an impossible ID instead of 0 (which might be used for aggregates)
-      relation = relation.where(
+      # Apply filters: include only summaries for filtered routes/queries/jobs
+      # Use -1 as an impossible ID when no items match the filter
+      where(
         "(" \
         "  (summarizable_type = 'RailsPulse::Route' AND summarizable_id IN (?)) OR " \
         "  (summarizable_type = 'RailsPulse::Query' AND summarizable_id IN (?)) OR " \
+        "  (summarizable_type = 'RailsPulse::Job' AND summarizable_id IN (?)) OR " \
         "  (summarizable_type = 'RailsPulse::Request')" \
         ")",
-        route_ids.presence || [ -1 ],
-        query_ids.presence || [ -1 ]
+        route_ids,
+        query_ids,
+        job_ids
       )
-
-      relation
     }
 
     # Ransack configuration
     def self.ransackable_attributes(auth_object = nil)
       %w[
-        period_start period_end avg_duration min_duration max_duration count error_count
-        requests_per_minute error_rate_percentage route_path_cont
+        period_start period_end avg_duration min_duration max_duration p95_duration p99_duration
+        count error_count requests_per_minute error_rate_percentage route_path_cont
         execution_count total_time_consumed normalized_sql
         summarizable_id summarizable_type
       ]
@@ -145,6 +119,14 @@ module RailsPulse
 
     ransacker :max_duration_sort do
       Arel.sql("MAX(rails_pulse_summaries.max_duration)")
+    end
+
+    ransacker :p95_duration_sort do
+      Arel.sql("SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0)")
+    end
+
+    ransacker :p99_duration_sort do
+      Arel.sql("SUM(rails_pulse_summaries.p99_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0)")
     end
 
     ransacker :count_sort do

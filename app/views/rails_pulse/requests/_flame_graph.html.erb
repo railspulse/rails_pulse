@@ -1,0 +1,85 @@
+<%= render 'rails_pulse/components/panel',
+      title: local_assigns[:title] || 'Request Trace',
+      help_heading: 'How to read this',
+      help_text: local_assigns[:help_text] || 'Each row is a layer of your stack. Many short Database bars means N+1 queries — fix with includes(). A wide Action bar with little Database time means slow Ruby code. A wide View bar usually means a partial rendered in a loop.' do %>
+  <% if @operation_timeline.bars.any? %>
+    <%
+      row_height = 28
+      timeline_height = (@operation_timeline.max_depth + 1) * row_height
+      total_ms = @operation_timeline.total_duration
+      # Use local variable if provided, otherwise fall back to @request or @run
+      total_duration = local_assigns[:total_duration] || @request&.duration || @run&.duration || 0
+      request_duration = total_duration.to_f
+    %>
+
+    <div class="flame-legend">
+      <div class="flame-legend-item">
+        <span class="flame-legend-swatch" style="background-color: #5ba6b0;"></span>
+        Action
+      </div>
+      <div class="flame-legend-item">
+        <span class="flame-legend-swatch" style="background-color: #6c7ab9;"></span>
+        View
+      </div>
+      <div class="flame-legend-item">
+        <span class="flame-legend-swatch" style="background-color: #d27d6b;"></span>
+        Database
+      </div>
+      <div class="flame-legend-item">
+        <span class="flame-legend-swatch" style="background-color: #a6a6a6;"></span>
+        Other
+      </div>
+    </div>
+
+    <div class="flame-trace" data-controller="rails-pulse--flame-graph">
+      <div class="flame-lane-labels" style="height: <%= timeline_height %>px;">
+        <% @operation_timeline.lane_labels.each do |depth, label| %>
+          <div class="flame-lane-label" style="top: <%= depth * row_height + 3 %>px;">
+            <%= label %>
+          </div>
+        <% end %>
+      </div>
+
+      <div class="flame-lane-graph">
+        <div class="flame-graph-container" style="height: <%= timeline_height %>px;">
+          <% @operation_timeline.bars.each do |bar| %>
+            <%
+              top_px = bar.depth * row_height + 3
+              width_pct = [bar.width_pct, 0.3].max
+              impact = request_duration > 0 ? (bar.operation.duration / request_duration * 100).round(1) : 0
+            %>
+            <div class="flame-bar"
+                 style="left: <%= bar.left_pct %>%; width: <%= width_pct %>%; top: <%= top_px %>px; background-color: <%= event_color(bar.operation.operation_type) %>;"
+                 data-action="mouseenter->rails-pulse--flame-graph#showTooltip mousemove->rails-pulse--flame-graph#moveTooltip mouseleave->rails-pulse--flame-graph#hideTooltip click->rails-pulse--flame-graph#navigate"
+                 data-op-label="<%= html_escape(bar.operation.label) %>"
+                 data-op-duration="<%= bar.duration %>"
+                 data-op-type="<%= bar.operation.operation_type %>"
+                 data-op-impact="<%= impact %>"
+                 data-op-url="<%= operation_path(bar.operation) %>">
+            </div>
+          <% end %>
+        </div>
+
+        <div class="flame-time-axis">
+          <% [0, 0.25, 0.5, 0.75, 1.0].each do |tick| %>
+            <span class="flame-tick" style="left: <%= tick * 100 %>%;">
+              <%= (tick * total_ms).round(1) %>ms
+            </span>
+          <% end %>
+        </div>
+      </div>
+
+      <div class="flame-tooltip hidden" data-rails-pulse--flame-graph-target="tooltip">
+        <div data-flame-type class="flame-tooltip-type"></div>
+        <div data-flame-label class="flame-tooltip-label"></div>
+        <div class="flame-tooltip-stats">
+          <span data-flame-duration></span> ms &bull; <span data-flame-impact></span>% of request
+        </div>
+      </div>
+    </div>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No trace data available.',
+        description: 'This request has no recorded operations.' %>
+  <% end %>
+<% end %>

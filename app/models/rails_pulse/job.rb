@@ -1,6 +1,9 @@
 module RailsPulse
   class Job < RailsPulse::ApplicationRecord
     include Taggable
+    include HasPerformanceStatus
+
+    performance_status_attribute :avg_duration
 
     self.table_name = "rails_pulse_jobs"
 
@@ -13,7 +16,7 @@ module RailsPulse
     validates :name, presence: true, uniqueness: true
 
     def self.ransackable_attributes(auth_object = nil)
-      %w[id name queue_name runs_count failures_count retries_count avg_duration]
+      %w[id name queue_name runs_count failures_count retries_count avg_duration p95_duration p99_duration]
     end
 
     def self.ransackable_associations(auth_object = nil)
@@ -41,13 +44,19 @@ module RailsPulse
           ((previous_average * previous_total) + duration) / (previous_total + 1)
         end
 
-        updates = { avg_duration: new_average }
-        if run.failure_like_status?
-          updates[:failures_count] = failures_count + 1
-        end
-        if run.status == "retried"
-          updates[:retries_count] = retries_count + 1
-        end
+        recent_durations = runs.where.not(duration: nil)
+                               .order(occurred_at: :desc)
+                               .limit(100)
+                               .pluck(:duration)
+                               .sort
+
+        updates = {
+          avg_duration: new_average,
+          p95_duration: RailsPulse::Statistics.calculate_percentile(recent_durations, 0.95) || 0.0,
+          p99_duration: RailsPulse::Statistics.calculate_percentile(recent_durations, 0.99) || 0.0
+        }
+        updates[:failures_count] = failures_count + 1 if run.failure_like_status?
+        updates[:retries_count] = retries_count + 1 if run.status == "retried"
 
         update!(updates)
       end
@@ -59,27 +68,12 @@ module RailsPulse
       ((failures_count.to_f / runs_count) * 100).round(2)
     end
 
-    def performance_status
-      thresholds = RailsPulse.configuration.job_thresholds
-      duration = avg_duration.to_f
-
-      if duration < thresholds[:slow]
-        :fast
-      elsif duration < thresholds[:very_slow]
-        :slow
-      elsif duration < thresholds[:critical]
-        :very_slow
-      else
-        :critical
-      end
-    end
-
     def to_param
       id.to_s
     end
 
     def to_breadcrumb
-      name
+      name.split("/").map(&:camelize).join("::")
     end
   end
 end

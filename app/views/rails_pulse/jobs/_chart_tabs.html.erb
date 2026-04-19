@@ -1,0 +1,121 @@
+<%# Zone 1: Chart view selector %>
+<div class="panel-tabs">
+  <div class="panel-tabs__list">
+    <button
+      class="panel-tab"
+      data-chart-type="duration"
+      data-rails-pulse--chart-switcher-target="button"
+      data-action="click->rails-pulse--chart-switcher#switch"
+    >Duration</button>
+    <button
+      class="panel-tab"
+      data-chart-type="execution_volume"
+      data-rails-pulse--chart-switcher-target="button"
+      data-action="click->rails-pulse--chart-switcher#switch"
+    >Execution Volume</button>
+    <button
+      class="panel-tab"
+      data-chart-type="failure_rate"
+      data-rails-pulse--chart-switcher-target="button"
+      data-action="click->rails-pulse--chart-switcher#switch"
+    >Failure Rate</button>
+    <%# P50/P95/P99 toggles — only shown for Duration %>
+    <div
+      data-rails-pulse--chart-switcher-target="toggleGroup"
+      data-chart-type="duration"
+      class="panel-tabs__toggles"
+      style="display: flex;"
+    >
+      <button
+        class="series-toggle"
+        style="color: <%= RailsPulse::ChartColors::DEFAULT %>"
+        data-active="false"
+        data-controller="rails-pulse--series-toggle"
+        data-rails-pulse--series-toggle-series-name-value="P50"
+        data-rails-pulse--series-toggle-chart-id-value="duration_chart"
+        data-action="click->rails-pulse--series-toggle#toggle"
+      >P50</button>
+      <button
+        class="series-toggle"
+        style="color: <%= RailsPulse::ChartColors::P95 %>"
+        data-active="true"
+        data-controller="rails-pulse--series-toggle"
+        data-rails-pulse--series-toggle-series-name-value="P95"
+        data-rails-pulse--series-toggle-chart-id-value="duration_chart"
+        data-action="click->rails-pulse--series-toggle#toggle"
+      >P95</button>
+      <button
+        class="series-toggle"
+        style="color: <%= RailsPulse::ChartColors::P99 %>"
+        data-active="true"
+        data-controller="rails-pulse--series-toggle"
+        data-rails-pulse--series-toggle-series-name-value="P99"
+        data-rails-pulse--series-toggle-chart-id-value="duration_chart"
+        data-action="click->rails-pulse--series-toggle#toggle"
+      >P99</button>
+    </div>
+  </div>
+</div>
+
+<!-- Duration Chart -->
+<div
+  class="chart-container chart-container--slim"
+  data-rails-pulse--index-target="chart"
+  data-rails-pulse--chart-switcher-target="chart"
+  data-chart-type="duration"
+  data-chart-id="duration_chart"
+  style="display: block;"
+>
+  <%= render_stimulus_chart(
+    @duration_chart_data,
+    type: "line",
+    id: "duration_chart",
+    height: "100%",
+    options:
+      line_chart_options(
+        units: "ms",
+        zoom: true
+      ),
+  ) %>
+</div>
+<!-- Execution Volume Chart -->
+<div
+  class="chart-container chart-container--slim"
+  data-rails-pulse--index-target="chart"
+  data-rails-pulse--chart-switcher-target="chart"
+  data-chart-type="execution_volume"
+  data-chart-id="execution_volume_chart"
+  style="display: none;"
+>
+  <%= render_stimulus_chart(
+    @execution_volume_chart_data,
+    type: "bar",
+    id: "execution_volume_chart",
+    height: "100%",
+    options:
+      bar_chart_options(
+        zoom: true
+      ),
+  ) %>
+</div>
+<!-- Failure Rate Chart -->
+<div
+  class="chart-container chart-container--slim"
+  data-rails-pulse--index-target="chart"
+  data-rails-pulse--chart-switcher-target="chart"
+  data-chart-type="failure_rate"
+  data-chart-id="failure_rate_chart"
+  style="display: none;"
+>
+  <%= render_stimulus_chart(
+    @failure_rate_chart_data,
+    type: "bar",
+    id: "failure_rate_chart",
+    height: "100%",
+    options:
+      bar_chart_options(
+        units: "%",
+        zoom: true
+      ),
+  ) %>
+</div>

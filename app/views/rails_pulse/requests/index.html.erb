@@ -1,23 +1,8 @@
 <%= render 'rails_pulse/components/page_header', show_active_filters: true %>
 
-<% unless turbo_frame_request? %>
-  <div class="row">
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_response_times_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_response_times_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @request_count_totals_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @error_rate_per_route_metric_card } %>
-  </div>
-<% end %>
-
 <%= render 'rails_pulse/components/panel', { title: 'Requests', } do %>
-  <%= search_form_for @ransack_query, url: requests_path, class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
+  <%= search_form_for @ransack_query, url: requests_path, class: "flex items-center justify-between gap mb-4" do |form| %>
     <div class="flex items-center grow gap">
-      <%= time_range_selector(form,
-        time_range_options: RailsPulse::RequestsController::TIME_RANGE_OPTIONS,
-        selected_time_range: @selected_time_range,
-        mode: :recent_custom
-      ) %>
-
       <%= form.search_field :route_path_cont,
         placeholder: "Filter by route",
         autocomplete: "off",
@@ -48,12 +33,14 @@
   <% end %>
 
   <% if @has_data %>
-    <%= turbo_frame_tag :index_table do %>
-      <%= render 'rails_pulse/requests/table' %>
-    <% end %>
+    <div data-controller="rails-pulse--table-sort">
+      <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">
+        <%= render 'rails_pulse/requests/table' %>
+      </div>
+    </div>
   <% else %>
     <%= render 'rails_pulse/components/empty_state',
         title: 'No request data found for the selected filters.',
-        description: 'Try adjusting your time range or filters to see results.' %>
+        description: 'Try adjusting your filters to see results.' %>
   <% end %>
 <% end %>

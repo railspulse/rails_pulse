@@ -30,14 +30,18 @@ module RailsPulse
       {
         tooltip: {
           trigger: "axis",
-          axisPointer: { type: "shadow" }
+          axisPointer: { type: "shadow" },
+          formatter: "tooltip_with_timestamp"
         },
         toolbox: {
           feature: { saveAsImage: { show: false } }
         },
         xAxis: {
           axisLine: { show: false },
-          axisTick: { show: false }
+          axisTick: { show: false },
+          axisLabel: {
+            formatter: "timestamp_to_date"
+          }
         },
         yAxis: {
           splitArea: { show: false },
@@ -56,32 +60,28 @@ module RailsPulse
       }
     end
 
-    def bar_chart_options(units: nil, zoom: false, chart_start: 0, chart_end: 100, xaxis_formatter: nil, tooltip_formatter: nil, zoom_start: nil, zoom_end: nil, chart_data: nil)
+    def bar_chart_options(units: nil, zoom: false, chart_start: 0, chart_end: 100, zoom_start: nil, zoom_end: nil, chart_data: nil)
       options = base_chart_options(units: units, zoom: zoom).deep_merge({
         series: {
           itemStyle: { borderRadius: [ 5, 5, 5, 5 ] }
         }
       })
 
-      apply_tooltip_formatter(options, tooltip_formatter)
-      apply_xaxis_formatter(options, xaxis_formatter)
       apply_zoom_configuration(options, zoom, zoom_start, zoom_end, chart_data)
 
       options
     end
 
-    def line_chart_options(units: nil, zoom: false, chart_start: 0, chart_end: 100, xaxis_formatter: nil, tooltip_formatter: nil, zoom_start: nil, zoom_end: nil, chart_data: nil)
+    def line_chart_options(units: nil, zoom: false, chart_start: 0, chart_end: 100, zoom_start: nil, zoom_end: nil, chart_data: nil)
       options = base_chart_options(units: units, zoom: zoom).deep_merge({
         series: {
-          smooth: true,
+          smooth: false,
           lineStyle: { width: 3 },
           symbol: "circle",
           symbolSize: 8
         }
       })
 
-      apply_tooltip_formatter(options, tooltip_formatter)
-      apply_xaxis_formatter(options, xaxis_formatter)
       apply_zoom_configuration(options, zoom, zoom_start, zoom_end, chart_data)
 
       options
@@ -90,6 +90,11 @@ module RailsPulse
     def sparkline_chart_options
       # Compact sparkline columns that fill the canvas with no axes/labels/gaps
       base_chart_options.deep_merge({
+        tooltip: {
+          trigger: "axis",
+          axisPointer: { type: "shadow" },
+          formatter: "sparkline_tooltip"
+        },
         series: {
           type: "bar",
           itemStyle: { borderRadius: [ 2, 2, 0, 0 ] },
@@ -122,23 +127,6 @@ module RailsPulse
 
     private
 
-    # Wraps JavaScript function strings for later processing
-    def js_function(func_string)
-      "__FUNCTION_START__#{func_string}__FUNCTION_END__"
-    end
-
-    def apply_tooltip_formatter(options, tooltip_formatter)
-      return unless tooltip_formatter.present?
-
-      options[:tooltip][:formatter] = js_function(tooltip_formatter)
-    end
-
-    def apply_xaxis_formatter(options, xaxis_formatter)
-      return unless xaxis_formatter.present?
-
-      options[:xAxis][:axisLabel] ||= { formatter: js_function(xaxis_formatter) }
-    end
-
     def apply_zoom_configuration(options, zoom, zoom_start, zoom_end, chart_data)
       return unless zoom
 
@@ -151,17 +139,24 @@ module RailsPulse
 
       # Initialize zoom range if zoom parameters are provided
       if zoom_start.present? && zoom_end.present? && chart_data.present?
-        # Find closest matching timestamps in the actual chart data
-        # Chart data is a hash like: { 1234567890 => { value: 123.45 } }
-        chart_timestamps = chart_data.keys
+        # Handle both old format { timestamp => value } and new format { labels: [...], series: [...] }
+        chart_timestamps = if chart_data.is_a?(Hash) && chart_data[:labels].present?
+          # New multi-series chart format - labels are timestamps in milliseconds
+          chart_data[:labels]
+        elsif chart_data.is_a?(Hash)
+          # Old format - keys are timestamps
+          chart_data.keys.select { |k| k.is_a?(Numeric) }
+        else
+          []
+        end
 
         # Convert zoom parameters to integers (timestamps)
         zoom_start_int = zoom_start.respond_to?(:to_i) ? zoom_start.to_i : zoom_start
         zoom_end_int = zoom_end.respond_to?(:to_i) ? zoom_end.to_i : zoom_end
 
         if chart_timestamps.any?
-          closest_start = chart_timestamps.min_by { |ts| (ts - zoom_start_int).abs }
-          closest_end = chart_timestamps.min_by { |ts| (ts - zoom_end_int).abs }
+          closest_start = chart_timestamps.min_by { |ts| (ts.to_i - zoom_start_int.to_i).abs }
+          closest_end = chart_timestamps.min_by { |ts| (ts.to_i - zoom_end_int.to_i).abs }
 
           # Find the array indices of these timestamps
           start_index = chart_timestamps.index(closest_start)

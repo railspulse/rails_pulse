@@ -5,103 +5,33 @@ module GlobalFiltersHelpers
     assert_selector ".dialog__content", wait: 3
   end
 
-  def set_global_date_range(start_date, end_date)
-    open_global_filters_modal
-
-    # Wait for flatpickr to initialize
-    sleep 0.5
-
-    # Set the date range using flatpickr API (similar to custom range)
-    page.execute_script(<<~JS)
-      var hiddenInput = document.querySelector('input[name="date_range"]');
-      if (hiddenInput && hiddenInput._flatpickr) {
-        hiddenInput._flatpickr.setDate(['#{start_date}', '#{end_date}'], true);
-      }
-    JS
-
-    sleep 0.3
-
-    within(".dialog__content") do
-      # Wait for button to be ready
-      assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
-      click_button "Apply Filters"
-    end
-
-    assert_no_selector ".dialog__content", wait: 3
-  end
-
   def set_global_performance_threshold(threshold)
     open_global_filters_modal
 
     within(".dialog__content") do
-      # Wait for button to be ready
       assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
       select threshold, from: "performance_threshold"
-      click_button "Apply Filters"
     end
 
-    assert_no_selector ".dialog__content", wait: 3
-  end
-
-  def set_global_filters(date_range: nil, threshold: nil)
-    open_global_filters_modal
-
-    # Wait for flatpickr to initialize if date range is being set
-    sleep 0.5 if date_range
-
-    # Set date range using flatpickr API if provided
-    if date_range
-      # Parse the date range string "Start to End" and convert to array for flatpickr
-      if date_range.include?(" to ")
-        dates = date_range.split(" to ").map(&:strip)
-        page.execute_script(<<~JS)
-          var hiddenInput = document.querySelector('input[name="date_range"]');
-          if (hiddenInput && hiddenInput._flatpickr) {
-            hiddenInput._flatpickr.setDate(['#{dates[0]}', '#{dates[1]}'], true);
-          }
-        JS
-      else
-        page.execute_script(<<~JS)
-          var hiddenInput = document.querySelector('input[name="date_range"]');
-          if (hiddenInput && hiddenInput._flatpickr) {
-            hiddenInput._flatpickr.setDate('#{date_range}', true);
-          }
-        JS
-      end
-
-      sleep 1 # Give more time for flatpickr to process and update
-    end
-
-    # Wait for modal to be fully visible and button to be ready
-    within(".dialog__content") do
-      # Explicitly wait for the Apply Filters button to be visible and enabled
-      assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
-
-      select threshold, from: "performance_threshold" if threshold
-
-      # Click the button
-      click_button "Apply Filters"
-    end
-
-    assert_no_selector ".dialog__content", wait: 3
+    # Click submit outside the within scope — clicking inside causes Capybara to
+    # synchronize against the stale dialog scope after the page navigation.
+    find(".dialog__content input[type='submit'][value='Apply Filters']").click
   end
 
   def clear_global_filters
     open_global_filters_modal
 
-    within(".dialog__content") do
-      # Wait for button to be ready (Clear is a button element, not input)
-      assert_selector "button[type='submit']", text: "Clear", wait: 5
-      click_button "Clear"
-    end
+    assert_selector ".dialog__content button[type='submit']", text: "Clear", wait: 5
+    find(".dialog__content button[type='submit']", text: "Clear").click
 
-    assert_no_selector ".dialog__content", wait: 3
+    assert_no_selector ".dialog__content", wait: 5
+    assert_selector '[data-action*="global-filters#open"]', wait: 5
   end
 
   def assert_global_filters_active
-    icon = find('[data-rails-pulse--global-filters-target="indicator"]')
-    # Check for list-filter-plus icon (active state)
-    assert icon.text.present? || icon.has_css?("svg")
+    # Use assert_selector so Capybara finds and checks atomically with retry,
+    # avoiding stale element errors from holding a reference across DOM updates.
+    assert_selector '[data-rails-pulse--global-filters-target="indicator"] svg', wait: 3
   end
 
   def assert_global_filters_inactive
@@ -110,72 +40,83 @@ module GlobalFiltersHelpers
   end
 
   def select_custom_date_range(start_date, end_date)
-    select "Custom Range...", from: "q[period_start_range]"
+    # Click the time range trigger button to open the popover
+    find(".time-range-trigger").click
 
-    # Wait for custom picker to appear
-    assert_selector '[data-rails-pulse--custom-range-target="pickerWrapper"]', visible: true, wait: 2
+    # Wait for popover menu to appear
+    assert_selector '[data-rails-pulse--popover-target="menu"]', visible: true, wait: 3
+
+    # Click "Custom Range..." button to open the modal
+    find("button", text: "Custom Range...").click
+
+    # Wait for modal to appear
+    assert_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true, wait: 3
 
     # Wait for flatpickr to initialize
     sleep 0.5
 
-    # Find the hidden input with flatpickr instance and set the date range
-    # The setDate method with second param 'true' triggers change events
-    # which updates both the hidden input (form value) and alt input (display)
+    # Set the date range using flatpickr API on the date input
     page.execute_script(<<~JS)
-      var hiddenInput = document.querySelector('input[name="q[custom_date_range]"]');
-      if (hiddenInput && hiddenInput._flatpickr) {
-        hiddenInput._flatpickr.setDate(['#{start_date}', '#{end_date}'], true);
+      var dateInput = document.querySelector('[data-rails-pulse--time-range-target="dateInput"]');
+      if (dateInput && dateInput._flatpickr) {
+        dateInput._flatpickr.setDate(['#{start_date}', '#{end_date}'], true);
       }
     JS
 
     sleep 0.3
+
+    # Click Apply button to apply the custom range
+    within('[data-rails-pulse--time-range-target="modal"]') do
+      click_button "Apply"
+    end
+
+    # Wait for modal to close
+    assert_no_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true, wait: 3
   end
 
   def assert_custom_picker_visible
-    assert_selector '[data-rails-pulse--custom-range-target="pickerWrapper"]', visible: true, wait: 3
-    assert_selector '[data-rails-pulse--custom-range-target="selectWrapper"]', visible: false
+    assert_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true, wait: 5
   end
 
-  def assert_dropdown_visible
-    assert_selector '[data-rails-pulse--custom-range-target="selectWrapper"]', visible: true
-    assert_selector '[data-rails-pulse--custom-range-target="pickerWrapper"]', visible: false
+  def assert_time_range_label(expected_text)
+    label = find('[data-rails-pulse--time-range-target="label"]')
+
+    assert_includes label.text, expected_text
   end
 
-  def close_custom_range_picker
-    find('[data-action*="custom-range#showSelect"]').click
+  def close_custom_range_modal
+    within('[data-rails-pulse--time-range-target="modal"]') do
+      # Click the Cancel button (not the X button)
+      click_button "Cancel"
+    end
 
-    assert_dropdown_visible
+    assert_no_selector '[data-rails-pulse--time-range-target="modalWrapper"]', visible: true, wait: 3
   end
 
   # Tag filtering helpers
   def toggle_tag_filter(tag_name)
     open_global_filters_modal
 
-    within(".dialog__content") do
-      # Find the checkbox by its id (tag_<name>)
-      checkbox_id = "tag_#{tag_name.parameterize.underscore}"
-      find("##{checkbox_id}").click
+    checkbox_id = "tag_#{tag_name.parameterize.underscore}"
+    checkbox = find(".dialog__content ##{checkbox_id}")
+    checkbox.click
 
-      # Wait for button to be ready
-      assert_selector "input[type='submit'][value='Apply Filters']", wait: 5
-      click_button "Apply Filters"
-    end
+    submit = find(".dialog__content input[type='submit'][value='Apply Filters']")
+    submit.click
 
-    assert_no_selector ".dialog__content", wait: 3
+    assert_no_selector ".dialog__content", wait: 5
+    assert_selector '[data-action*="global-filters#open"]', wait: 5
   end
 
   def assert_tag_enabled(tag_name)
     open_global_filters_modal
 
-    within(".dialog__content") do
-      checkbox_id = "tag_#{tag_name.parameterize.underscore}"
-      checkbox = find("##{checkbox_id}")
+    checkbox_id = "tag_#{tag_name.parameterize.underscore}"
+    checkbox = find(".dialog__content ##{checkbox_id}")
 
-      assert_predicate checkbox, :checked?, "Expected tag '#{tag_name}' to be enabled"
+    assert_predicate checkbox, :checked?, "Expected tag '#{tag_name}' to be enabled"
 
-      # Close modal using the X button
-      find('a[aria-label="Close"]').click
-    end
+    find('.dialog__content a[aria-label="Close"]').click
 
     assert_no_selector ".dialog__content", wait: 3
   end
@@ -183,15 +124,12 @@ module GlobalFiltersHelpers
   def assert_tag_disabled(tag_name)
     open_global_filters_modal
 
-    within(".dialog__content") do
-      checkbox_id = "tag_#{tag_name.parameterize.underscore}"
-      checkbox = find("##{checkbox_id}")
+    checkbox_id = "tag_#{tag_name.parameterize.underscore}"
+    checkbox = find(".dialog__content ##{checkbox_id}")
 
-      assert_not checkbox.checked?, "Expected tag '#{tag_name}' to be disabled"
+    assert_not checkbox.checked?, "Expected tag '#{tag_name}' to be disabled"
 
-      # Close modal using the X button
-      find('a[aria-label="Close"]').click
-    end
+    find('.dialog__content a[aria-label="Close"]').click
 
     assert_no_selector ".dialog__content", wait: 3
   end

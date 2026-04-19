@@ -3,17 +3,9 @@ module RailsPulse
     include ChartTableConcern
     include TagFilterConcern
 
-    # Override TIME_RANGE_OPTIONS from TimeRangeConcern with requests-specific options
-    remove_const(:TIME_RANGE_OPTIONS) if const_defined?(:TIME_RANGE_OPTIONS)
-    TIME_RANGE_OPTIONS = [
-      [ "Recent", "recent" ],
-      [ "Custom Range", "custom" ]
-    ].freeze
-
     before_action :set_request, only: :show
 
     def index
-      setup_metric_cards
       setup_chart_and_table_data
     end
 
@@ -22,19 +14,6 @@ module RailsPulse
     end
 
     private
-
-    def setup_metric_cards
-      return if  turbo_frame_request?
-
-      # Get tag filter values from session
-      disabled_tags = session_disabled_tags
-      show_non_tagged = session[:show_non_tagged] != false
-
-      @average_response_times_metric_card = RailsPulse::Routes::Cards::AverageResponseTimes.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: nil, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-    end
 
 
     def chart_model
@@ -45,34 +24,50 @@ module RailsPulse
       RailsPulse::Request
     end
 
-    def chart_class
-      Requests::Charts::AverageResponseTimes
+    # Chart configuration - requests page doesn't display charts
+    def chart_definitions
+      {}
     end
 
     def chart_options
       {}
     end
 
+    # Requests use polymorphic summaries with type "RailsPulse::Request"
+    def summarizable_type
+      "RailsPulse::Request"
+    end
+
+    # Override: Requests aggregate all request data (summarizable_id: 0)
+    # rather than scoping to a specific resource
+    # Also handles "recent" mode where @start_time may be nil
     def build_chart_ransack_params(ransack_params)
       base_params = ransack_params.except(:s).merge(
-        period_start_gteq: Time.at(@start_time),
-        period_start_lt: Time.at(@end_time),
         summarizable_type_eq: "RailsPulse::Request",
         summarizable_id_eq: 0
       )
+
+      # Add time filters if we have time boundaries (not in "recent" mode)
+      if @start_time && @end_time
+        base_params.merge!(
+          period_start_gteq: Time.at(@start_time),
+          period_start_lt: Time.at(@end_time)
+        )
+      end
 
       # Only add duration filter if we have a meaningful threshold
       base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
       base_params
     end
 
+    # Override: Requests support "recent" mode (no time filtering)
     def build_table_ransack_params(ransack_params)
       params = ransack_params.dup
 
       # Handle time mode - check if recent mode is selected
       time_mode = params[:period_start_range] || "recent"
 
-      if time_mode != "recent"
+      if time_mode != "recent" && @table_start_time && @table_end_time
         # Custom mode - apply time filters
         params.merge!(
           occurred_at_gteq: Time.at(@table_start_time),
@@ -100,6 +95,9 @@ module RailsPulse
       "occurred_at desc"
     end
 
+    # Requests index shows individual request records, not aggregated summaries
+    # This differs from Routes/Queries which use Tables::Index for aggregation
+    # Individual records allow displaying per-request details (tags, occurred_at, etc.)
     def build_table_results
       base_query = apply_tag_filters(@ransack_query.result.includes(:route))
 
@@ -114,7 +112,7 @@ module RailsPulse
       base_query
     end
 
-
+    # Override table data setup to handle "recent" mode
     def setup_table_data(ransack_params)
       table_ransack_params = build_table_ransack_params(ransack_params)
       @ransack_query = table_model.ransack(table_ransack_params)
@@ -124,11 +122,6 @@ module RailsPulse
       handle_pagination
 
       @pagination, @table_data = paginate(table_results, limit: session_pagination_limit)
-    end
-
-    def handle_pagination
-      method = pagination_method
-      send(method, params[:limit]) if params[:limit].present?
     end
 
     def set_request

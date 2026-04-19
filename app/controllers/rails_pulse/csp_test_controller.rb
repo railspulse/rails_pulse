@@ -37,7 +37,11 @@ class RailsPulse::CspTestController < RailsPulse::ApplicationController
     [
       "'self'",
       "'nonce-#{request_nonce}'",
-      "'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='"  # Known safe inline script
+      # SHA-256 hash for csp-test.js inline script that monitors CSP violations
+      # This allows the specific inline script in app/views/rails_pulse/csp_test/show.html.erb
+      # to execute and report CSP violation events via document.addEventListener
+      # To regenerate: echo -n 'script_content' | openssl dgst -sha256 -binary | openssl base64
+      "'sha256-ieoeWczDHkReVBsRBqaal5AFMlBtNjMzgwKvLqi/tSU='"
     ].join(" ")
   end
 
@@ -45,7 +49,10 @@ class RailsPulse::CspTestController < RailsPulse::ApplicationController
     [
       "'self'",
       "'nonce-#{request_nonce}'",
-      "'sha256-WAyOw4V+FqDc35lQPyRADLBWbuNK8ahvYEaQIYF1+Ps='"  # Icon controller styles
+      # SHA-256 hash for Icon Controller inline styles
+      # Allows CSS custom properties dynamically set by the icon controller
+      # for positioning and styling icon elements within strict CSP
+      "'sha256-WAyOw4V+FqDc35lQPyRADLBWbuNK8ahvYEaQIYF1+Ps='"
     ].join(" ")
   end
 

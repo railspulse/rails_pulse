@@ -25,8 +25,7 @@ module RailsPulse
             button_to(
               remove_tag_path(taggable_type, taggable_id, tag: tag),
               method: :delete,
-              class: "tag-remove",
-              data: { turbo_frame: "_top" }
+              class: "tag-remove"
             ) do
               content_tag(:span, "×", "aria-hidden": "true")
             end

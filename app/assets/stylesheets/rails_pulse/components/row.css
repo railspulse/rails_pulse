@@ -2,7 +2,7 @@
   display: flex;
   justify-content: space-between;
   width: 100%;
-  gap: var(--column-gap, 0.5rem);
+  gap: var(--size-4);
   align-items: stretch;
 }
 
@@ -29,7 +29,7 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: space-between;
-      gap: 0.5rem;
+      gap: var(--size-4);
       align-items: flex-start;
   }
 
@@ -47,8 +47,9 @@
       flex: none;
   }
 
-  /* Tables should stack in single column on mobile */
-  .row:has(.table-container) > * {
+  /* Tables and chart panels should stack in single column on tablet */
+  .row:has(.table-container) > *,
+  .row:has(.chart-container) > * {
       flex: 0 0 100%;
   }
 

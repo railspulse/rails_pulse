@@ -27,7 +27,7 @@ module RailsPulse
         # Structure Tests
 
         test "card returns hash with required keys for specific job" do
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_kind_of Hash, result
@@ -39,11 +39,11 @@ module RailsPulse
           assert_includes result.keys, :trend_icon
           assert_includes result.keys, :trend_amount
           assert_includes result.keys, :trend_text
-          assert_equal "Compared to previous week", result[:trend_text]
+          assert_equal "Compared to previous 7 days", result[:trend_text]
         end
 
         test "card returns hash with required keys for all jobs" do
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: nil)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: nil, period: 7)
           result = card.to_metric_card
 
           assert_kind_of Hash, result
@@ -66,7 +66,7 @@ module RailsPulse
           # Previous window: 5 runs
           create_job_summary(job: @job, days_ago: 10, count: 5)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           # Total: 15 runs
@@ -84,7 +84,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 10)
           create_job_summary(job: other_job, days_ago: 3, count: 100)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           # Should only include report_job's 10 runs, not mailer_job's 100 runs
@@ -105,7 +105,7 @@ module RailsPulse
           create_job_summary(job: job1, days_ago: 10, count: 5)
           create_job_summary(job: job2, days_ago: 10, count: 15)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: nil)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: nil, period: 7)
           result = card.to_metric_card
 
           # Total: 10 + 20 + 5 + 15 = 50 runs
@@ -122,7 +122,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 20)
           create_job_summary(job: @job, days_ago: 10, count: 10)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "trending-up", result[:trend_icon]
@@ -133,7 +133,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 5)
           create_job_summary(job: @job, days_ago: 10, count: 10)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "trending-down", result[:trend_icon]
@@ -144,7 +144,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 10)
           create_job_summary(job: @job, days_ago: 10, count: 10)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "move-right", result[:trend_icon]
@@ -157,12 +157,12 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 10)
           create_job_summary(job: @job, days_ago: 5, count: 5)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_kind_of Hash, result[:chart_data]
-          # Should have 15 days of data (14 days + today)
-          assert_equal 15, result[:chart_data].size
+          # Should have 8 days of data (7 days + today)
+          assert_equal 8, result[:chart_data].size
 
           # Each entry should have a label and value
           result[:chart_data].each do |label, data|
@@ -175,20 +175,20 @@ module RailsPulse
         test "card sparkline includes zero values for days with no data" do
           create_job_summary(job: @job, days_ago: 3, count: 10)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
-          # Most days should have 0 value
+          # Most days should have 0 value (at least 5 out of 8)
           zero_value_count = result[:chart_data].values.count { |v| v[:value] == 0 }
 
-          assert_operator zero_value_count, :>, 10
+          assert_operator zero_value_count, :>, 5
         end
 
         test "card sparkline shows run counts for days with data" do
           create_job_summary(job: @job, days_ago: 3, count: 25)
           create_job_summary(job: @job, days_ago: 5, count: 15)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           # Find days with data
@@ -206,7 +206,7 @@ module RailsPulse
         # Edge Cases
 
         test "card handles job with no runs" do
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "0 runs", result[:summary]
@@ -215,7 +215,7 @@ module RailsPulse
         end
 
         test "card handles all jobs with no runs" do
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: nil)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: nil, period: 7)
           result = card.to_metric_card
 
           assert_equal "0 runs", result[:summary]
@@ -226,7 +226,7 @@ module RailsPulse
         test "card handles only current window data" do
           create_job_summary(job: @job, days_ago: 3, count: 15)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "15 runs", result[:summary]
@@ -237,7 +237,7 @@ module RailsPulse
         test "card handles only previous window data" do
           create_job_summary(job: @job, days_ago: 10, count: 20)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           assert_equal "20 runs", result[:summary]
@@ -250,7 +250,7 @@ module RailsPulse
           create_job_summary(job: @job, days_ago: 3, count: 5000)
           create_job_summary(job: @job, days_ago: 5, count: 3500)
 
-          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job)
+          card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
           # Should format with commas

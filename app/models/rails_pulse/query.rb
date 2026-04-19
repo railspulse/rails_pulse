@@ -20,6 +20,8 @@ module RailsPulse
     serialize :metadata, type: Hash, coder: JSON
     serialize :query_stats, type: Hash, coder: JSON
     serialize :backtrace_analysis, type: Hash, coder: JSON
+    serialize :n_plus_one_analysis, type: Hash, coder: JSON
+    serialize :index_recommendations, type: Array, coder: JSON
     serialize :suggestions, type: Array, coder: JSON
 
     def self.ransackable_attributes(auth_object = nil)
@@ -65,6 +67,29 @@ module RailsPulse
       Arel.sql("MAX(rails_pulse_operations.occurred_at)")
     end
 
+    def recent_operations
+      operations
+        .where("occurred_at > ?", 30.days.ago)
+        .order(occurred_at: :desc)
+        .limit(500)
+        .to_a
+    end
+
+    def n_plus_one_groups(ops)
+      ops
+        .reject { |op| op.repeated_query_group.nil? }
+        .group_by(&:repeated_query_group)
+        .transform_values { |group| group.map(&:repetition_count).compact.max }
+    end
+
+    def ensure_analyzed!
+      return if analyzed?
+      QueryAnalysisService.analyze_query(id)
+      reload
+    rescue => e
+      RailsPulse.logger.warn("[Query] Auto-analysis failed for query #{id}: #{e.message}")
+    end
+
     # Analysis helper methods
     def analyzed?
       analyzed_at.present?
@@ -102,6 +127,10 @@ module RailsPulse
 
     def warning_issues_count
       issues_by_severity["warning"]&.count || 0
+    end
+
+    def to_breadcrumb
+      normalized_sql.to_s.truncate(60)
     end
 
     def to_s

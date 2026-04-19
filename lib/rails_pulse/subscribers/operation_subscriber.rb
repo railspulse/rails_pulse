@@ -1,16 +1,31 @@
 module RailsPulse
   module Subscribers
     class OperationSubscriber
-      def self.subscribe!
-        # Helper method to clean SQL labels by removing Rails comments
-        def self.clean_sql_label(sql)
+      class << self
+        def subscribe!
+          subscribe_sql_queries!
+          subscribe_controller_actions!
+          subscribe_template_rendering!
+          subscribe_partial_rendering!
+          subscribe_layout_rendering!
+          subscribe_cache_read!
+          subscribe_cache_write!
+          subscribe_http_requests!
+          subscribe_active_job!
+          subscribe_collection_rendering!
+          subscribe_mailer!
+          subscribe_active_storage!
+        end
+
+        private
+
+        def clean_sql_label(sql)
           return sql unless sql
           # Remove Rails SQL comments like /*action='search',application='Dummy',controller='home'*/
           sql.gsub(/\/\*[^*]*\*\//, "").strip
         end
 
-        # Helper method to convert absolute paths to relative paths
-        def self.relative_path(absolute_path)
+        def relative_path(absolute_path)
           return absolute_path unless absolute_path&.start_with?("/")
 
           rails_root = Rails.root.to_s
@@ -21,8 +36,7 @@ module RailsPulse
           end
         end
 
-        # Helper method to find the first app frame in the call stack
-        def self.find_app_frame
+        def find_app_frame
           app_path = Rails.root.join("app").to_s
           caller_locations.each do |loc|
             path = loc.absolute_path || loc.path
@@ -31,8 +45,7 @@ module RailsPulse
           nil
         end
 
-        # Helper method to resolve controller action source location
-        def self.controller_action_source_location(payload)
+        def controller_action_source_location(payload)
           return nil unless payload[:controller] && payload[:action]
           begin
             controller_klass = payload[:controller].constantize
@@ -53,8 +66,7 @@ module RailsPulse
           nil
         end
 
-        # Helper method to capture operation data
-        def self.capture_operation(event_name, start, finish, payload, operation_type, label_key = nil)
+        def capture_operation(event_name, start, finish, payload, operation_type, label_key = nil, extra: {})
           return unless RailsPulse.configuration.enabled
           return if RequestStore.store[:skip_recording_rails_pulse_activity]
 
@@ -99,185 +111,160 @@ module RailsPulse
             codebase_location: codebase_location,
             start_time: start.to_f,
             occurred_at: Time.zone.at(start)
+          }.merge(extra)
+
+          RequestStore.store[:rails_pulse_operations] ||= []
+          RequestStore.store[:rails_pulse_operations] << operation_data
+        end
+
+        def store_operation(label:, operation_type:, start:, finish:, codebase_location:)
+          return unless RailsPulse.configuration.enabled
+
+          request_id = RequestStore.store[:rails_pulse_request_id]
+          job_run_id = RequestStore.store[:rails_pulse_job_run_id]
+          return unless request_id || job_run_id
+
+          operation_data = {
+            request_id: request_id,
+            job_run_id: job_run_id,
+            operation_type: operation_type,
+            label: label,
+            duration: (finish - start) * 1000,
+            codebase_location: codebase_location,
+            start_time: start.to_f,
+            occurred_at: Time.zone.at(start)
           }
 
           RequestStore.store[:rails_pulse_operations] ||= []
           RequestStore.store[:rails_pulse_operations] << operation_data
         end
 
-        # SQL queries
-        ActiveSupport::Notifications.subscribe "sql.active_record" do |name, start, finish, id, payload|
-          begin
-            next if payload[:name] == "SCHEMA"
-            capture_operation(name, start, finish, payload, "sql", :sql)
-          rescue => e
-            RailsPulse.logger.error "Exception in SQL subscriber: #{e.class} - #{e.message}"
-          end
-        end
-
-        # Controller action processing
-        ActiveSupport::Notifications.subscribe "process_action.action_controller" do |name, start, finish, id, payload|
-          begin
-            capture_operation(name, start, finish, payload, "controller", :controller)
-          rescue => e
-            RailsPulse.logger.error "Exception in controller subscriber: #{e.class} - #{e.message}"
-          end
-        end
-
-        # Template rendering
-        ActiveSupport::Notifications.subscribe "render_template.action_view" do |name, start, finish, id, payload|
-          begin
-            capture_operation(name, start, finish, payload, "template", :template)
-          rescue => e
-            RailsPulse.logger.error "Exception in template subscriber: #{e.class} - #{e.message}"
-          end
-        end
-
-        # Partial rendering
-        ActiveSupport::Notifications.subscribe "render_partial.action_view" do |name, start, finish, id, payload|
-          begin
-            capture_operation(name, start, finish, payload, "partial", :partial)
-          rescue => e
-            RailsPulse.logger.error "Exception in partial subscriber: #{e.class} - #{e.message}"
-          end
-        end
-
-        # Layout rendering
-        ActiveSupport::Notifications.subscribe "render_layout.action_view" do |name, start, finish, id, payload|
-          begin
-            capture_operation(name, start, finish, payload, "layout", :template)
-          rescue => e
-            RailsPulse.logger.error "Exception in layout subscriber: #{e.class} - #{e.message}"
-          end
-        end
-
-        # Cache operations
-        ActiveSupport::Notifications.subscribe "cache_read.active_support" do |name, start, finish, id, payload|
-          begin
-            capture_operation(name, start, finish, payload, "cache_read", :cache)
-          rescue => e
-            RailsPulse.logger.error "Exception in cache_read subscriber: #{e.class} - #{e.message}"
-          end
-        end
-
-        ActiveSupport::Notifications.subscribe "cache_write.active_support" do |name, start, finish, id, payload|
-          begin
-            capture_operation(name, start, finish, payload, "cache_write", :cache)
-          rescue => e
-            RailsPulse.logger.error "Exception in cache_write subscriber: #{e.class} - #{e.message}"
-          end
-        end
-
-        # HTTP client requests (if using Net::HTTP)
-        ActiveSupport::Notifications.subscribe "request.net_http" do |name, start, finish, id, payload|
-          begin
-            next unless RailsPulse.configuration.enabled
-            label = "#{payload[:method]} #{payload[:uri]}"
-            codebase_location = find_app_frame || caller_locations(2, 1).first&.path
-            operation_data = {
-              request_id: RequestStore.store[:rails_pulse_request_id],
-              job_run_id: RequestStore.store[:rails_pulse_job_run_id],
-              operation_type: "http",
-              label: label,
-              duration: (finish - start) * 1000,
-              codebase_location: codebase_location,
-              start_time: start.to_f,
-              occurred_at: Time.zone.at(start)
-            }
-
-            if operation_data[:request_id] || operation_data[:job_run_id]
-              RequestStore.store[:rails_pulse_operations] ||= []
-              RequestStore.store[:rails_pulse_operations] << operation_data
+        def subscribe_sql_queries!
+          ActiveSupport::Notifications.subscribe "sql.active_record" do |name, start, finish, id, payload|
+            begin
+              next if payload[:name] == "SCHEMA"
+              capture_operation(name, start, finish, payload, "sql", :sql, extra: { row_count: payload[:row_count] })
+            rescue => e
+              RailsPulse.logger.error "Exception in SQL subscriber: #{e.class} - #{e.message}"
             end
-          rescue => e
-            RailsPulse.logger.error "Exception in HTTP subscriber: #{e.class} - #{e.message}"
           end
         end
 
-        # Active Job processing
-        ActiveSupport::Notifications.subscribe "perform.active_job" do |name, start, finish, id, payload|
-          begin
-            next unless RailsPulse.configuration.enabled
-            label = "#{payload[:job].class.name}"
-            codebase_location = find_app_frame || caller_locations(2, 1).first&.path
-            operation_data = {
-              request_id: RequestStore.store[:rails_pulse_request_id],
-              job_run_id: RequestStore.store[:rails_pulse_job_run_id],
-              operation_type: "job",
-              label: label,
-              duration: (finish - start) * 1000,
-              codebase_location: codebase_location,
-              start_time: start.to_f,
-              occurred_at: Time.zone.at(start)
-            }
-
-            if operation_data[:request_id] || operation_data[:job_run_id]
-              RequestStore.store[:rails_pulse_operations] ||= []
-              RequestStore.store[:rails_pulse_operations] << operation_data
+        def subscribe_controller_actions!
+          ActiveSupport::Notifications.subscribe "process_action.action_controller" do |name, start, finish, id, payload|
+            begin
+              capture_operation(name, start, finish, payload, "controller", :controller)
+            rescue => e
+              RailsPulse.logger.error "Exception in controller subscriber: #{e.class} - #{e.message}"
             end
-          rescue => e
-            RailsPulse.logger.error "Exception in job subscriber: #{e.class} - #{e.message}"
           end
         end
 
-        # Collection rendering (for rendering collections)
-        ActiveSupport::Notifications.subscribe "render_collection.action_view" do |name, start, finish, id, payload|
-          begin
-            capture_operation(name, start, finish, payload, "collection", :template)
-          rescue => e
-            RailsPulse.logger.error "Exception in collection subscriber: #{e.class} - #{e.message}"
-          end
-        end
-
-        # Action Mailer
-        ActiveSupport::Notifications.subscribe "deliver.action_mailer" do |name, start, finish, id, payload|
-          begin
-            next unless RailsPulse.configuration.enabled
-            label = "#{payload[:mailer]}##{payload[:action]}"
-            codebase_location = find_app_frame || caller_locations(2, 1).first&.path
-            operation_data = {
-              request_id: RequestStore.store[:rails_pulse_request_id],
-              job_run_id: RequestStore.store[:rails_pulse_job_run_id],
-              operation_type: "mailer",
-              label: label,
-              duration: (finish - start) * 1000,
-              codebase_location: codebase_location,
-              start_time: start.to_f,
-              occurred_at: Time.zone.at(start)
-            }
-
-            if operation_data[:request_id] || operation_data[:job_run_id]
-              RequestStore.store[:rails_pulse_operations] ||= []
-              RequestStore.store[:rails_pulse_operations] << operation_data
+        def subscribe_template_rendering!
+          ActiveSupport::Notifications.subscribe "render_template.action_view" do |name, start, finish, id, payload|
+            begin
+              capture_operation(name, start, finish, payload, "template", :template)
+            rescue => e
+              RailsPulse.logger.error "Exception in template subscriber: #{e.class} - #{e.message}"
             end
-          rescue => e
-            RailsPulse.logger.error "Exception in mailer subscriber: #{e.class} - #{e.message}"
           end
         end
 
-        # Active Storage
-        ActiveSupport::Notifications.subscribe "service_upload.active_storage" do |name, start, finish, id, payload|
-          begin
-            next unless RailsPulse.configuration.enabled
-            label = "Upload: #{payload[:key]}"
-            codebase_location = find_app_frame || caller_locations(2, 1).first&.path
-            operation_data = {
-              request_id: RequestStore.store[:rails_pulse_request_id],
-              job_run_id: RequestStore.store[:rails_pulse_job_run_id],
-              operation_type: "storage",
-              label: label,
-              duration: (finish - start) * 1000,
-              codebase_location: codebase_location,
-              start_time: start.to_f,
-              occurred_at: Time.zone.at(start)
-            }
-
-            if operation_data[:request_id] || operation_data[:job_run_id]
-              RequestStore.store[:rails_pulse_operations] ||= []
-              RequestStore.store[:rails_pulse_operations] << operation_data
+        def subscribe_partial_rendering!
+          ActiveSupport::Notifications.subscribe "render_partial.action_view" do |name, start, finish, id, payload|
+            begin
+              capture_operation(name, start, finish, payload, "partial", :partial)
+            rescue => e
+              RailsPulse.logger.error "Exception in partial subscriber: #{e.class} - #{e.message}"
             end
-          rescue => e
-            RailsPulse.logger.error "Exception in storage subscriber: #{e.class} - #{e.message}"
+          end
+        end
+
+        def subscribe_layout_rendering!
+          ActiveSupport::Notifications.subscribe "render_layout.action_view" do |name, start, finish, id, payload|
+            begin
+              capture_operation(name, start, finish, payload, "layout", :template)
+            rescue => e
+              RailsPulse.logger.error "Exception in layout subscriber: #{e.class} - #{e.message}"
+            end
+          end
+        end
+
+        def subscribe_cache_read!
+          ActiveSupport::Notifications.subscribe "cache_read.active_support" do |name, start, finish, id, payload|
+            begin
+              capture_operation(name, start, finish, payload, "cache_read", :cache, extra: { cache_hit: payload[:hit] })
+            rescue => e
+              RailsPulse.logger.error "Exception in cache_read subscriber: #{e.class} - #{e.message}"
+            end
+          end
+        end
+
+        def subscribe_cache_write!
+          ActiveSupport::Notifications.subscribe "cache_write.active_support" do |name, start, finish, id, payload|
+            begin
+              capture_operation(name, start, finish, payload, "cache_write", :cache)
+            rescue => e
+              RailsPulse.logger.error "Exception in cache_write subscriber: #{e.class} - #{e.message}"
+            end
+          end
+        end
+
+        def subscribe_http_requests!
+          ActiveSupport::Notifications.subscribe "request.net_http" do |name, start, finish, id, payload|
+            begin
+              label = "#{payload[:method]} #{payload[:uri]}"
+              codebase_location = find_app_frame || caller_locations(2, 1).first&.path
+              store_operation(label: label, operation_type: "http", start: start, finish: finish, codebase_location: codebase_location)
+            rescue => e
+              RailsPulse.logger.error "Exception in HTTP subscriber: #{e.class} - #{e.message}"
+            end
+          end
+        end
+
+        def subscribe_active_job!
+          ActiveSupport::Notifications.subscribe "perform.active_job" do |name, start, finish, id, payload|
+            begin
+              label = payload[:job].class.name
+              codebase_location = find_app_frame || caller_locations(2, 1).first&.path
+              store_operation(label: label, operation_type: "job", start: start, finish: finish, codebase_location: codebase_location)
+            rescue => e
+              RailsPulse.logger.error "Exception in job subscriber: #{e.class} - #{e.message}"
+            end
+          end
+        end
+
+        def subscribe_collection_rendering!
+          ActiveSupport::Notifications.subscribe "render_collection.action_view" do |name, start, finish, id, payload|
+            begin
+              capture_operation(name, start, finish, payload, "collection", :template)
+            rescue => e
+              RailsPulse.logger.error "Exception in collection subscriber: #{e.class} - #{e.message}"
+            end
+          end
+        end
+
+        def subscribe_mailer!
+          ActiveSupport::Notifications.subscribe "deliver.action_mailer" do |name, start, finish, id, payload|
+            begin
+              label = "#{payload[:mailer]}##{payload[:action]}"
+              codebase_location = find_app_frame || caller_locations(2, 1).first&.path
+              store_operation(label: label, operation_type: "mailer", start: start, finish: finish, codebase_location: codebase_location)
+            rescue => e
+              RailsPulse.logger.error "Exception in mailer subscriber: #{e.class} - #{e.message}"
+            end
+          end
+        end
+
+        def subscribe_active_storage!
+          ActiveSupport::Notifications.subscribe "service_upload.active_storage" do |name, start, finish, id, payload|
+            begin
+              label = "Upload: #{payload[:key]}"
+              codebase_location = find_app_frame || caller_locations(2, 1).first&.path
+              store_operation(label: label, operation_type: "storage", start: start, finish: finish, codebase_location: codebase_location)
+            rescue => e
+              RailsPulse.logger.error "Exception in storage subscriber: #{e.class} - #{e.message}"
+            end
           end
         end
       end

@@ -1,0 +1,182 @@
+<% preference = session_time_range_preference
+
+if preference.is_a?(Hash) && preference["type"] == "custom"
+  current_selection = :custom
+  current_label = "#{preference["start_time"]} to #{preference["end_time"]}"
+elsif preference.present?
+  current_selection = preference.to_sym
+  current_label =
+    case current_selection
+    when :last_24_hours
+      "Last 24 hours"
+    when :last_7_days
+      "Last 7 days"
+    when :last_14_days
+      "Last 14 days"
+    when :last_30_days
+      "Last 30 days"
+    else
+      "Last 14 days"
+    end
+else
+  current_selection = :last_14_days
+  current_label = "Last 14 days"
+end %>
+
+<div
+  data-controller="rails-pulse--time-range"
+  data-rails-pulse--time-range-url-value="<%= rails_pulse.settings_time_range_path %>"
+>
+  <div
+    class="flex items-center gap mie-2"
+    style="--column-gap: 0.75rem"
+    data-controller="rails-pulse--popover"
+    data-rails-pulse--popover-placement-value="bottom-end"
+  >
+    <button
+      type="button"
+      class="time-range-trigger"
+      data-rails-pulse--popover-target="button"
+      data-rails-pulse--time-range-target="trigger"
+      data-action="click->rails-pulse--popover#toggle"
+      aria-haspopup="true"
+    >
+      <span data-rails-pulse--time-range-target="label"><%= current_label %></span>
+      <%= rails_pulse_icon "chevron-down", width: "14" %>
+    </button>
+
+    <div
+      popover
+      class="popover"
+      data-rails-pulse--popover-target="menu"
+      role="menu"
+      aria-label="Time range"
+    >
+      <div
+        class="menu"
+        data-controller="rails-pulse--menu"
+        data-action="
+          keydown.up->rails-pulse--menu#prev
+          keydown.down->rails-pulse--menu#next
+        "
+      >
+        <button
+          type="button"
+          class="btn menu__item <%= 'menu__item--active' if current_selection == :last_24_hours %>"
+          data-rails-pulse--menu-target="item"
+          data-rails-pulse--time-range-target="option"
+          data-action="click->rails-pulse--time-range#selectPreset"
+          data-preset="last_24_hours"
+          data-label="Last 24 hours"
+          role="menuitem"
+        >
+          Last 24 hours
+        </button>
+        <button
+          type="button"
+          class="btn menu__item <%= 'menu__item--active' if current_selection == :last_7_days %>"
+          data-rails-pulse--menu-target="item"
+          data-rails-pulse--time-range-target="option"
+          data-action="click->rails-pulse--time-range#selectPreset"
+          data-preset="last_7_days"
+          data-label="Last 7 days"
+          role="menuitem"
+        >
+          Last 7 days
+        </button>
+        <button
+          type="button"
+          class="btn menu__item <%= 'menu__item--active' if current_selection == :last_14_days %>"
+          data-rails-pulse--menu-target="item"
+          data-rails-pulse--time-range-target="option"
+          data-action="click->rails-pulse--time-range#selectPreset"
+          data-preset="last_14_days"
+          data-label="Last 14 days"
+          role="menuitem"
+        >
+          Last 14 days
+        </button>
+        <button
+          type="button"
+          class="btn menu__item <%= 'menu__item--active' if current_selection == :last_30_days %>"
+          data-rails-pulse--menu-target="item"
+          data-rails-pulse--time-range-target="option"
+          data-action="click->rails-pulse--time-range#selectPreset"
+          data-preset="last_30_days"
+          data-label="Last 30 days"
+          role="menuitem"
+        >
+          Last 30 days
+        </button>
+        <button
+          type="button"
+          class="btn menu__item"
+          data-rails-pulse--menu-target="item"
+          role="menuitem"
+          data-action="click->rails-pulse--time-range#showCustom"
+        >
+          Custom Range...
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <%# Custom date range modal %>
+  <div
+    data-rails-pulse--time-range-target="modalWrapper"
+    data-action="click->rails-pulse--time-range#closeOnClickOutside"
+    style="display: none; position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.8); z-index: 1000; align-items: center; justify-content: center;"
+  >
+    <div
+      class="dialog"
+      data-rails-pulse--time-range-target="modal"
+      style="position: relative; opacity: 1; transform: scale(1);"
+    >
+      <div class="dialog__content">
+        <div class="flex items-start justify-between">
+          <div>
+            <h2 class="text-lg font-semibold mbe-4">Custom Date Range</h2>
+            <p class="text-sm text-subtle">Select a custom date and time range for filtering data.</p>
+          </div>
+          <%= link_to '#', "aria-label": "Close", data: { action: "click->rails-pulse--time-range#cancelCustom" }, class: "text-subtle hover:text-default" do %>
+            <%= rails_pulse_icon "x", width: "20" %>
+          <% end %>
+        </div>
+
+        <div class="flex flex-col gap mb-4">
+          <div class="flex flex-col gap" style="--row-gap: 0.5rem">
+            <label for="time_range_custom_dates" class="text-sm font-medium">Date Range</label>
+            <input
+              type="text"
+              id="time_range_custom_dates"
+              data-rails-pulse--time-range-target="dateInput"
+              placeholder="Pick date range"
+              class="input"
+              data-controller="rails-pulse--datepicker"
+              data-rails-pulse--datepicker-mode-value="range"
+              data-rails-pulse--datepicker-show-months-value="2"
+              data-rails-pulse--datepicker-type-value="datetime"
+            />
+          </div>
+        </div>
+
+        <div class="flex items-center justify-end gap">
+          <button
+            type="button"
+            class="btn btn--borderless"
+            data-action="click->rails-pulse--time-range#cancelCustom"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            class="btn"
+            data-action="click->rails-pulse--time-range#applyCustom"
+          >
+            Apply
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

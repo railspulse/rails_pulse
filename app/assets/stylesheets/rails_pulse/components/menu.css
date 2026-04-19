@@ -30,6 +30,11 @@
   --btn-outline-size: 0;
   --btn-padding: var(--size-1_5) var(--size-2);
   --btn-text-align: start;
+  cursor: pointer;
+
+  &:hover:not(.menu__item--active) {
+    --btn-background: var(--color-secondary);
+  }
 
   &:focus-visible {
     --btn-background: var(--color-secondary);
@@ -40,4 +45,20 @@
   color: var(--color-text-subtle);
   font-size: var(--text-xs);
   margin-inline-start: auto;
+}
+
+.menu__item--active {
+  --btn-background: var(--color-primary);
+  --btn-color: var(--color-text-reversed);
+  --btn-font-weight: var(--font-semibold);
+  background: var(--color-primary) !important;
+  color: var(--color-text-reversed) !important;
+}
+
+.menu__item--active:hover {
+  background: color-mix(in srgb, var(--color-primary) 85%, white) !important;
+}
+
+html[data-color-scheme="dark"] .menu__item--active:hover {
+  background: color-mix(in srgb, var(--color-primary) 85%, black) !important;
 }

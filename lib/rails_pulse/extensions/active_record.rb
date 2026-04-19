@@ -23,55 +23,97 @@ module RailsPulse
           group(Arel.sql(date_sql(column.to_s))).extending(DateResultTransformer)
         end
 
+        # Groups records by hour extracted from a timestamp column
+        # Works across PostgreSQL, MySQL, and SQLite
+        #
+        # @param column [Symbol, String] the timestamp column to group by (default: :period_start)
+        # @return [ActiveRecord::Relation] relation with hour grouping applied
+        #
+        # @example Group summaries by hour
+        #   RailsPulse::Summary.where(...).group_by_hour(:period_start).sum(:count)
+        #   # => { Time(2024-01-01 14:00:00) => 100, Time(2024-01-01 15:00:00) => 150, ... }
+        #
+        def group_by_hour(column = :period_start)
+          group(Arel.sql(hour_sql(column.to_s))).extending(HourResultTransformer)
+        end
+
         private
 
         # Returns database-specific SQL for extracting date from timestamp
         def date_sql(column)
-          adapter = connection.adapter_name.downcase
+          "DATE(#{column})"
+        end
 
-          case adapter
-          when "postgresql"
-            "DATE(#{column})"
+        # Returns database-specific SQL for extracting datetime truncated to hour
+        def hour_sql(column)
+          case connection.adapter_name.downcase
           when "mysql", "mysql2"
-            "DATE(#{column})"
+            "DATE_FORMAT(#{column}, '%Y-%m-%d %H:00:00')"
           when "sqlite"
-            "DATE(#{column})"
+            "STRFTIME('%Y-%m-%d %H:00:00', #{column})"
           else
-            # Fallback for unknown adapters
-            "DATE(#{column})"
+            # PostgreSQL and unknown adapters
+            "DATE_TRUNC('hour', #{column})"
           end
+        end
+      end
+
+      # Shared base for transforming aggregation result hash keys.
+      # Include this module and implement #parse_key to specialize.
+      module ResultTransformer
+        def sum(*args)
+          super.transform_keys { |k| parse_key(k) }
+        end
+
+        def count(*args)
+          result = super
+          # count can return an integer or a hash depending on whether group is used
+          result.is_a?(Hash) ? result.transform_keys { |k| parse_key(k) } : result
+        end
+
+        def average(*args)
+          super.transform_keys { |k| parse_key(k) }
+        end
+
+        def maximum(*args)
+          super.transform_keys { |k| parse_key(k) }
+        end
+
+        def minimum(*args)
+          super.transform_keys { |k| parse_key(k) }
+        end
+
+        def pluck(*args)
+          result = super
+          result.is_a?(Hash) ? result.transform_keys { |k| parse_key(k) } : result
         end
       end
 
       # Module to transform aggregation result keys from strings to Date objects
       # This makes the API match Groupdate's behavior
       module DateResultTransformer
-        def sum(*args)
-          super.transform_keys { |date_str| Date.parse(date_str.to_s) }
-        end
+        include ResultTransformer
 
-        def count(*args)
-          result = super
-          # count can return an integer or a hash depending on whether group is used
-          result.is_a?(Hash) ? result.transform_keys { |date_str| Date.parse(date_str.to_s) } : result
-        end
+        private
 
-        def average(*args)
-          super.transform_keys { |date_str| Date.parse(date_str.to_s) }
+        def parse_key(date_str)
+          Date.parse(date_str.to_s)
         end
+      end
 
-        def maximum(*args)
-          super.transform_keys { |date_str| Date.parse(date_str.to_s) }
-        end
+      # Module to transform aggregation result keys from strings to Time objects
+      # Used for hourly grouping
+      module HourResultTransformer
+        include ResultTransformer
 
-        def minimum(*args)
-          super.transform_keys { |date_str| Date.parse(date_str.to_s) }
-        end
+        private
 
-        def pluck(*args)
-          result = super
-          # If grouping, transform the keys
-          result.is_a?(Hash) ? result.transform_keys { |date_str| Date.parse(date_str.to_s) } : result
+        def parse_key(time_str)
+          return time_str if time_str.is_a?(Time)
+          return nil if time_str.nil? || time_str.to_s.strip.empty?
+          # Parse as UTC since STRFTIME returns UTC strings from the database
+          # Keep in UTC to match the time range boundaries used in queries
+          Time.find_zone("UTC").parse(time_str.to_s)
         end
       end
     end

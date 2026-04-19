@@ -93,6 +93,29 @@ RailsPulse.configure do |config|
   config.tags = [ "ignored", "critical", "experimental" ]
 
   # ====================================================================================================
+  #                                    SERVICE LEVEL OBJECTIVES (SLO)
+  # ====================================================================================================
+  # Configure Service Level Objectives (SLOs) for response time performance.
+  # When configured, performance charts will display threshold lines color-matched
+  # to their percentile series (green for P95, blue for P99).
+  #
+  # Format: array of { percentile: <95 or 99>, threshold: <ms> }
+  #   - percentile: must be 95 or 99 (binds to the matching chart series)
+  #   - threshold: latency ceiling in milliseconds (horizontal line on chart)
+  #
+  # SLO for HTTP request response times (shown on Response Time Percentiles chart)
+  # config.service_level_objectives = [
+  #   { percentile: 95, threshold: 200 },
+  #   { percentile: 99, threshold: 500 }
+  # ]
+
+  # SLO for database query execution times (shown on Query Performance chart)
+  # config.query_service_level_objectives = [
+  #   { percentile: 95, threshold: 50 },
+  #   { percentile: 99, threshold: 100 }
+  # ]
+
+  # ====================================================================================================
   #                                            BACKGROUND JOBS
   # ====================================================================================================
   # Configure background job monitoring and tracking.

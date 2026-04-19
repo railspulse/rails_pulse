@@ -5,8 +5,26 @@ route_summary_1:
   period_type: "hour"
   count: 150
   avg_duration: 180.5
+  p95_duration: 350.0
+  p99_duration: 520.0
   created_at: <%= 1.hour.ago %>
   updated_at: <%= 1.hour.ago %>
+
+route_summary_api_users_day:
+  summarizable: api_users (RailsPulse::Route)
+  period_start: <%= Time.current.beginning_of_day %>
+  period_end: <%= Time.current.end_of_day %>
+  period_type: "day"
+  count: 120
+  avg_duration: 2200.0
+  min_duration: 150.5
+  max_duration: 4800.0
+  p95_duration: 3800.0
+  p99_duration: 4500.0
+  error_count: 6
+  success_count: 114
+  created_at: <%= Time.current %>
+  updated_at: <%= Time.current %>
 
 route_summary_2:
   summarizable: api_posts (RailsPulse::Route)
@@ -25,6 +43,9 @@ query_summary_1:
   period_type: "day"
   count: 500
   avg_duration: 45.2
+  p50_duration: 35.0
+  p95_duration: 80.0
+  p99_duration: 120.0
   created_at: <%= 1.day.ago %>
   updated_at: <%= 1.day.ago %>
 
@@ -130,3 +151,89 @@ query_summary_critical:
   success_count: 200
   created_at: <%= 3.hours.ago %>
   updated_at: <%= 3.hours.ago %>
+
+# Client error rate test data
+client_error_current_week:
+  summarizable: api_users (RailsPulse::Route)
+  period_start: <%= 3.days.ago.beginning_of_day %>
+  period_end: <%= 3.days.ago.end_of_day %>
+  period_type: "day"
+  count: 200
+  avg_duration: 150.0
+  error_count: 0
+  status_4xx: 20
+  success_count: 180
+  created_at: <%= 3.days.ago %>
+  updated_at: <%= 3.days.ago %>
+
+client_error_previous_week:
+  summarizable: api_users (RailsPulse::Route)
+  period_start: <%= 10.days.ago.beginning_of_day %>
+  period_end: <%= 10.days.ago.end_of_day %>
+  period_type: "day"
+  count: 200
+  avg_duration: 150.0
+  error_count: 0
+  status_4xx: 40
+  success_count: 160
+  created_at: <%= 10.days.ago %>
+  updated_at: <%= 10.days.ago %>
+
+client_error_zero_4xx:
+  summarizable: api_posts (RailsPulse::Route)
+  period_start: <%= 2.days.ago.beginning_of_day %>
+  period_end: <%= 2.days.ago.end_of_day %>
+  period_type: "day"
+  count: 100
+  avg_duration: 120.0
+  error_count: 0
+  status_4xx: 0
+  success_count: 100
+  created_at: <%= 2.days.ago %>
+  updated_at: <%= 2.days.ago %>
+
+# Job summaries for Jobs::Tables::Index tests
+job_summary_mailer:
+  summarizable: mailer_job (RailsPulse::Job)
+  period_start: <%= 1.hour.ago.beginning_of_hour %>
+  period_end: <%= 1.hour.ago.end_of_hour %>
+  period_type: "hour"
+  count: 50
+  avg_duration: 155.0
+  max_duration: 300.0
+  p95_duration: 250.0
+  p99_duration: 290.0
+  error_count: 0
+  success_count: 50
+  created_at: <%= 1.hour.ago %>
+  updated_at: <%= 1.hour.ago %>
+
+job_summary_report:
+  summarizable: report_job (RailsPulse::Job)
+  period_start: <%= 1.hour.ago.beginning_of_hour %>
+  period_end: <%= 1.hour.ago.end_of_hour %>
+  period_type: "hour"
+  count: 100
+  avg_duration: 460.0
+  max_duration: 900.0
+  p95_duration: 800.0
+  p99_duration: 880.0
+  error_count: 10
+  success_count: 90
+  created_at: <%= 1.hour.ago %>
+  updated_at: <%= 1.hour.ago %>
+
+job_summary_report_day:
+  summarizable: report_job (RailsPulse::Job)
+  period_start: <%= 1.day.ago.beginning_of_day %>
+  period_end: <%= 1.day.ago.end_of_day %>
+  period_type: "day"
+  count: 200
+  avg_duration: 450.0
+  max_duration: 950.0
+  p95_duration: 850.0
+  p99_duration: 920.0
+  error_count: 20
+  success_count: 180
+  created_at: <%= 1.day.ago %>
+  updated_at: <%= 1.day.ago %>

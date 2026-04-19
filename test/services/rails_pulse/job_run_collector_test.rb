@@ -29,12 +29,18 @@ module RailsPulse
     setup do
       RequestStore.clear!
       @original_capture_arguments = RailsPulse.configuration.capture_job_arguments
+      @original_ignored_jobs      = RailsPulse.configuration.ignored_jobs
+      @original_ignored_queues    = RailsPulse.configuration.ignored_queues
       RailsPulse.configuration.capture_job_arguments = true
+      RailsPulse.configuration.ignored_jobs           = []
+      RailsPulse.configuration.ignored_queues         = []
     end
 
     teardown do
       RequestStore.clear!
       RailsPulse.configuration.capture_job_arguments = @original_capture_arguments
+      RailsPulse.configuration.ignored_jobs           = @original_ignored_jobs
+      RailsPulse.configuration.ignored_queues         = @original_ignored_queues
     end
 
     test "track records job run and operations" do
@@ -107,6 +113,34 @@ module RailsPulse
       assert_equal "success", retry_run.status
       assert_equal 2, retry_run.attempts
       assert_equal first_run.id, retry_run.id
+    end
+
+    # Filtering Tests
+
+    test "track skips job in ignored_jobs list" do
+      RailsPulse.configuration.ignored_jobs = [ FakeJob.name ]
+
+      assert_no_difference -> { RailsPulse::JobRun.count } do
+        RailsPulse::JobRunCollector.track(FakeJob.new) { }
+      end
+    end
+
+    test "track skips job in ignored_queues list" do
+      RailsPulse.configuration.ignored_queues = [ "default" ]
+
+      assert_no_difference -> { RailsPulse::JobRun.count } do
+        RailsPulse::JobRunCollector.track(FakeJob.new) { }
+      end
+    end
+
+    test "track does not capture arguments when capture_job_arguments is false" do
+      RailsPulse.configuration.capture_job_arguments = false
+
+      RailsPulse::JobRunCollector.track(FakeJob.new) { }
+
+      run = RailsPulse::JobRun.order(:created_at).last
+
+      assert_nil run.arguments
     end
 
     test "active job integration wraps perform now" do

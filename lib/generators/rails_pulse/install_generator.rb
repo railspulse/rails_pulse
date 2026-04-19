@@ -1,18 +1,17 @@
+require_relative "base_methods"
+
 module RailsPulse
   module Generators
     class InstallGenerator < Rails::Generators::Base
       include Rails::Generators::Migration
+      include BaseMethods
+
       source_root File.expand_path("templates", __dir__)
 
       desc "Install Rails Pulse with flexible database setup options"
 
       class_option :database, type: :string, default: "single",
                    desc: "Database setup: 'single' (default) or 'separate'"
-
-      def self.next_migration_number(path)
-        next_migration_number = current_migration_number(path) + 1
-        ActiveRecord::Migration.next_migration_number(next_migration_number)
-      end
 
       def copy_schema
         copy_file "db/rails_pulse_schema.rb", "db/rails_pulse_schema.rb"

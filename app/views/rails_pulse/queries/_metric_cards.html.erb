@@ -1,0 +1,7 @@
+<% link_url_for = ->(chart_type) { @query ? query_path(@query, chart_type: chart_type) : queries_path(chart_type: chart_type) } %>
+<% metric_cards = [
+  @percentile_query_times_metric_card&.merge(link_url: link_url_for.call("query_performance")),
+  @execution_rate_metric_card&.merge(link_url: link_url_for.call("execution_volume")),
+  @database_load_metric_card&.merge(link_url: link_url_for.call("database_load")),
+].compact %>
+<%= render "rails_pulse/components/metric_strip", metrics_data: metric_cards %>

@@ -2,29 +2,19 @@
 
 source "https://rubygems.org"
 
-gem "puma"
-gem "sqlite3"
-gem "pg"
-gem "mysql2"
 gem "dotenv-rails", groups: [:development, :test]
-gem "css-zero"
-gem "importmap-rails"
-gem "ransack"
-gem "turbo-rails"
-gem "request_store"
 gem "rails", "~> 8.0.0"
+gem "rdoc", ">= 7.2"
 
 group :test do
   gem "appraisal"
+  gem "puma"
   gem "capybara"
-  gem "database_cleaner-active_record"
-  gem "factory_bot_rails"
-  gem "faker"
   gem "minitest-reporters"
   gem "mocha"
-  gem "pry-byebug"
   gem "selenium-webdriver"
   gem "shoulda-matchers"
+  gem "simplecov", require: false
   gem "timecop"
 end
 
@@ -36,6 +26,11 @@ end
 
 group :development, :test do
   gem "debug"
+  gem "sidekiq"
+  gem "good_job"
+  gem "delayed_job_active_record"
+  gem "solid_queue"
+  gem "resque"
 end
 
 gemspec path: "../"

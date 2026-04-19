@@ -87,7 +87,8 @@ task :test_setup do
 
     when 'mysql2', 'mysql'
       puts "🐬 Setting up MySQL database..."
-      sh "DB=mysql2 RAILS_ENV=test rails db:drop db:create db:migrate"
+      mysql_password = ENV.fetch("MYSQL_PASSWORD", "")
+      sh "DB=mysql2 MYSQL_PASSWORD=#{mysql_password} RAILS_ENV=test rails db:drop db:create db:migrate"
 
     when 'postgresql', 'postgres'
       puts "🐘 Setting up PostgreSQL database..."
@@ -139,7 +140,19 @@ task :test do
   puts "=" * 50
   puts
 
-  sh "rails test test/controllers test/helpers test/instrumentation test/jobs test/models test/services"
+  sh "rails test test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb"
+end
+
+desc "Run test suite with code coverage"
+task :test_coverage do
+  ENV["COVERAGE"] = "true"
+  Rake::Task[:test].invoke
+
+  puts "\n" + "=" * 50
+  puts "📊 Coverage Report"
+  puts "=" * 50
+  puts "Open coverage/index.html to view detailed results"
+  puts "=" * 50
 end
 
 desc "Setup database for specific Rails version and database"
@@ -167,15 +180,8 @@ task :test_setup_for_version, [ :database, :rails_version ] do |t, args|
       File.delete(schema_file)
     end
 
-    if rails_version == "rails-8-0" && database == "sqlite3"
-      # Use current default setup
-      puts "📦 Setting up #{database.upcase} database with Rails 8.0..."
-      sh "RAILS_ENV=test bin/rails db:drop db:create db:migrate"
-    else
-      # Use appraisal with specific database and Rails version
-      puts "📦 Setting up #{database.upcase} database with #{rails_version.upcase.gsub('-', ' ')}..."
-      sh "DB=#{database} bundle exec appraisal #{rails_version} rails db:drop db:create db:migrate RAILS_ENV=test"
-    end
+    puts "📦 Setting up #{database.upcase} database with #{rails_version.upcase.gsub('-', ' ')}..."
+    sh "DB=#{database} bundle exec appraisal #{rails_version} rails db:drop db:create db:migrate RAILS_ENV=test"
 
     puts "\n✅ Database setup complete for #{database.upcase} + #{rails_version.upcase.gsub('-', ' ')}!"
 
@@ -194,17 +200,12 @@ task :test_matrix do
   failed_combinations = []
   total_combinations = databases.size * rails_versions.size
   current = 0
-
-  # Check if system tests should be included
-  include_system_tests = ENV['BROWSER'] == 'true'
-  test_paths = "test/controllers test/helpers test/instrumentation test/jobs test/models test/services"
-  test_paths += " test/system" if include_system_tests
+  base_test_paths = "test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb test/system"
 
   puts "\n" + "=" * 60
   puts "🚀 Rails Pulse Full Test Matrix"
   puts "=" * 60
   puts "Testing #{total_combinations} combinations..."
-  puts "System tests: #{include_system_tests ? 'ENABLED (BROWSER=true)' : 'DISABLED (headless mode)'}"
   puts "=" * 60
 
   databases.each do |database|
@@ -214,19 +215,14 @@ task :test_matrix do
       puts "\n[#{current}/#{total_combinations}] Testing: #{database.upcase} + #{rails_version.upcase.gsub('-', ' ')}"
       puts "-" * 50
 
+      test_paths = base_test_paths
       begin
         # First setup the database for this specific combination
         Rake::Task[:test_setup_for_version].reenable
         Rake::Task[:test_setup_for_version].invoke(database, rails_version)
 
         # Then run the tests
-        if rails_version == "rails-8-0" && database == "sqlite3"
-          # Current default setup
-          sh "BROWSER=#{ENV['BROWSER']} rails test #{test_paths}"
-        else
-          # Use appraisal with specific database
-          sh "DB=#{database} BROWSER=#{ENV['BROWSER']} bundle exec appraisal #{rails_version} rails test #{test_paths}"
-        end
+        sh "DB=#{database} MYSQL_PASSWORD=#{ENV.fetch('MYSQL_PASSWORD', '')} bundle exec appraisal #{rails_version} rails test #{test_paths}"
 
         puts "✅ PASSED: #{database} + #{rails_version}"
 
@@ -261,7 +257,7 @@ task :test_release do
 
   failed_tasks = []
   current_step = 0
-  total_steps = 12
+  total_steps = 11
 
   # Step 1: Update appraisal gemfiles
   current_step += 1
@@ -276,7 +272,7 @@ task :test_release do
     failed_tasks << "appraisal_install"
   end
 
-  # Step 3: Sync test schema
+  # Step 2: Sync test schema
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Syncing test schema..."
@@ -288,7 +284,7 @@ task :test_release do
     failed_tasks << "sync_test_schema"
   end
 
-  # Step 4: Verify dummy migrations
+  # Step 3: Verify dummy migrations
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Verifying dummy app migrations..."
@@ -300,7 +296,7 @@ task :test_release do
     failed_tasks << "verify_dummy_migrations"
   end
 
-  # Step 5: Git status check
+  # Step 4: Git status check
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Checking git status..."
@@ -320,7 +316,7 @@ task :test_release do
     puts "⚠️  Warning: Could not check git status (#{e.message})"
   end
 
-  # Step 6: RuboCop linting
+  # Step 5: RuboCop linting
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running RuboCop linting..."
@@ -436,12 +432,12 @@ task :test_release do
     failed_tasks << "test_generators"
   end
 
-  # Step 11: Run full test matrix with system tests
+  # Step 11: Run full test matrix
   current_step += 1
   begin
-    puts "\n[#{current_step}/#{total_steps}] Running full test matrix with system tests..."
+    puts "\n[#{current_step}/#{total_steps}] Running full test matrix..."
     puts "-" * 70
-    sh "BROWSER=true rake test_matrix"
+    sh "rake test_matrix"
     puts "✅ Test matrix passed!"
   rescue => e
     puts "❌ Test matrix failed!"

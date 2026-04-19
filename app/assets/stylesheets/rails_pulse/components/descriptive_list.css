@@ -7,3 +7,8 @@
 .descriptive-list dt, .descriptive-list dd {
   font-size: var(--text-sm);
 }
+
+.descriptive-list dd {
+  overflow-wrap: break-word;
+  min-width: 0;
+}

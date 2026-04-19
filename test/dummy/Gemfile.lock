@@ -1,12 +1,11 @@
 PATH
   remote: ../..
   specs:
-    rails_pulse (0.2.5)
+    rails_pulse (0.2.6)
       async (~> 2.0)
       rails (>= 7.1.0, < 9.0.0)
       ransack (~> 4.0)
       request_store (~> 1.5)
-      turbo-rails (~> 2.0.11)
 
 GEM
   remote: https://rubygems.org/
@@ -244,9 +243,6 @@ GEM
     thor (1.3.2)
     timeout (0.4.3)
     traces (0.18.2)
-    turbo-rails (2.0.13)
-      actionpack (>= 7.1.0)
-      railties (>= 7.1.0)
     tzinfo (2.0.6)
       concurrent-ruby (~> 1.0)
     uri (1.0.3)

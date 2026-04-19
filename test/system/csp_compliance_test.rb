@@ -38,7 +38,7 @@ class CspComplianceTest < ApplicationSystemTestCase
     visit "/rails_pulse/csp_test"
 
     # Test popover functionality
-    popover_button = find('[data-action="click->rails-pulse--popover#toggle"]')
+    popover_button = first('[data-action="click->rails-pulse--popover#toggle"]')
     popover_button.click
 
     # Verify popover appears (uses CSS custom properties for positioning)

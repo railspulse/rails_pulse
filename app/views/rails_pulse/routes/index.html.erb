@@ -1,67 +1,61 @@
-<%= render 'rails_pulse/components/page_header', show_active_filters: true %>
+<%= render "rails_pulse/components/page_header", show_active_filters: true %>
 
-<% unless turbo_frame_request? %>
-  <div class="row">
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_response_times_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @request_count_totals_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @error_rate_per_route_metric_card } %>
-  </div>
-<% end %>
+<%= render "rails_pulse/routes/metric_cards" %>
 
 <div
-  data-controller="rails-pulse--index"
-  data-rails-pulse--index-chart-id-value="average_response_times_chart"
+  data-controller="rails-pulse--index rails-pulse--chart-switcher"
+  data-rails-pulse--index-chart-id-value="response_time_percentiles_chart"
+  data-rails-pulse--chart-switcher-selected-value="response_time"
+  data-action="
+    rails-pulse--chart-switcher:switched->rails-pulse--index#handleChartSwitched
+  "
 >
-  <%= render 'rails_pulse/components/panel', { title: 'Average Response Time', card_classes: 'b-full' } do %>
-    <%= search_form_for @ransack_query, url: routes_path, class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
-      <div class="flex items-center grow gap">
-        <%= time_range_selector(form, time_range_options: RailsPulse::RoutesController::TIME_RANGE_OPTIONS, selected_time_range: @selected_time_range) %>
-        <%= form.search_field :route_path_cont, placeholder: "Filter by route", autocomplete: "off", class: "input" %>
+  <%= render 'rails_pulse/components/panel', {
+    title: 'Routes',
+    card_classes: 'b-full',
+    help_heading: 'Routes Performance Charts',
+    help_text: 'Toggle between different performance metrics to analyze your routes. Response Time shows P95/P99 latency, Request Volume shows traffic patterns, and Error Rates track failure rates over time.'
+  } do %>
+    <%# Zone 2: Data filter bar %>
+    <div class="filter-bar">
+      <%= search_form_for @ransack_query, url: routes_path, class: "filter-bar__form" do |form| %>
+        <input
+          type="hidden"
+          name="chart_type"
+          data-rails-pulse--chart-switcher-target="chartTypeInput"
+        >
+        <%= form.search_field :route_path_cont,
+                          placeholder: "Filter by route",
+                          autocomplete: "off",
+                          class: "input" %>
         <%= form.select :avg_duration,
-          duration_options(:route),
-          { selected: @selected_response_range },
-          { class: "input" }
-        %>
-        <%= link_to "Reset", routes_path, class: "btn btn--borderless show@md" if params.has_key?(:q) %>
-        <%= form.submit "Search", class: "btn show@sm" %>
-      </div>
-    <% end %>
+                    duration_options(:route),
+                    { selected: @selected_response_range },
+                    { class: "input" } %>
+        <%= if params.has_key?(:q)
+          link_to "Reset",
+          routes_path,
+          class: "btn btn--plain",
+          style: "text-decoration: none; color: var(--color-text-muted);"
+        end %>
+        <%= form.submit "Search", class: "btn" %>
+      <% end %>
+    </div>
 
     <% if @has_data %>
-      <% if @chart_data && @chart_data.values.any? { |v| v > 0 } %>
-        <div
-          class="chart-container chart-container--slim"
-          data-rails-pulse--index-target="chart"
-        >
-          <%= render_stimulus_chart(
-            @chart_data,
-            type: 'bar',
-            code: false,
-            id: "average_response_times_chart",
-            height: "100%",
-            options: bar_chart_options(
-              units: "ms",
-              zoom: true,
-              chart_start: 0,
-              chart_end: @chart_data.length - 1,
-              xaxis_formatter: @xaxis_formatter,
-              tooltip_formatter: @tooltip_formatter,
-              zoom_start: @zoom_start,
-              zoom_end: @zoom_end,
-              chart_data: @chart_data
-            )
-          ) %>
-        </div>
+      <% if @has_chart_data %>
+        <%= render "rails_pulse/routes/chart_tabs" %>
       <% end %>
 
-      <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
-        <%= render 'rails_pulse/routes/table' %>
-      <% end %>
+      <div data-controller="rails-pulse--table-sort">
+        <div id="index_table" data-rails-pulse--index-target="indexTable" data-rails-pulse--table-sort-target="tableFrame">
+          <%= render "rails_pulse/routes/table" %>
+        </div>
+      </div>
     <% else %>
-      <%= render 'rails_pulse/components/empty_state',
-          title: 'No route data found for the selected filters.',
-          description: 'Try adjusting your time range or filters to see results.' %>
+      <%= render "rails_pulse/components/empty_state",
+      title: "No route data found for the selected filters.",
+      description: "Try adjusting your time range or filters to see results." %>
     <% end %>
   <% end %>
 </div>

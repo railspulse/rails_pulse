@@ -49,98 +49,6 @@
     {
       "warning_type": "SQL Injection",
       "warning_code": 0,
-      "fingerprint": "f3a63d26866552b7e487f0de0f73af1c6575a62a0bbea859a52fd24912b06f3d",
-      "check_name": "SQL",
-      "message": "Possible SQL injection",
-      "file": "app/models/rails_pulse/jobs/cards/average_duration.rb",
-      "line": 21,
-      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "quote(current_window_start)",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "RailsPulse::Jobs::Cards::AverageDuration",
-        "method": "to_metric_card"
-      },
-      "user_input": "quote(current_window_start)",
-      "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "Reviewed: Uses connection.quote() method with calculated timestamp - safe, properly escaped by ActiveRecord"
-    },
-    {
-      "warning_type": "SQL Injection",
-      "warning_code": 0,
-      "fingerprint": "e9c51f9fff0ace6daba404a62decb15efdbc72129cdf0818ee802dcfb3419c11",
-      "check_name": "SQL",
-      "message": "Possible SQL injection",
-      "file": "app/models/rails_pulse/jobs/cards/failure_rate.rb",
-      "line": 21,
-      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "quote(current_window_start)",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "RailsPulse::Jobs::Cards::FailureRate",
-        "method": "to_metric_card"
-      },
-      "user_input": "quote(current_window_start)",
-      "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "Reviewed: Uses connection.quote() method with calculated timestamp - safe, properly escaped by ActiveRecord"
-    },
-    {
-      "warning_type": "SQL Injection",
-      "warning_code": 0,
-      "fingerprint": "808fdc102a0d41199ed96c40058b819ea5a28dc4a8eeabca5c444d528006cb40",
-      "check_name": "SQL",
-      "message": "Possible SQL injection",
-      "file": "app/models/rails_pulse/jobs/cards/total_jobs.rb",
-      "line": 22,
-      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "quote(current_window_start)",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "RailsPulse::Jobs::Cards::TotalJobs",
-        "method": "to_metric_card"
-      },
-      "user_input": "quote(current_window_start)",
-      "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "Reviewed: Uses connection.quote() method with calculated timestamp - safe, properly escaped by ActiveRecord"
-    },
-    {
-      "warning_type": "SQL Injection",
-      "warning_code": 0,
-      "fingerprint": "f92a184f3bc0b0374b67cf49510f2c7dd5fb010fe86a9ae210daf920b9523214",
-      "check_name": "SQL",
-      "message": "Possible SQL injection",
-      "file": "app/models/rails_pulse/jobs/cards/total_runs.rb",
-      "line": 20,
-      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "quote(current_window_start)",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "RailsPulse::Jobs::Cards::TotalRuns",
-        "method": "to_metric_card"
-      },
-      "user_input": "quote(current_window_start)",
-      "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "Reviewed: Uses connection.quote() method with calculated timestamp - safe, properly escaped by ActiveRecord"
-    },
-    {
-      "warning_type": "SQL Injection",
-      "warning_code": 0,
       "fingerprint": "3c816cd9f565d6592595f5566cbd9d9a19ecb51ad704477f01a9bf2b4c1f29fb",
       "check_name": "SQL",
       "message": "Possible SQL injection",
@@ -206,8 +114,77 @@
         89
       ],
       "note": "Reviewed: SQL comes from Rails' ActiveRecord instrumentation (payload[:sql]), not user input. This is internally-generated SQL that Rails has already executed safely. EXPLAIN is read-only."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "520c23ea14761b7f1c085eb07168e7b32c13ebc910c0cc8c261ae8a2ff5ca85d",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/jobs/cards/failure_rate.rb",
+      "line": 26,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "quote(current_window_start)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Jobs::Cards::FailureRate",
+        "method": "to_metric_card"
+      },
+      "user_input": "quote(current_window_start)",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: connection.quote() with internally computed Time objects (current_window_start, range_start) - safe, not user input. Used in SELECT CASE expressions where ? placeholders are not supported."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "ab6c9e686a8555f338323c53a8e77cf860a21a33220c6f1f049653d955f25570",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/jobs/cards/p95_duration.rb",
+      "line": 26,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "quote(current_window_start)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Jobs::Cards::P95Duration",
+        "method": "to_metric_card"
+      },
+      "user_input": "quote(current_window_start)",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: connection.quote() with internally computed Time objects (current_window_start, range_start) - safe, not user input. Used in SELECT CASE expressions where ? placeholders are not supported."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "ba1379d027867507f1b72031ceb57527c7503797ff2fe357604e903f9fcfb819",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/jobs/cards/total_runs.rb",
+      "line": 25,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "quote(current_window_start)",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Jobs::Cards::TotalRuns",
+        "method": "to_metric_card"
+      },
+      "user_input": "quote(current_window_start)",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: connection.quote() with internally computed Time objects (current_window_start, range_start) - safe, not user input. Used in SELECT CASE expressions where ? placeholders are not supported."
     }
   ],
-  "updated": "2025-11-30 15:10:00 +0700",
+  "updated": "2026-04-14 21:59:41 +0700",
   "brakeman_version": "7.1.1"
 }

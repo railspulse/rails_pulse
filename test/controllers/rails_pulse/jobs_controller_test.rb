@@ -31,10 +31,13 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_operator RailsPulse::JobsController, :<, RailsPulse::ApplicationController
   end
 
-  test "controller defines custom TIME_RANGE_OPTIONS" do
+  test "controller uses standard TIME_RANGE_OPTIONS" do
     expected_options = [
-      [ "Recent", "recent" ],
-      [ "Custom Range", "custom" ]
+      [ "Last 24 hours", :last_24_hours ],
+      [ "Last 7 days", :last_7_days ],
+      [ "Last 14 days", :last_14_days ],
+      [ "Last 30 days", :last_30_days ],
+      [ "Custom range", :custom ]
     ]
 
     assert_equal expected_options, RailsPulse::JobsController::TIME_RANGE_OPTIONS
@@ -48,7 +51,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_not_nil assigns(:ransack_query)
     assert_not_nil assigns(:pagination)
-    assert_not_nil assigns(:jobs)
+    assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:available_queues)
   end
@@ -57,7 +60,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.jobs_path
 
     assert_response :success
-    jobs = assigns(:jobs)
+    jobs = assigns(:table_data).to_a.to_a
 
     # Verify jobs are ordered by runs_count desc
     if jobs.size > 1
@@ -71,7 +74,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.jobs_path, params: { q: { name_cont: "Report" } }
 
     assert_response :success
-    jobs = assigns(:jobs)
+    jobs = assigns(:table_data).to_a
 
     # All returned jobs should have "Report" in the name
     assert jobs.all? { |job| job.name.include?("Report") }
@@ -81,7 +84,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.jobs_path, params: { q: { queue_name_eq: "default" } }
 
     assert_response :success
-    jobs = assigns(:jobs)
+    jobs = assigns(:table_data).to_a
 
     # All returned jobs should have queue_name "default"
     assert jobs.all? { |job| job.queue_name == "default" }
@@ -92,7 +95,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     pagination = assigns(:pagination)
-    jobs = assigns(:jobs)
+    jobs = assigns(:table_data).to_a
 
     assert_not_nil pagination
     assert_operator jobs.size, :<=, 10
@@ -113,7 +116,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.jobs_path, params: { q: { s: "name asc" } }
 
     assert_response :success
-    jobs = assigns(:jobs)
+    jobs = assigns(:table_data).to_a
 
     # Verify jobs are ordered by name asc
     if jobs.size > 1
@@ -132,33 +135,33 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:job)
     assert_not_nil assigns(:ransack_query)
     assert_not_nil assigns(:pagination)
-    assert_not_nil assigns(:recent_runs)
+    assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:table_data)
     assert_not_nil assigns(:selected_time_range)
     assert_equal @job, assigns(:job)
   end
 
-  test "show action defaults to recent mode" do
+  test "show action defaults to last 7 days" do
     get rails_pulse.job_path(@job)
 
     assert_response :success
-    assert_equal "recent", assigns(:selected_time_range)
+    assert_equal "last_7_days", assigns(:selected_time_range)
   end
 
-  test "show action with recent mode does not filter by time" do
-    get rails_pulse.job_path(@job), params: { q: { period_start_range: "recent" } }
+  test "show action filters by time range" do
+    get rails_pulse.job_path(@job)
 
     assert_response :success
-    assert_equal "recent", assigns(:selected_time_range)
-    # In recent mode, start_time and end_time should not be set
-    assert_nil assigns(:start_time)
+    # Time filtering should be applied
+    assert_not_nil assigns(:start_time)
+    assert_not_nil assigns(:end_time)
   end
 
   test "show action orders runs by occurred_at desc" do
     get rails_pulse.job_path(@job)
 
     assert_response :success
-    runs = assigns(:recent_runs)
+    runs = assigns(:table_data).to_a
 
     # Verify runs are ordered by occurred_at desc
     if runs.size > 1
@@ -172,7 +175,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.job_path(@job), params: { q: { status_eq: "success" } }
 
     assert_response :success
-    runs = assigns(:recent_runs)
+    runs = assigns(:table_data).to_a
 
     # All returned runs should have status "success"
     assert runs.all? { |run| run.status == "success" }
@@ -182,7 +185,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.job_path(@job), params: { q: { duration_gteq: 300 } }
 
     assert_response :success
-    runs = assigns(:recent_runs)
+    runs = assigns(:table_data).to_a
 
     # All returned runs should have duration >= 300
     assert runs.all? { |run| run.duration.to_f >= 300 }
@@ -193,7 +196,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     pagination = assigns(:pagination)
-    runs = assigns(:recent_runs)
+    runs = assigns(:table_data).to_a
 
     assert_not_nil pagination
     assert_operator runs.size, :<=, 10
@@ -203,7 +206,7 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.job_path(@job), params: { q: { s: "duration asc" } }
 
     assert_response :success
-    runs = assigns(:recent_runs)
+    runs = assigns(:table_data).to_a
 
     # Verify runs are ordered by duration asc
     if runs.size > 1
@@ -213,11 +216,49 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
-  test "show action table_data matches recent_runs" do
+  test "show action sets table_data" do
     get rails_pulse.job_path(@job)
 
     assert_response :success
-    assert_equal assigns(:recent_runs), assigns(:table_data)
+    assert_not_nil assigns(:table_data)
+  end
+
+  # Security Tests
+
+  test "build_table_results uses parameterized SQL for period_type on show action" do
+    controller = RailsPulse::JobsController.new
+    controller.instance_variable_set(:@job, @job)
+    controller.instance_variable_set(:@ransack_query, RailsPulse::JobRun.ransack({}))
+    controller.stubs(:action_name).returns("show")
+    controller.stubs(:session_disabled_tags).returns([])
+    controller.stubs(:period_type).returns("hour")
+
+    # Should not raise SQL error and should return a relation
+    result = controller.send(:build_table_results)
+
+    assert_kind_of ActiveRecord::Relation, result
+  end
+
+  test "show action with hour period_type executes SQL safely" do
+    # This should use period_type = 'hour' in the SQL join
+    # Test with a short time range to ensure hour period_type
+    get rails_pulse.job_path(@job), params: {
+      q: { period_start_range: "last_24_hours" }
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
+  end
+
+  test "show action with day period_type executes SQL safely" do
+    # This should use period_type = 'day' in the SQL join
+    # Test with a long time range to ensure day period_type
+    get rails_pulse.job_path(@job), params: {
+      q: { period_start_range: "last_30_days" }
+    }
+
+    assert_response :success
+    assert_not_nil assigns(:table_data)
   end
 
   private

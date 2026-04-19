@@ -82,14 +82,154 @@ html[data-color-scheme="dark"] .input {
   position: relative;
   background: none;
   padding: 0;
+  height: 46px;
 }
 
-.operations-event {
-  box-sizing: border-box;
-  height: 16px;
-  padding: 2px;
+.operations-event-cell .flame-bar {
+  top: 12px;
+}
+
+/* FLAME GRAPH */
+.flame-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.flame-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+
+.flame-legend-swatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+
+.flame-trace {
+  display: flex;
+  gap: 12px;
+  position: relative;
+}
+
+.flame-lane-labels {
+  position: relative;
+  flex-shrink: 0;
+  width: 72px;
+}
+
+.flame-lane-label {
   position: absolute;
-  top: 20px;
+  right: 0;
+  font-size: 11px;
+  color: var(--color-subtle, #888);
+  white-space: nowrap;
+  text-align: right;
+  line-height: 22px;
+}
+
+.flame-lane-graph {
+  flex: 1;
+  overflow-x: auto;
+  min-width: 0;
+}
+
+.flame-graph-container {
+  position: relative;
+  width: 100%;
+  min-width: 400px;
+}
+
+.flame-bar {
+  position: absolute;
+  height: 22px;
+  min-width: 3px;
+  overflow: hidden;
+  cursor: pointer;
+  box-sizing: border-box;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  transition: filter 0.1s;
+}
+
+.flame-bar:hover {
+  filter: brightness(1.2);
+  z-index: 10;
+}
+
+.flame-bar-label {
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  padding: 0 5px;
+  line-height: 20px;
+  color: rgba(255, 255, 255, 0.92);
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
+
+.flame-time-axis {
+  position: relative;
+  height: 20px;
+  margin-top: 6px;
+  border-top: 1px solid var(--color-border, #e0e0e0);
+}
+
+.flame-tick {
+  position: absolute;
+  transform: translateX(-50%);
+  font-size: 11px;
+  color: var(--color-subtle, #888);
+  top: 3px;
+  white-space: nowrap;
+}
+
+.flame-tick:first-child {
+  transform: translateX(0);
+}
+
+.flame-tick:last-child {
+  transform: translateX(-100%);
+}
+
+.flame-tooltip {
+  position: fixed;
+  z-index: 1000;
+  background: var(--color-bg, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 6px;
+  padding: 10px 14px;
+  font-size: 12px;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+  max-width: 300px;
+  min-width: 200px;
+}
+
+.flame-tooltip-type {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-subtle, #888);
+  margin-bottom: 4px;
+}
+
+.flame-tooltip-label {
+  font-weight: 600;
+  word-break: break-all;
+  margin-bottom: 6px;
+  line-height: 1.4;
+}
+
+.flame-tooltip-stats {
+  color: var(--color-subtle, #888);
+  font-size: 11px;
 }
 
 /* REQUEST OPERATIONS BAR */

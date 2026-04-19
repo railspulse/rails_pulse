@@ -1,68 +1,52 @@
 <%= render 'rails_pulse/components/page_header', taggable: @query %>
 
-<% unless turbo_frame_request? %>
-  <div class="row">
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_query_times_metric_card } %>
-    <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @execution_rate_metric_card } %>
-  </div>
-<% end %>
+<%= render "rails_pulse/queries/metric_cards" %>
 
 <div
-  data-controller="rails-pulse--index"
-  data-rails-pulse--index-chart-id-value="query_responses_chart"
+  data-controller="rails-pulse--index rails-pulse--chart-switcher"
+  data-rails-pulse--index-chart-id-value="query_performance_chart"
+  data-rails-pulse--chart-switcher-selected-value="query_performance"
+  data-action="
+    rails-pulse--chart-switcher:switched->rails-pulse--index#handleChartSwitched
+  "
 >
-  <%= render 'rails_pulse/components/panel', { title: 'Query Responses' } do %>
-    <%= search_form_for @ransack_query, url: query_path(@query), class: "flex items-center justify-between gap mb-4", data: { controller: "rails-pulse--custom-range" } do |form| %>
-      <div class="flex items-center grow gap">
-        <%= time_range_selector(form, time_range_options: RailsPulse::RoutesController::TIME_RANGE_OPTIONS, selected_time_range: @selected_time_range) %>
+  <%= render 'rails_pulse/components/panel', {
+    title: 'Query Responses',
+    help_heading: 'Query Responses',
+    help_text: 'This panel shows all executions of this query, including performance metrics, duration distribution, and query execution details.'
+  } do %>
+    <div class="filter-bar">
+      <%= search_form_for @ransack_query, url: query_path(@query), class: "filter-bar__form" do |form| %>
+        <input
+          type="hidden"
+          name="chart_type"
+          data-rails-pulse--chart-switcher-target="chartTypeInput"
+        >
         <%= form.select :duration,
           duration_options(:query),
           { selected: @selected_response_range },
           { class: "input" }
         %>
-        <%= link_to "Reset", query_path(@query), class: "btn btn--borderless show@md" if params.has_key?(:q) %>
-        <%= form.submit "Search", class: "btn show@sm" %>
+        <%= link_to "Reset", query_path(@query), class: "btn btn--plain", style: "text-decoration: none; color: var(--color-text-muted);" if params.has_key?(:q) %>
+        <%= form.submit "Search", class: "btn" %>
+      <% end %>
+    </div>
+
+    <% if @has_chart_data %>
+      <%= render "rails_pulse/queries/chart_tabs" %>
+    <% end %>
+
+    <div data-controller="rails-pulse--table-sort">
+      <div id="index_table" data-rails-pulse--index-target="indexTable" data-rails-pulse--table-sort-target="tableFrame">
+        <% if @table_data && @table_data.any? %>
+          <%= render 'rails_pulse/queries/show_table' %>
+        <% else %>
+          <%= render 'rails_pulse/components/empty_state',
+              title: 'No query responses found for the selected filters.',
+              description: 'Try adjusting your time range or filters to see results.' %>
+        <% end %>
       </div>
-    <% end %>
-
-    <% unless turbo_frame_request? %>
-      <% if @chart_data && @chart_data.values.any? { |v| v > 0 } %>
-        <div
-          class="chart-container chart-container--slim"
-          data-rails-pulse--index-target="chart"
-        >
-          <%= render_stimulus_chart(
-            @chart_data,
-            type: 'bar',
-            code: false,
-            id: "query_responses_chart",
-            height: "100%",
-            options: bar_chart_options(
-              units: "ms",
-              zoom: true,
-              chart_start: 0,
-              chart_end: @chart_data.length - 1,
-              xaxis_formatter: @xaxis_formatter,
-              tooltip_formatter: @tooltip_formatter,
-              zoom_start: @zoom_start,
-              zoom_end: @zoom_end,
-              chart_data: @chart_data
-            )
-          ) %>
-        </div>
-      <% end %>
-    <% end %>
-
-    <%= turbo_frame_tag :index_table, data: { rails_pulse__index_target: "indexTable" } do %>
-      <% if @table_data && @table_data.any? %>
-        <%= render 'rails_pulse/queries/show_table' %>
-      <% else %>
-        <%= render 'rails_pulse/components/empty_state',
-            title: 'No query responses found for the selected filters.',
-            description: 'Try adjusting your time range or filters to see results.' %>
-      <% end %>
-    <% end %>
+    </div>
   <% end %>
 </div>
 
@@ -70,27 +54,47 @@
   <%= render 'rails_pulse/components/code_panel', { title: 'Normalized Query', value: @query.normalized_sql } %>
 </div>
 
-<%= turbo_frame_tag "query_analysis", class: "mb-4" do %>
-  <%= render 'rails_pulse/queries/analysis_section', query: @query %>
+<%= render 'rails_pulse/queries/diagnostics', query: @query, n_plus_one_groups: @n_plus_one_groups %>
+
+<%= render 'rails_pulse/components/panel', {
+  title: 'Query Locations',
+  help_heading: 'Query Locations',
+  help_text: 'Shows where in your codebase this query originates, based on the last 30 days of executions. P95 duration and row count highlight the worst-case performance at each call site.'
+} do %>
+  <%
+    p95 = ->(vals) {
+      sorted = vals.compact.sort
+      next nil if sorted.empty?
+      sorted[[(0.95 * sorted.length).ceil - 1, 0].max]
+    }
+    location_groups = @all_query_operations.group_by(&:codebase_location)
+  %>
+  <% if location_groups.any? %>
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Location</th>
+          <th>P95 Duration (ms)</th>
+          <th>P95 Row Count</th>
+          <th>Count</th>
+        </tr>
+      </thead>
+      <tbody>
+        <% location_groups.each do |codebase_location, ops| %>
+          <tr>
+            <td><code class="text-sm"><%= codebase_location.presence || 'Unknown' %></code></td>
+            <td><%= p95.call(ops.map(&:duration))&.round(2) %></td>
+            <td><%= p95.call(ops.map(&:row_count)) || '—' %></td>
+            <td><%= ops.count %></td>
+          </tr>
+        <% end %>
+      </tbody>
+    </table>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No location data available.',
+        description: 'Location data is captured when codebase_location is present on operations.' %>
+  <% end %>
 <% end %>
 
-<%= render 'rails_pulse/components/panel', { title: 'Query Locations' } do %>
-  <table class="table">
-    <thead>
-      <tr>
-        <th>Location</th>
-        <th>Average Query Time</th>
-        <th>Count</th>
-      </tr>
-    </thead>
-    <tbody>
-      <% @query.operations.group_by(&:codebase_location).each do |codebase_location, operations| %>
-        <tr>
-          <td><%= codebase_location %></td>
-          <td><%= (operations.sum(&:duration) / operations.count).round(2) %></td>
-          <td><%= operations.count %></td>
-        </tr>
-      <% end %>
-    </tbody>
-  </table>
-<% end %>
+<%= render 'rails_pulse/queries/raw_data', query: @query, all_operations: @all_query_operations %>

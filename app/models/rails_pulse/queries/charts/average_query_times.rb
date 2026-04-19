@@ -1,38 +1,34 @@
 module RailsPulse
   module Queries
     module Charts
-      class AverageQueryTimes
-        def initialize(ransack_query:, period_type: nil, query: nil, start_time: nil, end_time: nil, start_duration: nil, disabled_tags: [], show_non_tagged: true)
-          @ransack_query = ransack_query
-          @period_type = period_type
-          @query = query
-          @start_time = start_time
-          @end_time = end_time
-          @start_duration = start_duration
-          @disabled_tags = disabled_tags
-          @show_non_tagged = show_non_tagged
-        end
-
+      class AverageQueryTimes < RailsPulse::Charts::Base
         def to_chart_data
-          # The ransack query already contains the correct filters, just add period_type and tag filters
+          # The ransack query already contains the correct filters
           summaries = @ransack_query.result(distinct: false)
             .with_tag_filters(@disabled_tags, @show_non_tagged)
-            .where(period_type: @period_type)
+            .where(
+              summarizable_type: summarizable_type,
+              period_type: @period_type
+            )
+          summaries = summaries.where(summarizable_id: @subject.id) if @subject
+
+          summaries = summaries
             .group(:period_start)
             .having("AVG(avg_duration) > ?", @start_duration || 0)
             .average(:avg_duration)
             .transform_keys(&:to_i)
 
-          # Pad missing data points with zeros
+          # Pad missing data points with zeros using base class helper
+          data = pad_data_with_zeros(summaries, @start_time, @end_time, time_step)
+
           # Convert timestamps to milliseconds for JavaScript Date compatibility
-          step = @period_type == :hour ? 1.hour : 1.day
-          data = {}
-          (@start_time.to_i..@end_time.to_i).step(step) do |timestamp|
-            # Multiply by 1000 to convert Unix seconds to JavaScript milliseconds
-            data[timestamp.to_i * 1000] = summaries[timestamp.to_i].to_f.round(2)
-          end
-          data
+          data.transform_keys { |timestamp| timestamp * 1000 }
+              .transform_values { |value| value.to_f.round(2) }
         end
+
+        private
+
+        def summarizable_type = "RailsPulse::Query"
       end
     end
   end

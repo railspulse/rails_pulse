@@ -20,6 +20,15 @@
     background-color: rgba(0, 0, 0, 0.05);
   }
 
+  /* In dark mode, row hover and footer need a light tint to appear elevated */
+  html[data-color-scheme="dark"] & tr:hover {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
+  html[data-color-scheme="dark"] & tfoot {
+    background-color: rgba(255, 255, 255, 0.04);
+  }
+
   th {
     font-weight: var(--font-medium);
     text-align: start;

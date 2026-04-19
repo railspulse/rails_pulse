@@ -2,6 +2,7 @@ module RailsPulse
   class RoutesController < ApplicationController
     include ChartTableConcern
     include TagFilterConcern
+    include MetricCardConcern
 
     before_action :set_route, only: :show
 
@@ -17,17 +18,27 @@ module RailsPulse
 
     private
 
-    def setup_metric_cards
-      return if turbo_frame_request?
+    # Metric card configuration - defines which cards to display
+    def metric_card_definitions
+      {
+        percentile_response_times_metric_card: Routes::Cards::PercentileResponseTimes,
+        request_count_totals_metric_card: Routes::Cards::RequestCountTotals,
+        error_rates_metric_card: Routes::Cards::ErrorRates
+      }
+    end
 
-      # Get tag filter values from session
-      disabled_tags = session_disabled_tags
-      show_non_tagged = session[:show_non_tagged] != false
+    # The parameter name for passing the resource to metric cards
+    def resource_key
+      :route
+    end
 
-      @average_query_times_metric_card = RailsPulse::Routes::Cards::AverageResponseTimes.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @percentile_response_times_metric_card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @request_count_totals_metric_card = RailsPulse::Routes::Cards::RequestCountTotals.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
-      @error_rate_per_route_metric_card = RailsPulse::Routes::Cards::ErrorRatePerRoute.new(route: @route, disabled_tags: disabled_tags, show_non_tagged: show_non_tagged).to_metric_card
+    # Chart configuration - defines which charts to render
+    def chart_definitions
+      {
+        response_time_chart_data: Routes::Charts::ResponseTimePercentiles,
+        request_rate_chart_data: Routes::Charts::RequestVolume,
+        error_rate_chart_data: Routes::Charts::ErrorRate
+      }
     end
 
     def chart_model
@@ -38,53 +49,23 @@ module RailsPulse
       show_action? ? Request : Summary
     end
 
-    def chart_class
-      Routes::Charts::AverageResponseTimes
-    end
-
+    # Pass the route to chart classes on show pages
     def chart_options
       show_action? ? { route: @route } : {}
     end
 
-    def build_chart_ransack_params(ransack_params)
-      base_params = ransack_params.except(:s).merge(
-        period_start_gteq: Time.at(@start_time),
-        period_start_lt: Time.at(@end_time)
-      )
-
-      # Only add duration filter if we have a meaningful threshold
-      base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
-
-      if show_action?
-        base_params.merge(summarizable_id_eq: @route.id)
-      else
-        base_params
-      end
+    # Filter to scope table results to a specific route on show pages
+    def show_resource_filter
+      { route_id_eq: @route.id }
     end
 
-    def build_table_ransack_params(ransack_params)
-      if show_action?
-        # For Request model on show page
-        params = ransack_params.merge(
-          occurred_at_gteq: Time.at(@table_start_time),
-          occurred_at_lt: Time.at(@table_end_time),
-          route_id_eq: @route.id
-        )
-        params[:duration_gteq] = @start_duration if @start_duration && @start_duration > 0
-        params
-      else
-        # For Summary model on index page
-        params = ransack_params.merge(
-          period_start_gteq: Time.at(@table_start_time),
-          period_start_lt: Time.at(@table_end_time)
-        )
-        params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
-        params
-      end
+    # Returns the current route for metric cards and chart params
+    def current_resource
+      @route
     end
 
     def default_table_sort
-      show_action? ? "occurred_at desc" : "avg_duration desc"
+      show_action? ? "occurred_at desc" : "p95_duration desc"
     end
 
     def build_table_results
@@ -93,15 +74,21 @@ module RailsPulse
         # This ensures the table data is consistent with the chart data
         # Note: We don't apply tag filters here because we want to show all requests
         # for this specific route, regardless of individual request tags
-        base_query = @ransack_query.result
-          .joins(<<~SQL)
+
+        # Use sanitize_sql_array to safely parameterize period_type
+        join_sql = ActiveRecord::Base.sanitize_sql_array([
+          <<~SQL,
             INNER JOIN rails_pulse_summaries ON
               rails_pulse_summaries.summarizable_id = rails_pulse_requests.route_id AND
               rails_pulse_summaries.summarizable_type = 'RailsPulse::Route' AND
-              rails_pulse_summaries.period_type = '#{period_type}' AND
+              rails_pulse_summaries.period_type = ? AND
               rails_pulse_requests.occurred_at >= rails_pulse_summaries.period_start AND
               rails_pulse_requests.occurred_at < rails_pulse_summaries.period_end
           SQL
+          period_type
+        ])
+
+        base_query = @ransack_query.result.joins(join_sql)
 
         # For PostgreSQL compatibility with DISTINCT + ORDER BY
         # we need to include computed columns in SELECT when ordering by them
@@ -122,14 +109,11 @@ module RailsPulse
       end
     end
 
-    def duration_field
-      :avg_duration
+    def default_time_range_key
+      :last_14_days
     end
 
-    def show_action?
-      action_name == "show"
-    end
-
+    # Override table data setup to handle custom sorting logic for index page
     def setup_table_data(ransack_params)
       table_ransack_params = build_table_ransack_params(ransack_params)
       @ransack_query = table_model.ransack(table_ransack_params)
@@ -145,15 +129,6 @@ module RailsPulse
       @pagination, @table_data = paginate(table_results, limit: session_pagination_limit)
     end
 
-    def handle_pagination
-      method = pagination_method
-      send(method, params[:limit]) if params[:limit].present?
-    end
-
-    def pagination_method
-      show_action? ? :set_pagination_limit : :store_pagination_limit
-    end
-
     def set_route
       @route = Route.find(params[:id])
     end
@@ -165,18 +140,24 @@ module RailsPulse
 
     def status_indicator_sql
       # Same logic as in the Request model's ransacker
+      # Use sanitize_sql_array to safely parameterize threshold values
       config = RailsPulse.configuration rescue nil
       thresholds = config&.request_thresholds || { slow: 500, very_slow: 1000, critical: 2000 }
       slow = thresholds[:slow] || 500
       very_slow = thresholds[:very_slow] || 1000
       critical = thresholds[:critical] || 2000
 
-      "CASE
-        WHEN rails_pulse_requests.duration < #{slow} THEN 0
-        WHEN rails_pulse_requests.duration < #{very_slow} THEN 1
-        WHEN rails_pulse_requests.duration < #{critical} THEN 2
-        ELSE 3
-      END"
+      ActiveRecord::Base.sanitize_sql_array([
+        "CASE
+          WHEN rails_pulse_requests.duration < ? THEN 0
+          WHEN rails_pulse_requests.duration < ? THEN 1
+          WHEN rails_pulse_requests.duration < ? THEN 2
+          ELSE 3
+        END",
+        slow,
+        very_slow,
+        critical
+      ])
     end
   end
 end

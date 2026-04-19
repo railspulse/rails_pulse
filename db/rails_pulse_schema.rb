@@ -2,7 +2,7 @@
 # This file contains the complete schema for Rails Pulse tables
 # Load with: rails db:schema:load_rails_pulse or db:prepare
 
-RailsPulse::Schema = lambda do |connection|
+RailsPulse::Schema ||= lambda do |connection|
   adapter = connection.adapter_name.downcase
   # Skip if all tables already exist to prevent conflicts
   required_tables = [ :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_jobs, :rails_pulse_job_runs, :rails_pulse_summaries ]
@@ -68,6 +68,7 @@ RailsPulse::Schema = lambda do |connection|
       t.string :controller_action, comment: "Controller and action handling the request (e.g., PostsController#show)"
       t.timestamp :occurred_at, null: false, comment: "When the request started"
       t.text :tags, comment: "JSON array of tags for filtering and categorization"
+      t.integer :response_size_bytes, comment: "HTTP response body size in bytes"
       t.timestamps
     end
 
@@ -85,6 +86,8 @@ RailsPulse::Schema = lambda do |connection|
       t.integer :failures_count, null: false, default: 0, comment: "Cache of failed runs"
       t.integer :retries_count, null: false, default: 0, comment: "Cache of retried runs"
       t.decimal :avg_duration, precision: 15, scale: 6, comment: "Average duration in milliseconds"
+      t.decimal :p95_duration, precision: 15, scale: 6, comment: "95th percentile duration in milliseconds"
+      t.decimal :p99_duration, precision: 15, scale: 6, comment: "99th percentile duration in milliseconds"
       t.text :tags, comment: "JSON array of tags"
       t.timestamps
     end
@@ -129,6 +132,10 @@ RailsPulse::Schema = lambda do |connection|
       t.string :codebase_location, comment: "File and line number (e.g., app/models/user.rb:25)"
       t.float :start_time, null: false, default: 0.0, comment: "Operation start time in milliseconds"
       t.timestamp :occurred_at, null: false, comment: "When the request started"
+      t.integer :row_count, comment: "Number of rows returned (SQL operations, Rails 7.1+)"
+      t.boolean :cache_hit, comment: "Whether a cache_read operation hit the cache"
+      t.text :repeated_query_group, comment: "Normalized SQL key identifying an N+1 group"
+      t.integer :repetition_count, comment: "Number of times this query pattern repeated in the request"
       t.timestamps
     end
 

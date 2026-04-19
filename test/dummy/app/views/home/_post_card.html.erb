@@ -1,0 +1,5 @@
+<div class="card">
+  <h4><%= post_card.title %></h4>
+  <p class="meta">By <%= post_card.user&.name || "Unknown" %> &middot; <%= time_ago_in_words(post_card.created_at) %> ago</p>
+  <p><%= truncate(post_card.content, length: 100) %></p>
+</div>

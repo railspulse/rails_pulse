@@ -1,87 +1,188 @@
-<div class="flex justify-end">
-  <%= render 'rails_pulse/components/active_filters' %>
-</div>
-
-<div class="row">
-  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @average_query_times_metric_card } %>
-  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @percentile_response_times_metric_card } %>
-  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @request_count_totals_metric_card } %>
-  <%= render 'rails_pulse/components/metric_card', { class: "grid-item block", data: @error_rate_per_route_metric_card } %>
-</div>
-
-<div class="row">
-  <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', {
-      title: 'Average Response Time',
-      card_classes: 'b-full',
-      help_heading: 'Average Response Time',
-      help_text: 'This panel measures the average server-side response time in milliseconds for all HTTP requests processed by your application. This is the time it takes from the server receiving a request until the request is returned to the client in milliseconds.',
-      actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
-    } do %>
-      <% if @average_response_time_chart_data.present? %>
-        <div class="chart-container chart-container--slim">
-          <%= render_stimulus_chart(
-            @average_response_time_chart_data,
-            type: 'bar',
-            id: "dashboard_average_response_time_chart",
-            height: "100%",
-            options: bar_chart_options(
-              units: "ms"
-            )
-          ) %>
-        </div>
+<div class="dashboard-health-bar">
+  <div class="dashboard-health-bar__content">
+    <div class="dashboard-health-bar__badges">
+      <%= render "rails_pulse/dashboard/health_badge",
+      name: "Routes",
+      health: @health_summary[:routes],
+      critical_label: "critical" %>
+      <%= render "rails_pulse/dashboard/health_badge",
+      name: "Queries",
+      health: @health_summary[:queries],
+      critical_label: "critical" %>
+      <% if @health_summary[:jobs] %>
+        <%= render "rails_pulse/dashboard/health_badge",
+        name: "Jobs",
+        health: @health_summary[:jobs],
+        critical_label: "failing" %>
       <% end %>
+      <%= render "rails_pulse/dashboard/health_badge",
+      name: "Storage",
+      health: @health_summary[:storage],
+      critical_label: "critical" %>
+    </div>
+  </div>
+</div>
+
+<% metric_strip_cards = [
+    @percentile_response_times_metric_card&.merge(
+      link_url: routes_path(chart_type: "response_time"),
+    ),
+    @request_count_totals_metric_card&.merge(
+      link_url: routes_path(chart_type: "request_rate"),
+    ),
+    @error_rates_metric_card&.merge(
+      link_url: routes_path(chart_type: "error_rate"),
+    ),
+  ].compact
+  if @job_failure_rate_metric_card
+    metric_strip_cards << @job_failure_rate_metric_card&.merge(
+      link_url: jobs_path,
+    )
+  end %>
+  <%= render "rails_pulse/components/metric_strip", metrics_data: metric_strip_cards %>
+
+  <div class="row">
+    <%# Response Time Percentiles (P50 + P95 + P99) — 60% width %>
+    <% response_time_toggles = capture do %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "P50",
+      series_name: "P50",
+      chart_id: "response_time_percentiles_chart",
+      color: RailsPulse::ChartColors::DEFAULT,
+      active: false %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "P95",
+      series_name: "P95",
+      chart_id: "response_time_percentiles_chart",
+      color: RailsPulse::ChartColors::P95 %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "P99",
+      series_name: "P99",
+      chart_id: "response_time_percentiles_chart",
+      color: RailsPulse::ChartColors::P99 %>
     <% end %>
+
+    <%= render "rails_pulse/dashboard/chart_panel",
+    flex_style: "flex: 1.5;",
+    title: "Response Time Percentiles",
+    help_title: "Response Time Percentiles",
+    help_text:
+      "P50 (median), P95, and P99 response times show the distribution of request latency. P95 means 95% of requests are faster than this value. Higher percentiles reveal tail latency affecting a subset of users.",
+    link_url: routes_path(chart_type: "response_time"),
+    chart_data: @response_time_percentiles_chart_data,
+    chart_type: "line",
+    chart_id: "response_time_percentiles_chart",
+    chart_options: line_chart_options(units: "ms"),
+    empty_message: "No response time data available for this period.",
+    series_toggles: response_time_toggles %>
+
+    <%# Throughput & Errors combo %>
+    <% throughput_toggles = capture do %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "Requests",
+      series_name: "Requests",
+      chart_id: "throughput_and_errors_chart",
+      color: RailsPulse::ChartColors::DEFAULT %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "Errors",
+      series_name: "Errors",
+      chart_id: "throughput_and_errors_chart",
+      color: "#dc2626" %>
+    <% end %>
+
+    <%= render "rails_pulse/dashboard/chart_panel",
+    title: "Throughput & Errors",
+    help_title: "Throughput & Errors",
+    help_text:
+      "Daily request volume with errors overlaid. The red bar shows error count on top of total requests. Monitor both metrics together to identify traffic spikes, error rate patterns, and capacity planning needs.",
+    link_url: routes_path(chart_type: "request_rate"),
+    chart_data: @throughput_and_errors_chart_data,
+    chart_type: "bar",
+    chart_id: "throughput_and_errors_chart",
+    chart_options: bar_chart_options,
+    empty_message: "No request data available for this period.",
+    series_toggles: throughput_toggles %>
   </div>
 
-  <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', {
-      title: 'Query Performance',
-      card_classes: 'b-full',
-      help_heading: 'Query Performance',
-      help_text: 'This panel measures the 95th percentile response time in milliseconds for queries in your application. This represents the query performance below which 95% of queries fall, indicating the upper-bound performance for most database operations.',
-      actions: [{ url: queries_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }]
-    } do %>
-      <% if @p95_response_time_chart_data.present? %>
-        <div class="chart-container chart-container--slim">
-          <%= render_stimulus_chart(
-            @p95_response_time_chart_data,
-            type: 'bar',
-            code: false,
-            id: "dashboard_p95_response_time_chart",
-            height: "100%",
-            options: bar_chart_options(
-              units: "ms"
-            )
-          ) %>
+  <div class="card">
+    <div class="flex items-center justify-between mbe-3">
+      <div class="flex items-center">
+        <h2 class="font-semibold leading-none uppercase text-xs">Needs Attention</h2>
+        <% if @needs_attention[:total] > 0 %>
+          <span class="badge badge--negative mis-2 text-xs">
+            <%= @needs_attention[:total] %>
+            <%= @needs_attention[:total] == 1 ? "issue" : "issues" %>
+          </span>
+        <% end %>
+        <span class="text-xs text-subtle mis-2">Ranked by severity ·
+          <%= humanize_time_range(@selected_time_range) %></span>
+      </div>
+      <div
+        data-controller="rails-pulse--popover"
+        data-rails-pulse--popover-placement-value="bottom-end"
+      >
+        <a
+          href="#"
+          data-rails-pulse--popover-target="button"
+          data-action="rails-pulse--popover#toggle"
+          data-popovertarget="popover"
+          class="block leading-none"
+        >
+          <%= rails_pulse_icon "message-circle-question", height: "16px", width: "16px" %>
+        </a>
+        <div
+          popover
+          class="popover card max-w-lg"
+          data-rails-pulse--popover-target="menu"
+        >
+          <div class="flex flex-col">
+            <h3 class="font-semibold leading-none mbe-2 uppercase text-sm">About Error Rates</h3>
+            <p class="text-sm text-subtle">Error rates are calculated across the entire selected time
+              period. Longer time ranges may dilute recent spikes in errors.
+              For example, a route with 10% errors in the last day may show 1%
+              over a week if earlier days had no errors.</p>
+          </div>
         </div>
-      <% end %>
-    <% end %>
-  </div>
-</div>
+      </div>
+    </div>
 
-<div class="row">
-  <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', {
-      title: 'Slowest Routes This Week',
-      help_heading: 'Slowest Routes',
-      help_text: 'This panel shows the slowest routes in your application this week, including average response time and total request count.',
-      actions: [{ url: routes_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
-      card_classes: 'table-container'
-    } do %>
-      <%= render 'rails_pulse/components/table', table_data: @slow_routes_table_data %>
-    <% end %>
-  </div>
+    <% if @needs_attention[:total] == 0 %>
+      <div class="flex flex-col items-center justify-center pb-8 pi-4 gap">
+        <span class="all-clear-icon">
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="text-positive"
+          ><polyline points="20 6 9 17 4 12"/></svg>
+        </span>
+        <p class="font-semibold text-sm text-positive">All clear</p>
+        <p class="text-xs text-subtle">No routes, queries, or jobs need attention in the
+          <%= humanize_time_range(@selected_time_range) %>.</p>
+      </div>
+    <% else %>
+      <div class="flex flex-col">
+        <% if @needs_attention[:critical].any? %>
+          <%= render "rails_pulse/dashboard/attention_section",
+          severity: "critical",
+          count: @needs_attention[:critical].size,
+          items: @needs_attention[:critical],
+          add_spacing: false %>
+        <% end %>
 
-  <div class="grid-item">
-    <%= render 'rails_pulse/components/panel', {
-      title: 'Slowest Queries This Week',
-      help_heading: 'Slowest Queries',
-      help_text: 'This panel shows the slowest database queries in your application this week, including average execution time and when they were last seen.',
-      actions: [{ url: queries_path, icon: 'external-link', title: 'View details', data: { turbo_frame: '_top' } }],
-      card_classes: 'table-container'
-    } do %>
-      <%= render 'rails_pulse/components/table', table_data: @slow_queries_table_data %>
+        <% if @needs_attention[:warning].any? %>
+          <%= render "rails_pulse/dashboard/attention_section",
+          severity: "warning",
+          count: @needs_attention[:warning].size,
+          items: @needs_attention[:warning],
+          add_spacing: @needs_attention[:critical].any? %>
+        <% end %>
+      </div>
     <% end %>
   </div>
-</div>

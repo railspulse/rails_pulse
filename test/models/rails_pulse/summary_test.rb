@@ -38,8 +38,8 @@ class RailsPulse::SummaryTest < ActiveSupport::TestCase
 
   test "should include ransackable attributes" do
     expected_attributes = %w[
-      period_start period_end avg_duration min_duration max_duration count error_count
-      requests_per_minute error_rate_percentage route_path_cont
+      period_start period_end avg_duration min_duration max_duration p95_duration p99_duration
+      count error_count requests_per_minute error_rate_percentage route_path_cont
       execution_count total_time_consumed normalized_sql
       summarizable_id summarizable_type
     ]
@@ -225,5 +225,199 @@ class RailsPulse::SummaryTest < ActiveSupport::TestCase
 
     # Should not error and should filter based on show_non_tagged parameter
     assert_kind_of ActiveRecord::Relation, filtered
+  end
+
+  test "with_tag_filters should handle multiple disabled tags" do
+    # When multiple tags are disabled, should exclude all summaries with any of those tags
+    route_summary = rails_pulse_summaries(:route_summary_1)  # links to api_users with tags ["api", "users"]
+
+    # Disable both "api" and "users"
+    filtered = RailsPulse::Summary.with_tag_filters([ "api", "users" ], true)
+      .where(summarizable_type: "RailsPulse::Route")
+
+    assert_not_includes filtered, route_summary
+  end
+
+  test "with_tag_filters should handle empty result arrays from tag filtering" do
+    # When all items are filtered out, should still work (using -1 as impossible ID)
+    filtered = RailsPulse::Summary.with_tag_filters([ "nonexistent_tag_that_filters_everything" ], false)
+
+    # Should return a valid relation (may be empty)
+    assert_kind_of ActiveRecord::Relation, filtered
+  end
+
+  test "with_tag_filters should handle non_tagged in disabled_tags list" do
+    # When "non_tagged" is in disabled_tags, it should be filtered out and not cause errors
+    filtered = RailsPulse::Summary.with_tag_filters([ "non_tagged", "api" ], true)
+
+    # Should work without errors
+    assert_kind_of ActiveRecord::Relation, filtered
+  end
+
+  # Scope Tests
+
+  test "by_job_name scope should filter summaries by job name" do
+    # Create a job and job summary
+    job = RailsPulse::Job.create!(
+      name: "TestJob",
+      queue_name: "default",
+      runs_count: 1,
+      failures_count: 0
+    )
+
+    job_summary = RailsPulse::Summary.create!(
+      summarizable: job,
+      summarizable_type: "RailsPulse::Job",
+      period_type: "hour",
+      period_start: 1.hour.ago,
+      period_end: Time.current,
+      avg_duration: 100,
+      min_duration: 50,
+      max_duration: 150,
+      count: 10,
+      error_count: 0,
+      success_count: 10
+    )
+
+    # Filter by job name
+    filtered = RailsPulse::Summary.by_job_name("TestJob")
+
+    assert_includes filtered, job_summary
+  end
+
+  test "by_job_name scope should not include summaries for other jobs" do
+    # Create two jobs
+    job1 = RailsPulse::Job.create!(
+      name: "Job1",
+      queue_name: "default",
+      runs_count: 1,
+      failures_count: 0
+    )
+
+    job2 = RailsPulse::Job.create!(
+      name: "Job2",
+      queue_name: "default",
+      runs_count: 1,
+      failures_count: 0
+    )
+
+    job1_summary = RailsPulse::Summary.create!(
+      summarizable: job1,
+      summarizable_type: "RailsPulse::Job",
+      period_type: "hour",
+      period_start: 1.hour.ago,
+      period_end: Time.current,
+      avg_duration: 100,
+      min_duration: 50,
+      max_duration: 150,
+      count: 10,
+      error_count: 0,
+      success_count: 10
+    )
+
+    job2_summary = RailsPulse::Summary.create!(
+      summarizable: job2,
+      summarizable_type: "RailsPulse::Job",
+      period_type: "hour",
+      period_start: 1.hour.ago,
+      period_end: Time.current,
+      avg_duration: 200,
+      min_duration: 100,
+      max_duration: 300,
+      count: 5,
+      error_count: 0,
+      success_count: 5
+    )
+
+    # Filter by Job1 name
+    filtered = RailsPulse::Summary.by_job_name("Job1")
+
+    assert_includes filtered, job1_summary
+    assert_not_includes filtered, job2_summary
+  end
+
+  test "overall_requests scope should return only Request summaries with ID 0" do
+    # Create an overall request summary (summarizable_id = 0)
+    overall_summary = RailsPulse::Summary.create!(
+      summarizable_type: "RailsPulse::Request",
+      summarizable_id: 0,
+      period_type: "hour",
+      period_start: 1.hour.ago,
+      period_end: Time.current,
+      avg_duration: 100,
+      min_duration: 50,
+      max_duration: 150,
+      count: 10,
+      error_count: 0,
+      success_count: 10
+    )
+
+    # Create a regular request summary (not ID 0)
+    regular_summary = RailsPulse::Summary.create!(
+      summarizable_type: "RailsPulse::Request",
+      summarizable_id: 1,
+      period_type: "hour",
+      period_start: 1.hour.ago,
+      period_end: Time.current,
+      avg_duration: 200,
+      min_duration: 100,
+      max_duration: 300,
+      count: 5,
+      error_count: 0,
+      success_count: 5
+    )
+
+    filtered = RailsPulse::Summary.overall_requests
+
+    assert_includes filtered, overall_summary
+    assert_not_includes filtered, regular_summary
+  end
+
+  test "overall_requests scope should not include non-Request summaries" do
+    # Create a route summary
+    route_summary = rails_pulse_summaries(:route_summary_1)
+
+    filtered = RailsPulse::Summary.overall_requests
+
+    assert_not_includes filtered, route_summary
+  end
+
+  test "for_date_range scope should filter by date range" do
+    start_date = 2.days.ago
+    end_date = 1.day.ago
+
+    # Create summaries within and outside the range
+    within_range = RailsPulse::Summary.create!(
+      summarizable_type: "RailsPulse::Request",
+      summarizable_id: 0,
+      period_type: "hour",
+      period_start: 1.5.days.ago,
+      period_end: 1.day.ago,
+      avg_duration: 100,
+      min_duration: 50,
+      max_duration: 150,
+      count: 10,
+      error_count: 0,
+      success_count: 10
+    )
+
+    outside_range = RailsPulse::Summary.create!(
+      summarizable_type: "RailsPulse::Request",
+      summarizable_id: 0,
+      period_type: "hour",
+      period_start: 5.days.ago,
+      period_end: 4.days.ago,
+      avg_duration: 100,
+      min_duration: 50,
+      max_duration: 150,
+      count: 10,
+      error_count: 0,
+      success_count: 10
+    )
+
+    filtered = RailsPulse::Summary.for_date_range(start_date, end_date)
+
+    assert_includes filtered, within_range
+    assert_not_includes filtered, outside_range
   end
 end
