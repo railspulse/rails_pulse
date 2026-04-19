@@ -54,9 +54,9 @@ module RailsPulse
           if raw_data[timestamp]
             count = raw_data[timestamp][:total_count]
             daily_data[timestamp] = {
-              p50: count > 0 ? (raw_data[timestamp][:total_weighted_p50] / count).round(0) : nil,
-              p95: count > 0 ? (raw_data[timestamp][:total_weighted_p95] / count).round(0) : nil,
-              p99: count > 0 ? (raw_data[timestamp][:total_weighted_p99] / count).round(0) : nil
+              p50: count > 0 ? (raw_data[timestamp][:total_weighted_p50] / count).round(2) : nil,
+              p95: count > 0 ? (raw_data[timestamp][:total_weighted_p95] / count).round(2) : nil,
+              p99: count > 0 ? (raw_data[timestamp][:total_weighted_p99] / count).round(2) : nil
             }
           else
             daily_data[timestamp] = { p50: nil, p95: nil, p99: nil }

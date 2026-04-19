@@ -13,12 +13,12 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     super
   end
 
-  test "controller has index, show, and analyze actions" do
+  test "controller has index, show, and reanalyze actions" do
     controller = RailsPulse::QueriesController.new
 
     assert_respond_to controller, :index
     assert_respond_to controller, :show
-    assert_respond_to controller, :analyze
+    assert_respond_to controller, :reanalyze
   end
 
   test "controller includes ChartTableConcern" do
@@ -29,69 +29,15 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_operator RailsPulse::QueriesController, :<, RailsPulse::ApplicationController
   end
 
-  test "analyze action performs query analysis and responds appropriately" do
-    query = create_test_query_with_operations
+  test "reanalyze action clears analyzed_at and explain_plan then redirects" do
+    query = rails_pulse_queries(:analyzed_query)
 
-    # Test successful analysis with HTML format
-    post rails_pulse_engine.analyze_query_path(query)
-
-    assert_redirected_to rails_pulse_engine.query_path(query)
-    assert_equal "Query analysis completed successfully.", flash[:notice]
-
-    # Verify analysis was saved
-    query.reload
-
-    assert_predicate query, :analyzed?
-    assert_not_nil query.query_stats
-  end
-
-  test "analyze action handles errors gracefully" do
-    query = create_test_query_with_operations
-
-    # Stub the service to raise an error
-    RailsPulse::QueryAnalysisService.stubs(:analyze_query).raises(StandardError.new("Test error"))
-
-    post rails_pulse_engine.analyze_query_path(query)
+    post rails_pulse_engine.reanalyze_query_path(query)
 
     assert_redirected_to rails_pulse_engine.query_path(query)
-    assert_equal "Query analysis failed: Test error", flash[:alert]
-  end
-
-  test "analyze action with partial request renders analysis wrapper" do
-    query = create_test_query_with_operations
-
-    # Test successful analysis with partial request
-    post rails_pulse_engine.analyze_query_path(query), headers: { "X-Partial-Request" => "true" }
-
-    assert_response :success
-    assert_nil flash[:notice]
-    assert_nil flash[:alert]
-
-    # Should render the analysis wrapper partial
-    assert_match(/id="query_analysis"/, response.body)
-    assert_match(/data-controller="rails-pulse--query-analyzer"/, response.body)
-
-    # Verify analysis was saved
     query.reload
-
-    assert_predicate query, :analyzed?
-  end
-
-  test "analyze action with partial request handles errors" do
-    query = create_test_query_with_operations
-
-    # Stub the service to raise an error
-    RailsPulse::QueryAnalysisService.stubs(:analyze_query).raises(StandardError.new("Test error"))
-
-    post rails_pulse_engine.analyze_query_path(query), headers: { "X-Partial-Request" => "true" }
-
-    assert_response :success
-    assert_nil flash[:notice]
-    assert_nil flash[:alert]
-
-    # Should render the analysis wrapper with error
-    assert_match(/id="query_analysis"/, response.body)
-    assert_match(/data-controller="rails-pulse--query-analyzer"/, response.body)
+    assert_nil query.analyzed_at
+    assert_nil query.explain_plan
   end
 
   # HTTP Response Tests

@@ -147,9 +147,7 @@ module RailsPulse
         assert_equal 400, non_nil_values.first
       end
 
-      test "rounds percentile values to whole numbers" do
-        # Count: 3, P50: 100 → weighted: 300
-        # Result: 300 / 3 = 100.0 (exactly, but ensures rounding happens)
+      test "rounds percentile values to 2 decimal places" do
         create_summary(@route, 1.day.ago, p50: 100.7, p95: 300.3, p99: 500.9, count: 3)
 
         chart = TestPercentileChart.new(
@@ -165,7 +163,8 @@ module RailsPulse
           non_nil_values = series[:data].compact
 
           non_nil_values.each do |value|
-            assert_kind_of Integer, value
+            assert_kind_of Numeric, value
+            assert_equal value.round(2), value
           end
         end
       end

@@ -54,11 +54,13 @@
   <%= render 'rails_pulse/components/code_panel', { title: 'Normalized Query', value: @query.normalized_sql } %>
 </div>
 
-<%#= render 'rails_pulse/queries/analysis_wrapper', query: @query %>
-
 <%= render 'rails_pulse/queries/diagnostics', query: @query, n_plus_one_groups: @n_plus_one_groups %>
 
-<%= render 'rails_pulse/components/panel', { title: 'Query Locations' } do %>
+<%= render 'rails_pulse/components/panel', {
+  title: 'Query Locations',
+  help_heading: 'Query Locations',
+  help_text: 'Shows where in your codebase this query originates, based on the last 30 days of executions. P95 duration and row count highlight the worst-case performance at each call site.'
+} do %>
   <%
     p95 = ->(vals) {
       sorted = vals.compact.sort

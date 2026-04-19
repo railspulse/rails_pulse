@@ -113,7 +113,7 @@ module ChartTableConcern
 
     @chart_data[:series].any? { |series|
       !series[:name].to_s.include?(" SLO ") &&
-        series[:data].any? { |v| v.to_f > 0 }
+        series[:data].any? { |v| !v.nil? }
     }
   end
 

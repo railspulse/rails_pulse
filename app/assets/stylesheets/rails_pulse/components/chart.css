@@ -1,5 +1,6 @@
 .panel-icon-bar > a,
-.panel-icon-bar > div {
+.panel-icon-bar > div,
+.panel-icon-bar > form {
   display: flex;
   align-items: center;
 }
@@ -7,6 +8,17 @@
 .panel-icon-bar > div > a {
   display: flex;
   align-items: center;
+}
+
+.panel-icon-bar > form > button {
+  background: none;
+  border: none;
+  box-shadow: none;
+  color: var(--color-link);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  padding: 0;
 }
 
 .series-toggle {

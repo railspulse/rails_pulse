@@ -228,12 +228,12 @@ class ChartTableConcernTest < ActionController::TestCase
     @controller.instance_variable_set(:@chart_data, {
       labels: [ 1000, 2000 ],
       series: [
-        { name: "Data", data: [ 0, 0 ] },
+        { name: "Data", data: [ nil, nil ] },
         { name: "P95 SLO ", data: [ 100, 200 ] }  # SLO series with data
       ]
     })
 
-    # Should return false because only SLO has data
+    # Should return false because only SLO has data; non-SLO series is all nil
     refute @controller.send(:meaningful_chart_data?)
   end
 
@@ -249,16 +249,29 @@ class ChartTableConcernTest < ActionController::TestCase
     assert @controller.send(:meaningful_chart_data?)
   end
 
-  test "meaningful_chart_data? returns false when all non-SLO data is zero" do
+  test "meaningful_chart_data? returns false when all non-SLO data is nil" do
     @controller.instance_variable_set(:@chart_data, {
       labels: [ 1000, 2000 ],
       series: [
-        { name: "Data", data: [ 0, 0 ] },
-        { name: "Other", data: [ 0, 0 ] }
+        { name: "Data", data: [ nil, nil ] },
+        { name: "Other", data: [ nil, nil ] }
       ]
     })
 
     refute @controller.send(:meaningful_chart_data?)
+  end
+
+  test "meaningful_chart_data? returns true when non-SLO data is zero" do
+    @controller.instance_variable_set(:@chart_data, {
+      labels: [ 1000, 2000 ],
+      series: [
+        { name: "Data", data: [ 0, 0 ] },
+        { name: "Other", data: [ nil, nil ] }
+      ]
+    })
+
+    # Zero is valid data (sub-millisecond queries round to 0)
+    assert @controller.send(:meaningful_chart_data?)
   end
 
   # build_chart_ransack_params Tests

@@ -5,7 +5,7 @@ RailsPulse::Engine.routes.draw do
   resources :requests, only: %i[index show]
   resources :queries, only: %i[index show] do
     member do
-      post :analyze
+      post :reanalyze
     end
   end
   resources :operations, only: %i[show]

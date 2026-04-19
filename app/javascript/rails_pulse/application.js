@@ -27,8 +27,6 @@ import FlameGraphController from "./controllers/flame_graph_controller";
 import ChartSwitcherController from "./controllers/chart_switcher_controller";
 import PeriodSelectorController from "./controllers/period_selector_controller";
 import TimeRangeController from "./controllers/time_range_controller";
-import QueryAnalyzerController from "./controllers/query_analyzer_controller";
-
 const application = Application.start();
 
 // Configure Stimulus application
@@ -61,7 +59,6 @@ application.register("rails-pulse--flame-graph", FlameGraphController);
 application.register("rails-pulse--chart-switcher", ChartSwitcherController);
 application.register("rails-pulse--period-selector", PeriodSelectorController);
 application.register("rails-pulse--time-range", TimeRangeController);
-application.register("rails-pulse--query-analyzer", QueryAnalyzerController);
 
 // Register ECharts theme for Rails Pulse
 echarts.registerTheme('railspulse', {

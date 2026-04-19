@@ -4,7 +4,7 @@ module RailsPulse
     include TagFilterConcern
     include MetricCardConcern
 
-    before_action :set_query, only: [ :show, :analyze ]
+    before_action :set_query, only: [ :show, :reanalyze ]
 
     def index
       setup_metric_cards
@@ -14,34 +14,14 @@ module RailsPulse
     def show
       setup_metric_cards
       setup_chart_and_table_data
-      setup_show_diagnostics
+      @all_query_operations = @query.recent_operations
+      @n_plus_one_groups = @query.n_plus_one_groups(@all_query_operations)
+      @query.ensure_analyzed!
     end
 
-    def analyze
-      begin
-        @analysis_results = QueryAnalysisService.analyze_query(@query.id)
-
-        respond_to do |format|
-          if partial_request?
-            # Reload query to get updated analysis data
-            @query.reload
-
-            # Render just the analysis wrapper for partial updates
-            format.html { render partial: "analysis_wrapper", locals: { query: @query }, layout: false }
-          else
-            format.html { redirect_to query_path(@query), notice: "Query analysis completed successfully." }
-          end
-        end
-      rescue => e
-        respond_to do |format|
-          if partial_request?
-            # Render error state in the analysis wrapper
-            format.html { render partial: "analysis_wrapper", locals: { query: @query, error_message: e.message }, layout: false }
-          else
-            format.html { redirect_to query_path(@query), alert: "Query analysis failed: #{e.message}" }
-          end
-        end
-      end
+    def reanalyze
+      @query.update_columns(analyzed_at: nil, explain_plan: nil)
+      redirect_to query_path(@query)
     end
 
     # Override to generate database load chart with custom parameters
@@ -169,53 +149,6 @@ module RailsPulse
     def setup_time_and_response_ranges
       @start_time, @end_time, @selected_time_range, @time_diff_hours = setup_time_range
       @start_duration, @selected_response_range = setup_duration_range(:query)
-    end
-
-    def setup_show_diagnostics
-      @all_query_operations = @query.operations.to_a
-
-      @n_plus_one_groups = @all_query_operations
-        .reject { |op| op.repeated_query_group.nil? }
-        .group_by(&:repeated_query_group)
-        .transform_values { |ops| ops.map(&:repetition_count).compact.max }
-
-      auto_generate_explain_plan
-    end
-
-    def auto_generate_explain_plan
-      serialized_updates = {}
-      column_updates = {}
-
-      if @query.explain_plan.blank?
-        ops = @query.operations
-          .where("occurred_at > ?", 30.days.ago)
-          .order(occurred_at: :desc)
-          .limit(50)
-
-        if ops.any?
-          result = Analysis::ExplainPlanAnalyzer.new(@query, ops).analyze
-          column_updates[:explain_plan] = result[:explain_plan] if result[:explain_plan].present?
-        end
-      end
-
-      if @query.query_stats.blank?
-        characteristics = Analysis::QueryCharacteristicsAnalyzer.new(@query).analyze
-        serialized_updates[:query_stats] = characteristics.except(:pattern_issues)
-        serialized_updates[:issues] = characteristics[:pattern_issues]
-      end
-
-      if @query.index_recommendations.blank?
-        recommendations = Analysis::IndexRecommendationEngine.new(@query).analyze
-        serialized_updates[:index_recommendations] = recommendations
-        suggestions = Analysis::SuggestionGenerator.new(index_recommendations: recommendations).generate
-        serialized_updates[:suggestions] = suggestions
-      end
-
-      @query.update!(serialized_updates) if serialized_updates.any?
-      @query.update_columns(column_updates) if column_updates.any?
-      @query.reload if serialized_updates.any? || column_updates.any?
-    rescue => e
-      RailsPulse.logger.warn("[QueriesController] Auto-analysis failed for query #{@query.id}: #{e.message}")
     end
 
     def set_query

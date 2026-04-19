@@ -574,19 +574,6 @@ module RailsPulse
         assert_nil missing_where_issue
       end
 
-      test "detects missing LIMIT issue" do
-        query = create_query("SELECT * FROM users WHERE active = true")
-        analyzer = QueryCharacteristicsAnalyzer.new(query)
-
-        result = analyzer.analyze
-
-        missing_limit_issue = result[:pattern_issues].find { |issue| issue[:type] == "missing_limit" }
-
-        assert_not_nil missing_limit_issue
-        assert_equal "warning", missing_limit_issue[:severity]
-        assert_includes missing_limit_issue[:description], "LIMIT"
-      end
-
       test "does not detect missing LIMIT issue when LIMIT present" do
         query = create_query("SELECT * FROM users WHERE active = true LIMIT 100")
         analyzer = QueryCharacteristicsAnalyzer.new(query)

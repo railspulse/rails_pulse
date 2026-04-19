@@ -157953,34 +157953,6 @@
   __publicField(time_range_controller_default, "targets", ["modalWrapper", "modal", "dateInput", "label", "trigger"]);
   __publicField(time_range_controller_default, "values", { url: String });
 
-  // app/javascript/rails_pulse/controllers/query_analyzer_controller.js
-  var query_analyzer_controller_default = class extends Controller {
-    async analyze(event) {
-      event.preventDefault();
-      const link = event.currentTarget;
-      const url = link.dataset.analyzeUrl;
-      if (!url) {
-        console.error("No analyze URL provided");
-        return;
-      }
-      try {
-        link.classList.add("opacity-50", "pointer-events-none");
-        const doc = await fetchPartial(url, { method: "POST" });
-        const newAnalysis = doc.querySelector("#query_analysis");
-        if (newAnalysis && this.hasAnalysisSectionTarget) {
-          replaceElement(this.analysisSectionTarget, newAnalysis);
-        }
-      } catch (error3) {
-        console.error("Query analysis error:", error3);
-      } finally {
-        if (link && link.parentElement) {
-          link.classList.remove("opacity-50", "pointer-events-none");
-        }
-      }
-    }
-  };
-  __publicField(query_analyzer_controller_default, "targets", ["analysisSection"]);
-
   // app/javascript/rails_pulse/application.js
   var application = Application.start();
   application.debug = false;
@@ -158008,7 +157980,6 @@
   application.register("rails-pulse--chart-switcher", chart_switcher_controller_default);
   application.register("rails-pulse--period-selector", period_selector_controller_default);
   application.register("rails-pulse--time-range", time_range_controller_default);
-  application.register("rails-pulse--query-analyzer", query_analyzer_controller_default);
   registerTheme("railspulse", {
     "color": ["#ffc91f", "#ffde66", "#fbedbf"],
     "backgroundColor": "rgba(255,255,255,0)",

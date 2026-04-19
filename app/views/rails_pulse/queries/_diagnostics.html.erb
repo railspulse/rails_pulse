@@ -1,4 +1,9 @@
-<%= render 'rails_pulse/components/panel', { title: 'Diagnostics' } do %>
+<%= render 'rails_pulse/components/panel', {
+  title: 'Diagnostics',
+  help_heading: 'Query Diagnostics',
+  help_text: 'Automatically generated analysis for this query. Includes N+1 detection (from live request data), query characteristics, detected issues, optimization suggestions, and a database EXPLAIN plan. Click Re-analyze to regenerate.',
+  actions: [ { url: reanalyze_query_path(query), method: :post, title: 'Re-analyze', icon: 'refresh-cw' } ]
+} do %>
 
   <%# N+1 Detection — from collected operations, no analysis required %>
   <% if n_plus_one_groups.any? %>
