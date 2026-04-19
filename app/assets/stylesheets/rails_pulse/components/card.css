@@ -61,6 +61,7 @@
 
 .metric-strip__trend-badge {
   flex-shrink: 0;
+  background: none;
 }
 
 .metric-strip__trend-label {
