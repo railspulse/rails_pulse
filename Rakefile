@@ -21,7 +21,8 @@ task :verify_dummy_migrations do
       m.include?("rails_pulse") ||
       m.include?("jobs") ||
       m.include?("query") ||
-      m.include?("request_uuid")
+      m.include?("request_uuid") ||
+      m.include?("diagnostic")
     end.sort
 
     missing = gem_migrations - dummy_migrations
