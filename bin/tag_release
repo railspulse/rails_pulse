@@ -89,10 +89,38 @@ if [ "$2" = "--notes" ]; then
 else
   # Try to generate release notes with AI
   USE_AI=false
-  if command -v claude &> /dev/null; then
-    if ask_yes_no "Generate release notes from git history?" "y"; then
-      USE_AI=true
-    fi
+  AI_CMD=""
+  if ask_yes_no "Generate release notes from git history?" "y"; then
+    echo ""
+    echo "Available AI tools:"
+    echo "  1) claude   - Claude AI"
+    echo "  2) opencode - Opencode AI"
+    echo ""
+    while true; do
+      read -p "Choose AI tool (1-2): " AI_CHOICE
+      case "$AI_CHOICE" in
+        1)
+          if command -v claude &> /dev/null; then
+            AI_CMD="claude --print"
+            break
+          else
+            echo "claude not found. Please install it first."
+          fi
+          ;;
+        2)
+          if command -v opencode &> /dev/null; then
+            AI_CMD="opencode run"
+            break
+          else
+            echo "opencode not found. Please install it first."
+          fi
+          ;;
+        *)
+          echo "Invalid choice. Enter 1 or 2."
+          ;;
+      esac
+    done
+    USE_AI=true
   fi
 
   if [ "$USE_AI" = true ]; then
@@ -142,8 +170,12 @@ Release v$VERSION
 
 Be concise but descriptive. Focus on user-facing changes. Group related changes together. If a section has no items, write \"- None\" or skip it."
 
-    # Generate notes
-    TEMPLATE=$(echo "$AI_PROMPT" | claude --print 2>/dev/null || echo "")
+    # Generate notes using selected AI tool
+    if [ "$AI_CMD" = "claude --print" ]; then
+      TEMPLATE=$(echo "$AI_PROMPT" | claude --print 2>/dev/null || echo "")
+    else
+      TEMPLATE=$(opencode run "$AI_PROMPT" 2>/dev/null || echo "")
+    fi
 
     if [ -z "$TEMPLATE" ]; then
       echo -e "${YELLOW}⚠${NC}  Generation failed, using default template"
