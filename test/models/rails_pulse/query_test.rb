@@ -213,13 +213,13 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
     query = rails_pulse_queries(:simple_query)
     ops = query.operations.to_a
 
-    assert_equal({}, query.n_plus_one_groups(ops))
+    assert_empty(query.n_plus_one_groups(ops))
   end
 
   test "n_plus_one_groups returns empty hash for empty array" do
     query = rails_pulse_queries(:simple_query)
 
-    assert_equal({}, query.n_plus_one_groups([]))
+    assert_empty(query.n_plus_one_groups([]))
   end
 
   test "n_plus_one_groups groups operations by repeated_query_group" do

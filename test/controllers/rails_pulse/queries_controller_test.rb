@@ -36,6 +36,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to rails_pulse_engine.query_path(query)
     query.reload
+
     assert_nil query.analyzed_at
     assert_nil query.explain_plan
   end
