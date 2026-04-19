@@ -197,6 +197,7 @@ module RailsPulse
 
           if result[:labels].length > 1
             step_ms = result[:labels][1] - result[:labels][0]
+
             assert_equal 86400, step_ms / 1000
           end
         end
@@ -213,6 +214,7 @@ module RailsPulse
 
           if result[:labels].length > 1
             step_ms = result[:labels][1] - result[:labels][0]
+
             assert_equal 3600, step_ms / 1000
           end
         end
