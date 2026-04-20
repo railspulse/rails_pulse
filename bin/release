@@ -224,6 +224,54 @@ read -p "Press Enter to continue..."
 echo ""
 
 # ============================================================================
+# STEP 4: Changelog
+# ============================================================================
+echo -e "${BOLD}${BLUE}📝 Changelog${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Check if [Unreleased] section has any content
+UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md | grep -v '^$')
+
+if [ -z "$UNRELEASED_CONTENT" ]; then
+  echo -e "${YELLOW}⚠  The [Unreleased] section in CHANGELOG.md is empty.${NC}"
+  echo ""
+else
+  echo -e "${GREEN}✓${NC} [Unreleased] section has content"
+  echo ""
+fi
+
+# Show git log since last tag
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ -n "$LAST_TAG" ]; then
+  echo "Commits since $LAST_TAG:"
+  git log "$LAST_TAG"..HEAD --oneline --no-merges
+else
+  echo "Commits (no previous tag found):"
+  git log --oneline --no-merges | head -20
+fi
+echo ""
+
+if ask_yes_no "Open CHANGELOG.md to review/update [Unreleased]?"; then
+  ${EDITOR:-vi} CHANGELOG.md
+  echo ""
+fi
+
+# Final check — abort if still empty
+UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md | grep -v '^$')
+if [ -z "$UNRELEASED_CONTENT" ]; then
+  echo -e "${YELLOW}⚠  [Unreleased] section is still empty.${NC}"
+  if ! ask_yes_no "Continue anyway?"; then
+    echo "Aborted. Update CHANGELOG.md and try again."
+    exit 1
+  fi
+fi
+
+echo ""
+read -p "Press Enter to continue..."
+echo ""
+
+# ============================================================================
 # STEP 4: Version Bump
 # ============================================================================
 echo -e "${BOLD}${BLUE}📦 Version Bump${NC}"
