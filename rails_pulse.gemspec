@@ -3,11 +3,11 @@ require_relative "lib/rails_pulse/version"
 Gem::Specification.new do |spec|
   spec.name        = "rails_pulse"
   spec.version     = RailsPulse::VERSION
-  spec.authors     = [ "Rails Pulse" ]
+  spec.authors     = [ "Scott Harvey" ]
   spec.email       = [ "hey@railspulse.com" ]
-  spec.homepage    = "https://www.railspulse.com"
-  spec.summary     = "Ruby on Rails performance monitoring tool."
-  spec.description = "Ruby on Rails performance monitoring tool that provides insights into your application's performance, helping you identify bottlenecks and optimize your code for better efficiency."
+  spec.homepage    = "https://railspulse.com"
+  spec.summary     = "Self-hosted performance monitoring engine for Rails apps."
+  spec.description = "Self-hosted performance monitoring engine for Rails apps. Tracks slow requests, N+1 queries, and SQL performance. All data stays in your own database — no third-party cloud required."
   spec.license     = "MIT"
 
   # Specify minimum Ruby version
@@ -16,8 +16,10 @@ Gem::Specification.new do |spec|
   # Allow pushing to RubyGems.org
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
 
-  spec.metadata["homepage_uri"] = "https://www.railspulse.com"
+  spec.metadata["homepage_uri"] = "https://railspulse.com"
   spec.metadata["source_code_uri"] = "https://github.com/railspulse/rails_pulse"
+  spec.metadata["changelog_uri"] = "https://github.com/railspulse/rails_pulse/blob/main/CHANGELOG.md"
+  spec.metadata["documentation_uri"] = "https://railspulse.com"
 
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
     Dir["{app,config,db,exe,lib,public,vendor}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
