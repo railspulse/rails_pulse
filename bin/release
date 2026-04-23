@@ -33,9 +33,9 @@ ${BOLD}Usage:${NC}
   bin/release
 
 ${BOLD}What it does:${NC}
-  1. Pre-flight checks (git status, branch, etc.)
-  2. Brakeman security scan
-  3. Pre-release tests (optional - rake test_release)
+  1. Pre-flight checks (git status, branch, etc.) — hard stop on failure
+  2. Pre-release tests (rake test_release — includes RuboCop, Brakeman, full matrix)
+  3. Changelog review
   4. Version bump (calls bin/bump_version)
   5. Commit changes (calls bin/commit_release)
   6. Create git tag (calls bin/tag_release)
@@ -118,14 +118,12 @@ check_command npm
 
 # Check git status
 if [ -n "$(git status --porcelain)" ]; then
-  echo -e "${RED}✗${NC} Git working directory is not clean"
+  echo -e "${RED}✗ Git working directory is not clean${NC}"
   echo ""
   git status --short
   echo ""
-  if ! ask_yes_no "Continue anyway?"; then
-    echo "Aborted. Commit or stash your changes first."
-    exit 1
-  fi
+  echo "Aborted. Commit or stash your changes first."
+  exit 1
 else
   echo -e "${GREEN}✓${NC} Git working directory is clean"
 fi
@@ -133,11 +131,9 @@ fi
 # Check current branch
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 if [ "$CURRENT_BRANCH" != "main" ]; then
-  echo -e "${YELLOW}⚠${NC}  On branch: $CURRENT_BRANCH (expected: main)"
-  if ! ask_yes_no "Continue anyway?"; then
-    echo "Aborted. Switch to main branch first."
-    exit 1
-  fi
+  echo -e "${RED}✗ On branch: $CURRENT_BRANCH (expected: main)${NC}"
+  echo "Aborted. Switch to main branch first."
+  exit 1
 else
   echo -e "${GREEN}✓${NC} On main branch"
 fi
@@ -148,11 +144,9 @@ LOCAL=$(git rev-parse @)
 REMOTE=$(git rev-parse @{u})
 
 if [ "$LOCAL" != "$REMOTE" ]; then
-  echo -e "${YELLOW}⚠${NC}  Local branch is not up to date with origin"
-  if ! ask_yes_no "Continue anyway?"; then
-    echo "Aborted. Pull latest changes first."
-    exit 1
-  fi
+  echo -e "${RED}✗ Local branch is not up to date with origin${NC}"
+  echo "Aborted. Pull latest changes first."
+  exit 1
 else
   echo -e "${GREEN}✓${NC} Up to date with origin"
 fi
@@ -160,30 +154,7 @@ fi
 echo ""
 
 # ============================================================================
-# STEP 2: Brakeman Security Scan
-# ============================================================================
-echo -e "${BOLD}${BLUE}🔒 Security Scan (Brakeman)${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
-
-if rake brakeman; then
-  echo ""
-  echo -e "${GREEN}✓ No security issues found${NC}"
-else
-  echo ""
-  echo -e "${RED}❌ Brakeman found security issues!${NC}"
-  if ! ask_yes_no "Continue anyway?"; then
-    echo "Aborted. Fix security issues and try again."
-    exit 1
-  fi
-fi
-
-echo ""
-read -p "Press Enter to continue..."
-echo ""
-
-# ============================================================================
-# STEP 3: Pre-release Tests (Optional)
+# STEP 2: Pre-release Tests
 # ============================================================================
 echo -e "${BOLD}${BLUE}🧪 Pre-release Tests${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -209,10 +180,8 @@ if ask_yes_no "Run pre-release tests? (rake test_release)" "y"; then
   else
     echo ""
     echo -e "${RED}❌ Pre-release tests failed!${NC}"
-    if ! ask_yes_no "Continue anyway?"; then
-      echo "Aborted. Fix tests and try again."
-      exit 1
-    fi
+    echo "Aborted. Fix tests and try again."
+    exit 1
   fi
 else
   echo -e "${YELLOW}⊘ Skipping pre-release tests${NC}"
@@ -220,7 +189,51 @@ else
 fi
 
 echo ""
-read -p "Press Enter to continue..."
+
+# ============================================================================
+# STEP 3: Changelog
+# ============================================================================
+echo -e "${BOLD}${BLUE}📝 Changelog${NC}"
+echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+echo ""
+
+# Check if [Unreleased] section has any content
+UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md | grep -v '^$')
+
+if [ -z "$UNRELEASED_CONTENT" ]; then
+  echo -e "${YELLOW}⚠  The [Unreleased] section in CHANGELOG.md is empty.${NC}"
+  echo ""
+else
+  echo -e "${GREEN}✓${NC} [Unreleased] section has content"
+  echo ""
+fi
+
+# Show git log since last tag
+LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
+if [ -n "$LAST_TAG" ]; then
+  echo "Commits since $LAST_TAG:"
+  git log "$LAST_TAG"..HEAD --oneline --no-merges
+else
+  echo "Commits (no previous tag found):"
+  git log --oneline --no-merges | head -20
+fi
+echo ""
+
+if ask_yes_no "Open CHANGELOG.md to review/update [Unreleased]?"; then
+  ${EDITOR:-vi} CHANGELOG.md
+  echo ""
+fi
+
+# Final check — abort if still empty
+UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md | grep -v '^$')
+if [ -z "$UNRELEASED_CONTENT" ]; then
+  echo -e "${YELLOW}⚠  [Unreleased] section is still empty.${NC}"
+  if ! ask_yes_no "Continue anyway?"; then
+    echo "Aborted. Update CHANGELOG.md and try again."
+    exit 1
+  fi
+fi
+
 echo ""
 
 # ============================================================================
@@ -267,8 +280,6 @@ echo ""
 ./bin/bump_version "$NEW_VERSION"
 
 echo ""
-read -p "Press Enter to continue..."
-echo ""
 
 # ============================================================================
 # STEP 5: Commit Version Bump
@@ -279,8 +290,6 @@ echo ""
 
 ./bin/commit_release "$NEW_VERSION"
 
-echo ""
-read -p "Press Enter to continue..."
 echo ""
 
 # ============================================================================
@@ -302,7 +311,7 @@ echo ""
 ./bin/tag_release "$NEW_VERSION"
 
 echo ""
-read -p "Press Enter to continue..."
+read -p "Press Enter to push to GitHub and publish..."
 echo ""
 
 # ============================================================================
@@ -334,8 +343,6 @@ fi
 ./bin/push_release $WAIT_CI_FLAG
 
 echo ""
-read -p "Press Enter to continue..."
-echo ""
 
 # ============================================================================
 # STEP 8: Publish Gem
@@ -357,8 +364,6 @@ else
   ./bin/publish_gem
 fi
 
-echo ""
-read -p "Press Enter to continue..."
 echo ""
 
 # ============================================================================
