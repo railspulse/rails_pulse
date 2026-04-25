@@ -1,21 +1,28 @@
 <%= link_to root_path, class: 'btn sidebar-menu__button' do %>
-  <%= rails_pulse_icon 'layout-dashboard', width: '16' %>
+  <%= rails_pulse_icon "layout-dashboard", width: "16" %>
   <span class="overflow-ellipsis">Dashboard</span>
 <% end %>
 
 <%= link_to routes_path, class: 'btn sidebar-menu__button' do %>
-  <%= rails_pulse_icon 'route', width: '16' %>
+  <%= rails_pulse_icon "route", width: "16" %>
   <span class="overflow-ellipsis">Routes</span>
 <% end %>
 
 <%= link_to queries_path, class: 'btn sidebar-menu__button' do %>
-  <%= rails_pulse_icon 'database', width: '16' %>
+  <%= rails_pulse_icon "database", width: "16" %>
   <span class="overflow-ellipsis">Queries</span>
 <% end %>
 
 <% if RailsPulse.configuration.track_jobs %>
   <%= link_to jobs_path, class: 'btn sidebar-menu__button' do %>
-    <%= rails_pulse_icon 'zap', width: '16' %>
+    <%= rails_pulse_icon "zap", width: "16" %>
     <span class="overflow-ellipsis">Jobs</span>
+  <% end %>
+<% end %>
+
+<% RailsPulse.nav_items.each do |item| %>
+  <%= link_to public_send(item[:path_helper]), class: 'btn sidebar-menu__button' do %>
+    <%= rails_pulse_icon item[:icon], width: "16" %>
+    <span class="overflow-ellipsis"><%= item[:label] %></span>
   <% end %>
 <% end %>
