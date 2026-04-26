@@ -30,6 +30,7 @@ module RailsPulse
     end
 
     def logger
+      return Logger.new($stdout) unless Rails.logger
       @logger ||= ActiveSupport::TaggedLogging.new(Rails.logger).tagged("RailsPulse")
     end
 
