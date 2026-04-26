@@ -54,6 +54,18 @@
         data-action="click->rails-pulse--series-toggle#toggle"
       >P99</button>
     </div>
+    <%# Deployments toggle — always visible when markers exist %>
+    <% if @deployment_markers&.any? %>
+      <div class="panel-tabs__toggles" style="display: flex;">
+        <button
+          class="series-toggle"
+          style="color: #22c55e"
+          data-active="<%= @show_deployment_markers %>"
+          data-controller="rails-pulse--deployment-markers-toggle"
+          data-action="click->rails-pulse--deployment-markers-toggle#toggle"
+        >Deploys</button>
+      </div>
+    <% end %>
     <%# 5xx/4xx toggles — only shown for Error Rates %>
     <div
       data-rails-pulse--chart-switcher-target="toggleGroup"

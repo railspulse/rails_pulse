@@ -3,6 +3,11 @@ module RailsPulse
     # Main chart rendering method - unified API for all chart types
     # Uses Stimulus controller to handle chart initialization
     def render_stimulus_chart(data, type:, **options)
+      # Auto-inject deployment markers into multi-series chart data when available
+      if data.is_a?(Hash) && data[:labels].present? && @deployment_markers&.any?
+        data = data.merge(deployment_markers: @deployment_markers)
+      end
+
       chart_id = options[:id] || "rails-pulse-chart-#{SecureRandom.hex(8)}"
       height = options[:height] || "400px"
       width = options[:width] || "100%"

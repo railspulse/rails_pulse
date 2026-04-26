@@ -23,6 +23,9 @@ RailsPulse::Engine.routes.draw do
   post "tags/:taggable_type/:taggable_id/add", to: "tags#create", as: :add_tag
   delete "tags/:taggable_type/:taggable_id/remove", to: "tags#destroy", as: :remove_tag
 
+  # Deployment event recording (API endpoint for CI/CD)
+  resources :deployments, only: [ :create ]
+
   # CSP compliance testing
   get "csp_test", to: "csp_test#show", as: :csp_test
 

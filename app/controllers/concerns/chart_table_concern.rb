@@ -18,6 +18,7 @@ module ChartTableConcern
     include ZoomRangeConcern
 
     before_action :setup_time_and_response_ranges
+    before_action :populate_deployment_markers
     before_action :setup_zoom_range_data
   end
 
@@ -78,6 +79,12 @@ module ChartTableConcern
     handle_pagination
 
     @pagination, @table_data = paginate(table_results, limit: session_pagination_limit)
+  end
+
+  def populate_deployment_markers
+    @deployment_markers = RailsPulse::Deployment
+      .for_range(Time.zone.at(@start_time), Time.zone.at(@end_time))
+      .map(&:to_chart_marker)
   end
 
   def setup_zoom_range_data

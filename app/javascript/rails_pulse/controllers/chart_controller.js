@@ -12,13 +12,16 @@ export default class extends Controller {
     this.initializeChart()
     this.handleColorSchemeChange = this.onColorSchemeChange.bind(this)
     this.handleSeriesToggle = this.onSeriesToggle.bind(this)
+    this.handleDeploymentMarkersToggle = this.onDeploymentMarkersToggle.bind(this)
     document.addEventListener('rails-pulse:color-scheme-changed', this.handleColorSchemeChange)
     document.addEventListener('rails-pulse:toggle-series', this.handleSeriesToggle)
+    document.addEventListener('rails-pulse:toggle-deployment-markers', this.handleDeploymentMarkersToggle)
   }
 
   disconnect() {
     document.removeEventListener('rails-pulse:color-scheme-changed', this.handleColorSchemeChange)
     document.removeEventListener('rails-pulse:toggle-series', this.handleSeriesToggle)
+    document.removeEventListener('rails-pulse:toggle-deployment-markers', this.handleDeploymentMarkersToggle)
     this.disposeChart()
   }
 
@@ -120,6 +123,32 @@ export default class extends Controller {
       config.legend = { show: false, selected: selected }
     }
 
+    // Add deployment markers after legend is set so we can find the first visible series
+    const chartData = this.dataValue
+    console.log('[RailsPulse] chart data keys:', Object.keys(chartData))
+    console.log('[RailsPulse] deployment_markers:', chartData.deployment_markers)
+    if (chartData.deployment_markers && chartData.deployment_markers.length > 0) {
+      // Check if deployment markers should be visible initially
+      const deploysButton = document.querySelector('[data-controller~="rails-pulse--deployment-markers-toggle"]')
+      const markersVisible = !deploysButton || deploysButton.dataset.active !== 'false'
+
+      const selected = config.legend?.selected || {}
+      const targetIndex = config.series
+        ? config.series.findIndex(s => selected[s.name] !== false)
+        : -1
+      const seriesIndex = targetIndex >= 0 ? targetIndex : 0
+
+      if (markersVisible) {
+        console.log('[RailsPulse] injecting', chartData.deployment_markers.length, 'deployment markers into', this.element.id, 'on series', seriesIndex)
+        this.addDeploymentMarkers(config, chartData.deployment_markers, seriesIndex)
+      } else {
+        // Store marker data for later toggle, but don't render initially
+        this._deploymentMarkLineData = this.buildMarkLineData(chartData.deployment_markers, config.xAxis?.data || [])
+        this._deploymentMarkSeriesIndex = seriesIndex
+        console.log('[RailsPulse] deployment markers hidden by default for', this.element.id)
+      }
+    }
+
     return config
   }
 
@@ -201,6 +230,63 @@ export default class extends Controller {
           data: values
         }]
       }
+    }
+  }
+
+  buildMarkLineData(markers, xAxisData) {
+    return markers.flatMap(marker => {
+      const markerTs = marker.timestamp
+      let nearestIndex = -1
+      let minDiff = Infinity
+      xAxisData.forEach((label, i) => {
+        const diff = Math.abs(Number(label) - markerTs)
+        if (diff < minDiff) { minDiff = diff; nearestIndex = i }
+      })
+      if (nearestIndex === -1) return []
+      return [{
+        name: marker.revision,
+        xAxis: nearestIndex,
+        label: { show: false },
+        lineStyle: { color: '#22c55e', type: 'dashed', width: 1.5 }
+      }]
+    })
+  }
+
+  addDeploymentMarkers(config, markers, seriesIndex = 0) {
+    if (!config.series || config.series.length === 0) {
+      console.log('[RailsPulse] addDeploymentMarkers: no series, skipping')
+      return
+    }
+    const xAxisData = config.xAxis?.data || []
+    if (xAxisData.length === 0) {
+      console.log('[RailsPulse] addDeploymentMarkers: no xAxis data, skipping')
+      return
+    }
+    console.log('[RailsPulse] addDeploymentMarkers: xAxis has', xAxisData.length, 'points, first:', xAxisData[0], 'markers:', markers.map(m => m.revision + '@' + m.timestamp))
+
+    const markLineData = this.buildMarkLineData(markers, xAxisData)
+
+    if (markLineData.length === 0) return
+
+    // Store for toggle support
+    this._deploymentMarkLineData = markLineData
+    this._deploymentMarkSeriesIndex = seriesIndex
+
+    config.series[seriesIndex].markLine = {
+      symbol: [ 'none', 'none' ],
+      silent: false,
+      tooltip: {
+        show: true,
+        formatter: (params) => {
+          const m = markers.find(d => d.revision === params.name)
+          if (!m) return params.name
+          const date = new Date(m.deployed_at).toLocaleString('en-US', {
+            month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+          })
+          return `<strong>Deploy</strong><br/>${m.revision}<br/>${date}`
+        }
+      },
+      data: markLineData
     }
   }
 
@@ -607,6 +693,18 @@ export default class extends Controller {
     namesToToggle.forEach(name => {
       this.chart.dispatchAction({ type: 'legendToggleSelect', name })
     })
+  }
+
+  // Deployment markers toggle — show/hide markLine on series[0]
+  onDeploymentMarkersToggle({ detail: { visible } }) {
+    if (!this.chart || !this._deploymentMarkLineData) return
+
+    const i = this._deploymentMarkSeriesIndex
+    const seriesUpdate = Array.from({ length: i + 1 }, (_, idx) => idx === i
+      ? { markLine: { data: visible ? this._deploymentMarkLineData : [] } }
+      : {}
+    )
+    this.chart.setOption({ series: seriesUpdate })
   }
 
   // Handle legend toggle to adjust border radius for stacked bars

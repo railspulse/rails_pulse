@@ -1,0 +1,13 @@
+v1_deploy:
+  revision: "abc1234"
+  deployed_at: <%= 2.hours.ago %>
+  metadata: ~
+  created_at: <%= 2.hours.ago %>
+  updated_at: <%= 2.hours.ago %>
+
+v2_deploy:
+  revision: "def5678"
+  deployed_at: <%= 30.minutes.ago %>
+  metadata: '{"environment":"production","triggered_by":"CI"}'
+  created_at: <%= 30.minutes.ago %>
+  updated_at: <%= 30.minutes.ago %>

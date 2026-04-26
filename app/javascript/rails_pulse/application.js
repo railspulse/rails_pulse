@@ -23,6 +23,7 @@ import TableSortController from "./controllers/table_sort_controller";
 import GlobalFiltersController from "./controllers/global_filters_controller";
 import CustomRangeController from "./controllers/custom_range_controller"
 import SeriesToggleController from "./controllers/series_toggle_controller";
+import DeploymentMarkersToggleController from "./controllers/deployment_markers_toggle_controller";
 import FlameGraphController from "./controllers/flame_graph_controller";
 import ChartSwitcherController from "./controllers/chart_switcher_controller";
 import PeriodSelectorController from "./controllers/period_selector_controller";
@@ -55,6 +56,7 @@ application.register("rails-pulse--table-sort", TableSortController);
 application.register("rails-pulse--global-filters", GlobalFiltersController);
 application.register("rails-pulse--custom-range", CustomRangeController);
 application.register("rails-pulse--series-toggle", SeriesToggleController);
+application.register("rails-pulse--deployment-markers-toggle", DeploymentMarkersToggleController);
 application.register("rails-pulse--flame-graph", FlameGraphController);
 application.register("rails-pulse--chart-switcher", ChartSwitcherController);
 application.register("rails-pulse--period-selector", PeriodSelectorController);
