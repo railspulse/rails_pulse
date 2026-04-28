@@ -198,13 +198,14 @@ RailsPulse::Schema ||= lambda do |connection|
   unless connection.table_exists?(:rails_pulse_deployments)
     connection.create_table :rails_pulse_deployments do |t|
       t.string   :revision,    null: false, comment: "Git SHA, tag, or version string"
-      t.datetime :deployed_at, null: false, comment: "When the deployment occurred"
-      t.text     :metadata,                 comment: "JSON object of arbitrary deployment metadata"
+      t.datetime :started_at,  null: false, comment: "When the deployment started"
+      t.datetime :finished_at,             comment: "When the deployment finished (nil if still in progress or unknown)"
+      t.text     :metadata,                comment: "JSON object of arbitrary deployment metadata"
       t.timestamps
     end
 
-    connection.add_index :rails_pulse_deployments, :deployed_at,
-      name: "index_rails_pulse_deployments_on_deployed_at"
+    connection.add_index :rails_pulse_deployments, :started_at,
+      name: "index_rails_pulse_deployments_on_started_at"
     connection.add_index :rails_pulse_deployments, :revision,
       name: "index_rails_pulse_deployments_on_revision"
   end

@@ -81,6 +81,15 @@ export default class extends Controller {
         this.handleLegendToggle(params)
       })
 
+      // Click-to-copy on deployment marker lines
+      this.chart.on('click', (params) => {
+        if (params.componentType === 'markLine' && params.name) {
+          navigator.clipboard.writeText(params.name).then(() => {
+            this.showCopiedToast(params.name)
+          }).catch(() => {})
+        }
+      })
+
       // Mark as rendered for tests
       this.element.setAttribute('data-chart-rendered', 'true')
 
@@ -125,8 +134,6 @@ export default class extends Controller {
 
     // Add deployment markers after legend is set so we can find the first visible series
     const chartData = this.dataValue
-    console.log('[RailsPulse] chart data keys:', Object.keys(chartData))
-    console.log('[RailsPulse] deployment_markers:', chartData.deployment_markers)
     if (chartData.deployment_markers && chartData.deployment_markers.length > 0) {
       // Check if deployment markers should be visible initially
       const deploysButton = document.querySelector('[data-controller~="rails-pulse--deployment-markers-toggle"]')
@@ -139,13 +146,11 @@ export default class extends Controller {
       const seriesIndex = targetIndex >= 0 ? targetIndex : 0
 
       if (markersVisible) {
-        console.log('[RailsPulse] injecting', chartData.deployment_markers.length, 'deployment markers into', this.element.id, 'on series', seriesIndex)
         this.addDeploymentMarkers(config, chartData.deployment_markers, seriesIndex)
       } else {
         // Store marker data for later toggle, but don't render initially
         this._deploymentMarkLineData = this.buildMarkLineData(chartData.deployment_markers, config.xAxis?.data || [])
         this._deploymentMarkSeriesIndex = seriesIndex
-        console.log('[RailsPulse] deployment markers hidden by default for', this.element.id)
       }
     }
 
@@ -253,16 +258,9 @@ export default class extends Controller {
   }
 
   addDeploymentMarkers(config, markers, seriesIndex = 0) {
-    if (!config.series || config.series.length === 0) {
-      console.log('[RailsPulse] addDeploymentMarkers: no series, skipping')
-      return
-    }
+    if (!config.series || config.series.length === 0) return
     const xAxisData = config.xAxis?.data || []
-    if (xAxisData.length === 0) {
-      console.log('[RailsPulse] addDeploymentMarkers: no xAxis data, skipping')
-      return
-    }
-    console.log('[RailsPulse] addDeploymentMarkers: xAxis has', xAxisData.length, 'points, first:', xAxisData[0], 'markers:', markers.map(m => m.revision + '@' + m.timestamp))
+    if (xAxisData.length === 0) return
 
     const markLineData = this.buildMarkLineData(markers, xAxisData)
 
@@ -280,10 +278,10 @@ export default class extends Controller {
         formatter: (params) => {
           const m = markers.find(d => d.revision === params.name)
           if (!m) return params.name
-          const date = new Date(m.deployed_at).toLocaleString('en-US', {
+          const date = new Date(m.started_at).toLocaleString('en-US', {
             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
           })
-          return `<strong>Deploy</strong><br/>${m.revision}<br/>${date}`
+          return `<strong>Deploy</strong><br/><code style="font-size:11px">${m.revision}</code><br/>${date}<br/><span style="font-size:10px;opacity:0.7">Click to copy SHA</span>`
         }
       },
       data: markLineData
@@ -644,6 +642,15 @@ export default class extends Controller {
     // Default: return a safe identity function that just returns the value
     console.warn('[RailsPulse] Unknown formatter pattern, using identity function:', formatterString.substring(0, 100))
     return (value) => value
+  }
+
+  showCopiedToast(revision) {
+    const toast = document.createElement('div')
+    toast.textContent = `Copied ${revision}`
+    toast.style.cssText = 'position:fixed;bottom:1rem;right:1rem;background:#22c55e;color:#fff;padding:0.4rem 0.8rem;border-radius:6px;font-size:13px;font-family:monospace;z-index:9999;pointer-events:none;opacity:1;transition:opacity 0.4s ease'
+    document.body.appendChild(toast)
+    setTimeout(() => { toast.style.opacity = '0' }, 1500)
+    setTimeout(() => { toast.remove() }, 2000)
   }
 
   showError() {

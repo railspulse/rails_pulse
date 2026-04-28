@@ -21,20 +21,27 @@ module RailsPulse
         interval = (current_time - start_time) / deployment_count
 
         deployment_count.times do |i|
-          base_time = start_time + (interval * i)
-          jitter = rand(-2.hours.to_i..2.hours.to_i).seconds
-          deployed_at = base_time + jitter
+          started_at = if i == deployment_count - 1
+            # Always place the last deployment within the default 24h view
+            rand(2..8).hours.ago
+          else
+            base_time = start_time + (interval * i)
+            jitter = rand(-2.hours.to_i..2.hours.to_i).seconds
+            base_time + jitter
+          end
 
+          finished_at = started_at + rand(2..8).minutes
           ::RailsPulse::Deployment.create!(
             revision: REVISIONS[i],
-            deployed_at: deployed_at,
+            started_at: started_at,
+            finished_at: finished_at,
             metadata: seed_metadata(i).to_json
           )
           print "."
         end
 
         puts " ✓ (#{deployment_count} deployments)"
-        ::RailsPulse::Deployment.order(:deployed_at).to_a
+        ::RailsPulse::Deployment.order(:started_at).to_a
       end
 
       private

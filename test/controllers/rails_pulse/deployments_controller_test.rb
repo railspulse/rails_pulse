@@ -23,10 +23,10 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "created", json["status"]
     assert_equal "newsha123", json["revision"]
     assert_not_nil json["id"]
-    assert_not_nil json["deployed_at"]
+    assert_not_nil json["started_at"]
   end
 
-  test "create sets deployed_at to current time when not provided" do
+  test "create sets started_at to current time when not provided" do
     freeze_time = Time.current
     travel_to freeze_time do
       post rails_pulse.deployments_path,
@@ -37,19 +37,42 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     assert_response :created
     deployment = RailsPulse::Deployment.last
 
-    assert_in_delta freeze_time.to_i, deployment.deployed_at.to_i, 2
+    assert_in_delta freeze_time.to_i, deployment.started_at.to_i, 2
   end
 
-  test "create accepts custom deployed_at" do
+  test "create accepts custom started_at" do
     custom_time = 1.hour.ago.iso8601
     post rails_pulse.deployments_path,
-         params: { deployment: { revision: "sha002", deployed_at: custom_time } },
+         params: { deployment: { revision: "sha002", started_at: custom_time } },
          as: :json
 
     assert_response :created
     deployment = RailsPulse::Deployment.last
 
     assert_equal "sha002", deployment.revision
+  end
+
+  test "create accepts finished_at" do
+    started = 10.minutes.ago.iso8601
+    finished = 5.minutes.ago.iso8601
+    post rails_pulse.deployments_path,
+         params: { deployment: { revision: "sha003", started_at: started, finished_at: finished } },
+         as: :json
+
+    assert_response :created
+    deployment = RailsPulse::Deployment.last
+
+    assert_not_nil deployment.finished_at
+    assert_not_nil JSON.parse(response.body)["finished_at"]
+  end
+
+  test "finished_at is nil when not provided" do
+    post rails_pulse.deployments_path,
+         params: { deployment: { revision: "sha004" } },
+         as: :json
+
+    assert_response :created
+    assert_nil RailsPulse::Deployment.last.finished_at
   end
 
   test "create returns 422 when revision is missing" do
@@ -59,7 +82,7 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
            as: :json
     end
 
-    assert_response :unprocessable_entity
+    assert_response :unprocessable_content
     json = JSON.parse(response.body)
 
     assert_equal "error", json["status"]
@@ -88,7 +111,7 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "github-actions", deployment.metadata_hash["triggered_by"]
   end
 
-  test "create response includes revision and deployed_at" do
+  test "create response includes revision and started_at" do
     post rails_pulse.deployments_path,
          params: { deployment: { revision: "abc999" } },
          as: :json
@@ -97,7 +120,8 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     json = JSON.parse(response.body)
 
     assert_includes json.keys, "revision"
-    assert_includes json.keys, "deployed_at"
+    assert_includes json.keys, "started_at"
+    assert_includes json.keys, "finished_at"
     assert_includes json.keys, "id"
   end
 end

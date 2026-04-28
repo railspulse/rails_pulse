@@ -19,23 +19,37 @@ module RailsPulse
     # Validations
 
     test "validates presence of revision" do
-      deployment = Deployment.new(deployed_at: Time.current)
+      deployment = Deployment.new(started_at: Time.current)
 
       refute_predicate deployment, :valid?
       assert_includes deployment.errors[:revision], "can't be blank"
     end
 
-    test "validates presence of deployed_at" do
+    test "validates presence of started_at" do
       deployment = Deployment.new(revision: "abc1234")
 
       refute_predicate deployment, :valid?
-      assert_includes deployment.errors[:deployed_at], "can't be blank"
+      assert_includes deployment.errors[:started_at], "can't be blank"
     end
 
     test "valid deployment saves successfully" do
       assert_difference -> { Deployment.count }, 1 do
-        Deployment.create!(revision: "xyz999", deployed_at: Time.current)
+        Deployment.create!(revision: "xyz999", started_at: Time.current)
       end
+    end
+
+    test "finished_at is optional" do
+      deployment = Deployment.create!(revision: "xyz999", started_at: Time.current)
+
+      assert_nil deployment.finished_at
+    end
+
+    test "finished_at can be set" do
+      started = 5.minutes.ago
+      finished = 2.minutes.ago
+      deployment = Deployment.create!(revision: "xyz999", started_at: started, finished_at: finished)
+
+      assert_in_delta finished.to_i, deployment.finished_at.to_i, 1
     end
 
     # Scopes
@@ -59,11 +73,11 @@ module RailsPulse
       assert_empty result
     end
 
-    test "recent orders by deployed_at desc" do
+    test "recent orders by started_at desc" do
       results = Deployment.recent
       if results.size > 1
         results.each_cons(2) do |a, b|
-          assert_operator a.deployed_at, :>=, b.deployed_at
+          assert_operator a.started_at, :>=, b.started_at
         end
       end
     end
@@ -77,9 +91,9 @@ module RailsPulse
       assert_kind_of Hash, marker
       assert_includes marker.keys, :timestamp
       assert_includes marker.keys, :revision
-      assert_includes marker.keys, :deployed_at
+      assert_includes marker.keys, :started_at
       assert_equal deployment.revision, marker[:revision]
-      assert_equal deployment.deployed_at.to_i * 1000, marker[:timestamp]
+      assert_equal deployment.started_at.to_i * 1000, marker[:timestamp]
     end
 
     test "to_chart_marker timestamp is in milliseconds" do
@@ -89,12 +103,12 @@ module RailsPulse
       assert_operator marker[:timestamp], :>, 1_000_000_000_000
     end
 
-    test "to_chart_marker deployed_at is ISO 8601 string" do
+    test "to_chart_marker started_at is ISO 8601 string" do
       deployment = rails_pulse_deployments(:v1_deploy)
       marker = deployment.to_chart_marker
 
-      assert_kind_of String, marker[:deployed_at]
-      assert_match(/\d{4}-\d{2}-\d{2}T/, marker[:deployed_at])
+      assert_kind_of String, marker[:started_at]
+      assert_match(/\d{4}-\d{2}-\d{2}T/, marker[:started_at])
     end
 
     # Edge Cases
@@ -134,7 +148,8 @@ module RailsPulse
       attrs = Deployment.ransackable_attributes
 
       assert_includes attrs, "revision"
-      assert_includes attrs, "deployed_at"
+      assert_includes attrs, "started_at"
+      assert_includes attrs, "finished_at"
       assert_includes attrs, "id"
       assert_includes attrs, "created_at"
     end

@@ -72,8 +72,8 @@ namespace :rails_pulse do
     revision = args[:revision]
     abort "ERROR: revision is required. Usage: rake rails_pulse:record_deployment[abc1234]" if revision.blank?
 
-    deployment = RailsPulse::Deployment.create!(revision: revision, deployed_at: Time.current)
-    puts "[RailsPulse] Deployment recorded: #{deployment.revision} at #{deployment.deployed_at}"
+    deployment = RailsPulse::Deployment.create!(revision: revision, started_at: Time.current)
+    puts "[RailsPulse] Deployment recorded: #{deployment.revision} at #{deployment.started_at}"
   rescue ActiveRecord::RecordInvalid => e
     abort "ERROR: #{e.message}"
   end

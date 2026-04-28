@@ -87,7 +87,7 @@ module ControllerTestHelpers
   end
 
   def assert_handles_invalid_params
-    assert_response :unprocessable_entity
+    assert_response :unprocessable_content
   end
 
   # Pagination helpers
