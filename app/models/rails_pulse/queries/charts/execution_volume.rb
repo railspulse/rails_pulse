@@ -20,21 +20,15 @@ module RailsPulse
           # Pad missing data with zeros using base class helper
           execution_data = pad_data_with_zeros(raw_data, @start_time, @end_time, time_step)
 
-          # Build labels array (timestamps in milliseconds for JavaScript)
-          labels = execution_data.keys.map { |timestamp| timestamp * 1000 }
-
-          # Build series data
+          # Build series data as [timestamp_ms, value] pairs for ECharts time axis
           series = [ {
             name: "Executions",
-            data: execution_data.values,
+            data: execution_data.map { |ts, v| [ ts * 1000, v ] },
             type: "bar",
             color: RailsPulse::ChartColors::DEFAULT
           } ]
 
-          {
-            labels: labels,
-            series: series
-          }
+          { series: series }
         end
 
         private

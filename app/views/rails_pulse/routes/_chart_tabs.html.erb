@@ -54,18 +54,6 @@
         data-action="click->rails-pulse--series-toggle#toggle"
       >P99</button>
     </div>
-    <%# Deployments toggle — always visible when markers exist %>
-    <% if @deployment_markers&.any? %>
-      <div class="panel-tabs__toggles" style="display: flex;">
-        <button
-          class="series-toggle"
-          style="color: #22c55e"
-          data-active="<%= @show_deployment_markers %>"
-          data-controller="rails-pulse--deployment-markers-toggle"
-          data-action="click->rails-pulse--deployment-markers-toggle#toggle"
-        >Deploys</button>
-      </div>
-    <% end %>
     <%# 5xx/4xx toggles — only shown for Error Rates %>
     <div
       data-rails-pulse--chart-switcher-target="toggleGroup"
@@ -92,9 +80,30 @@
         data-action="click->rails-pulse--series-toggle#toggle"
       >4xx</button>
     </div>
+    <%# Deployments toggle — always visible when markers exist %>
+    <% if @deployment_markers&.any? %>
+      <div
+        class="panel-tabs__toggles"
+        style="display: flex; align-items: center; gap: 0.5rem;"
+        data-controller="rails-pulse--deployment-markers-toggle"
+        data-active="<%= @show_deployment_markers %>"
+      >
+        <button
+          class="series-toggle"
+          style="color: #22c55e"
+          data-rails-pulse--deployment-markers-toggle-target="button"
+          data-active="<%= @show_deployment_markers %>"
+          data-action="click->rails-pulse--deployment-markers-toggle#toggle"
+        >Deploys</button>
+        <span
+          class="text-xs mbs-1"
+          data-rails-pulse--deployment-markers-toggle-target="message"
+          style="display: <%= @show_deployment_markers ? 'inline' : 'none' %>; color: #22c55e;"
+        >Click marker to copy</span>
+      </div>
+    <% end %>
   </div>
 </div>
-
 <!-- Response Time Chart -->
 <div
   class="chart-container chart-container--slim"
@@ -109,11 +118,7 @@
     type: "line",
     id: "response_time_percentiles_chart",
     height: "100%",
-    options:
-      line_chart_options(
-        units: "ms",
-        zoom: true
-      ),
+    options: line_chart_options(units: "ms", zoom: true),
   ) %>
 </div>
 <!-- Request Volume Chart -->
@@ -130,10 +135,7 @@
     type: "bar",
     id: "request_rate_chart",
     height: "100%",
-    options:
-      bar_chart_options(
-        zoom: true
-      ),
+    options: bar_chart_options(zoom: true),
   ) %>
 </div>
 <!-- Error Rate Chart -->
@@ -150,10 +152,6 @@
     type: "bar",
     id: "error_rate_chart",
     height: "100%",
-    options:
-      bar_chart_options(
-        units: "%",
-        zoom: true
-      ),
+    options: bar_chart_options(units: "%", zoom: true),
   ) %>
 </div>

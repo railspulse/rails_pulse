@@ -68,7 +68,7 @@ export default class extends Controller {
         }
       }))
 
-      // Responsive resize
+      // Responsive resize — also reposition pixel-based deployment markers
       this.resizeObserver = new ResizeObserver(() => {
         if (this.chart) {
           this.chart.resize()
@@ -89,6 +89,7 @@ export default class extends Controller {
           }).catch(() => {})
         }
       })
+
 
       // Mark as rendered for tests
       this.element.setAttribute('data-chart-rendered', 'true')
@@ -132,26 +133,14 @@ export default class extends Controller {
       config.legend = { show: false, selected: selected }
     }
 
-    // Add deployment markers after legend is set so we can find the first visible series
+    // Add deployment markers as a dedicated hidden series (time axis only)
     const chartData = this.dataValue
-    if (chartData.deployment_markers && chartData.deployment_markers.length > 0) {
-      // Check if deployment markers should be visible initially
+    const markers = chartData.deployment_markers
+    if (markers && markers.length > 0 && this._usesTimeAxisData(chartData)) {
       const deploysButton = document.querySelector('[data-controller~="rails-pulse--deployment-markers-toggle"]')
-      const markersVisible = !deploysButton || deploysButton.dataset.active !== 'false'
-
-      const selected = config.legend?.selected || {}
-      const targetIndex = config.series
-        ? config.series.findIndex(s => selected[s.name] !== false)
-        : -1
-      const seriesIndex = targetIndex >= 0 ? targetIndex : 0
-
-      if (markersVisible) {
-        this.addDeploymentMarkers(config, chartData.deployment_markers, seriesIndex)
-      } else {
-        // Store marker data for later toggle, but don't render initially
-        this._deploymentMarkLineData = this.buildMarkLineData(chartData.deployment_markers, config.xAxis?.data || [])
-        this._deploymentMarkSeriesIndex = seriesIndex
-      }
+      const isVisible = !deploysButton || deploysButton.dataset.active !== 'false'
+      config.series = config.series || []
+      config.series.push(this._buildDeploymentMarkerSeries(markers, isVisible))
     }
 
     return config
@@ -160,12 +149,34 @@ export default class extends Controller {
   setChartData(config) {
     const data = this.dataValue
 
-    // Check if data is in multi-series format (has labels and series keys)
-    if (data && typeof data === 'object' && data.labels && data.series) {
-      // Multi-series format
+    // Check if data is in multi-series format (has series key)
+    if (data && typeof data === 'object' && data.series) {
+      // Detect axis type from first data point: [timestamp, value] pairs or { value: [timestamp, value] }
+      // use a true time axis; plain values remain category axis.
+      const firstPoint = data.series[0]?.data?.[0]
+      const isTimePairs = Array.isArray(firstPoint) || Array.isArray(firstPoint?.value)
+
       config.xAxis = config.xAxis || {}
-      config.xAxis.type = 'category'
-      config.xAxis.data = data.labels
+      if (isTimePairs) {
+        config.xAxis.type = 'time'
+        // ECharts time axis leveledFormat doesn't support JS function formatters —
+        // it expects native format strings ('{MM}/{dd}') or undefined. Replace any
+        // function formatter with an appropriate native time format string.
+        if (config.xAxis.axisLabel) {
+          if (typeof config.xAxis.axisLabel.formatter === 'function') {
+            // Detect granularity from data: < 1 day between points = hourly
+            const p0 = data.series[0]?.data?.[0]
+            const p1 = data.series[0]?.data?.[1]
+            const t0 = Array.isArray(p0) ? p0[0] : p0?.value?.[0]
+            const t1 = Array.isArray(p1) ? p1[0] : p1?.value?.[0]
+            const isHourly = t0 && t1 && (t1 - t0) < 86400000
+            config.xAxis.axisLabel.formatter = isHourly ? '{HH}:{mm}' : '{MM}/{dd}'
+          }
+        }
+      } else {
+        config.xAxis.type = 'category'
+        config.xAxis.data = data.labels
+      }
 
       // Set yAxis
       config.yAxis = config.yAxis || {}
@@ -173,13 +184,12 @@ export default class extends Controller {
 
       // Set series data from provided series array, merging any series-level options (e.g. itemStyle)
       const seriesOptions = (config.series && !Array.isArray(config.series)) ? config.series : {}
-      config.series = data.series.map((seriesData) => {
-        return {
-          type: this.typeValue,
-          ...seriesOptions,
-          ...seriesData
-        }
-      })
+      config.series = data.series.map((seriesData) => ({
+        type: this.typeValue,
+        ...seriesOptions,
+        ...seriesData
+      }))
+
     } else {
       // Single-series format (backward compatibility)
       // Extract labels and values
@@ -238,53 +248,98 @@ export default class extends Controller {
     }
   }
 
-  buildMarkLineData(markers, xAxisData) {
-    return markers.flatMap(marker => {
-      const markerTs = marker.timestamp
-      let nearestIndex = -1
-      let minDiff = Infinity
-      xAxisData.forEach((label, i) => {
-        const diff = Math.abs(Number(label) - markerTs)
-        if (diff < minDiff) { minDiff = diff; nearestIndex = i }
-      })
-      if (nearestIndex === -1) return []
-      return [{
-        name: marker.revision,
-        xAxis: nearestIndex,
-        label: { show: false },
-        lineStyle: { color: '#22c55e', type: 'dashed', width: 1.5 }
-      }]
-    })
+  _usesTimeAxisData(data = this.dataValue) {
+    const firstPoint = data?.series?.find(series => Array.isArray(series?.data) && series.data.length > 0)?.data?.[0]
+    return Array.isArray(firstPoint) || Array.isArray(firstPoint?.value)
   }
 
-  addDeploymentMarkers(config, markers, seriesIndex = 0) {
-    if (!config.series || config.series.length === 0) return
-    const xAxisData = config.xAxis?.data || []
-    if (xAxisData.length === 0) return
+  _deploymentMarkerSeriesId() {
+    return 'rails-pulse-deployment-markers'
+  }
 
-    const markLineData = this.buildMarkLineData(markers, xAxisData)
+  _buildDeploymentMarkerSeries(markers, visible = true) {
+    return {
+      id: this._deploymentMarkerSeriesId(),
+      type: 'line',
+      data: [],
+      name: '',
+      showSymbol: false,
+      symbolSize: 0,
+      silent: false,
+      animation: false,
+      legendHoverLink: false,
+      lineStyle: { opacity: 0 },
+      itemStyle: { opacity: 0 },
+      tooltip: { show: false },
+      z: 10,
+      markLine: visible ? this._buildMarkLineConfig(markers) : { data: [] }
+    }
+  }
 
-    if (markLineData.length === 0) return
+  _buildMarkLineConfig(markers) {
+    const labelFormatter = (params) => {
+      const timestamp = params?.data?.xAxis
+      const revision = params?.data?.revision
+      if (typeof timestamp !== 'number') return ''
 
-    // Store for toggle support
-    this._deploymentMarkLineData = markLineData
-    this._deploymentMarkSeriesIndex = seriesIndex
+      const timeString = new Date(timestamp).toLocaleTimeString('en-US', {
+        hour: '2-digit', minute: '2-digit', hour12: false
+      })
 
-    config.series[seriesIndex].markLine = {
+      if (!revision) return `{time|${timeString}}`
+      return `{time|${timeString}}\n{revision|${revision}}`
+    }
+
+    const lineStyle = { color: '#22c55e', type: 'dashed', width: 2, opacity: 0.8 }
+    const labelConfig = {
+      color: '#22c55e',
+      formatter: labelFormatter,
+      rich: {
+        time: {
+          color: '#22c55e',
+          fontWeight: 600
+        },
+        revision: {
+          color: '#22c55e',
+          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace',
+          fontSize: 11
+        }
+      }
+    }
+
+    return {
       symbol: [ 'none', 'none' ],
       silent: false,
+      lineStyle: lineStyle,
+      label: {
+        ...labelConfig,
+        show: false
+      },
+      emphasis: {
+        lineStyle: lineStyle,
+        label: {
+          ...labelConfig,
+          show: true
+        }
+      },
+      data: markers.map(m => ({
+        xAxis: m.timestamp,
+        name: m.revision,
+        revision: m.revision,
+        started_at: m.started_at
+      })),
       tooltip: {
         show: true,
         formatter: (params) => {
-          const m = markers.find(d => d.revision === params.name)
-          if (!m) return params.name
-          const date = new Date(m.started_at).toLocaleString('en-US', {
+          const revision = params?.data?.revision || params.name
+          const startedAt = params?.data?.started_at
+          if (!startedAt) return revision
+          const date = new Date(startedAt).toLocaleString('en-US', {
             month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
           })
-          return `<strong>Deploy</strong><br/><code style="font-size:11px">${m.revision}</code><br/>${date}<br/><span style="font-size:10px;opacity:0.7">Click to copy SHA</span>`
+          return `<strong>Deploy</strong><br/><code style="font-size:11px">${revision}</code><br/>${date}<br/><span style="font-size:10px;opacity:0.7">Click to copy SHA</span>`
         }
-      },
-      data: markLineData
+      }
     }
   }
 
@@ -296,6 +351,8 @@ export default class extends Controller {
         // Leave ECharts templates as-is
       } else {
         config.tooltip.formatter = this.parseFormatter(config.tooltip.formatter)
+        // Store reference so applyColorScheme can restore it after its setOption merge
+        this._tooltipFormatter = config.tooltip.formatter
       }
     }
 
@@ -495,7 +552,9 @@ export default class extends Controller {
         // Build tooltip HTML with all series
         let html = `${dateString}<br/>`
         params.forEach(param => {
-          const value = typeof param.value === 'number' ? Math.round(param.value) : param.value
+          // param.value may be [timestamp, value] for time axis or a plain number
+          const rawValue = Array.isArray(param.value) ? param.value[1] : param.value
+          const value = typeof rawValue === 'number' ? Math.round(rawValue) : rawValue
           html += `${param.marker} ${param.seriesName}: ${value}<br/>`
         })
 
@@ -523,25 +582,30 @@ export default class extends Controller {
       'tooltip_with_timestamp': (params) => {
         if (!Array.isArray(params) || params.length === 0) return ''
 
-        // Get the axis value (could be timestamp or string)
+        // axisValueLabel is the pre-formatted axis label (e.g. "Apr/28" or "04:00")
+        // axisValue is the raw value — a ms timestamp for time axis, category string otherwise
         const axisValue = params[0].axisValue
-        let dateString = axisValue
+        const ts = Number(axisValue)
+        let dateString
 
-        // Try to parse as number if it's a numeric string
-        const numValue = typeof axisValue === 'string' ? parseFloat(axisValue) : axisValue
-
-        // If it's a timestamp (number > 1 trillion = after year 2001 in ms), format it
-        if (typeof numValue === 'number' && !isNaN(numValue) && numValue > 1000000000000) {
-          const date = new Date(numValue)
-          if (!isNaN(date.getTime())) {
-            dateString = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-          }
+        if (!isNaN(ts) && ts > 1000000000000) {
+          const date = new Date(ts)
+          // Show time component if sub-day granularity (axis label is HH:mm style)
+          const axisLabel = params[0].axisValueLabel || ''
+          const isHourly = /^\d{2}:\d{2}$/.test(axisLabel)
+          dateString = isHourly
+            ? date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+            : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        } else {
+          dateString = axisValue
         }
 
         // Build tooltip HTML with all series
         let html = `${dateString}<br/>`
         params.forEach(param => {
-          const value = typeof param.value === 'number' ? Math.round(param.value) : param.value
+          // param.value may be [timestamp, value] for time axis or a plain number
+          const rawValue = Array.isArray(param.value) ? param.value[1] : param.value
+          const value = typeof rawValue === 'number' ? Math.round(rawValue) : rawValue
           html += `${param.marker} ${param.seriesName}: ${value}<br/>`
         })
 
@@ -644,10 +708,24 @@ export default class extends Controller {
     return (value) => value
   }
 
+  findDeploymentCopyHintElement() {
+    const scope = this.element.closest('[data-controller~="rails-pulse--index"]') || document
+    const hints = Array.from(scope.querySelectorAll('[data-rails-pulse--deployment-markers-toggle-target="message"]'))
+    return hints.find(el => el.offsetParent !== null) || null
+  }
+
   showCopiedToast(revision) {
     const toast = document.createElement('div')
     toast.textContent = `Copied ${revision}`
-    toast.style.cssText = 'position:fixed;bottom:1rem;right:1rem;background:#22c55e;color:#fff;padding:0.4rem 0.8rem;border-radius:6px;font-size:13px;font-family:monospace;z-index:9999;pointer-events:none;opacity:1;transition:opacity 0.4s ease'
+
+    const hint = this.findDeploymentCopyHintElement()
+    if (hint) {
+      const rect = hint.getBoundingClientRect()
+      toast.style.cssText = `position:fixed;top:${rect.top + (rect.height / 2)}px;left:${rect.right + 8}px;transform:translateY(-50%);background:#22c55e;color:#fff;padding:0.35rem 0.7rem;border-radius:6px;font-size:12px;font-family:monospace;white-space:nowrap;z-index:9999;pointer-events:none;opacity:1;transition:opacity 0.4s ease`
+    } else {
+      toast.style.cssText = 'position:fixed;bottom:1rem;right:1rem;background:#22c55e;color:#fff;padding:0.4rem 0.8rem;border-radius:6px;font-size:13px;font-family:monospace;z-index:9999;pointer-events:none;opacity:1;transition:opacity 0.4s ease'
+    }
+
     document.body.appendChild(toast)
     setTimeout(() => { toast.style.opacity = '0' }, 1500)
     setTimeout(() => { toast.remove() }, 2000)
@@ -702,16 +780,15 @@ export default class extends Controller {
     })
   }
 
-  // Deployment markers toggle — show/hide markLine on series[0]
+  // Deployment markers toggle — show/hide the dedicated marker series overlay
   onDeploymentMarkersToggle({ detail: { visible } }) {
-    if (!this.chart || !this._deploymentMarkLineData) return
+    if (!this.chart) return
+    const markers = this.dataValue?.deployment_markers
+    if (!markers?.length || !this._usesTimeAxisData()) return
 
-    const i = this._deploymentMarkSeriesIndex
-    const seriesUpdate = Array.from({ length: i + 1 }, (_, idx) => idx === i
-      ? { markLine: { data: visible ? this._deploymentMarkLineData : [] } }
-      : {}
-    )
-    this.chart.setOption({ series: seriesUpdate })
+    this.chart.setOption({
+      series: [ this._buildDeploymentMarkerSeries(markers, visible) ]
+    })
   }
 
   // Handle legend toggle to adjust border radius for stacked bars
@@ -779,6 +856,15 @@ export default class extends Controller {
     const tooltipText    = isDark ? '#e4e4e7'                 : '#18181b'
     const tooltipBorder  = isDark ? 'rgba(255,255,255,0.12)' : '#cccccc'
 
+    // Re-include the tooltip formatter explicitly — ECharts can drop function formatters
+    // during option merges, so we preserve the reference and restore it here.
+    const tooltipUpdate = {
+      backgroundColor: tooltipBg,
+      textStyle: { color: tooltipText },
+      borderColor: tooltipBorder
+    }
+    if (this._tooltipFormatter) tooltipUpdate.formatter = this._tooltipFormatter
+
     this.chart.setOption({
       xAxis: {
         axisLabel: { color: axisLabelColor },
@@ -788,11 +874,7 @@ export default class extends Controller {
         axisLabel: { color: axisLabelColor },
         splitLine: { lineStyle: { color: gridColor } }
       },
-      tooltip: {
-        backgroundColor: tooltipBg,
-        textStyle: { color: tooltipText },
-        borderColor: tooltipBorder
-      }
+      tooltip: tooltipUpdate
     })
   }
 }

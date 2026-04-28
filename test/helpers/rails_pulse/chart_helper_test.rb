@@ -167,7 +167,7 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
   test "bar_chart_options with new format chart_data using labels array" do
     chart_data = {
       labels: [ 100, 200, 300 ],
-      series: [ [ 1, 2, 3 ] ]
+      series: [ { name: "Requests", data: [ 1, 2, 3 ] } ]
     }
 
     opts = bar_chart_options(zoom: true, zoom_start: 150, zoom_end: 250, chart_data: chart_data)
