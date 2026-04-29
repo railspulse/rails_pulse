@@ -11,15 +11,20 @@
     "build:icons": "node scripts/build-icons.js",
     "watch": "node scripts/watch.js",
     "dev": "npm run watch",
-    "clean": "rimraf public/rails-pulse-assets/rails-pulse*.{css,js,map} vendor/assets/stylesheets/*.{css,map} vendor/assets/javascripts/*.{js,map}"
+    "clean": "rimraf public/rails-pulse-assets/rails-pulse*.{css,js,map} vendor/assets/stylesheets/*.{css,map} vendor/assets/javascripts/*.{js,map}",
+    "lint:js": "eslint app/javascript scripts",
+    "lint:js:files": "eslint app/javascript scripts --debug 2>&1 | grep 'Linting'"
   },
   "devDependencies": {
+    "@eslint/js": "^9.39.4",
     "@hotwired/stimulus": "^3.2.2",
     "autoprefixer": "^10.4.16",
     "chokidar": "^4.0.3",
     "cssnano": "^6.0.3",
     "esbuild": "^0.19.12",
+    "eslint": "^9.39.4",
     "glob": "^10.3.10",
+    "globals": "^17.5.0",
     "lucide": "^0.545.0",
     "postcss": "^8.4.32",
     "rimraf": "^5.0.5"

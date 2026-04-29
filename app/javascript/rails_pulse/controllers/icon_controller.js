@@ -162,7 +162,7 @@ export default class extends Controller {
   // Debug method to list available icons
   listAvailableIcons() {
     if (window.RailsPulseIcons?.list) {
-      console.log('Available icons:', window.RailsPulseIcons.list())
+      console.warn('Available icons:', window.RailsPulseIcons.list())
     } else {
       console.warn('RailsPulseIcons not loaded or list method not available')
     }

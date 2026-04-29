@@ -79,7 +79,7 @@ export default class extends Controller {
           hour12: true
         })
         this.element.title = `Last updated: ${localTimeString}`
-      } catch (e) {
+      } catch {
         this.element.title = 'Cache time unavailable'
       }
     } else {
