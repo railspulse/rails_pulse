@@ -164,6 +164,123 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
     assert_match(/data-rails-pulse--chart-theme-value="railspulse"/, html)
   end
 
+  # ============================================================================
+  # base_chart_options - x_formatter Tests
+  # ============================================================================
+
+  test "base_chart_options uses timestamp_to_date formatter by default" do
+    opts = base_chart_options
+
+    assert_equal "timestamp_to_date", opts[:xAxis][:axisLabel][:formatter]
+  end
+
+  test "base_chart_options uses time formatter when @period_type is hour" do
+    @period_type = "hour"
+    opts = base_chart_options
+
+    assert_equal "time", opts[:xAxis][:axisLabel][:formatter]
+  end
+
+  test "base_chart_options uses time formatter when @time_diff_hours is 25 or less" do
+    @time_diff_hours = 24
+    opts = base_chart_options
+
+    assert_equal "time", opts[:xAxis][:axisLabel][:formatter]
+  end
+
+  test "base_chart_options uses timestamp_to_date when @time_diff_hours is above 25" do
+    @time_diff_hours = 26
+    opts = base_chart_options
+
+    assert_equal "timestamp_to_date", opts[:xAxis][:axisLabel][:formatter]
+  end
+
+  # ============================================================================
+  # render_stimulus_chart - deployment marker injection Tests
+  # ============================================================================
+
+  test "render_stimulus_chart injects deployment_markers when @deployment_markers is set" do
+    @deployment_markers = [ { timestamp: 1_700_000_000_000, revision: "abc123", started_at: "2024-01-01T00:00:00Z" } ]
+    data = { series: [ { name: "Requests", data: [ [ 1_700_000_000_000, 10 ] ] } ] }
+
+    html = render_stimulus_chart(data, type: "line")
+    doc = Nokogiri::HTML(html)
+    parsed = JSON.parse(doc.at_css("[data-rails-pulse--chart-data-value]")["data-rails-pulse--chart-data-value"])
+
+    assert parsed.key?("deployment_markers")
+    assert_equal 1, parsed["deployment_markers"].length
+    assert_equal "abc123", parsed["deployment_markers"].first["revision"]
+  end
+
+  test "render_stimulus_chart does not inject deployment_markers when @deployment_markers is nil" do
+    @deployment_markers = nil
+    data = { series: [ { name: "Requests", data: [ [ 1_700_000_000_000, 10 ] ] } ] }
+
+    html = render_stimulus_chart(data, type: "line")
+    doc = Nokogiri::HTML(html)
+    parsed = JSON.parse(doc.at_css("[data-rails-pulse--chart-data-value]")["data-rails-pulse--chart-data-value"])
+
+    refute parsed.key?("deployment_markers")
+  end
+
+  test "render_stimulus_chart does not inject deployment_markers when @deployment_markers is empty" do
+    @deployment_markers = []
+    data = { series: [ { name: "Requests", data: [ [ 1_700_000_000_000, 10 ] ] } ] }
+
+    html = render_stimulus_chart(data, type: "line")
+    doc = Nokogiri::HTML(html)
+    parsed = JSON.parse(doc.at_css("[data-rails-pulse--chart-data-value]")["data-rails-pulse--chart-data-value"])
+
+    refute parsed.key?("deployment_markers")
+  end
+
+  test "render_stimulus_chart does not inject deployment_markers for non-series data" do
+    @deployment_markers = [ { timestamp: 1_700_000_000_000, revision: "abc123", started_at: "2024-01-01T00:00:00Z" } ]
+    data = { 100 => 1, 200 => 2 }
+
+    html = render_stimulus_chart(data, type: "bar")
+    doc = Nokogiri::HTML(html)
+    parsed = JSON.parse(doc.at_css("[data-rails-pulse--chart-data-value]")["data-rails-pulse--chart-data-value"])
+
+    refute parsed.key?("deployment_markers")
+  end
+
+  # ============================================================================
+  # Zoom - time-axis format Tests
+  # ============================================================================
+
+  test "bar_chart_options sets ms timestamps for time-axis data (Array pairs)" do
+    chart_data = {
+      series: [ {
+        name: "Requests",
+        data: [ [ 1_700_000_000, 10 ], [ 1_700_086_400, 20 ], [ 1_700_172_800, 30 ] ]
+      } ]
+    }
+
+    opts = bar_chart_options(zoom: true, zoom_start: 1_700_000_000, zoom_end: 1_700_172_800,
+                             chart_data: chart_data)
+    slider = opts[:dataZoom].first
+
+    assert_equal 1_700_000_000 * 1000, slider[:startValue]
+    assert_equal 1_700_172_800 * 1000, slider[:endValue]
+  end
+
+  test "bar_chart_options sets ms timestamps for time-axis data (Hash with value array)" do
+    chart_data = {
+      series: [ {
+        name: "DB Load",
+        data: [ { value: [ 1_700_000_000_000, 15.5 ], itemStyle: { color: "green" } } ]
+      } ]
+    }
+
+    opts = bar_chart_options(zoom: true, zoom_start: 1_700_000, zoom_end: 1_700_100,
+                             chart_data: chart_data)
+    slider = opts[:dataZoom].first
+
+    assert_equal 1_700_000 * 1000, slider[:startValue]
+    assert_equal 1_700_100 * 1000, slider[:endValue]
+  end
+
   test "bar_chart_options with new format chart_data using labels array" do
     chart_data = {
       labels: [ 100, 200, 300 ],
