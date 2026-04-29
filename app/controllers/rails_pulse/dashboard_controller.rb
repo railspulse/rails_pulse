@@ -1,13 +1,12 @@
 module RailsPulse
   class DashboardController < ApplicationController
     include TimeRangeConcern
+    include DeploymentMarkersConcern
 
     def index
       # Use TimeRangeConcern to get time range (supports time range selector + all other filters)
       @start_time, @end_time, @selected_time_range, @time_diff = setup_time_range
-      @deployment_markers = RailsPulse::Deployment
-        .for_range(Time.zone.at(@start_time), Time.zone.at(@end_time))
-        .map(&:to_chart_marker)
+      populate_deployment_markers
 
       # Convert time range to period in days for dashboard cards/charts
       @period = ((@end_time - @start_time) / 1.day).round

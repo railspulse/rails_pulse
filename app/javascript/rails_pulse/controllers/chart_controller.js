@@ -137,7 +137,8 @@ export default class extends Controller {
     const chartData = this.dataValue
     const markers = chartData.deployment_markers
     if (markers && markers.length > 0 && this._usesTimeAxisData(chartData)) {
-      const deploysButton = document.querySelector('[data-controller~="rails-pulse--deployment-markers-toggle"]')
+      const scope = this.element.closest('[data-controller~="rails-pulse--index"]') || document
+      const deploysButton = scope.querySelector('[data-controller~="rails-pulse--deployment-markers-toggle"]')
       const isVisible = !deploysButton || deploysButton.dataset.active !== 'false'
       config.series = config.series || []
       config.series.push(this._buildDeploymentMarkerSeries(markers, isVisible))
@@ -253,13 +254,11 @@ export default class extends Controller {
     return Array.isArray(firstPoint) || Array.isArray(firstPoint?.value)
   }
 
-  _deploymentMarkerSeriesId() {
-    return 'rails-pulse-deployment-markers'
-  }
+  deploymentMarkerSeriesId = 'rails-pulse-deployment-markers'
 
   _buildDeploymentMarkerSeries(markers, visible = true) {
     return {
-      id: this._deploymentMarkerSeriesId(),
+      id: this.deploymentMarkerSeriesId,
       type: 'line',
       data: [],
       name: '',

@@ -43,7 +43,7 @@ module RailsPulse
           filters.delete("disabled_tags")
         end
 
-        # Update deployment markers visibility
+        # Update deployment markers visibility (absent checkbox param = unchecked = false)
         filters["show_deployment_markers"] = params[:show_deployment_markers] == "1"
 
         session[:global_filters] = filters
