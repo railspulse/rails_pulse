@@ -205,6 +205,7 @@ module RailsPulse
 
           assert_not_nil result
           point = result[:series].first[:data].find { |p| p[:value][0] == start_time * 1000 }
+
           assert_not_nil point, "expected a data point at the created period"
           assert_equal "rgb(34, 197, 94)", point[:itemStyle][:color]
         end
@@ -218,6 +219,7 @@ module RailsPulse
 
           assert_not_nil result
           point = result[:series].first[:data].find { |p| p[:value][0] == start_time * 1000 }
+
           assert_not_nil point, "expected a data point at the created period"
           assert_equal "rgb(234, 179, 8)", point[:itemStyle][:color]
         end
@@ -231,6 +233,7 @@ module RailsPulse
 
           assert_not_nil result
           point = result[:series].first[:data].find { |p| p[:value][0] == start_time * 1000 }
+
           assert_not_nil point, "expected a data point at the created period"
           assert_equal "rgb(239, 68, 68)", point[:itemStyle][:color]
         end
