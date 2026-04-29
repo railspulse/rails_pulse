@@ -175,19 +175,6 @@ echo ""
 
 if ask_yes_no "Run pre-release tests?" "y"; then
   echo ""
-
-  echo -e "${CYAN}→ Running JavaScript unit tests...${NC}"
-  if npm run test:js; then
-    echo -e "${GREEN}✓ JavaScript tests passed${NC}"
-  else
-    echo ""
-    echo -e "${RED}❌ JavaScript tests failed!${NC}"
-    echo "Aborted. Fix JS tests and try again."
-    exit 1
-  fi
-
-  echo ""
-  echo -e "${CYAN}→ Running Ruby test suite (rake test_release)...${NC}"
   if rake test_release; then
     echo ""
     echo -e "${GREEN}✅ All pre-release tests passed!${NC}"

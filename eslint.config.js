@@ -1,5 +1,6 @@
 const js = require("@eslint/js")
 const globals = require("globals")
+const vitest = require("@vitest/eslint-plugin")
 
 module.exports = [
   js.configs.recommended,
@@ -23,19 +24,14 @@ module.exports = [
     }
   },
   {
-    // Test files — vitest globals (describe, it, expect, vi, etc.)
+    // Test files — vitest plugin handles globals and adds test-specific rules
     files: ["app/javascript/**/*.test.js", "app/javascript/test/**/*.js"],
+    plugins: { vitest },
     languageOptions: {
-      globals: {
-        vi: "readonly",
-        describe: "readonly",
-        it: "readonly",
-        expect: "readonly",
-        beforeEach: "readonly",
-        afterEach: "readonly",
-        beforeAll: "readonly",
-        afterAll: "readonly",
-      }
+      globals: vitest.environments.env.globals
+    },
+    rules: {
+      ...vitest.configs.recommended.rules,
     }
   },
   {
