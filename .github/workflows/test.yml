@@ -185,6 +185,23 @@ jobs:
     - name: Run ESLint
       run: npm run lint:js
 
+  js-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    - name: Install Node dependencies
+      run: npm install
+
+    - name: Run JavaScript tests
+      run: npm run test:js
+
   build:
     runs-on: ubuntu-latest
     steps:

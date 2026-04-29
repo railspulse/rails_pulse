@@ -23,6 +23,22 @@ module.exports = [
     }
   },
   {
+    // Test files — vitest globals (describe, it, expect, vi, etc.)
+    files: ["app/javascript/**/*.test.js", "app/javascript/test/**/*.js"],
+    languageOptions: {
+      globals: {
+        vi: "readonly",
+        describe: "readonly",
+        it: "readonly",
+        expect: "readonly",
+        beforeEach: "readonly",
+        afterEach: "readonly",
+        beforeAll: "readonly",
+        afterAll: "readonly",
+      }
+    }
+  },
+  {
     // Build scripts — CommonJS, Node environment
     files: ["scripts/**/*.js"],
     languageOptions: {
