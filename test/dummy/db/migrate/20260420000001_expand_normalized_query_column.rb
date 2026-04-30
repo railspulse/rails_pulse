@@ -1,4 +1,4 @@
-class ExpandNormalizedSqlColumn < ActiveRecord::Migration[7.0]
+class ExpandNormalizedQueryColumn < ActiveRecord::Migration[7.0]
   def up
     return unless table_exists?(:rails_pulse_queries)
 
