@@ -382,5 +382,25 @@ module RailsPulse
 
       assert_match(/must be a positive number/i, error.message)
     end
+
+    test "validate_authentication_settings! tolerates nil Rails.logger" do
+      # Reproduces the asset precompilation crash: validation runs while
+      # Rails.logger is still nil (e.g. RAILS_ENV=production rake task before
+      # Rails::Application#initialize!).
+      config = Configuration.new
+      config.instance_variable_set(:@authentication_enabled, true)
+      config.instance_variable_set(:@authentication_method, nil)
+
+      original_logger = Rails.logger
+      Rails.logger = nil
+      RailsPulse.instance_variable_set(:@logger, nil)
+
+      begin
+        assert_nothing_raised { config.validate_configuration! }
+      ensure
+        Rails.logger = original_logger
+        RailsPulse.instance_variable_set(:@logger, nil)
+      end
+    end
   end
 end
