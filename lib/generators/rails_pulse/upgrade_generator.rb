@@ -89,12 +89,18 @@ module RailsPulse
       def upgrade_installation(migration_dir:, next_steps:)
         gem_migrations = get_gem_migrations
         existing_migrations = get_user_migrations(migration_dir)
-        new_migrations = gem_migrations - existing_migrations
+
+        # Add origin comments to existing migrations that are missing them
+        add_origin_comments(gem_migrations, existing_migrations, migration_dir)
+
+        # Compare by migration name (without timestamp) to detect which are new
+        existing_names = existing_migrations.map { |f| migration_name_without_timestamp(f) }
+        new_migrations = gem_migrations.reject { |f| existing_names.include?(migration_name_without_timestamp(f)) }
 
         if new_migrations.any?
           say "Found #{new_migrations.size} new migration(s) to copy:", :blue
           new_migrations.each do |migration|
-            say "  - #{migration}", :blue
+            say "  - #{migration_name_without_timestamp(migration)}", :blue
             copy_gem_migration_to(migration, migration_dir)
           end
 
@@ -219,11 +225,74 @@ module RailsPulse
         Dir.glob("#{full_directory}/*.rb").map { |f| File.basename(f) }
       end
 
+      def migration_name_without_timestamp(filename)
+        # "20260505000001_add_host_to_rails_pulse_routes.rb" -> "add_host_to_rails_pulse_routes"
+        filename.sub(/^\d+_/, "").sub(/\.rb$/, "")
+      end
+
       def copy_gem_migration_to(migration_name, destination)
         source_file = File.join(gem_migrations_path, migration_name)
-        destination_file = File.join(destination, migration_name)
+        bare_name = migration_name_without_timestamp(migration_name)
+        original_timestamp = migration_name.match(/^(\d+)/)[1]
+        new_timestamp = next_migration_timestamp(destination)
+        new_filename = "#{new_timestamp}_#{bare_name}.rb"
+        destination_file = File.join(root_path, destination, new_filename)
 
-        copy_file source_file, destination_file
+        content = File.read(source_file)
+        comment = "# This migration comes from rails_pulse (originally #{original_timestamp})\n"
+
+        # Insert comment after any frozen_string_literal pragma, or at the top
+        if content.match?(/\A# frozen_string_literal/)
+          content = content.sub(/\A(# frozen_string_literal.*\n\n?)/, "\\1#{comment}")
+        else
+          content = comment + content
+        end
+
+        create_file destination_file, content
+      end
+
+      def next_migration_timestamp(directory)
+        # Use Rails migration numbering: UTC timestamp format
+        # Ensure we don't collide with existing migrations
+        @migration_counter ||= 0
+        full_directory = File.join(root_path, directory)
+        existing = Dir.glob("#{full_directory}/*.rb").map { |f| File.basename(f).match(/^(\d+)/)[1].to_i }
+        current_timestamp = Time.now.utc.strftime("%Y%m%d%H%M%S").to_i + @migration_counter
+
+        @migration_counter += 1
+        [existing.max.to_i + 1, current_timestamp].max.to_s
+      end
+
+      def add_origin_comments(gem_migrations, existing_migrations, migration_dir)
+        # Build a lookup of bare_name -> original timestamp from gem migrations
+        gem_timestamps = {}
+        gem_migrations.each do |f|
+          bare = migration_name_without_timestamp(f)
+          gem_timestamps[bare] = f.match(/^(\d+)/)[1]
+        end
+
+        full_directory = File.join(root_path, migration_dir)
+
+        existing_migrations.each do |filename|
+          bare = migration_name_without_timestamp(filename)
+          original_timestamp = gem_timestamps[bare]
+          next unless original_timestamp # Not a rails_pulse migration
+
+          filepath = File.join(full_directory, filename)
+          content = File.read(filepath)
+          next if content.include?("# This migration comes from rails_pulse")
+
+          comment = "# This migration comes from rails_pulse (originally #{original_timestamp})\n"
+
+          if content.match?(/\A# frozen_string_literal/)
+            content = content.sub(/\A(# frozen_string_literal.*\n\n?)/, "\\1#{comment}")
+          else
+            content = comment + content
+          end
+
+          File.write(filepath, content)
+          say "  Added origin comment to #{filename}", :cyan
+        end
       end
     end
   end
