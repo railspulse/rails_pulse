@@ -5,23 +5,30 @@ module RailsPulse
     self.table_name = "rails_pulse_routes"
 
     # Associations
+    belongs_to :host, class_name: "RailsPulse::Host", optional: true
     has_many :requests, class_name: "RailsPulse::Request", foreign_key: "route_id", dependent: :restrict_with_exception
     has_many :summaries, as: :summarizable, class_name: "RailsPulse::Summary", dependent: :destroy
 
     # Validations
     validates :method, presence: true
-    validates :path, presence: true, uniqueness: { scope: :method, message: "and method combination must be unique" }
+    validates :path, presence: true, uniqueness: { scope: [:method, :host_id], message: "method and host combination must be unique" }
 
     # Scopes (optional, for convenience)
     scope :by_method_and_path, ->(method, path) { where(method: method, path: path).first_or_create }
 
     def self.ransackable_attributes(auth_object = nil)
-      %w[path average_response_time_ms max_response_time_ms request_count requests_per_minute occurred_at requests_occurred_at error_count error_rate_percentage status_indicator]
+      %w[path host_id average_response_time_ms max_response_time_ms request_count requests_per_minute occurred_at requests_occurred_at error_count error_rate_percentage status_indicator]
     end
 
     def self.ransackable_associations(auth_object = nil)
-      %w[requests]
+      %w[requests host]
     end
+
+    def host_name
+      host&.name
+    end
+
+
 
     ransacker :average_response_time_ms do
       Arel.sql("COALESCE(AVG(rails_pulse_requests.duration), 0)")
@@ -60,7 +67,7 @@ module RailsPulse
     end
 
     def to_breadcrumb
-      "#{method.upcase} #{path}".truncate(60)
+      "#{host_name}#{path} #{method.upcase}".truncate(60)
     end
 
     def self.average_response_time
@@ -68,7 +75,7 @@ module RailsPulse
     end
 
     def path_and_method
-      "#{path} #{method}"
+      "#{host_name}#{path} #{method}"
     end
   end
 end

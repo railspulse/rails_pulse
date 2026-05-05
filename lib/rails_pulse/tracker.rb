@@ -28,10 +28,16 @@ module RailsPulse
           RequestStore.store[:skip_recording_rails_pulse_activity] = true
 
           begin
+            # Find or create host
+            host = if data[:host].present?
+              RailsPulse::Host.find_or_create_by(name: data[:host])
+            end
+
             # Find or create route
             route = RailsPulse::Route.find_or_create_by(
               method: data[:method],
-              path: data[:path]
+              path: data[:path],
+              host_id: host&.id
             )
 
             # Create request record

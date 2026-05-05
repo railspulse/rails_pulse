@@ -3,6 +3,7 @@ RailsPulse::Engine.routes.draw do
 
   resources :routes, only: %i[index show]
   resources :requests, only: %i[index show]
+  resources :hosts, only: %i[index show]
   resources :queries, only: %i[index show] do
     member do
       post :reanalyze

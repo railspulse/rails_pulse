@@ -44,6 +44,7 @@ module RailsPulse
         tracking_data = {
           method: req.request_method,
           path: req.path,
+          host: req.host,
           duration: duration,
           status: status,
           is_error: status.to_i >= 500,

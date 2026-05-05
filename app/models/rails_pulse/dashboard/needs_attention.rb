@@ -51,11 +51,13 @@ module RailsPulse
         route_data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
           .joins("INNER JOIN rails_pulse_routes ON rails_pulse_routes.id = rails_pulse_summaries.summarizable_id")
+          .joins("LEFT JOIN rails_pulse_hosts ON rails_pulse_hosts.id = rails_pulse_routes.host_id")
           .where(summarizable_type: "RailsPulse::Route", period_start: start..finish)
-          .group("rails_pulse_summaries.summarizable_id, rails_pulse_routes.path")
+          .group("rails_pulse_summaries.summarizable_id, rails_pulse_routes.path, rails_pulse_hosts.name")
           .select(
             "rails_pulse_summaries.summarizable_id as route_id",
             "rails_pulse_routes.path",
+            "rails_pulse_hosts.name as host_name",
             "SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0) as p95_duration",
             "SUM(rails_pulse_summaries.count) as total_count",
             "SUM(rails_pulse_summaries.error_count) as total_errors"
@@ -73,7 +75,7 @@ module RailsPulse
 
           items << {
             type:       "ROUTE",
-            name:       record.path,
+            name:       "#{record.host_name}#{record.path}",
             reason:     reason,
             metric:     metric,
             metric_sub: metric_sub,

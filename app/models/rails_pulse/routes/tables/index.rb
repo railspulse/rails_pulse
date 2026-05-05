@@ -41,12 +41,14 @@ module RailsPulse
 
           # Apply grouping and aggregation
           grouped_query = base_query
+            .joins("LEFT JOIN rails_pulse_hosts ON rails_pulse_hosts.id = rails_pulse_routes.host_id")
             .group(
               "rails_pulse_summaries.summarizable_id",
               "rails_pulse_summaries.summarizable_type",
               "rails_pulse_routes.id",
               "rails_pulse_routes.path",
               "rails_pulse_routes.method",
+              "rails_pulse_hosts.name",
               "rails_pulse_routes.tags"
             )
             .select(
@@ -55,6 +57,7 @@ module RailsPulse
               "rails_pulse_routes.id as route_id",
               "rails_pulse_routes.path",
               "rails_pulse_routes.method as route_method",
+              "rails_pulse_hosts.name as host_name",
               "rails_pulse_routes.tags",
               "AVG(rails_pulse_summaries.avg_duration) as avg_duration",
               "MAX(rails_pulse_summaries.max_duration) as max_duration",

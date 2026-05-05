@@ -99,7 +99,7 @@ module RailsPulse
     # This differs from Routes/Queries which use Tables::Index for aggregation
     # Individual records allow displaying per-request details (tags, occurred_at, etc.)
     def build_table_results
-      base_query = apply_tag_filters(@ransack_query.result.includes(:route))
+      base_query = apply_tag_filters(@ransack_query.result.includes(route: :host))
 
       # If filtering or sorting by route_path, we need to join the routes table
       needs_join = @ransack_query.sorts.any? { |sort| sort.name == "route_path" } ||

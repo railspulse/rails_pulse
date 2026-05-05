@@ -6,6 +6,8 @@
       <dl class="descriptive-list mbs-4">
         <dt>Route</dt>
         <dd><%= link_to @request.route.path_and_method, route_path(@request.route) %></dd>
+        <dt>Host</dt>
+        <dd><%= @request.route.host_name %></dd>
         <dt>Timestamp</dt>
         <dd><%= human_readable_occurred_at(@request.occurred_at) %></dd>
         <dt>Duration</dt>

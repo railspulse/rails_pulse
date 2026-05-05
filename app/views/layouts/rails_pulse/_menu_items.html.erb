@@ -8,6 +8,11 @@
   <span class="overflow-ellipsis">Routes</span>
 <% end %>
 
+<%= link_to hosts_path, class: 'btn sidebar-menu__button' do %>
+  <%= rails_pulse_icon 'globe', width: '16' %>
+  <span class="overflow-ellipsis">Hosts</span>
+<% end %>
+
 <%= link_to queries_path, class: 'btn sidebar-menu__button' do %>
   <%= rails_pulse_icon 'database', width: '16' %>
   <span class="overflow-ellipsis">Queries</span>

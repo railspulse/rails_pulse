@@ -109,11 +109,41 @@ Authentication guide: [railspulse.com/documentation/authentication](https://rail
 ## Features
 
 - **Request monitoring** — every request is timed and stored with its route, status, SQL count, and duration. Slow requests are flagged automatically based on thresholds you control.
+- **Host tracking** — routes are scoped per-host, so multi-domain apps can see performance broken down by hostname. Hosts are created automatically as new requests arrive.
 - **Query analysis** — captures the queries behind each request, detects N+1 patterns, and tracks normalized SQL across requests so you can see which queries are hurting you in production, not just in development.
 - **Job tracking** — monitors background job duration, queue wait time, and failure rates. Works with any Active Job adapter.
 - **System health bar** — at-a-glance dashboard summary showing healthy, slow, and critical counts across your routes, queries, jobs, and storage. Lets you see the overall state of your app before drilling into specifics.
 - **No data leaves your app** — everything is stored in your own database. No third-party cloud, no SaaS subscription, no outbound connections.
 - **Low overhead** — tracking is async and uses a thread-local flag to skip recording Rails Pulse's own internal requests.
+
+## Upgrading
+
+After updating the gem, run the upgrade generator to pick up new migrations:
+
+```bash
+rails generate rails_pulse:upgrade
+rails db:migrate
+```
+
+### Backfilling hosts
+
+If you upgraded from a version that didn't track hosts, existing routes will have no host assigned (`host_id = NULL`). New requests will automatically create and assign hosts going forward.
+
+To retroactively assign orphaned routes to a host:
+
+```bash
+rails rails_pulse:backfill_hosts[example.com]
+```
+
+This will:
+- Create the host record if it doesn't exist
+- Assign all orphaned routes to that host
+- Merge duplicates automatically — if a route with the same method+path already exists for that host, requests and summaries are moved to the existing route and the orphan is removed
+
+For multi-domain apps, there's no way to determine which orphaned routes belonged to which host from historical data alone. You have two options:
+
+1. **Let it backfill naturally** — skip the rake task entirely. New requests will create hosts and new route records automatically. Old orphaned routes will remain visible in the Routes view with no host.
+2. **Assign to your primary host** — run the task with your main domain. Routes from other hosts will sort themselves out as new traffic arrives.
 
 ## Contributing
 

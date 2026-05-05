@@ -66,4 +66,48 @@ namespace :rails_pulse do
     puts "Total summaries: #{RailsPulse::Summary.count}"
     puts "\nTo keep summaries up to date, schedule RailsPulse::SummaryJob to run hourly"
   end
+
+  desc "Assign orphaned routes (with no host) to a specified host. Usage: rails rails_pulse:backfill_hosts[example.com]"
+  task :backfill_hosts, [:hostname] => :environment do |_t, args|
+    hostname = args[:hostname]
+
+    if hostname.blank?
+      puts "Usage: rails rails_pulse:backfill_hosts[example.com]"
+      puts ""
+      puts "This assigns all routes with no host to the specified hostname."
+      puts "Useful after upgrading from a version that didn't track hosts."
+      next
+    end
+
+    orphaned_routes = RailsPulse::Route.where(host_id: nil)
+    count = orphaned_routes.count
+
+    if count.zero?
+      puts "No orphaned routes found — all routes already have a host assigned."
+      next
+    end
+
+    host = RailsPulse::Host.find_or_create_by!(name: hostname)
+    puts "Assigning #{count} orphaned route(s) to host '#{hostname}'..."
+
+    assigned = 0
+    merged = 0
+
+    orphaned_routes.find_each do |route|
+      existing = RailsPulse::Route.find_by(method: route.method, path: route.path, host_id: host.id)
+
+      if existing
+        # Merge: move requests/summaries to the existing route, then delete the orphan
+        route.requests.update_all(route_id: existing.id)
+        route.summaries.update_all(summarizable_id: existing.id)
+        route.destroy
+        merged += 1
+      else
+        route.update_columns(host_id: host.id)
+        assigned += 1
+      end
+    end
+
+    puts "Done! Assigned #{assigned} route(s), merged #{merged} duplicate(s) into '#{hostname}'."
+  end
 end

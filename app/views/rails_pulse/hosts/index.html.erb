@@ -1,0 +1,24 @@
+<%= render "rails_pulse/components/page_header" %>
+
+<%= render 'rails_pulse/components/panel', title: 'Hosts', card_classes: 'b-full' do %>
+  <table class="table table-fixed mbs-4">
+    <thead>
+      <tr>
+        <th class="w-auto">Host</th>
+        <th class="w-24">Routes</th>
+        <th class="w-24">Requests</th>
+        <th class="w-32">Avg Response</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @hosts.each do |host| %>
+        <tr>
+          <td class="truncate-cell"><%= link_to host.name, host_path(host) %></td>
+          <td class="whitespace-nowrap"><%= number_with_delimiter host.routes_count %></td>
+          <td class="whitespace-nowrap"><%= number_with_delimiter host.requests_count %></td>
+          <td class="whitespace-nowrap"><%= host.avg_duration.to_f.round(1) %> ms</td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>

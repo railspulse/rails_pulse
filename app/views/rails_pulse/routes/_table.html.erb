@@ -12,7 +12,7 @@
   <tbody>
     <% @table_data.each do |summary| %>
       <tr>
-        <td class="truncate-cell"><%= link_to "#{summary.path} #{summary.route_method}", route_path(summary.route_id) %></td>
+        <td class="truncate-cell"><%= link_to "#{summary.host_name}#{summary.path} #{summary.route_method}", route_path(summary.route_id) %></td>
         <td class="whitespace-nowrap"><%= summary.p95_duration.to_i %> ms</td>
         <td class="whitespace-nowrap"><%= summary.p99_duration.to_i %> ms</td>
         <td class="whitespace-nowrap"><%= number_with_delimiter summary.count %></td>

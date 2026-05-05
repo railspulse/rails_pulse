@@ -19,6 +19,7 @@ const REQUIRED_ICONS = [
   'chevron-up',
   'chevrons-left',
   'chevrons-right',
+  'globe',
   'loader-circle',
   'search',
   'list-filter',

@@ -1,0 +1,26 @@
+<%= render "rails_pulse/components/page_header" %>
+
+<%= render 'rails_pulse/components/panel', title: @host.name, card_classes: 'b-full' do %>
+  <table class="table table-fixed mbs-4">
+    <thead>
+      <tr>
+        <th class="w-auto">Route</th>
+        <th class="w-20">Method</th>
+        <th class="w-24">Requests</th>
+        <th class="w-32">Avg Response</th>
+        <th class="w-24">Errors</th>
+      </tr>
+    </thead>
+    <tbody>
+      <% @routes.each do |route| %>
+        <tr>
+          <td class="truncate-cell"><%= link_to route.path, route_path(route) %></td>
+          <td class="whitespace-nowrap"><%= route.method %></td>
+          <td class="whitespace-nowrap"><%= number_with_delimiter route.requests_count %></td>
+          <td class="whitespace-nowrap"><%= route.avg_duration.to_f.round(1) %> ms</td>
+          <td class="whitespace-nowrap"><%= number_with_delimiter route.error_count %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+<% end %>

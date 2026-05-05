@@ -26,15 +26,25 @@ RailsPulse::Schema ||= lambda do |connection|
     return
   end
 
+  unless connection.table_exists?(:rails_pulse_hosts)
+    connection.create_table :rails_pulse_hosts do |t|
+      t.string :name, null: false, comment: "Hostname (e.g., example.com)"
+      t.timestamps
+    end
+
+    connection.add_index :rails_pulse_hosts, :name, unique: true, name: "index_rails_pulse_hosts_on_name"
+  end
+
   unless connection.table_exists?(:rails_pulse_routes)
     connection.create_table :rails_pulse_routes do |t|
       t.string :method, null: false, comment: "HTTP method (e.g., GET, POST)"
       t.string :path, null: false, comment: "Request path (e.g., /posts/index)"
+      t.references :host, foreign_key: { to_table: :rails_pulse_hosts }, comment: "Link to the host"
       t.text :tags, comment: "JSON array of tags for filtering and categorization"
       t.timestamps
     end
 
-    connection.add_index :rails_pulse_routes, [ :method, :path ], unique: true, name: "index_rails_pulse_routes_on_method_and_path"
+    connection.add_index :rails_pulse_routes, [ :method, :path, :host_id ], unique: true, name: "index_rails_pulse_routes_on_method_path_and_host"
     connection.add_index :rails_pulse_routes, :path, name: "index_rails_pulse_routes_on_path"
   end
 
