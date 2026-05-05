@@ -11,6 +11,7 @@ class RailsPulseTest < ActiveSupport::TestCase
     RailsPulse.instance_variable_set(:@logger, nil)
 
     logger = RailsPulse.logger
+
     assert_respond_to logger, :warn
     assert_respond_to logger, :info
   ensure
@@ -31,6 +32,7 @@ class RailsPulseTest < ActiveSupport::TestCase
 
     # Next call should pick up the real logger, not the fallback
     real_logger = RailsPulse.logger
+
     assert_respond_to real_logger, :tagged
     assert_respond_to real_logger, :formatter
     assert_not_equal fallback_logger, real_logger
