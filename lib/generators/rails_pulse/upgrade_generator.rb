@@ -55,17 +55,9 @@ module RailsPulse
       end
 
       def has_separate_database_config?
-        config_path = File.join(root_path, "config/database.yml")
-
-        return false unless File.exist?(config_path)
-
-        require "yaml"
-        db_config = YAML.safe_load(File.read(config_path), aliases: true)
-
-        # Check if any environment has a rails_pulse database configuration
-        db_config.values.any? { |env| env.is_a?(Hash) && env.key?("rails_pulse") }
-      rescue Psych::SyntaxError, Psych::AliasesNotEnabled, Errno::ENOENT
-        # If we can't read or parse the file, assume single database
+        ActiveRecord::Base.configurations.configs_for(env_name: Rails.env)
+          .any? { |config| config.name == "rails_pulse" }
+      rescue
         false
       end
 
