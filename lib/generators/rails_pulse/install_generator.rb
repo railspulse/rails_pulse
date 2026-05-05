@@ -33,6 +33,10 @@ module RailsPulse
         end
       end
 
+      def run_upgrade
+        generate "rails_pulse:upgrade", "--database=#{options[:database]}"
+      end
+
       def display_post_install_message
         if separate_database?
           display_separate_database_message
