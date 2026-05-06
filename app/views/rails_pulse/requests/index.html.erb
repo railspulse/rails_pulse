@@ -27,7 +27,15 @@
         { class: "input" }
       %>
 
-      <%= link_to "Reset", requests_path, class: "btn btn--borderless show@md" if params.has_key?(:q) %>
+      <%= number_field_tag :min_size_kb,
+        params[:min_size_kb].presence,
+        placeholder: "Min size (KB)",
+        min: 0,
+        step: 1,
+        class: "input"
+      %>
+
+      <%= link_to "Reset", requests_path, class: "btn btn--borderless show@md" if params.has_key?(:q) || params[:min_size_kb].present? %>
       <%= form.submit "Search", class: "btn show@sm" %>
     </div>
   <% end %>

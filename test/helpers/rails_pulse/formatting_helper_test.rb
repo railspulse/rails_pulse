@@ -311,6 +311,42 @@ class RailsPulse::FormattingHelperTest < ActionView::TestCase
   end
 
   # ============================================================================
+  # human_readable_bytes Tests
+  # ============================================================================
+
+  test "human_readable_bytes returns em dash for nil" do
+    assert_equal "—", human_readable_bytes(nil)
+  end
+
+  test "human_readable_bytes formats zero bytes" do
+    assert_equal "0 Bytes", human_readable_bytes(0)
+  end
+
+  test "human_readable_bytes formats small byte counts under one kilobyte" do
+    assert_equal "512 Bytes", human_readable_bytes(512)
+  end
+
+  test "human_readable_bytes formats whole kilobytes" do
+    # 5 KB exactly = 5 * 1024 = 5120 bytes
+    assert_equal "5 KB", human_readable_bytes(5120)
+  end
+
+  test "human_readable_bytes formats whole megabytes" do
+    # 2 MB exactly = 2 * 1024 * 1024 bytes
+    assert_equal "2 MB", human_readable_bytes(2 * 1024 * 1024)
+  end
+
+  test "human_readable_bytes formats fractional kilobytes with two-significant-digit precision" do
+    # 1536 bytes = 1.5 KB; precision: 2 => "1.5 KB"
+    assert_equal "1.5 KB", human_readable_bytes(1536)
+  end
+
+  test "human_readable_bytes truncates additional precision beyond two significant digits" do
+    # 1700 bytes = ~1.66 KB; precision: 2 => "1.7 KB" (rounded to 2 significant digits)
+    assert_equal "1.7 KB", human_readable_bytes(1700)
+  end
+
+  # ============================================================================
   # Edge Cases & Integration
   # ============================================================================
 

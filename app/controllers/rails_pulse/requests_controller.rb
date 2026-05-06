@@ -88,6 +88,12 @@ module RailsPulse
         params[:duration_gteq] = @start_duration
       end
 
+      # Min response size filter - input is in KB, convert to bytes for the column
+      min_size_kb = self.params[:min_size_kb].to_i
+      if min_size_kb > 0
+        params[:response_size_bytes_gteq] = min_size_kb * 1024
+      end
+
       params
     end
 
