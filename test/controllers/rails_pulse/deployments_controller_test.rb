@@ -175,4 +175,126 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :created
   end
+
+  # PUT /deployments/finish
+
+  test "finish sets finished_at on the matching deployment" do
+    deployment = rails_pulse_deployments(:v2_deploy)
+
+    assert_nil deployment.finished_at
+
+    put rails_pulse.finish_deployments_path,
+        params: { deployment: { revision: deployment.revision } },
+        as: :json
+
+    assert_response :ok
+    assert_not_nil deployment.reload.finished_at
+  end
+
+  test "finish defaults finished_at to current time when not provided" do
+    freeze_time = Time.current
+    travel_to freeze_time do
+      put rails_pulse.finish_deployments_path,
+          params: { deployment: { revision: rails_pulse_deployments(:v2_deploy).revision } },
+          as: :json
+    end
+
+    assert_response :ok
+    assert_in_delta freeze_time.to_i, rails_pulse_deployments(:v2_deploy).reload.finished_at.to_i, 2
+  end
+
+  test "finish accepts a custom finished_at" do
+    custom_time = 3.minutes.ago.iso8601
+
+    put rails_pulse.finish_deployments_path,
+        params: { deployment: { revision: rails_pulse_deployments(:v2_deploy).revision, finished_at: custom_time } },
+        as: :json
+
+    assert_response :ok
+    assert_not_nil rails_pulse_deployments(:v2_deploy).reload.finished_at
+  end
+
+  test "finish returns id, revision, started_at, and finished_at" do
+    deployment = rails_pulse_deployments(:v2_deploy)
+
+    put rails_pulse.finish_deployments_path,
+        params: { deployment: { revision: deployment.revision } },
+        as: :json
+
+    assert_response :ok
+    json = JSON.parse(response.body)
+
+    assert_equal "updated", json["status"]
+    assert_equal deployment.id, json["id"]
+    assert_equal deployment.revision, json["revision"]
+    assert_includes json.keys, "started_at"
+    assert_includes json.keys, "finished_at"
+  end
+
+  test "finish targets the most recent deployment when revision appears more than once" do
+    older = RailsPulse::Deployment.create!(revision: "dup-sha", started_at: 2.hours.ago)
+    newer = RailsPulse::Deployment.create!(revision: "dup-sha", started_at: 30.minutes.ago)
+
+    put rails_pulse.finish_deployments_path,
+        params: { deployment: { revision: "dup-sha" } },
+        as: :json
+
+    assert_response :ok
+    assert_not_nil newer.reload.finished_at
+    assert_nil older.reload.finished_at
+  end
+
+  test "finish returns 404 when revision is not found" do
+    put rails_pulse.finish_deployments_path,
+        params: { deployment: { revision: "unknown-sha" } },
+        as: :json
+
+    assert_response :not_found
+    json = JSON.parse(response.body)
+
+    assert_equal "error", json["status"]
+    assert_includes json.keys, "error"
+  end
+
+  test "finish returns 400 when deployment params are missing" do
+    put rails_pulse.finish_deployments_path,
+        params: { deployment: {} },
+        as: :json
+
+    assert_response :bad_request
+  end
+
+  test "finish does not change the deployment count" do
+    assert_no_difference -> { RailsPulse::Deployment.count } do
+      put rails_pulse.finish_deployments_path,
+          params: { deployment: { revision: rails_pulse_deployments(:v2_deploy).revision } },
+          as: :json
+    end
+  end
+
+  test "finish returns 401 with wrong token" do
+    RailsPulse.configuration.deployment_api_token = "secret-token"
+
+    put rails_pulse.finish_deployments_path,
+        params: { deployment: { revision: rails_pulse_deployments(:v2_deploy).revision } },
+        headers: { "X-Rails-Pulse-Token" => "wrong-token" },
+        as: :json
+
+    assert_response :unauthorized
+  ensure
+    RailsPulse.configuration.deployment_api_token = nil
+  end
+
+  test "finish succeeds with correct token" do
+    RailsPulse.configuration.deployment_api_token = "secret-token"
+
+    put rails_pulse.finish_deployments_path,
+        params: { deployment: { revision: rails_pulse_deployments(:v2_deploy).revision } },
+        headers: { "X-Rails-Pulse-Token" => "secret-token" },
+        as: :json
+
+    assert_response :ok
+  ensure
+    RailsPulse.configuration.deployment_api_token = nil
+  end
 end

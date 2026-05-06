@@ -20,6 +20,25 @@ module RailsPulse
       end
     end
 
+    def finish
+      deployment = RailsPulse::Deployment
+        .where(revision: finish_params[:revision])
+        .order(started_at: :desc)
+        .first
+
+      return render json: { status: "error", error: "Deployment not found" }, status: :not_found unless deployment
+
+      deployment.finished_at = finish_params[:finished_at].presence || Time.current
+
+      if deployment.save
+        render json: { status: "updated", id: deployment.id, revision: deployment.revision,
+                       started_at: deployment.started_at, finished_at: deployment.finished_at }
+      else
+        render json: { status: "error", errors: deployment.errors.full_messages },
+               status: :unprocessable_content
+      end
+    end
+
     private
 
     def authenticate_deployment_request!
@@ -34,6 +53,10 @@ module RailsPulse
 
     def deployment_params
       params.require(:deployment).permit(:revision, :started_at, :finished_at, metadata: {})
+    end
+
+    def finish_params
+      params.require(:deployment).permit(:revision, :finished_at)
     end
   end
 end
