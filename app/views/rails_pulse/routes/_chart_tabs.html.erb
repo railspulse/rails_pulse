@@ -80,9 +80,9 @@
         data-action="click->rails-pulse--series-toggle#toggle"
       >4xx</button>
     </div>
+    <%= render "rails_pulse/shared/deployment_markers_toggle" %>
   </div>
 </div>
-
 <!-- Response Time Chart -->
 <div
   class="chart-container chart-container--slim"
@@ -97,11 +97,7 @@
     type: "line",
     id: "response_time_percentiles_chart",
     height: "100%",
-    options:
-      line_chart_options(
-        units: "ms",
-        zoom: true
-      ),
+    options: line_chart_options(units: "ms", zoom: true),
   ) %>
 </div>
 <!-- Request Volume Chart -->
@@ -118,10 +114,7 @@
     type: "bar",
     id: "request_rate_chart",
     height: "100%",
-    options:
-      bar_chart_options(
-        zoom: true
-      ),
+    options: bar_chart_options(zoom: true),
   ) %>
 </div>
 <!-- Error Rate Chart -->
@@ -138,10 +131,6 @@
     type: "bar",
     id: "error_rate_chart",
     height: "100%",
-    options:
-      bar_chart_options(
-        units: "%",
-        zoom: true
-      ),
+    options: bar_chart_options(units: "%", zoom: true),
   ) %>
 </div>

@@ -1,7 +1,8 @@
 module RailsPulse
   class Configuration
+    attr_writer   :ignored_routes
     attr_accessor :enabled,
-                  :ignored_routes,
+                  :deployment_api_token,
                   :ignored_requests,
                   :ignored_queries,
                   :ignored_jobs,

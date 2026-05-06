@@ -13,7 +13,7 @@ module RailsPulse
 
         # Structure Tests
 
-        test "returns hash with labels and series keys" do
+        test "returns hash with series key" do
           chart = RequestVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -24,11 +24,10 @@ module RailsPulse
           data = chart.to_chart_data
 
           assert_kind_of Hash, data
-          assert_includes data.keys, :labels
           assert_includes data.keys, :series
         end
 
-        test "labels are timestamps in milliseconds" do
+        test "series data contains timestamp/value pairs in milliseconds" do
           chart = RequestVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -37,12 +36,10 @@ module RailsPulse
           )
 
           data = chart.to_chart_data
+          first_point = data[:series].first[:data].first
 
-          assert_kind_of Array, data[:labels]
-          assert_operator data[:labels].length, :>, 0
-          assert_operator data[:labels].first, :>, 0
-          # Verify it's in milliseconds (JavaScript timestamp)
-          assert_operator data[:labels].first, :>, 1_000_000_000_000
+          assert_kind_of Array, first_point
+          assert_operator first_point[0], :>, 1_000_000_000_000  # ms timestamp
         end
 
         test "series is array with exactly one bar chart series" do
@@ -115,7 +112,7 @@ module RailsPulse
           assert_equal RailsPulse::ChartColors::DEFAULT, data[:series].first[:color]
         end
 
-        test "data array is same length as labels array" do
+        test "data array contains at least one point" do
           chart = RequestVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -125,7 +122,7 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          assert_equal data[:labels].length, data[:series].first[:data].length
+          assert_operator data[:series].first[:data].length, :>, 0
         end
 
         # Data Calculation Tests
@@ -141,9 +138,10 @@ module RailsPulse
           data = chart.to_chart_data
 
           assert_kind_of Array, data[:series].first[:data]
-          data[:series].first[:data].each do |value|
-            assert_kind_of Integer, value
-            assert_operator value, :>=, 0
+          data[:series].first[:data].each do |point|
+            assert_kind_of Array, point
+            assert_kind_of Integer, point[1]
+            assert_operator point[1], :>=, 0
           end
         end
 
@@ -161,10 +159,10 @@ module RailsPulse
           data = chart.to_chart_data
 
           # Should have at least 3 data points (2 hours + 1)
-          assert_operator data[:labels].length, :>=, 3
+          assert_operator data[:series].first[:data].length, :>=, 3
           # Check step size is 1 hour (3600 seconds in milliseconds)
-          if data[:labels].length > 1
-            step = (data[:labels][1] - data[:labels][0]) / 1000
+          if data[:series].first[:data].length > 1
+            step = (data[:series].first[:data][1][0] - data[:series].first[:data][0][0]) / 1000
 
             assert_equal 3600, step
           end
@@ -184,10 +182,10 @@ module RailsPulse
           data = chart.to_chart_data
 
           # Should have at least 4 data points (3 days + 1)
-          assert_operator data[:labels].length, :>=, 4
+          assert_operator data[:series].first[:data].length, :>=, 4
           # Check step size is 1 day (86400 seconds in milliseconds)
-          if data[:labels].length > 1
-            step = (data[:labels][1] - data[:labels][0]) / 1000
+          if data[:series].first[:data].length > 1
+            step = (data[:series].first[:data][1][0] - data[:series].first[:data][0][0]) / 1000
 
             assert_equal 86400, step
           end
@@ -203,8 +201,8 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          data[:series].first[:data].each do |value|
-            assert_kind_of Integer, value
+          data[:series].first[:data].each do |point|
+            assert_kind_of Integer, point[1]
           end
         end
 
@@ -224,8 +222,8 @@ module RailsPulse
 
           # All values should be zero
           assert_operator data[:series].first[:data].length, :>, 0
-          data[:series].first[:data].each do |value|
-            assert_equal 0, value
+          data[:series].first[:data].each do |point|
+            assert_equal 0, point[1]
           end
         end
 
@@ -243,7 +241,6 @@ module RailsPulse
           data = chart.to_chart_data
 
           assert_kind_of Hash, data
-          assert_includes data.keys, :labels
           assert_includes data.keys, :series
         end
 
@@ -259,7 +256,6 @@ module RailsPulse
           data = chart.to_chart_data
 
           assert_kind_of Hash, data
-          assert_includes data.keys, :labels
           assert_includes data.keys, :series
         end
 
@@ -334,7 +330,6 @@ module RailsPulse
           data = chart.to_chart_data
 
           assert_kind_of Hash, data
-          assert_includes data.keys, :labels
           assert_includes data.keys, :series
         end
 
@@ -357,10 +352,10 @@ module RailsPulse
           data = chart.to_chart_data
 
           assert_kind_of Hash, data
-          assert_operator data[:labels].length, :>, 0
+          assert_operator data[:series].first[:data].length, :>, 0
           # All values should be zero
-          data[:series].first[:data].each do |value|
-            assert_equal 0, value
+          data[:series].first[:data].each do |point|
+            assert_equal 0, point[1]
           end
         end
 
@@ -377,10 +372,10 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          # Should have labels but zero values
-          assert_operator data[:labels].length, :>, 0
-          data[:series].first[:data].each do |value|
-            assert_equal 0, value
+          # Should have data points but zero values
+          assert_operator data[:series].first[:data].length, :>, 0
+          data[:series].first[:data].each do |point|
+            assert_equal 0, point[1]
           end
         end
 
@@ -398,7 +393,6 @@ module RailsPulse
           data = chart.to_chart_data
 
           # Should have at least 1 data point
-          assert_operator data[:labels].length, :>=, 1
           assert_operator data[:series].first[:data].length, :>=, 1
         end
 
@@ -415,8 +409,8 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          data[:series].first[:data].each do |value|
-            assert_equal 0, value
+          data[:series].first[:data].each do |point|
+            assert_equal 0, point[1]
           end
         end
 
@@ -433,8 +427,8 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          if data[:labels].length > 1
-            step = (data[:labels][1] - data[:labels][0]) / 1000
+          if data[:series].first[:data].length > 1
+            step = (data[:series].first[:data][1][0] - data[:series].first[:data][0][0]) / 1000
 
             assert_equal 3600, step
           end
@@ -453,8 +447,8 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          if data[:labels].length > 1
-            step = (data[:labels][1] - data[:labels][0]) / 1000
+          if data[:series].first[:data].length > 1
+            step = (data[:series].first[:data][1][0] - data[:series].first[:data][0][0]) / 1000
 
             assert_equal 86400, step
           end
@@ -474,8 +468,7 @@ module RailsPulse
           data = chart.to_chart_data
 
           # Should have ~91 data points
-          assert_operator data[:labels].length, :>, 90
-          assert_equal data[:labels].length, data[:series].first[:data].length
+          assert_operator data[:series].first[:data].length, :>, 90
         end
       end
     end

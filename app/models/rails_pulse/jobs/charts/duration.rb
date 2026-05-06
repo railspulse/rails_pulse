@@ -46,40 +46,31 @@ module RailsPulse
             end
           end
 
-          # Build labels array (timestamps in milliseconds for JavaScript)
-          labels = daily_data.keys.map { |timestamp| timestamp * 1000 }
-
-          # Build series data
+          # Build series data as [timestamp_ms, value] pairs for ECharts time axis
           series = []
 
-          p50_data = daily_data.values.map { |data| data[:p50] }
           series << {
             name: "P50",
-            data: p50_data,
+            data: daily_data.map { |ts, data| [ ts * 1000, data[:p50] ] },
             type: "line",
             color: RailsPulse::ChartColors::DEFAULT
           }
 
-          p95_data = daily_data.values.map { |data| data[:p95] }
           series << {
             name: "P95",
-            data: p95_data,
+            data: daily_data.map { |ts, data| [ ts * 1000, data[:p95] ] },
             type: "line",
             color: RailsPulse::ChartColors::P95
           }
 
-          p99_data = daily_data.values.map { |data| data[:p99] }
           series << {
             name: "P99",
-            data: p99_data,
+            data: daily_data.map { |ts, data| [ ts * 1000, data[:p99] ] },
             type: "line",
             color: RailsPulse::ChartColors::P99
           }
 
-          {
-            labels: labels,
-            series: series
-          }
+          { series: series }
         end
 
         private

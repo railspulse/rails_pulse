@@ -1,0 +1,218 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# bin/benchmark
+#
+# Measures Rails Pulse middleware overhead and DB write count across configurations.
+# Results are persisted as JSON so you can compare across Ruby/Rails/DB versions over time.
+#
+# Usage:
+#   bin/benchmark                       # Run with defaults (50 iterations per scenario)
+#   bin/benchmark --iterations=200      # More iterations for tighter numbers
+#   bin/benchmark --compare             # Print history table without running new benchmarks
+#   bin/benchmark --markdown            # Print a markdown table ready to paste into docs
+#   DB=postgresql bin/benchmark         # Run against PostgreSQL
+#
+# Results are stored in benchmarks/results/ as timestamped JSON files.
+
+RAILS_PULSE_ROOT = File.expand_path("..", __dir__)
+DUMMY_ROOT       = File.join(RAILS_PULSE_ROOT, "test", "dummy")
+RESULTS_DIR      = File.join(RAILS_PULSE_ROOT, "benchmarks", "results")
+
+# --- Argument parsing ---
+
+args            = ARGV.dup
+iterations      = (args.find { |a| a.start_with?("--iterations=") }&.split("=", 2)&.last || "50").to_i
+compare_only    = args.include?("--compare")
+markdown_only   = args.include?("--markdown")
+
+# --- Helpers used before/after boot ---
+
+def load_results
+  return [] unless Dir.exist?(RESULTS_DIR)
+  Dir.glob(File.join(RESULTS_DIR, "*.json")).sort.map { |f| JSON.parse(File.read(f)) }
+end
+
+def format_table(runs)
+  return "No results yet." if runs.empty?
+
+  header = "| Date | Ruby | Rails | DB | Scenario | Median (ms) | P95 (ms) | P99 (ms) | Mean (ms) | DB writes |"
+  sep    = "|------|------|-------|----|----------|-------------|----------|----------|-----------|-----------|"
+  rows   = runs.flat_map do |run|
+    date = run["timestamp"][0, 10]
+    run["results"].map do |scenario, metrics|
+      "| #{date} | #{run["ruby_version"]} | #{run["rails_version"]} | #{run["db_adapter"]} | #{scenario} | #{metrics["median"]} | #{metrics["p95"]} | #{metrics["p99"]} | #{metrics["mean"]} | #{metrics["db_writes"]} |"
+    end
+  end
+
+  ([header, sep] + rows).join("\n")
+end
+
+def print_comparison(runs, last_n: 5)
+  recent = runs.last(last_n)
+  puts format_table(recent)
+end
+
+require "json"
+
+if compare_only || markdown_only
+  runs = load_results
+  if runs.empty?
+    puts "No benchmark results found in #{RESULTS_DIR}. Run bin/benchmark first."
+    exit 1
+  end
+  print_comparison(runs)
+  exit 0
+end
+
+# --- Boot Rails ---
+
+puts "Booting dummy app (#{ENV.fetch("DB", "sqlite3")})..."
+ENV["RAILS_ENV"] ||= "development"
+Dir.chdir(DUMMY_ROOT)
+
+require File.join(DUMMY_ROOT, "config", "environment")
+require "rack/mock_request"
+require "fileutils"
+
+FileUtils.mkdir_p(RESULTS_DIR)
+
+# --- Benchmark helpers ---
+
+# Build a minimal but ActionDispatch-compatible Rack env.
+def build_env(path: "/posts", method: "GET")
+  env = Rack::MockRequest.env_for("http://localhost#{path}", method: method)
+  # ActionDispatch::Request reads controller/action from here
+  env["action_dispatch.request.parameters"] = { "controller" => "posts", "action" => "index" }
+  env
+end
+
+# Count writes to rails_pulse_ tables during a block.
+def count_rp_writes
+  count = 0
+  sub = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+    sql = payload[:sql].to_s
+    count += 1 if sql.match?(/\A\s*(INSERT|UPDATE|DELETE)/i) && sql.include?("rails_pulse_")
+  end
+  yield
+  count
+ensure
+  ActiveSupport::Notifications.unsubscribe(sub)
+end
+
+# Measure median, p95, p99, mean from an array of millisecond floats.
+def statistics(times)
+  sorted = times.sort
+  n = sorted.size
+  {
+    "median" => sorted[n / 2].round(3),
+    "p95"    => sorted[(n * 0.95).ceil - 1].round(3),
+    "p99"    => sorted[(n * 0.99).ceil - 1].round(3),
+    "mean"   => (times.sum / n.to_f).round(3)
+  }
+end
+
+# A no-op Rack app to isolate middleware overhead from application time.
+passthrough = ->(_env) { [200, { "Content-Type" => "text/plain" }, ["OK"]] }
+
+# --- Scenarios ---
+
+scenarios = [
+  {
+    name:  "Baseline (disabled)",
+    setup: -> { RailsPulse.configuration.enabled = false },
+    reset: -> { RailsPulse.configuration.enabled = true }
+  },
+  {
+    name:  "Enabled, async: true",
+    setup: -> { RailsPulse.configuration.enabled = true; RailsPulse.configuration.async = true },
+    reset: -> {}
+  },
+  {
+    name:  "Enabled, async: false",
+    setup: -> { RailsPulse.configuration.enabled = true; RailsPulse.configuration.async = false },
+    reset: -> {}
+  }
+]
+
+# --- Run ---
+
+db_adapter = ActiveRecord::Base.connection_db_config.adapter
+puts "Ruby #{RUBY_VERSION} | Rails #{Rails::VERSION::STRING} | DB: #{db_adapter}"
+puts "Iterations per scenario: #{iterations}"
+puts
+
+# Suppress Rails Pulse's own logger during benchmark
+RailsPulse.configuration.logger = Logger.new(IO::NULL)
+
+run_results = {}
+
+scenarios.each do |scenario|
+  print "  #{scenario[:name].ljust(30)}"
+  scenario[:setup].call
+
+  middleware = RailsPulse::Middleware::RequestCollector.new(passthrough)
+  times = []
+
+  # Warm up — don't measure these
+  10.times { middleware.call(build_env) }
+
+  # Count writes on a single warmed-up call
+  db_writes = count_rp_writes { middleware.call(build_env) }
+
+  # Timed iterations
+  iterations.times do
+    env = build_env
+    t0 = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
+    middleware.call(env)
+    t1 = Process.clock_gettime(Process::CLOCK_MONOTONIC, :float_millisecond)
+    times << (t1 - t0)
+  end
+
+  scenario[:reset].call
+
+  stats = statistics(times)
+  stats["db_writes"] = db_writes
+  run_results[scenario[:name]] = stats
+
+  puts "median: #{stats["median"]}ms  p95: #{stats["p95"]}ms  p99: #{stats["p99"]}ms  writes: #{db_writes}"
+end
+
+# Restore logger
+RailsPulse.configuration.logger = nil
+
+# --- Persist ---
+
+run_data = {
+  "timestamp"     => Time.now.iso8601,
+  "ruby_version"  => RUBY_VERSION,
+  "rails_version" => Rails::VERSION::STRING,
+  "db_adapter"    => db_adapter,
+  "iterations"    => iterations,
+  "results"       => run_results
+}
+
+filename = "#{Time.now.strftime("%Y-%m-%d_%H-%M-%S")}_#{db_adapter}.json"
+path = File.join(RESULTS_DIR, filename)
+File.write(path, JSON.pretty_generate(run_data))
+puts "\nSaved to benchmarks/results/#{filename}"
+
+# --- Overhead summary ---
+
+baseline = run_results["Baseline (disabled)"]["median"]
+puts
+puts "Overhead vs baseline:"
+run_results.each do |name, stats|
+  next if name == "Baseline (disabled)"
+  overhead = (stats["median"] - baseline).round(3)
+  puts "  #{name.ljust(30)} +#{overhead}ms median"
+end
+
+# --- Historical comparison ---
+
+all_runs = load_results
+if all_runs.size > 1
+  puts
+  puts "Recent runs:"
+  print_comparison(all_runs)
+end

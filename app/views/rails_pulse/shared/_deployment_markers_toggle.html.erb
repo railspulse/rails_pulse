@@ -1,0 +1,20 @@
+<% if @deployment_markers&.any? %>
+  <div
+    class="panel-tabs__toggles"
+    data-controller="rails-pulse--deployment-markers-toggle"
+    data-active="<%= @show_deployment_markers %>"
+  >
+    <button
+      class="series-toggle"
+      style="color: #22c55e"
+      data-rails-pulse--deployment-markers-toggle-target="button"
+      data-active="<%= @show_deployment_markers %>"
+      data-action="click->rails-pulse--deployment-markers-toggle#toggle"
+    >Deploys</button>
+    <span
+      class="text-xs"
+      data-rails-pulse--deployment-markers-toggle-target="message"
+      style="display: <%= @show_deployment_markers ? 'inline' : 'none' %>; color: #22c55e;"
+    >Click marker to copy SHA</span>
+  </div>
+<% end %>

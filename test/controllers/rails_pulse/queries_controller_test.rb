@@ -247,7 +247,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
   # Chart Data Tests
 
-  test "query_performance_chart_data has series and labels" do
+  test "query_performance_chart_data has series" do
     setup_basic_test_data
 
     get rails_pulse_engine.queries_path
@@ -256,10 +256,9 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_kind_of Hash, chart
     assert_includes chart.keys, :series
-    assert_includes chart.keys, :labels
   end
 
-  test "execution_volume_chart_data has series and labels" do
+  test "execution_volume_chart_data has series" do
     setup_basic_test_data
 
     get rails_pulse_engine.queries_path
@@ -268,10 +267,9 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_kind_of Hash, chart
     assert_includes chart.keys, :series
-    assert_includes chart.keys, :labels
   end
 
-  test "database_load_chart_data has series and labels" do
+  test "database_load_chart_data has series" do
     setup_basic_test_data
 
     get rails_pulse_engine.queries_path
@@ -280,7 +278,6 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
     assert_kind_of Hash, chart
     assert_includes chart.keys, :series
-    assert_includes chart.keys, :labels
   end
 
   test "chart series have required attributes" do

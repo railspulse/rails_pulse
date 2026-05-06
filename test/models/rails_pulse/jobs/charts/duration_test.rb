@@ -20,7 +20,7 @@ module RailsPulse
 
         # Structure Tests
 
-        test "to_chart_data returns hash with labels and series keys" do
+        test "to_chart_data returns hash with series key" do
           chart = Duration.new(
             ransack_query: @ransack_query,
             period_type: "day",
@@ -31,11 +31,10 @@ module RailsPulse
           result = chart.to_chart_data
 
           assert_kind_of Hash, result
-          assert_includes result.keys, :labels
           assert_includes result.keys, :series
         end
 
-        test "labels are timestamps in milliseconds" do
+        test "series data contains timestamp/value pairs in milliseconds" do
           chart = Duration.new(
             ransack_query: @ransack_query,
             period_type: "day",
@@ -44,11 +43,10 @@ module RailsPulse
           )
 
           result = chart.to_chart_data
+          first_point = result[:series].first[:data].first
 
-          assert_kind_of Array, result[:labels]
-          assert_operator result[:labels].length, :>, 0
-          # JavaScript millisecond timestamps are > 1 trillion
-          assert_operator result[:labels].first, :>, 1_000_000_000_000
+          assert_kind_of Array, first_point
+          assert_operator first_point[0], :>, 1_000_000_000_000
         end
 
         test "series contains exactly three entries for P50, P95, P99" do
@@ -111,7 +109,7 @@ module RailsPulse
           assert_includes colors, RailsPulse::ChartColors::P99
         end
 
-        test "all series data arrays are same length as labels" do
+        test "all series data arrays contain points" do
           chart = Duration.new(
             ransack_query: @ransack_query,
             period_type: "day",
@@ -122,7 +120,7 @@ module RailsPulse
           result = chart.to_chart_data
 
           result[:series].each do |series|
-            assert_equal result[:labels].length, series[:data].length
+            assert_operator series[:data].length, :>, 0
           end
         end
 
@@ -143,10 +141,10 @@ module RailsPulse
 
           result = chart.to_chart_data
           p95_series = result[:series].find { |s| s[:name] == "P95" }
-          non_nil_values = p95_series[:data].compact
+          non_nil_values = p95_series[:data].reject { |v| v[1].nil? }
 
           assert_operator non_nil_values.length, :>, 0
-          assert_equal 200, non_nil_values.first
+          assert_equal 200, non_nil_values.first[1]
         end
 
         test "returns nil for periods with no data" do
@@ -162,7 +160,7 @@ module RailsPulse
           result = chart.to_chart_data
           p95_series = result[:series].find { |s| s[:name] == "P95" }
 
-          assert p95_series[:data].all?(&:nil?), "expected all nil for periods with no data"
+          assert p95_series[:data].all? { |v| v[1].nil? }, "expected all nil for periods with no data"
         end
 
         test "filters by job when subject provided" do
@@ -180,9 +178,9 @@ module RailsPulse
 
           result = chart.to_chart_data
           p95_series = result[:series].find { |s| s[:name] == "P95" }
-          non_nil_values = p95_series[:data].compact
+          non_nil_values = p95_series[:data].reject { |v| v[1].nil? }
 
-          refute_includes non_nil_values, 999
+          refute_includes non_nil_values.map { |v| v[1] }, 999
         end
 
         test "daily step size is 86400 seconds" do
@@ -195,8 +193,8 @@ module RailsPulse
 
           result = chart.to_chart_data
 
-          if result[:labels].length > 1
-            step_ms = result[:labels][1] - result[:labels][0]
+          if result[:series].first[:data].length > 1
+            step_ms = result[:series].first[:data][1][0] - result[:series].first[:data][0][0]
 
             assert_equal 86400, step_ms / 1000
           end
@@ -212,8 +210,8 @@ module RailsPulse
 
           result = chart.to_chart_data
 
-          if result[:labels].length > 1
-            step_ms = result[:labels][1] - result[:labels][0]
+          if result[:series].first[:data].length > 1
+            step_ms = result[:series].first[:data][1][0] - result[:series].first[:data][0][0]
 
             assert_equal 3600, step_ms / 1000
           end
@@ -232,9 +230,9 @@ module RailsPulse
           result = chart.to_chart_data
 
           assert_kind_of Hash, result
-          assert_operator result[:labels].length, :>, 0
+          assert_operator result[:series].first[:data].length, :>, 0
           result[:series].each do |series|
-            assert series[:data].all?(&:nil?), "expected nil for all empty periods"
+            assert series[:data].all? { |v| v[1].nil? }, "expected nil for all empty periods"
           end
         end
 
@@ -262,9 +260,9 @@ module RailsPulse
 
           result = chart.to_chart_data
 
-          assert_operator result[:labels].length, :>, 90
+          assert_operator result[:series].first[:data].length, :>, 90
           result[:series].each do |series|
-            assert_equal result[:labels].length, series[:data].length
+            assert_equal result[:series].first[:data].length, series[:data].length
           end
         end
 

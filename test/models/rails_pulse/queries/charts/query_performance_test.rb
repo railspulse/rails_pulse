@@ -22,7 +22,7 @@ module RailsPulse
           assert_kind_of QueryPerformance, chart
         end
 
-        test "returns chart data with labels and series" do
+        test "returns chart data with series" do
           chart = QueryPerformance.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -32,9 +32,7 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          assert data.key?(:labels)
           assert data.key?(:series)
-          assert_kind_of Array, data[:labels]
           assert_kind_of Array, data[:series]
         end
 
@@ -97,7 +95,6 @@ module RailsPulse
           # Should not raise error
           data = chart.to_chart_data
 
-          assert data.key?(:labels)
           assert data.key?(:series)
         end
 
@@ -114,7 +111,6 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          assert data.key?(:labels)
           assert data.key?(:series)
           # Should still have P95 and P99 series with zero values
           series_names = data[:series].map { |s| s[:name] }

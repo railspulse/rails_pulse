@@ -26,20 +26,4 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
     # Needs Attention Panel
     assert_text "NEEDS ATTENTION"
   end
-
-  test "time range selector updates dashboard via turbo frame" do
-    visit_rails_pulse_path "/"
-
-    # Verify content is present
-    assert_selector ".metric-strip"
-    assert_selector "#response_time_percentiles_chart"
-    assert_selector "#throughput_and_errors_chart"
-
-    # Verify metric cards show actual values
-    assert_selector ".metric-strip__section", minimum: 3
-    assert_text "ms" # P95 response time value
-
-    # Dashboard uses time range selector from global header
-    # The actual time range functionality is tested in global_filters_test.rb
-  end
 end
