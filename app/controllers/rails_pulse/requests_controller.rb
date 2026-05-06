@@ -125,7 +125,7 @@ module RailsPulse
     end
 
     def set_request
-      @request = Request.find(params[:id])
+      @request = Request.includes(operations: :query).find(params[:id])
     end
   end
 end

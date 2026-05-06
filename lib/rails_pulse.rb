@@ -30,8 +30,11 @@ module RailsPulse
     end
 
     def logger
-      return Logger.new($stdout) unless Rails.logger
-      @logger ||= ActiveSupport::TaggedLogging.new(Rails.logger).tagged("RailsPulse")
+      if defined?(Rails) && Rails.respond_to?(:logger) && Rails.logger
+        @logger ||= ActiveSupport::TaggedLogging.new(Rails.logger).tagged("RailsPulse")
+      else
+        Logger.new($stdout)
+      end
     end
 
     def clear_metric_cache!

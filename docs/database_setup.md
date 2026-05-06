@@ -245,9 +245,10 @@ When adding a new feature that requires a database column:
    end
    ```
 
-2. Update the schema file to include the column (for new installations):
+ 2. Update **both** schema files to include the column (for new installations):
    ```ruby
-   # db/rails_pulse_schema.rb
+   # db/rails_pulse_schema.rb  (source of truth)
+   # lib/generators/rails_pulse/templates/db/rails_pulse_schema.rb  (generator template — must match!)
    unless connection.table_exists?(:rails_pulse_jobs)
      connection.create_table :rails_pulse_jobs do |t|
        # ... existing columns ...
@@ -255,6 +256,11 @@ When adding a new feature that requires a database column:
      end
    end
    ```
+
+   > **Important**: The generator template at `lib/generators/rails_pulse/templates/db/rails_pulse_schema.rb`
+   > is what gets copied into users' apps when they run `rails generate rails_pulse:install`. It must be
+   > kept in sync with `db/rails_pulse_schema.rb` — failing to update it means fresh installs will be
+   > missing the new column even though the source of truth is correct.
 
 3. Users run the upgrade generator to get the migration:
    ```bash

@@ -40,8 +40,8 @@ RailsPulse::Schema ||= lambda do |connection|
 
   unless connection.table_exists?(:rails_pulse_queries)
     connection.create_table :rails_pulse_queries do |t|
-      t.string :hashed_sql, limit: 32, null: false, comment: "MD5 hash of normalized SQL for indexing"
-      t.text :normalized_sql, null: false, comment: "Normalized SQL query string (e.g., SELECT * FROM users WHERE id = ?)"
+      t.string :hashed_sql, limit: 32, null: false, comment: "MD5 hash of normalized SQL for fast lookups and uniqueness"
+      t.text :normalized_sql, null: false, comment: "Full normalized SQL query string (e.g., SELECT * FROM users WHERE id = ?)"
       t.datetime :analyzed_at, comment: "When query analysis was last performed"
       t.text :explain_plan, comment: "EXPLAIN output from actual SQL execution"
       t.text :issues, comment: "JSON array of detected performance issues"
@@ -68,6 +68,7 @@ RailsPulse::Schema ||= lambda do |connection|
       t.string :controller_action, comment: "Controller and action handling the request (e.g., PostsController#show)"
       t.timestamp :occurred_at, null: false, comment: "When the request started"
       t.text :tags, comment: "JSON array of tags for filtering and categorization"
+      t.integer :response_size_bytes, comment: "HTTP response body size in bytes"
       t.timestamps
     end
 
@@ -131,6 +132,10 @@ RailsPulse::Schema ||= lambda do |connection|
       t.string :codebase_location, comment: "File and line number (e.g., app/models/user.rb:25)"
       t.float :start_time, null: false, default: 0.0, comment: "Operation start time in milliseconds"
       t.timestamp :occurred_at, null: false, comment: "When the request started"
+      t.integer :row_count, comment: "Number of rows returned (SQL operations, Rails 7.1+)"
+      t.boolean :cache_hit, comment: "Whether a cache_read operation hit the cache"
+      t.text :repeated_query_group, comment: "Normalized SQL key identifying an N+1 group"
+      t.integer :repetition_count, comment: "Number of times this query pattern repeated in the request"
       t.timestamps
     end
 
@@ -154,7 +159,7 @@ RailsPulse::Schema ||= lambda do |connection|
       t.string :period_type, null: false, comment: "Aggregation period type: hour, day, week, month"
 
       # Polymorphic association to handle both routes and queries
-      t.references :summarizable, polymorphic: true, null: false, index: false, comment: "Link to Route or Query"
+      t.references :summarizable, polymorphic: true, null: false, index: true, comment: "Link to Route or Query"
       # This creates summarizable_type (e.g., 'RailsPulse::Route', 'RailsPulse::Query')
       # and summarizable_id (route_id or query_id)
 
