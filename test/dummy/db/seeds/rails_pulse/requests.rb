@@ -22,6 +22,8 @@ module RailsPulse
           duration = calculate_duration(route, occurred_at, slowdown_start, slowdown_end)
           is_error, status = determine_status(route)
 
+          response_size = calculate_response_size(route, status)
+
           request = ::RailsPulse::Request.create!(
             route: route,
             duration: duration,
@@ -29,7 +31,8 @@ module RailsPulse
             is_error: is_error,
             request_uuid: SecureRandom.uuid,
             controller_action: SeedHelpers.controller_action_for(route),
-            occurred_at: occurred_at
+            occurred_at: occurred_at,
+            response_size_bytes: response_size
           )
 
           create_operations(request, route, queries, occurred_at)
@@ -85,6 +88,37 @@ module RailsPulse
           duration *= 3.0
         end
         duration
+      end
+
+      def self.calculate_response_size(route, status)
+        # Error responses are small (just an error page/body)
+        return rand(500..3_000) if status >= 400
+
+        base = case route.path
+        when "/"            then rand(8_000..25_000)   # Full HTML page
+        when "/fast"        then rand(500..2_000)       # Minimal response
+        when "/slow"        then rand(50_000..200_000)  # Large payload (why it's slow)
+        when "/error_prone" then rand(1_000..8_000)
+        when "/search"      then rand(15_000..60_000)   # Search results page
+        when "/api_simple"  then rand(200..2_000)       # Small JSON
+        when "/api_complex" then rand(10_000..80_000)   # Large JSON payload
+        else
+          if route.path.include?("/rails/active_storage/")
+            rand(20_000..5_000_000)   # File downloads vary widely
+          elsif route.path.include?("/api/v2/organizations/")
+            rand(5_000..40_000)       # API JSON response
+          elsif route.path.include?("/webhooks/")
+            rand(100..1_000)          # Webhook acknowledgement
+          elsif route.path.include?("/admin/system/configuration/")
+            rand(20_000..80_000)      # Admin page with lots of data
+          else
+            rand(3_000..20_000)
+          end
+        end
+
+        # Add ±20% jitter
+        jitter = rand(-base * 0.2..base * 0.2).to_i
+        [ base + jitter, 100 ].max
       end
 
       def self.determine_status(route)
