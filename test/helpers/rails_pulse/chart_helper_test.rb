@@ -245,6 +245,17 @@ class RailsPulse::ChartHelperTest < ActionView::TestCase
     refute parsed.key?("deployment_markers")
   end
 
+  test "render_stimulus_chart does not inject deployment_markers for string-label charts" do
+    @deployment_markers = [ { timestamp: 1_700_000_000_000, revision: "abc123", started_at: "2024-01-01T00:00:00Z" } ]
+    data = { labels: [ "Apr 28", "Apr 29" ], series: [ { name: "P50", data: [ 100, 110 ] } ] }
+
+    html = render_stimulus_chart(data, type: "line")
+    doc = Nokogiri::HTML(html)
+    parsed = JSON.parse(doc.at_css("[data-rails-pulse--chart-data-value]")["data-rails-pulse--chart-data-value"])
+
+    refute parsed.key?("deployment_markers")
+  end
+
   # ============================================================================
   # Zoom - time-axis format Tests
   # ============================================================================

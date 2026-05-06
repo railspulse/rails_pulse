@@ -3,8 +3,10 @@ module RailsPulse
     # Main chart rendering method - unified API for all chart types
     # Uses Stimulus controller to handle chart initialization
     def render_stimulus_chart(data, type:, **options)
-      # Auto-inject deployment markers into multi-series chart data when available
-      if data.is_a?(Hash) && (data[:labels].present? || data[:series].present?) && @deployment_markers&.any?
+      # Auto-inject deployment markers into time-axis charts only.
+      # Time-axis charts store timestamps inside series data as [timestamp_ms, value] pairs
+      # and have no separate :labels key. Category/string-label charts (e.g. dashboard) are excluded.
+      if data.is_a?(Hash) && data[:labels].nil? && data[:series].present? && @deployment_markers&.any?
         data = data.merge(deployment_markers: @deployment_markers)
       end
 

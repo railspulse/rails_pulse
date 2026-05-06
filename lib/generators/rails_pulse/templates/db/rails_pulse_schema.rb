@@ -5,7 +5,7 @@
 RailsPulse::Schema ||= lambda do |connection|
   adapter = connection.adapter_name.downcase
   # Skip if all tables already exist to prevent conflicts
-  required_tables = [ :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_jobs, :rails_pulse_job_runs, :rails_pulse_summaries ]
+  required_tables = [ :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_jobs, :rails_pulse_job_runs, :rails_pulse_summaries, :rails_pulse_deployments ]
 
   # Check which tables already exist
   existing_tables = required_tables.select { |table| connection.table_exists?(table) }
@@ -193,6 +193,21 @@ RailsPulse::Schema ||= lambda do |connection|
     connection.add_index :rails_pulse_summaries, :created_at, name: "index_rails_pulse_summaries_on_created_at"
     connection.add_index :rails_pulse_summaries, :summarizable_id, name: "index_rails_pulse_summaries_on_summarizable_id"
     connection.add_index :rails_pulse_summaries, :period_start, name: "index_rails_pulse_summaries_on_period_start"
+  end
+
+  unless connection.table_exists?(:rails_pulse_deployments)
+    connection.create_table :rails_pulse_deployments do |t|
+      t.string   :revision,    null: false, comment: "Git SHA, tag, or version string"
+      t.datetime :started_at,  null: false, comment: "When the deployment started"
+      t.datetime :finished_at,             comment: "When the deployment finished (nil if still in progress or unknown)"
+      t.text     :metadata,                comment: "JSON object of arbitrary deployment metadata"
+      t.timestamps
+    end
+
+    connection.add_index :rails_pulse_deployments, :started_at,
+      name: "index_rails_pulse_deployments_on_started_at"
+    connection.add_index :rails_pulse_deployments, :revision,
+      name: "index_rails_pulse_deployments_on_revision"
   end
 
   # Add indexes to existing tables for efficient aggregation
