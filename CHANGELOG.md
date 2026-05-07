@@ -9,6 +9,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Exception tracking** — Captures unhandled exceptions from web requests and background jobs, groups them by class and location, and displays full backtraces with filtered request params in a new Exceptions tab
+- **`track_exceptions` config option** — Enable or disable exception tracking (default: `true`)
+- **`capture_exception_params` config option** — Capture request params alongside each exception occurrence. Params are filtered via Rails' `filter_parameters` config; occurrences with params larger than 10KB after filtering are stored without params. Set to `false` for strict data-minimisation requirements (default: `true`)
 - **Deployment tracking** — Record deployments via `POST /rails_pulse/deployments` or `rake rails_pulse:record_deployment[sha]`. Deployments appear as vertical marker lines on performance charts so you can correlate releases with regressions
 - **`deployment_api_token` config option** — Secures the deployments endpoint with a token header for CI/CD use
 
