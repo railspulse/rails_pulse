@@ -1,0 +1,27 @@
+<%= render 'rails_pulse/components/page_header' %>
+
+<%= render 'rails_pulse/components/panel', title: 'Exceptions' do %>
+  <%= search_form_for @ransack_query, url: exceptions_path, class: "filter-bar" do |form| %>
+    <div class="filter-bar__form">
+      <%= form.search_field :exception_class_cont,
+        placeholder: "Filter by exception class",
+        autocomplete: "off",
+        class: "input"
+      %>
+      <%= link_to "Reset", exceptions_path, class: "btn btn--plain" if params.has_key?(:q) %>
+      <%= form.submit "Search", class: "btn" %>
+    </div>
+  <% end %>
+
+  <% if @table_data.any? %>
+    <div data-controller="rails-pulse--table-sort">
+      <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">
+        <%= render 'rails_pulse/exceptions/table' %>
+      </div>
+    </div>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No exceptions recorded.',
+        description: 'Exceptions raised by your application will appear here.' %>
+  <% end %>
+<% end %>

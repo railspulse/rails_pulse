@@ -117,6 +117,21 @@ RailsPulse.configure do |config|
   config.tags = [ "ignored", "critical", "experimental" ]
 
   # ====================================================================================================
+  #                                          EXCEPTION TRACKING
+  # ====================================================================================================
+  # When enabled, Rails Pulse captures unhandled exceptions raised during web requests and
+  # background jobs, groups them by class and location, and displays them in the Exceptions tab.
+
+  # Enable or disable exception tracking
+  config.track_exceptions = true
+
+  # Capture request params with each exception occurrence.
+  # Params are filtered using Rails' filter_parameters config (passwords, tokens, etc. are redacted).
+  # Occurrences with params larger than 10KB after filtering are stored without params.
+  # Set to false to disable entirely, e.g. for strict data-minimization requirements.
+  config.capture_exception_params = true
+
+  # ====================================================================================================
   #                                            BACKGROUND JOBS
   # ====================================================================================================
   # Configure background job monitoring and tracking.
@@ -279,9 +294,10 @@ RailsPulse.configure do |config|
   # After time-based cleanup, if tables still exceed these limits,
   # the oldest remaining records will be deleted to stay under the limit
   config.max_table_records = {
-    rails_pulse_requests: 10000,    # HTTP requests (moderate volume)
-    rails_pulse_operations: 50000,  # Operations within requests (high volume)
-    rails_pulse_routes: 1000,       # Unique routes (low volume)
-    rails_pulse_queries: 500        # Normalized SQL queries (low volume)
+    rails_pulse_requests: 10000,                  # HTTP requests (moderate volume)
+    rails_pulse_operations: 50000,                # Operations within requests (high volume)
+    rails_pulse_routes: 1000,                     # Unique routes (low volume)
+    rails_pulse_queries: 500,                     # Normalized SQL queries (low volume)
+    rails_pulse_exception_occurrences: 50000      # Individual exception raises (high volume)
   }
 end

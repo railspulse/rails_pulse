@@ -1,0 +1,32 @@
+<%= render 'rails_pulse/components/page_header' %>
+
+<%= render 'rails_pulse/components/panel', title: 'Exception Details' do %>
+  <dl class="descriptive-list mbs-4">
+    <dt>Class</dt>
+    <dd><code><%= @exception_group.exception_class %></code></dd>
+    <dt>Message</dt>
+    <dd><%= @exception_group.message.presence || "—" %></dd>
+    <dt>First Seen</dt>
+    <dd><%= human_readable_occurred_at(@exception_group.first_seen_at) %></dd>
+    <dt>Last Seen</dt>
+    <dd><%= human_readable_occurred_at(@exception_group.last_seen_at) %></dd>
+    <dt>Total Occurrences</dt>
+    <dd><%= number_with_delimiter(@exception_group.occurrence_count) %></dd>
+  </dl>
+<% end %>
+
+<% if @latest_occurrence&.backtrace.present? %>
+  <%= render 'rails_pulse/components/panel', title: 'Most Recent Backtrace' do %>
+    <%= render 'rails_pulse/exceptions/backtrace', backtrace: @latest_occurrence.backtrace %>
+  <% end %>
+<% end %>
+
+<%= render 'rails_pulse/components/panel', title: 'Occurrences' do %>
+  <% if @occurrences.any? %>
+    <%= render 'rails_pulse/exceptions/occurrences_table' %>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No occurrences found.',
+        description: '' %>
+  <% end %>
+<% end %>

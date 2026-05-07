@@ -1,0 +1,41 @@
+occurrence_one:
+  exception_group: record_not_found
+  exception_class: "ActiveRecord::RecordNotFound"
+  message: "Couldn't find Post with 'id'=999"
+  backtrace: '[{"file":"app/controllers/posts_controller.rb","line":42,"method":"show"},{"file":"app/models/post.rb","line":10,"method":"find"}]'
+  request_params: '{"id":"999","controller":"posts","action":"show"}'
+  request_url: "/posts/999"
+  request_method: "GET"
+  environment: "production"
+  deploy_sha: "abc1234"
+  occurred_at: <%= 1.hour.ago %>
+  created_at: <%= 1.hour.ago %>
+  updated_at: <%= 1.hour.ago %>
+
+occurrence_two:
+  exception_group: record_not_found
+  exception_class: "ActiveRecord::RecordNotFound"
+  message: "Couldn't find Post with 'id'=998"
+  backtrace: '[{"file":"app/controllers/posts_controller.rb","line":42,"method":"show"}]'
+  request_params: ~
+  request_url: "/posts/998"
+  request_method: "GET"
+  environment: "production"
+  deploy_sha: ~
+  occurred_at: <%= 2.hours.ago %>
+  created_at: <%= 2.hours.ago %>
+  updated_at: <%= 2.hours.ago %>
+
+occurrence_zero_division:
+  exception_group: zero_division
+  exception_class: "ZeroDivisionError"
+  message: "divided by 0"
+  backtrace: '[{"file":"app/services/calculator.rb","line":7,"method":"divide"}]'
+  request_params: ~
+  request_url: ~
+  request_method: ~
+  environment: "production"
+  deploy_sha: ~
+  occurred_at: <%= 30.minutes.ago %>
+  created_at: <%= 30.minutes.ago %>
+  updated_at: <%= 30.minutes.ago %>

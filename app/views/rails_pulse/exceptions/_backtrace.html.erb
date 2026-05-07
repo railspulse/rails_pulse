@@ -1,0 +1,33 @@
+<ol class="backtrace mbs-4">
+  <% backtrace.each do |frame| %>
+    <% is_app = app_frame?(frame) %>
+    <% source_lines = frame_source_lines(frame) %>
+    <li class="backtrace__frame <%= is_app ? 'backtrace__frame--app' : 'backtrace__frame--gem' %> <%= source_lines ? 'backtrace__frame--expandable' : '' %>">
+      <div class="backtrace__row">
+        <% if source_lines %>
+          <details class="backtrace__source-details">
+            <summary class="backtrace__toggle" title="Show source"></summary>
+          </details>
+        <% else %>
+          <div class="backtrace__toggle-spacer"></div>
+        <% end %>
+        <div class="backtrace__location">
+          <span class="backtrace__path"><%= frame_dirname(frame) %></span><span class="backtrace__file"><%= frame_basename(frame) %>:<%= frame["line"] %></span>
+        </div>
+        <% if frame["method"].present? %>
+          <div class="backtrace__method">in <span><%= frame["method"] %></span></div>
+        <% end %>
+      </div>
+      <% if source_lines %>
+        <div class="backtrace__source backtrace__source--hidden">
+          <% source_lines.each do |lineno, content| %>
+            <div class="backtrace__source-line <%= lineno == frame["line"].to_i ? 'backtrace__source-line--current' : '' %>">
+              <span class="backtrace__source-lineno"><%= lineno %></span>
+              <span class="backtrace__source-code"><%= content %></span>
+            </div>
+          <% end %>
+        </div>
+      <% end %>
+    </li>
+  <% end %>
+</ol>

@@ -1,0 +1,41 @@
+<%= render 'rails_pulse/components/page_header' %>
+
+<%= render 'rails_pulse/components/panel', title: 'Occurrence Details' do %>
+  <dl class="descriptive-list mbs-4">
+    <dt>Exception</dt>
+    <dd><code><%= @occurrence.exception_class %></code></dd>
+    <dt>Message</dt>
+    <dd><%= @occurrence.message.presence || "—" %></dd>
+    <dt>Occurred At</dt>
+    <dd><%= human_readable_occurred_at(@occurrence.occurred_at) %></dd>
+    <% if @occurrence.request_url.present? %>
+      <dt>Request</dt>
+      <dd><%= @occurrence.request_method %> <%= @occurrence.request_url %></dd>
+    <% end %>
+    <dt>Environment</dt>
+    <dd><%= @occurrence.environment.presence || "—" %></dd>
+    <% if @occurrence.deploy_sha.present? %>
+      <dt>Deploy SHA</dt>
+      <dd><code><%= @occurrence.deploy_sha %></code></dd>
+    <% end %>
+  </dl>
+<% end %>
+
+<% if @occurrence.request_params.present? %>
+  <%= render 'rails_pulse/components/panel', title: 'Request Params' do %>
+    <div class="exception-params mbs-4">
+      <% @occurrence.request_params.each do |key, value| %>
+        <div class="exception-params__row">
+          <span class="exception-params__key"><%= key %></span>
+          <span class="exception-params__value"><%= value.inspect %></span>
+        </div>
+      <% end %>
+    </div>
+  <% end %>
+<% end %>
+
+<% if @occurrence.backtrace.present? %>
+  <%= render 'rails_pulse/components/panel', title: 'Backtrace' do %>
+    <%= render 'rails_pulse/exceptions/backtrace', backtrace: @occurrence.backtrace %>
+  <% end %>
+<% end %>

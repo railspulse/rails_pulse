@@ -9,6 +9,8 @@ module RailsPulse
                   :ignored_queues,
                   :track_assets,
                   :track_jobs,
+                  :track_exceptions,
+                  :capture_exception_params,
                   :custom_asset_patterns,
                   :mount_path,
                   :full_retention_period,
@@ -48,6 +50,8 @@ module RailsPulse
       @ignored_queues = []
       @track_assets = false
       @track_jobs = false
+      @track_exceptions = true
+      @capture_exception_params = true
       @custom_asset_patterns = []
       @mount_path = nil
       @full_retention_period = 30.days

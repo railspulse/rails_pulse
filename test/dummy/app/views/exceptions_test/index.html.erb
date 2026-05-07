@@ -1,0 +1,33 @@
+<h1>Exception Triggers</h1>
+<p class="meta" style="margin-bottom: 16px;">
+  Click a button to raise an exception. Each raise is captured by Rails Pulse and will appear in
+  <a href="/rails_pulse/exceptions">Exceptions</a>.
+</p>
+
+<% if flash[:alert] %>
+  <div style="padding: 10px 16px; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 4px; margin-bottom: 16px; color: #92400e;">
+    <%= flash[:alert] %>
+  </div>
+<% end %>
+
+<div style="display: grid; gap: 12px; max-width: 600px;">
+  <% {
+    "record_not_found" => { label: "ActiveRecord::RecordNotFound",     desc: "Simulates a missing DB record (common in show actions)" },
+    "zero_division"    => { label: "ZeroDivisionError",                desc: "Division by zero" },
+    "argument_error"   => { label: "ArgumentError",                    desc: "Wrong number of arguments" },
+    "runtime_error"    => { label: "RuntimeError",                     desc: "Generic runtime error" },
+    "name_error"       => { label: "NameError",                        desc: "Undefined variable or method" },
+    "type_error"       => { label: "TypeError",                        desc: "Implicit type conversion failure" },
+    "key_error"        => { label: "KeyError",                         desc: "Missing hash key" },
+    "not_implemented"  => { label: "NotImplementedError",              desc: "Feature not yet implemented" },
+  }.each do |type, info| %>
+    <div style="display: flex; align-items: center; gap: 16px; padding: 12px 16px; background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px;">
+      <div style="flex: 1;">
+        <strong style="font-family: monospace; font-size: 13px;"><%= info[:label] %></strong>
+        <p class="meta" style="margin: 2px 0 0; font-size: 12px;"><%= info[:desc] %></p>
+      </div>
+      <%= button_to "Raise", raise_test_exception_path, params: { type: type },
+            style: "padding: 6px 14px; background: #dc2626; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; white-space: nowrap;" %>
+    </div>
+  <% end %>
+</div>

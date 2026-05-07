@@ -1,0 +1,23 @@
+<% columns = [
+  { field: :occurred_at,    label: 'Occurred At', class: 'w-48',           sortable: false },
+  { field: :request_url,    label: 'URL',         cell_class: 'truncate-cell', sortable: false },
+  { field: :request_method, label: 'Method',      class: 'w-24',           sortable: false },
+  { field: :environment,    label: 'Environment', class: 'w-32',           sortable: false }
+] %>
+
+<table class="table table-fixed mbs-4">
+  <%= render "rails_pulse/components/table_head", columns: columns %>
+
+  <tbody>
+    <% @occurrences.each do |occurrence| %>
+      <tr>
+        <td class="whitespace-nowrap"><%= link_to human_readable_occurred_at(occurrence.occurred_at), exception_occurrence_path(@exception_group, occurrence) %></td>
+        <td class="truncate-cell"><%= occurrence.request_url.presence || "—" %></td>
+        <td class="whitespace-nowrap"><%= occurrence.request_method.presence || "—" %></td>
+        <td class="whitespace-nowrap"><%= occurrence.environment.presence || "—" %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= render "rails_pulse/components/table_pagination" %>

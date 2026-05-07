@@ -1,0 +1,28 @@
+<% columns = [
+  { field: :exception_class, label: 'Exception', cell_class: 'truncate-cell' },
+  { field: :last_seen_at,    label: 'Last Seen',  class: 'w-48' },
+  { field: :first_seen_at,   label: 'First Seen', class: 'w-48' },
+  { field: :occurrence_count, label: 'Count',     class: 'w-24' }
+] %>
+
+<table class="table table-fixed mbs-4">
+  <%= render "rails_pulse/components/table_head", columns: columns %>
+
+  <tbody>
+    <% @table_data.each do |group| %>
+      <tr>
+        <td class="truncate-cell">
+          <%= link_to group.exception_class, exception_path(group) %>
+          <% if group.message.present? %>
+            <div class="text-subtle text-xs truncate"><%= group.message %></div>
+          <% end %>
+        </td>
+        <td class="whitespace-nowrap"><%= human_readable_occurred_at(group.last_seen_at) %></td>
+        <td class="whitespace-nowrap"><%= human_readable_occurred_at(group.first_seen_at) %></td>
+        <td class="whitespace-nowrap"><%= number_with_delimiter(group.occurrence_count) %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= render "rails_pulse/components/table_pagination" %>
