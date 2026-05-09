@@ -143,6 +143,60 @@ module RailsPulse
       assert_nil run.arguments
     end
 
+    # Race Condition Tests
+
+    test "find_or_create_job creates new job record" do
+      RailsPulse::Job.where(name: FakeJob.name).delete_all
+
+      job = RailsPulse::JobRunCollector.send(:find_or_create_job, FakeJob.new)
+
+      assert_equal FakeJob.name, job.name
+      assert_equal "default", job.queue_name
+      assert_predicate job, :persisted?
+    end
+
+    test "find_or_create_job finds existing job record" do
+      RailsPulse::Job.where(name: FakeJob.name).delete_all
+      existing = RailsPulse::Job.create!(name: FakeJob.name, queue_name: "default")
+
+      result = RailsPulse::JobRunCollector.send(:find_or_create_job, FakeJob.new)
+
+      assert_equal existing.id, result.id
+    end
+
+    test "find_or_create_job recovers from RecordNotUnique" do
+      RailsPulse::Job.where(name: FakeJob.name).delete_all
+
+      RailsPulse::Job.create!(name: FakeJob.name, queue_name: "default")
+
+      RailsPulse::Job.define_singleton_method(:create_or_find_by!) do |*args, **kwargs, &block|
+        raise ActiveRecord::RecordNotUnique, "duplicate"
+      end
+
+      result = RailsPulse::JobRunCollector.send(:find_or_create_job, FakeJob.new)
+
+      assert_equal FakeJob.name, result.name
+    ensure
+      RailsPulse::Job.singleton_class.remove_method(:create_or_find_by!) rescue nil
+    end
+
+    test "find_or_create_job recovers from RecordInvalid" do
+      RailsPulse::Job.where(name: FakeJob.name).delete_all
+
+      RailsPulse::Job.create!(name: FakeJob.name, queue_name: "default")
+      existing = RailsPulse::Job.find_by!(name: FakeJob.name)
+
+      RailsPulse::Job.define_singleton_method(:create_or_find_by!) do |*args, **kwargs, &block|
+        raise ActiveRecord::RecordInvalid.new(existing)
+      end
+
+      result = RailsPulse::JobRunCollector.send(:find_or_create_job, FakeJob.new)
+
+      assert_equal FakeJob.name, result.name
+    ensure
+      RailsPulse::Job.singleton_class.remove_method(:create_or_find_by!) rescue nil
+    end
+
     test "active job integration wraps perform now" do
       klass = Class.new(ActiveJob::Base) do
         queue_as :default

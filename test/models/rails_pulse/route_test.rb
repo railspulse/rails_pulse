@@ -18,12 +18,14 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
     assert validate_presence_of(:method).matches?(route)
     assert validate_presence_of(:path).matches?(route)
 
-    # Uniqueness validation with scope (test manually for cross-database compatibility)
+    # Uniqueness enforced at database level (unique index on [method, path])
     existing_route = rails_pulse_routes(:api_users)
     duplicate_route = RailsPulse::Route.new(method: existing_route.method, path: existing_route.path)
 
-    refute_predicate duplicate_route, :valid?
-    assert_includes duplicate_route.errors[:path], "and method combination must be unique"
+    assert_predicate duplicate_route, :valid?
+    assert_raises ActiveRecord::RecordNotUnique do
+      duplicate_route.save!(validate: false)
+    end
   end
 
   test "should be valid with required attributes" do

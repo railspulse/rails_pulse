@@ -10,7 +10,7 @@ module RailsPulse
 
     # Validations
     validates :method, presence: true
-    validates :path, presence: true, uniqueness: { scope: :method, message: "and method combination must be unique" }
+    validates :path, presence: true
 
     # Scopes (optional, for convenience)
     scope :by_method_and_path, ->(method, path) { where(method: method, path: path).first_or_create }

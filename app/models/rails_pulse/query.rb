@@ -10,7 +10,7 @@ module RailsPulse
 
     # Validations
     validates :normalized_sql, presence: true
-    validates :hashed_sql, presence: true, uniqueness: true
+    validates :hashed_sql, presence: true
 
     # Callbacks
     before_validation :generate_hashed_sql, if: -> { normalized_sql.present? && (normalized_sql_changed? || hashed_sql.blank?) }

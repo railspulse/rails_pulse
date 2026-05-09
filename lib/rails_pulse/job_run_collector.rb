@@ -79,9 +79,11 @@ module RailsPulse
       end
 
       def find_or_create_job(active_job)
-        RailsPulse::Job.find_or_create_by!(name: job_class_name(active_job)) do |job|
+        RailsPulse::Job.create_or_find_by!(name: job_class_name(active_job)) do |job|
           job.queue_name = active_job.queue_name
         end
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        RailsPulse::Job.find_by!(name: job_class_name(active_job))
       end
 
       def create_job_run(job, active_job, adapter, occurred_at)
