@@ -88,12 +88,13 @@ module RailsPulse
       end
 
       def self.determine_status(route)
-        is_error = case route.path
+        error_roll = case route.path
         when "/error_prone" then rand < 0.04
         else rand < 0.005
         end
 
-        status = is_error ? [ 400, 404, 422, 500, 503 ].sample : [ 200, 201, 204 ].sample
+        status = error_roll ? [ 400, 404, 422, 500, 503 ].sample : [ 200, 201, 204 ].sample
+        is_error = status >= 500
         [ is_error, status ]
       end
 
