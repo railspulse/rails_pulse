@@ -101,7 +101,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     operation = RailsPulse::Operation.new(
       request: request,
       operation_type: "sql",
-      label: sql,
+      actual_sql: sql,
       duration: 10,
       occurred_at: Time.current
     )
@@ -110,9 +110,13 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
 
     operation.save!
 
+    normalized = RailsPulse::SqlQueryNormalizer.normalize(sql)
+
     assert_not_nil operation.query, "Query should be associated after save"
-    assert_equal sql, operation.query.normalized_sql
-    assert_equal Digest::MD5.hexdigest(sql), operation.query.hashed_sql
+    assert_equal normalized, operation.query.normalized_sql
+    assert_equal Digest::MD5.hexdigest(normalized), operation.query.hashed_sql
+    assert_equal normalized.truncate(255), operation.label
+    assert_equal sql, operation.actual_sql
   end
 
   test "reuses existing query with same hashed_sql" do
@@ -132,7 +136,7 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     operation = RailsPulse::Operation.create!(
       request: request,
       operation_type: "sql",
-      label: sql,
+      actual_sql: sql,
       duration: 10,
       occurred_at: Time.current
     )
@@ -178,6 +182,11 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     assert_equal "render users/index.html.erb", template_op.label
     assert_equal "SELECT * FROM posts WHERE id = ?", sql_op_2.label
 
+    # Verify actual_sql set for sql operations, nil for others
+    assert_equal "SELECT * FROM posts WHERE id = ?", sql_op.actual_sql
+    assert_nil controller_op.actual_sql
+    assert_nil template_op.actual_sql
+
     # Verify durations match
     assert_in_delta(45.0, sql_op.duration)
     assert_in_delta(25.0, controller_op.duration)
@@ -216,5 +225,83 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
 
     assert_nil job_operation.request
     assert_equal rails_pulse_job_runs(:report_run_retried), job_operation.job_run
+  end
+
+  # Edge Cases
+  test "truncates label to 255 characters on save" do
+    operation = RailsPulse::Operation.create!(
+      request: rails_pulse_requests(:users_request_1),
+      operation_type: "controller",
+      label: "A" * 300,
+      duration: 5,
+      occurred_at: Time.current
+    )
+
+    assert_equal 255, operation.label.length
+  end
+
+  test "does not alter label shorter than 255 characters on save" do
+    operation = RailsPulse::Operation.create!(
+      request: rails_pulse_requests(:users_request_1),
+      operation_type: "controller",
+      label: "UsersController#index",
+      duration: 5,
+      occurred_at: Time.current
+    )
+
+    assert_equal "UsersController#index", operation.label
+  end
+
+  test "actual_sql stores full SQL of any length for sql operations" do
+    long_sql = "SELECT users.id FROM users WHERE " + ("id = 1 OR " * 30).chomp(" OR ")
+    operation = RailsPulse::Operation.create!(
+      request: rails_pulse_requests(:users_request_1),
+      operation_type: "sql",
+      actual_sql: long_sql,
+      duration: 10,
+      occurred_at: Time.current
+    )
+
+    assert_equal long_sql, operation.actual_sql
+    assert_operator operation.label.length, :<=, 255
+  end
+
+  test "label is derived from normalized SQL for sql operations" do
+    operation = RailsPulse::Operation.create!(
+      request: rails_pulse_requests(:users_request_1),
+      operation_type: "sql",
+      actual_sql: "SELECT * FROM posts WHERE id = 42",
+      duration: 10,
+      occurred_at: Time.current
+    )
+
+    assert_equal "SELECT * FROM posts WHERE id = ?", operation.label
+  end
+
+  test "non-sql operations have nil actual_sql" do
+    operation = RailsPulse::Operation.create!(
+      request: rails_pulse_requests(:users_request_1),
+      operation_type: "controller",
+      label: "UsersController#index",
+      duration: 5,
+      occurred_at: Time.current
+    )
+
+    assert_nil operation.actual_sql
+  end
+
+  test "falls back to label for query association on pre-migration records without actual_sql" do
+    operation = RailsPulse::Operation.new(
+      request: rails_pulse_requests(:users_request_1),
+      operation_type: "sql",
+      label: "SELECT * FROM users WHERE id = 1",
+      duration: 10,
+      occurred_at: Time.current
+    )
+
+    operation.save!
+
+    assert_not_nil operation.query
+    assert_equal "SELECT * FROM users WHERE id = ?", operation.label
   end
 end

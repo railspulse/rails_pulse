@@ -14,8 +14,9 @@ module RailsPulse
           )
         end
 
-        if operation.label&.match?(/SELECT.*FROM\s+(\w+)/i)
-          table_name = operation.label.match(/FROM\s+(\w+)/i)&.captures&.first
+        sql_source = operation.actual_sql.presence || operation.query&.normalized_sql
+        if sql_source&.match?(/SELECT.*FROM\s+(\w+)/i)
+          table_name = sql_source.match(/FROM\s+(\w+)/i)&.captures&.first
           if table_name
             suggestions << build_suggestion(
               type: "index",
@@ -27,15 +28,10 @@ module RailsPulse
           end
         end
 
-        # Check for potential N+1 queries
-        if parent
-          # Sanitize LIKE pattern to prevent SQL injection via wildcards
-          label_prefix = operation.label.split.first(3).join(" ")
-          sanitized_pattern = ActiveRecord::Base.sanitize_sql_like(label_prefix)
-
+        # Check for potential N+1 queries by matching on query_id (same normalized SQL pattern)
+        if parent && operation.query_id.present?
           similar_queries = parent.operations
-            .where(operation_type: [ "sql" ])
-            .where("label LIKE ?", "%#{sanitized_pattern}%")
+            .where(operation_type: "sql", query_id: operation.query_id)
             .where.not(id: operation.id)
 
           if similar_queries.count > 2

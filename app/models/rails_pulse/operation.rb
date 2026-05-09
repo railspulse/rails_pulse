@@ -35,6 +35,7 @@ module RailsPulse
     scope :by_type, ->(type) { where(operation_type: type) }
 
     before_validation :associate_query
+    before_validation :truncate_label
 
     def self.ransackable_attributes(auth_object = nil)
       %w[id occurred_at label duration start_time average_query_time_ms query_count operation_type query_id]
@@ -85,20 +86,25 @@ module RailsPulse
       errors.add(:base, "Operation must belong to a request or a job run")
     end
 
-    def associate_query
-      return unless operation_type == "sql" && label.present?
+    def truncate_label
+      self.label = label&.truncate(255)
+    end
 
-      normalized = normalize_query_label(label)
+    def associate_query
+      return unless operation_type == "sql"
+
+      # actual_sql is the canonical source; fall back to label for pre-migration records
+      sql_source = actual_sql.presence || label.presence
+      return unless sql_source
+
+      normalized = RailsPulse::SqlQueryNormalizer.normalize(sql_source)
       hashed = Digest::MD5.hexdigest(normalized)
 
       self.query = RailsPulse::Query.find_or_create_by(hashed_sql: hashed) do |q|
         q.normalized_sql = normalized
       end
-    end
 
-    # Normalize SQL query using the dedicated service
-    def normalize_query_label(label)
-      RailsPulse::SqlQueryNormalizer.normalize(label)
+      self.label = normalized.truncate(255)
     end
   end
 end

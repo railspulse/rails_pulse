@@ -6,7 +6,7 @@
   <div id="operation_<%= @operation.id %>_details">
     <% if @operation.operation_type == "sql" %>
       <div class="mbe-4">
-        <%= render 'rails_pulse/components/code_panel', { value: @operation.label } %>
+        <%= render 'rails_pulse/components/code_panel', { value: @operation.actual_sql.presence || @operation.query&.normalized_sql } %>
       </div>
     <% end %>
 
