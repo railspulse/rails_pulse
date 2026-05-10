@@ -12,8 +12,9 @@ module RailsPulse
     validates :method, presence: true
     validates :path, presence: true
 
-    # Scopes (optional, for convenience)
-    scope :by_method_and_path, ->(method, path) { where(method: method, path: path).first_or_create }
+    def self.by_method_and_path(method, path)
+      create_or_find_by(method: method, path: path) || find_by!(method: method, path: path)
+    end
 
     def self.ransackable_attributes(auth_object = nil)
       %w[path average_response_time_ms max_response_time_ms request_count requests_per_minute occurred_at requests_occurred_at error_count error_rate_percentage status_indicator]

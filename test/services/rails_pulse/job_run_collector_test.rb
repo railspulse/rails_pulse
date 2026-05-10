@@ -197,6 +197,36 @@ module RailsPulse
       RailsPulse::Job.singleton_class.remove_method(:create_or_find_by!) rescue nil
     end
 
+    test "create_job_run creates new job run record" do
+      job = rails_pulse_jobs(:mailer_job)
+      fake = FakeJob.new
+      fake.instance_variable_set(:@job_id, "unique-run-#{SecureRandom.hex(4)}")
+
+      run = RailsPulse::JobRunCollector.send(:create_job_run, job, fake, "test", Time.current)
+
+      assert_predicate run, :persisted?
+      assert_equal fake.job_id, run.run_id
+    end
+
+    test "create_job_run recovers from RecordNotUnique" do
+      job = rails_pulse_jobs(:mailer_job)
+      fake = FakeJob.new
+      run_id = "race-run-#{SecureRandom.hex(4)}"
+      fake.instance_variable_set(:@job_id, run_id)
+
+      existing = RailsPulse::JobRun.create!(run_id: run_id, job: job, status: "running", occurred_at: Time.current)
+
+      RailsPulse::JobRun.define_singleton_method(:create_or_find_by) do |*args, **kwargs, &block|
+        raise ActiveRecord::RecordNotUnique, "duplicate"
+      end
+
+      result = RailsPulse::JobRunCollector.send(:create_job_run, job, fake, "test", Time.current)
+
+      assert_equal existing.id, result.id
+    ensure
+      RailsPulse::JobRun.singleton_class.remove_method(:create_or_find_by) rescue nil
+    end
+
     test "active job integration wraps perform now" do
       klass = Class.new(ActiveJob::Base) do
         queue_as :default
