@@ -6,6 +6,8 @@ module RailsPulse
 
     def setup
       RailsPulse::Summary.delete_all
+      RailsPulse::Operation.delete_all
+      RailsPulse::Request.delete_all
       @route = rails_pulse_routes(:api_users)
       @hour_start = Time.current.beginning_of_hour
     end

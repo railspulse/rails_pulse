@@ -100,7 +100,11 @@ module RailsPulse
       normalized = RailsPulse::SqlQueryNormalizer.normalize(sql_source)
       hashed = Digest::MD5.hexdigest(normalized)
 
-      self.query = RailsPulse::Query.find_by!(hashed_sql: hashed) unless self.query
+      unless self.query&.hashed_sql == hashed
+        self.query = RailsPulse::Query.create_or_find_by(hashed_sql: hashed) do |q|
+          q.normalized_sql = normalized
+        end
+      end
       self.label = normalized.truncate(255)
     end
   end
