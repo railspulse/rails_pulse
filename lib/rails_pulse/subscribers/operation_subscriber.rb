@@ -80,8 +80,11 @@ module RailsPulse
             return if sql&.include?("rails_pulse_")
           end
 
+          actual_sql = nil
           label = case label_key
-          when :sql then clean_sql_label(payload[:sql])
+          when :sql
+            actual_sql = clean_sql_label(payload[:sql])
+            nil  # associate_query sets label from normalized SQL
           when :template then relative_path(payload[:identifier] || payload[:template])
           when :partial then relative_path(payload[:identifier] || payload[:partial])
           when :controller then "#{payload[:controller]}##{payload[:action]}"
@@ -107,6 +110,7 @@ module RailsPulse
             job_run_id: job_run_id,
             operation_type: operation_type,
             label: label,
+            actual_sql: actual_sql,
             duration: (finish - start) * 1000,
             codebase_location: codebase_location,
             start_time: start.to_f,

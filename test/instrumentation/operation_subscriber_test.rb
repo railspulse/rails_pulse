@@ -40,7 +40,8 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     operation = operations.first
 
     assert_equal "sql", operation[:operation_type]
-    assert_equal "SELECT * FROM users WHERE id = ?", operation[:label]
+    assert_equal "SELECT * FROM users WHERE id = ?", operation[:actual_sql]
+    assert_nil operation[:label]
     assert_operator operation[:duration], :>=, 0, "Duration should be non-negative, got: #{operation[:duration]}"
     assert_equal @request.id, operation[:request_id]
   end
@@ -175,7 +176,8 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     operation = operations.first
 
     assert_equal "sql", operation[:operation_type]
-    assert_equal "SELECT * FROM users WHERE id = ?", operation[:label]
+    assert_equal "SELECT * FROM users WHERE id = ?", operation[:actual_sql]
+    assert_nil operation[:label]
     assert_operator operation[:duration], :>=, 0
     assert_equal @request.id, operation[:request_id]
     assert_kind_of Float, operation[:start_time]
@@ -234,7 +236,8 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     operations = RequestStore.store[:rails_pulse_operations]
 
     assert_not_empty operations, "Expected SQL operation to be captured"
-    assert_equal "SELECT * FROM users", operations.first[:label]
+    assert_equal "SELECT * FROM users", operations.first[:actual_sql]
+    assert_nil operations.first[:label]
   end
 
   test "should handle HTTP client operations" do
@@ -298,7 +301,8 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     assert_equal 1, operations.size
     operation = operations.first
 
-    assert_nil operation[:label] # nil SQL should result in nil label
+    assert_nil operation[:actual_sql]
+    assert_nil operation[:label]
   end
 
   test "should capture start time and occurred_at" do
@@ -429,7 +433,8 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     operation = RequestStore.store[:rails_pulse_operations].first
 
     assert_equal "sql", operation[:operation_type]
-    assert_equal "SELECT * FROM users", operation[:label]
+    assert_equal "SELECT * FROM users", operation[:actual_sql]
+    assert_nil operation[:label]
     assert_equal @request.id, operation[:request_id]
   end
 end
