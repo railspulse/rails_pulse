@@ -13,7 +13,7 @@ module RailsPulse
              inverse_of: :job,
              dependent: :destroy
 
-    validates :name, presence: true, uniqueness: true
+    validates :name, presence: true
 
     def self.ransackable_attributes(auth_object = nil)
       %w[id name queue_name runs_count failures_count retries_count avg_duration p95_duration p99_duration]

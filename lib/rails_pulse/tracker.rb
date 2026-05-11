@@ -29,10 +29,12 @@ module RailsPulse
 
           begin
             # Find or create route
-            route = RailsPulse::Route.find_or_create_by(
+            route = RailsPulse::Route.create_or_find_by(
               method: data[:method],
               path: data[:path]
             )
+            route = RailsPulse::Route.find_by!(method: data[:method], path: data[:path]) unless route
+
 
             # Create request record
             request = RailsPulse::Request.create!(

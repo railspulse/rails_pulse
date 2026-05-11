@@ -18,15 +18,17 @@ class RailsPulse::QueryTest < ActiveSupport::TestCase
     assert validate_presence_of(:normalized_sql).matches?(query)
     assert validate_presence_of(:hashed_sql).matches?(query)
 
-    # Uniqueness validation (test manually for cross-database compatibility)
+    # Uniqueness enforced at database level (unique index on hashed_sql)
     existing_query = rails_pulse_queries(:simple_query)
     duplicate_query = RailsPulse::Query.new(
       normalized_sql: existing_query.normalized_sql,
       hashed_sql: existing_query.hashed_sql
     )
 
-    refute_predicate duplicate_query, :valid?
-    assert_includes duplicate_query.errors[:hashed_sql], "has already been taken"
+    assert_predicate duplicate_query, :valid?
+    assert_raises ActiveRecord::RecordNotUnique do
+      duplicate_query.save!(validate: false)
+    end
   end
 
   test "automatically generates hashed_sql from normalized_sql" do

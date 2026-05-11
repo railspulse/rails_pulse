@@ -20,7 +20,7 @@ module RailsPulse
              inverse_of: :job_run,
              dependent: :destroy
 
-    validates :run_id, presence: true, uniqueness: true
+    validates :run_id, presence: true
     validates :status, inclusion: { in: STATUSES }
     validates :occurred_at, presence: true
 

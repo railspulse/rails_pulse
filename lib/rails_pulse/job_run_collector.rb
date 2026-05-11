@@ -79,16 +79,16 @@ module RailsPulse
       end
 
       def find_or_create_job(active_job)
-        RailsPulse::Job.find_or_create_by!(name: job_class_name(active_job)) do |job|
+        RailsPulse::Job.create_or_find_by!(name: job_class_name(active_job)) do |job|
           job.queue_name = active_job.queue_name
         end
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        RailsPulse::Job.find_by!(name: job_class_name(active_job))
       end
 
       def create_job_run(job, active_job, adapter, occurred_at)
         run_id = active_job.job_id || SecureRandom.uuid
-
-        job_run = RailsPulse::JobRun.find_or_initialize_by(run_id: run_id)
-        job_run.assign_attributes(
+        attrs = {
           job: job,
           status: initial_status_for(active_job),
           enqueued_at: safe_timestamp(active_job.try(:enqueued_at)),
@@ -96,9 +96,16 @@ module RailsPulse
           attempts: (active_job.respond_to?(:executions) ? active_job.executions : 0),
           adapter: adapter,
           arguments: serialized_arguments(active_job)
-        )
-        job_run.save!
+        }
+
+        job_run = RailsPulse::JobRun.create_or_find_by!(run_id: run_id) { |r| r.assign_attributes(attrs) }
+        unless job_run.previously_new_record?
+          job_run.assign_attributes(attrs)
+          job_run.save!
+        end
         job_run
+      rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
+        RailsPulse::JobRun.find_by!(run_id: run_id)
       end
 
       def serialized_arguments(active_job)
