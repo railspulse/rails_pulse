@@ -11,13 +11,11 @@ class AddActualSqlToOperations < ActiveRecord::Migration[7.0]
     # NOTE: On MySQL installations that hit the 255-char truncation bug,
     # actual_sql will contain a partial SQL string — the full query is unrecoverable.
     # The associated query.normalized_sql is unaffected and analysis still works.
-    say "Backfilling actual_sql from label for existing sql operations..."
     RailsPulse::Operation
       .where(operation_type: "sql", actual_sql: nil)
       .in_batches(of: 1000) do |batch|
         batch.update_all("actual_sql = label")
       end
-    say "actual_sql backfill complete."
   end
 
   def down

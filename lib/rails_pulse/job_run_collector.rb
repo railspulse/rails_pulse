@@ -98,10 +98,11 @@ module RailsPulse
           arguments: serialized_arguments(active_job)
         }
 
-        job_run = RailsPulse::JobRun.create_or_find_by(run_id: run_id) { |r| r.assign_attributes(attrs) }
-        job_run ||= RailsPulse::JobRun.find_by!(run_id: run_id)
-        job_run.assign_attributes(attrs)
-        job_run.save!
+        job_run = RailsPulse::JobRun.create_or_find_by!(run_id: run_id) { |r| r.assign_attributes(attrs) }
+        unless job_run.previously_new_record?
+          job_run.assign_attributes(attrs)
+          job_run.save!
+        end
         job_run
       rescue ActiveRecord::RecordInvalid, ActiveRecord::RecordNotUnique
         RailsPulse::JobRun.find_by!(run_id: run_id)
