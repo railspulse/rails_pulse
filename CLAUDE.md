@@ -13,11 +13,12 @@ Rails Pulse has a three-path migration architecture. Always keep all three paths
 
 ### When adding a new column or table
 
-You must update **all three**:
+You must update **all three** (plus the table list for new tables):
 
 1. **`db/rails_pulse_schema.rb`** — add the column/table for fresh installs (source of truth)
 2. **`lib/generators/rails_pulse/templates/db/rails_pulse_schema.rb`** — keep in sync with the source of truth so the install generator produces correct output
 3. **`db/rails_pulse_migrate/TIMESTAMP_description.rb`** — add an incremental migration with `column_exists?`/`table_exists?` guards for existing installs
+4. **`lib/generators/rails_pulse/base_methods.rb` `RAILS_PULSE_TABLES`** — add the table name (new tables only); this is the fallback list used when the host app's schema file can't be parsed
 
 Example incremental migration pattern:
 ```ruby
@@ -40,6 +41,7 @@ The test dummy app needs its schema kept in sync:
 
 - Do not modify existing table structure in `db/rails_pulse_schema.rb` — it only creates tables, never alters them
 - Do not add columns directly to the schema file without also adding an incremental migration in `db/rails_pulse_migrate/`
+- Do not use acronyms in migration filenames (e.g. `sql`, `url`, `id`). Rails camelizes `add_actual_sql_to_operations` to `AddActualSqlToOperations`, but some host apps use inflection rules that produce `AddActualSQLToOperations`, causing a `NameError` at runtime. Use full words instead: `add_actual_query_to_operations`, `add_endpoint_to_routes`, etc.
 
 Full architecture details: `docs/database_setup.md`
 

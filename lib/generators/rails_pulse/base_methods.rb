@@ -12,6 +12,7 @@ module RailsPulse
         rails_pulse_jobs
         rails_pulse_job_runs
         rails_pulse_summaries
+        rails_pulse_deployments
       ].freeze
 
       # Generate next migration number for timestamped migrations
