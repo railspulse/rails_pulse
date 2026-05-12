@@ -245,7 +245,7 @@ When adding a new feature that requires a database column:
    end
    ```
 
- 2. Update **both** schema files to include the column (for new installations):
+2. Update **both** schema files to include the column (for new installations):
    ```ruby
    # db/rails_pulse_schema.rb  (source of truth)
    # lib/generators/rails_pulse/templates/db/rails_pulse_schema.rb  (generator template — must match!)
@@ -262,7 +262,9 @@ When adding a new feature that requires a database column:
    > kept in sync with `db/rails_pulse_schema.rb` — failing to update it means fresh installs will be
    > missing the new column even though the source of truth is correct.
 
-3. Users run the upgrade generator to get the migration:
+3. **For new tables only**: Add the table name to `RAILS_PULSE_TABLES` in `lib/generators/rails_pulse/base_methods.rb`. This list is the fallback used when the upgrade generator cannot parse the host app's `db/rails_pulse_schema.rb`, so it must stay in sync with the actual set of tables.
+
+4. Users run the upgrade generator to get the migration:
    ```bash
    rails generate rails_pulse:upgrade
    rails db:migrate

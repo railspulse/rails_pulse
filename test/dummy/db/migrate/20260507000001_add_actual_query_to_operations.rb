@@ -1,4 +1,4 @@
-class AddActualSqlToOperations < ActiveRecord::Migration[7.0]
+class AddActualQueryToOperations < ActiveRecord::Migration[7.0]
   def up
     unless column_exists?(:rails_pulse_operations, :actual_sql)
       add_column :rails_pulse_operations, :actual_sql, :text,
