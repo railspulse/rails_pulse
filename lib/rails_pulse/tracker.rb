@@ -49,29 +49,7 @@ module RailsPulse
 
             # Create operation records
             ops = data[:operations] || []
-            unless ops.empty?
-              now = Time.current
-              query_cache = {}
-              rows = ops.map do |op|
-                op = op.merge(request_id: request.id, created_at: now, updated_at: now)
-                if op[:operation_type] == "sql"
-                  sql_source = op[:actual_sql].presence || op[:label].presence
-                  if sql_source
-                    normalized = RailsPulse::SqlQueryNormalizer.normalize(sql_source)
-                    hashed = Digest::MD5.hexdigest(normalized)
-                    query_id = query_cache[hashed] ||= RailsPulse::Query.create_or_find_by(hashed_sql: hashed) { |q|
-                      q.normalized_sql = normalized
-                    }.id
-                    op = op.merge(label: normalized.truncate(255), query_id: query_id)
-                  end
-                end
-                op[:label] = op[:label]&.truncate(255)
-                op
-              end
-              all_keys = rows.flat_map(&:keys).uniq
-              rows = rows.map { |r| all_keys.each_with_object({}) { |k, h| h[k] = r[k] } }
-              RailsPulse::Operation.insert_all!(rows)
-            end
+            RailsPulse::Operation.persist_bulk(ops, request_id: request.id)
 
             request
           rescue ActiveRecord::ConnectionNotEstablished, ActiveRecord::StatementInvalid => e
