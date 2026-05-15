@@ -29,10 +29,8 @@ module RailsPulse
 
           begin
             # Find or create route
-            route = RailsPulse::Route.create_or_find_by(
-              method: data[:method],
-              path: data[:path]
-            )
+            route = RailsPulse::Route.find_by(method: data[:method], path: data[:path]) ||
+                    RailsPulse::Route.create_or_find_by(method: data[:method], path: data[:path])
 
 
             # Create request record
