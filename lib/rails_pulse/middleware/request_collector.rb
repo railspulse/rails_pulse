@@ -85,7 +85,7 @@ module RailsPulse
         sql_ops = operations.select { |op| op[:operation_type] == "sql" }
         return if sql_ops.size < 2
 
-        groups = sql_ops.group_by { |op| RailsPulse::SqlQueryNormalizer.normalize(op[:label].to_s) }
+        groups = sql_ops.group_by { |op| RailsPulse::SqlQueryNormalizer.normalize(op[:actual_sql].to_s) }
         groups.each do |normalized_sql, ops|
           next if ops.size < 2
           ops.each do |op|

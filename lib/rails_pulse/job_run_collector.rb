@@ -128,17 +128,34 @@ module RailsPulse
       def save_operations(job_run)
         return unless job_run
 
-        operations_data = RequestStore.store[:rails_pulse_operations] || []
-        operations_data.each do |operation_data|
-          operation_data[:job_run_id] = job_run.id
-          operation_data[:request_id] = nil
-
+        ops = RequestStore.store[:rails_pulse_operations] || []
+        unless ops.empty?
           with_recording_suppressed do
-            RailsPulse::Operation.create!(operation_data)
+            now = Time.current
+            query_cache = {}
+            rows = ops.map do |op|
+              op = op.merge(job_run_id: job_run.id, request_id: nil, created_at: now, updated_at: now)
+              if op[:operation_type] == "sql"
+                sql_source = op[:actual_sql].presence || op[:label].presence
+                if sql_source
+                  normalized = RailsPulse::SqlQueryNormalizer.normalize(sql_source)
+                  hashed = Digest::MD5.hexdigest(normalized)
+                  query_id = query_cache[hashed] ||= RailsPulse::Query.create_or_find_by(hashed_sql: hashed) { |q|
+                    q.normalized_sql = normalized
+                  }.id
+                  op = op.merge(label: normalized.truncate(255), query_id: query_id)
+                end
+              end
+              op[:label] = op[:label]&.truncate(255)
+              op
+            end
+            all_keys = rows.flat_map(&:keys).uniq
+            rows = rows.map { |r| all_keys.each_with_object({}) { |k, h| h[k] = r[k] } }
+            RailsPulse::Operation.insert_all!(rows)
           end
-        rescue => e
-          RailsPulse.logger.error "Failed to save job operation: #{e.class} - #{e.message}"
         end
+      rescue => e
+        RailsPulse.logger.error "Failed to save job operations: #{e.class} - #{e.message}"
       ensure
         RequestStore.store[:rails_pulse_operations] = nil
       end
