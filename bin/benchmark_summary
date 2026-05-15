@@ -1,0 +1,262 @@
+#!/usr/bin/env ruby
+# Benchmarks the SummaryService against the old N+1 implementation.
+# Run from the gem root: DB=postgresql bundle exec ruby bin/benchmark_summary
+#
+# Simulates a production-like scenario:
+#   - 24 hours of background data already in the table (~172,800 requests)
+#   - 1 hour of current data to summarise (~7,200 requests)
+#   - 150 routes, 1,500 unique queries (~10 ops/request)
+#
+# The old implementation fires one DB query per route and per query for
+# percentile calculation — 1,650 extra round-trips per summary run.
+
+require "benchmark"
+
+$LOAD_PATH.unshift File.expand_path("../lib", __dir__)
+ENV["RAILS_ENV"] ||= "test"
+require File.expand_path("../test/dummy/config/environment", __dir__)
+
+include RailsPulse
+
+ROUTES  = 150
+QUERIES = 1_500
+OPS_PER_REQUEST = 10
+CURRENT_HOUR_REQUESTS = 7_200     # 2 req/s for 1 hour
+BACKGROUND_REQUESTS   = 165_600   # remaining 23 hours
+
+def count_queries(&block)
+  count = 0
+  counter = ->(*, **) { count += 1 }
+  ActiveSupport::Notifications.subscribed(counter, "sql.active_record", &block)
+  count
+end
+
+def seed_data(current_hour_start)
+  print "Clearing existing data... "
+  Operation.delete_all
+  Request.delete_all
+  JobRun.delete_all
+  Summary.delete_all
+  Route.delete_all
+  Query.delete_all
+  puts "done"
+
+  print "Creating #{ROUTES} routes and #{QUERIES} queries... "
+  routes = ROUTES.times.map { |i| Route.create!(method: "GET", path: "/resource/#{i}/action") }
+  queries = QUERIES.times.map do |i|
+    Query.create!(
+      hashed_sql: Digest::MD5.hexdigest("SELECT * FROM t#{i} WHERE id = ?"),
+      normalized_sql: "SELECT * FROM t#{i} WHERE id = ?"
+    )
+  end
+  route_ids  = routes.map(&:id)
+  query_ids  = queries.map(&:id)
+  puts "done"
+
+  # Background data: 23 hours of requests spread across earlier periods
+  print "Inserting #{BACKGROUND_REQUESTS} background requests... "
+  background_start = current_hour_start - 23.hours
+  bg_request_rows = BACKGROUND_REQUESTS.times.map do |i|
+    occurred_at = background_start + (i * (23.0 * 3600 / BACKGROUND_REQUESTS)).seconds
+    { route_id: route_ids[i % ROUTES], duration: rand(10.0..500.0).round(3),
+      status: [200, 200, 200, 404, 500].sample, is_error: false,
+      request_uuid: SecureRandom.uuid, controller_action: "ResourceController#show",
+      occurred_at: occurred_at, created_at: occurred_at, updated_at: occurred_at }
+  end
+  bg_request_rows.each_slice(5_000) { |batch| Request.insert_all!(batch) }
+  puts "done"
+
+  print "Inserting background operations (~#{BACKGROUND_REQUESTS * OPS_PER_REQUEST / 1000}k)... "
+  bg_request_ids = Request.where("occurred_at < ?", current_hour_start).order(:id).pluck(:id)
+  bg_request_ids.each_slice(2_000) do |id_slice|
+    op_rows = id_slice.flat_map do |req_id|
+      occurred_at = background_start + rand(23 * 3600).seconds
+      OPS_PER_REQUEST.times.map do
+        { request_id: req_id, query_id: query_ids.sample, operation_type: "database",
+          label: "SELECT ...", duration: rand(1.0..50.0).round(3),
+          start_time: 0.0, occurred_at: occurred_at,
+          created_at: occurred_at, updated_at: occurred_at }
+      end
+    end
+    Operation.insert_all!(op_rows)
+  end
+  puts "done"
+
+  # Current hour: the data the summary job will actually process
+  print "Inserting #{CURRENT_HOUR_REQUESTS} current-hour requests... "
+  current_request_rows = CURRENT_HOUR_REQUESTS.times.map do |i|
+    occurred_at = current_hour_start + (i * 0.5).seconds
+    { route_id: route_ids[i % ROUTES], duration: rand(10.0..500.0).round(3),
+      status: [200, 200, 200, 404, 500].sample, is_error: false,
+      request_uuid: SecureRandom.uuid, controller_action: "ResourceController#show",
+      occurred_at: occurred_at, created_at: occurred_at, updated_at: occurred_at }
+  end
+  Request.insert_all!(current_request_rows)
+  puts "done"
+
+  print "Inserting current-hour operations (~#{CURRENT_HOUR_REQUESTS * OPS_PER_REQUEST / 1000}k)... "
+  current_request_ids = Request.where(occurred_at: current_hour_start...).order(:id).pluck(:id)
+  current_request_ids.each_slice(2_000) do |id_slice|
+    op_rows = id_slice.flat_map do |req_id|
+      occurred_at = current_hour_start + rand(3600).seconds
+      OPS_PER_REQUEST.times.map do
+        { request_id: req_id, query_id: query_ids.sample, operation_type: "database",
+          label: "SELECT ...", duration: rand(1.0..50.0).round(3),
+          start_time: 0.0, occurred_at: occurred_at,
+          created_at: occurred_at, updated_at: occurred_at }
+      end
+    end
+    Operation.insert_all!(op_rows)
+  end
+  puts "done"
+
+  puts "\nTable sizes:"
+  puts "  rails_pulse_requests:   #{Request.count.to_s.rjust(8)}"
+  puts "  rails_pulse_operations: #{Operation.count.to_s.rjust(8)}"
+  puts "  Routes:                 #{Route.count.to_s.rjust(8)}"
+  puts "  Queries:                #{Query.count.to_s.rjust(8)}"
+  puts "  Current-hour requests:  #{Request.where(occurred_at: current_hour_start...).count.to_s.rjust(8)}"
+  puts "  Current-hour operations:#{Operation.where(occurred_at: current_hour_start...).count.to_s.rjust(8)}"
+  puts
+end
+
+# ── old N+1 implementation (verbatim from pre-fix SummaryService) ─────────────
+
+def old_aggregate_routes(start_time, end_time)
+  route_groups = Request
+    .where(occurred_at: start_time...end_time)
+    .where.not(route_id: nil)
+    .joins(:route)
+    .group(:route_id)
+
+  basic_stats = route_groups.pluck(
+    :route_id,
+    Arel.sql("COUNT(*) as request_count"),
+    Arel.sql("AVG(duration) as avg_duration"),
+    Arel.sql("MIN(duration) as min_duration"),
+    Arel.sql("MAX(duration) as max_duration"),
+    Arel.sql("SUM(duration) as total_duration")
+  )
+
+  basic_stats.each do |stats|
+    route_id = stats[0]
+    durations = Request
+      .where(occurred_at: start_time...end_time)
+      .where(route_id: route_id)
+      .pluck(:duration, :status)
+    sorted_durations = durations.map(&:first).compact.sort
+    statuses = durations.map(&:last)
+    Summary.find_or_initialize_by(
+      summarizable_type: "RailsPulse::Route", summarizable_id: route_id,
+      period_type: "hour", period_start: start_time
+    ).update!(
+      period_end: end_time, count: stats[1], avg_duration: stats[2],
+      min_duration: stats[3], max_duration: stats[4], total_duration: stats[5],
+      p50_duration: Statistics.calculate_percentile(sorted_durations, 0.5),
+      p95_duration: Statistics.calculate_percentile(sorted_durations, 0.95),
+      p99_duration: Statistics.calculate_percentile(sorted_durations, 0.99),
+      stddev_duration: Statistics.calculate_stddev(sorted_durations, stats[2]),
+      error_count: statuses.count { |s| s >= 500 },
+      success_count: statuses.count { |s| s < 500 },
+      status_2xx: statuses.count { |s| s.between?(200, 299) },
+      status_3xx: statuses.count { |s| s.between?(300, 399) },
+      status_4xx: statuses.count { |s| s.between?(400, 499) },
+      status_5xx: statuses.count { |s| s >= 500 }
+    )
+  end
+end
+
+def old_aggregate_queries(start_time, end_time)
+  query_groups = Operation
+    .where(occurred_at: start_time...end_time)
+    .where.not(query_id: nil)
+    .joins(:query)
+    .group(:query_id)
+
+  basic_stats = query_groups.pluck(
+    :query_id,
+    Arel.sql("COUNT(*) as execution_count"),
+    Arel.sql("AVG(duration) as avg_duration"),
+    Arel.sql("MIN(duration) as min_duration"),
+    Arel.sql("MAX(duration) as max_duration"),
+    Arel.sql("SUM(duration) as total_duration")
+  )
+
+  basic_stats.each do |stats|
+    query_id = stats[0]
+    durations = Operation
+      .where(occurred_at: start_time...end_time)
+      .where(query_id: query_id)
+      .pluck(:duration)
+      .compact.sort
+    Summary.find_or_initialize_by(
+      summarizable_type: "RailsPulse::Query", summarizable_id: query_id,
+      period_type: "hour", period_start: start_time
+    ).update!(
+      period_end: end_time, count: stats[1], avg_duration: stats[2],
+      min_duration: stats[3], max_duration: stats[4], total_duration: stats[5],
+      p50_duration: Statistics.calculate_percentile(durations, 0.5),
+      p95_duration: Statistics.calculate_percentile(durations, 0.95),
+      p99_duration: Statistics.calculate_percentile(durations, 0.99),
+      stddev_duration: Statistics.calculate_stddev(durations, stats[2])
+    )
+  end
+end
+
+# ── run ───────────────────────────────────────────────────────────────────────
+
+current_hour_start = 1.hour.ago.beginning_of_hour
+current_hour_end   = current_hour_start + 1.hour
+
+seed_data(current_hour_start)
+
+RUNS = 3
+old_times   = []
+old_queries = []
+new_times   = []
+new_queries = []
+
+RUNS.times do |i|
+  print "Run #{i + 1}/#{RUNS} — old... "
+  Summary.delete_all
+  q = count_queries do
+    t = Benchmark.measure do
+      old_aggregate_routes(current_hour_start, current_hour_end)
+      old_aggregate_queries(current_hour_start, current_hour_end)
+    end
+    old_times << t.real
+  end
+  old_queries << q
+  puts "#{old_times.last.round(2)}s, #{q} queries"
+
+  print "Run #{i + 1}/#{RUNS} — new... "
+  Summary.delete_all
+  q = count_queries do
+    t = Benchmark.measure do
+      svc = SummaryService.new("hour", current_hour_start)
+      svc.send(:aggregate_routes)
+      svc.send(:aggregate_queries)
+    end
+    new_times << t.real
+  end
+  new_queries << q
+  puts "#{new_times.last.round(2)}s, #{q} queries"
+  puts
+end
+
+avg = ->(arr) { arr.sum.to_f / arr.size }
+
+old_t = avg.(old_times)
+new_t = avg.(new_times)
+old_q = avg.(old_queries).round
+new_q = avg.(new_queries).round
+
+puts "=" * 60
+puts "Results (avg of #{RUNS} runs, PostgreSQL)"
+puts "=" * 60
+puts "                   Before       After     Change"
+puts "  Queries:      #{old_q.to_s.rjust(6)}      #{new_q.to_s.rjust(6)}   -#{old_q - new_q} (#{((old_q - new_q) * 100.0 / old_q).round}% fewer)"
+puts "  Time:          #{old_t.round(2).to_s.rjust(5)}s      #{new_t.round(2).to_s.rjust(5)}s   #{((new_t - old_t) * 100.0 / old_t).round}%"
+puts
+puts "  N+1 eliminated: #{ROUTES} route queries + #{QUERIES} query queries = #{ROUTES + QUERIES} round-trips per summary run"
+puts "=" * 60

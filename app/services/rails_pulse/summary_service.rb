@@ -71,34 +71,17 @@ module RailsPulse
     private
 
     def aggregate_routes
-      # Use ActiveRecord for cross-database compatibility
-      route_groups = Request
+      all_rows = Request
         .where(occurred_at: start_time...end_time)
         .where.not(route_id: nil)
-        .joins(:route)
-        .group(:route_id)
+        .pluck(:route_id, :duration, :status)
 
-      # Calculate basic aggregates
-      basic_stats = route_groups.pluck(
-        :route_id,
-        Arel.sql("COUNT(*) as request_count"),
-        Arel.sql("AVG(duration) as avg_duration"),
-        Arel.sql("MIN(duration) as min_duration"),
-        Arel.sql("MAX(duration) as max_duration"),
-        Arel.sql("SUM(duration) as total_duration")
-      )
+      return if all_rows.empty?
 
-      basic_stats.each do |stats|
-        route_id = stats[0]
-
-        # Calculate percentiles and status counts separately for cross-DB compatibility
-        durations = Request
-          .where(occurred_at: start_time...end_time)
-          .where(route_id: route_id)
-          .pluck(:duration, :status)
-
-        sorted_durations = durations.map(&:first).compact.sort
-        statuses = durations.map(&:last)
+      all_rows.group_by(&:first).each do |route_id, rows|
+        durations = rows.map { |_, d, _| d }.compact.sort
+        statuses = rows.map { |_, _, s| s }
+        avg = durations.sum.to_f / durations.size
 
         summary = Summary.find_or_initialize_by(
           summarizable_type: "RailsPulse::Route",
@@ -109,15 +92,15 @@ module RailsPulse
 
         summary.assign_attributes(
           period_end: end_time,
-          count: stats[1],
-          avg_duration: stats[2],
-          min_duration: stats[3],
-          max_duration: stats[4],
-          total_duration: stats[5],
-          p50_duration: RailsPulse::Statistics.calculate_percentile(sorted_durations, 0.5),
-          p95_duration: RailsPulse::Statistics.calculate_percentile(sorted_durations, 0.95),
-          p99_duration: RailsPulse::Statistics.calculate_percentile(sorted_durations, 0.99),
-          stddev_duration: RailsPulse::Statistics.calculate_stddev(sorted_durations, stats[2]),
+          count: rows.size,
+          avg_duration: avg,
+          min_duration: durations.first,
+          max_duration: durations.last,
+          total_duration: durations.sum,
+          p50_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.5),
+          p95_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.95),
+          p99_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.99),
+          stddev_duration: RailsPulse::Statistics.calculate_stddev(durations, avg),
           error_count: statuses.count { |s| s >= 500 },
           success_count: statuses.count { |s| s < 500 },
           status_2xx: statuses.count { |s| s.between?(200, 299) },
@@ -131,31 +114,18 @@ module RailsPulse
     end
 
     def aggregate_queries
-      query_groups = Operation
+      all_rows = Operation
         .where(occurred_at: start_time...end_time)
         .where.not(query_id: nil)
-        .joins(:query)
-        .group(:query_id)
+        .pluck(:query_id, :duration)
 
-      basic_stats = query_groups.pluck(
-        :query_id,
-        Arel.sql("COUNT(*) as execution_count"),
-        Arel.sql("AVG(duration) as avg_duration"),
-        Arel.sql("MIN(duration) as min_duration"),
-        Arel.sql("MAX(duration) as max_duration"),
-        Arel.sql("SUM(duration) as total_duration")
-      )
+      return if all_rows.empty?
 
-      basic_stats.each do |stats|
-        query_id = stats[0]
+      all_rows.group_by(&:first).each do |query_id, rows|
+        durations = rows.map(&:last).compact.sort
+        next if durations.empty?
 
-        # Calculate percentiles separately
-        durations = Operation
-          .where(occurred_at: start_time...end_time)
-          .where(query_id: query_id)
-          .pluck(:duration)
-          .compact
-          .sort
+        avg = durations.sum.to_f / durations.size
 
         summary = Summary.find_or_initialize_by(
           summarizable_type: "RailsPulse::Query",
@@ -166,15 +136,15 @@ module RailsPulse
 
         summary.assign_attributes(
           period_end: end_time,
-          count: stats[1],
-          avg_duration: stats[2],
-          min_duration: stats[3],
-          max_duration: stats[4],
-          total_duration: stats[5],
+          count: durations.size,
+          avg_duration: avg,
+          min_duration: durations.first,
+          max_duration: durations.last,
+          total_duration: durations.sum,
           p50_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.5),
           p95_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.95),
           p99_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.99),
-          stddev_duration: RailsPulse::Statistics.calculate_stddev(durations, stats[2])
+          stddev_duration: RailsPulse::Statistics.calculate_stddev(durations, avg)
         )
 
         summary.save!
