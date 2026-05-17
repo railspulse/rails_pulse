@@ -216,6 +216,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Tracker.track_request(data)
 
     request = RailsPulse::Request.find_by(request_uuid: data[:request_uuid])
+
     assert_not_nil request
     assert_equal 0, request.operations.count
   end
@@ -226,6 +227,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Tracker.track_request(data)
 
     request = RailsPulse::Request.find_by(request_uuid: data[:request_uuid])
+
     assert_not_nil request
     assert_equal 0, request.operations.count
   end
@@ -236,6 +238,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Tracker.track_request(data)
 
     request = RailsPulse::Request.find_by(request_uuid: data[:request_uuid])
+
     assert_not_nil request
     assert_equal 0, request.operations.count
   end
@@ -254,6 +257,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     end
 
     route = RailsPulse::Route.find_by(method: "GET", path: path)
+
     assert_equal 2, RailsPulse::Request.where(route: route).count
   end
 
