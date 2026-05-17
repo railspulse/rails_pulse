@@ -21,7 +21,7 @@ module RailsPulse
 
         def clean_sql_label(sql)
           return sql unless sql
-          # Remove Rails SQL comments like /*action='search',application='Dummy',controller='home'*/
+          return sql unless sql.include?("/*")
           sql.gsub(/\/\*[^*]*\*\//, "").strip
         end
 
@@ -36,8 +36,11 @@ module RailsPulse
           end
         end
 
+        def app_path
+          @app_path ||= Rails.root.join("app").to_s
+        end
+
         def find_app_frame
-          app_path = Rails.root.join("app").to_s
           caller_locations.each do |loc|
             path = loc.absolute_path || loc.path
             return path if path && path.start_with?(app_path)
@@ -47,23 +50,30 @@ module RailsPulse
 
         def controller_action_source_location(payload)
           return nil unless payload[:controller] && payload[:action]
+
+          cache_key = "#{payload[:controller]}##{payload[:action]}"
+          @source_location_cache ||= {}
+          return @source_location_cache[cache_key] if @source_location_cache.key?(cache_key)
+
+          result = nil
           begin
             controller_klass = payload[:controller].constantize
             if controller_klass.instance_methods(false).include?(payload[:action].to_sym)
               file, line = controller_klass.instance_method(payload[:action]).source_location
-              return "#{relative_path(file)}:#{line}" if file && line
+              result = "#{relative_path(file)}:#{line}" if file && line
             end
             # fallback: try superclass (for ApplicationController actions)
-            if controller_klass.superclass.respond_to?(:instance_method)
+            if result.nil? && controller_klass.superclass.respond_to?(:instance_method)
               if controller_klass.superclass.instance_methods(false).include?(payload[:action].to_sym)
                 file, line = controller_klass.superclass.instance_method(payload[:action]).source_location
-                return "#{relative_path(file)}:#{line}" if file && line
+                result = "#{relative_path(file)}:#{line}" if file && line
               end
             end
           rescue => e
             RailsPulse.logger.debug "Could not resolve controller source location: #{e.class} - #{e.message}"
           end
-          nil
+
+          @source_location_cache[cache_key] = result
         end
 
         def capture_operation(event_name, start, finish, payload, operation_type, label_key = nil, extra: {})

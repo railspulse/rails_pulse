@@ -30,7 +30,6 @@ module RailsPulse
         RequestStore.store[:rails_pulse_operations] = []
 
         start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
-        controller_action = "#{env['action_dispatch.request.parameters']&.[]('controller')&.classify}##{env['action_dispatch.request.parameters']&.[]('action')}"
         occurred_at = Time.current
 
         # Process request
@@ -41,6 +40,7 @@ module RailsPulse
         # Deep copy operations array to prevent race condition in async mode
         operations = RequestStore.store[:rails_pulse_operations] || []
         detect_n_plus_one(operations)
+        controller_action = operations.find { |op| op[:operation_type] == "controller" }&.[](:label)
         tracking_data = {
           method: req.request_method,
           path: req.path,
@@ -85,7 +85,7 @@ module RailsPulse
         sql_ops = operations.select { |op| op[:operation_type] == "sql" }
         return if sql_ops.size < 2
 
-        groups = sql_ops.group_by { |op| RailsPulse::SqlQueryNormalizer.normalize(op[:label].to_s) }
+        groups = sql_ops.group_by { |op| RailsPulse::SqlQueryNormalizer.normalize(op[:actual_sql].to_s) }
         groups.each do |normalized_sql, ops|
           next if ops.size < 2
           ops.each do |op|

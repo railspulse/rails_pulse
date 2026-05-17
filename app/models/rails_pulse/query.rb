@@ -24,6 +24,21 @@ module RailsPulse
     serialize :index_recommendations, type: Array, coder: JSON
     serialize :suggestions, type: Array, coder: JSON
 
+    def self.bulk_find_or_create(norm_map)
+      return {} if norm_map.empty?
+
+      id_map = where(hashed_sql: norm_map.keys).pluck(:hashed_sql, :id).to_h
+
+      missing = norm_map.reject { |h, _| id_map.key?(h) }
+      unless missing.empty?
+        now = Time.current
+        insert_all(missing.map { |h, n| { hashed_sql: h, normalized_sql: n, created_at: now, updated_at: now } })
+        id_map.merge!(where(hashed_sql: missing.keys).pluck(:hashed_sql, :id).to_h)
+      end
+
+      id_map
+    end
+
     def self.ransackable_attributes(auth_object = nil)
       %w[id normalized_sql average_query_time_ms execution_count total_time_consumed performance_status occurred_at]
     end

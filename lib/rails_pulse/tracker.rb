@@ -29,11 +29,8 @@ module RailsPulse
 
           begin
             # Find or create route
-            route = RailsPulse::Route.create_or_find_by(
-              method: data[:method],
-              path: data[:path]
-            )
-            route = RailsPulse::Route.find_by!(method: data[:method], path: data[:path]) unless route
+            route = RailsPulse::Route.find_by(method: data[:method], path: data[:path]) ||
+                    RailsPulse::Route.create_or_find_by(method: data[:method], path: data[:path])
 
 
             # Create request record
@@ -49,9 +46,8 @@ module RailsPulse
             )
 
             # Create operation records
-            (data[:operations] || []).each do |op_data|
-              RailsPulse::Operation.create!(op_data.merge(request_id: request.id))
-            end
+            ops = data[:operations] || []
+            RailsPulse::Operation.persist_bulk(ops, request_id: request.id)
 
             request
           rescue ActiveRecord::ConnectionNotEstablished, ActiveRecord::StatementInvalid => e

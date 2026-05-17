@@ -128,17 +128,12 @@ module RailsPulse
       def save_operations(job_run)
         return unless job_run
 
-        operations_data = RequestStore.store[:rails_pulse_operations] || []
-        operations_data.each do |operation_data|
-          operation_data[:job_run_id] = job_run.id
-          operation_data[:request_id] = nil
-
-          with_recording_suppressed do
-            RailsPulse::Operation.create!(operation_data)
-          end
-        rescue => e
-          RailsPulse.logger.error "Failed to save job operation: #{e.class} - #{e.message}"
+        ops = RequestStore.store[:rails_pulse_operations] || []
+        with_recording_suppressed do
+          RailsPulse::Operation.persist_bulk(ops, job_run_id: job_run.id, request_id: nil)
         end
+      rescue => e
+        RailsPulse.logger.error "Failed to save job operations: #{e.class} - #{e.message}"
       ensure
         RequestStore.store[:rails_pulse_operations] = nil
       end
