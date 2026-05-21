@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import ChartSwitcherController from './chart_switcher_controller'
-import { mountController } from '../../test/setup'
+import ChartSwitcherController from '../../../app/javascript/rails_pulse/controllers/chart_switcher_controller'
+import { mountController } from '../setup'
 
 const HTML = `
   <div data-controller="chart-switcher">

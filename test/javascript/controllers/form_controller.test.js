@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import FormController from './form_controller'
-import { mountController } from '../../test/setup'
+import FormController from '../../../app/javascript/rails_pulse/controllers/form_controller'
+import { mountController } from '../setup'
 
 const HTML = `
   <form data-controller="form">

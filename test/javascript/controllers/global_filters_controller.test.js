@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import GlobalFiltersController from './global_filters_controller'
-import { mountController } from '../../test/setup'
+import GlobalFiltersController from '../../../app/javascript/rails_pulse/controllers/global_filters_controller'
+import { mountController } from '../setup'
 
 function buildHTML({ active = false } = {}) {
   return `

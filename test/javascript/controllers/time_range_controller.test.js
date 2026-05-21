@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import TimeRangeController from './time_range_controller'
-import { mountController } from '../../test/setup'
+import TimeRangeController from '../../../app/javascript/rails_pulse/controllers/time_range_controller'
+import { mountController } from '../setup'
 
 const HTML = `
   <div data-controller="time-range" data-time-range-url-value="/time_range">

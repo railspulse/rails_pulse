@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import CollapsibleController from './collapsible_controller'
-import { mountController } from '../../test/setup'
+import CollapsibleController from '../../../app/javascript/rails_pulse/controllers/collapsible_controller'
+import { mountController } from '../setup'
 
 // Uses "is-collapsed" as the class name, passed via Stimulus class API attribute.
 const HTML = `

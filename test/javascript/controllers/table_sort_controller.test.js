@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import TableSortController from './table_sort_controller'
-import { mountController } from '../../test/setup'
+import TableSortController from '../../../app/javascript/rails_pulse/controllers/table_sort_controller'
+import { mountController } from '../setup'
 
-vi.mock('../utils/fetch_helpers', () => ({
+vi.mock('../../../app/javascript/rails_pulse/utils/fetch_helpers', () => ({
   fetchAndReplace: vi.fn().mockResolvedValue(true),
 }))
 
-import { fetchAndReplace } from '../utils/fetch_helpers'
+import { fetchAndReplace } from '../../../app/javascript/rails_pulse/utils/fetch_helpers'
 
 const HTML = `
   <div data-controller="table-sort">

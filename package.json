@@ -12,8 +12,8 @@
     "watch": "node scripts/watch.js",
     "dev": "npm run watch",
     "clean": "rimraf public/rails-pulse-assets/rails-pulse*.{css,js,map} vendor/assets/stylesheets/*.{css,map} vendor/assets/javascripts/*.{js,map}",
-    "lint:js": "eslint app/javascript scripts",
-    "lint:js:files": "eslint app/javascript scripts --debug 2>&1 | grep 'Linting'",
+    "lint:js": "eslint app/javascript scripts test/javascript",
+    "lint:js:files": "eslint app/javascript scripts test/javascript --debug 2>&1 | grep 'Linting'",
     "test:js": "vitest run",
     "test:js:watch": "vitest",
     "test:js:coverage": "vitest run --coverage"

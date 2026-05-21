@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import SeriesToggleController from './series_toggle_controller'
-import { mountController } from '../../test/setup'
+import SeriesToggleController from '../../../app/javascript/rails_pulse/controllers/series_toggle_controller'
+import { mountController } from '../setup'
 
 const HTML = `
   <button

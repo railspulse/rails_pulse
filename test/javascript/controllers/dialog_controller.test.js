@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import DialogController from './dialog_controller'
-import { mountController } from '../../test/setup'
+import DialogController from '../../../app/javascript/rails_pulse/controllers/dialog_controller'
+import { mountController } from '../setup'
 
 // JSDOM has partial <dialog> support — spy on the methods directly.
 const HTML = `

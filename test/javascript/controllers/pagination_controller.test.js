@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest'
-import PaginationController from './pagination_controller'
-import { mountController } from '../../test/setup'
+import PaginationController from '../../../app/javascript/rails_pulse/controllers/pagination_controller'
+import { mountController } from '../setup'
 
 function buildHTML(selectValue = '25') {
   return `

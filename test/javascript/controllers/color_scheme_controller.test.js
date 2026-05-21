@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import ColorSchemeController from './color_scheme_controller'
-import { mountController } from '../../test/setup'
+import ColorSchemeController from '../../../app/javascript/rails_pulse/controllers/color_scheme_controller'
+import { mountController } from '../setup'
 
 const HTML = `<div data-controller="color-scheme"></div>`
 

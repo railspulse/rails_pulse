@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach, vi } from 'vitest'
-import CustomRangeController from './custom_range_controller'
-import { mountController } from '../../test/setup'
+import CustomRangeController from '../../../app/javascript/rails_pulse/controllers/custom_range_controller'
+import { mountController } from '../setup'
 
 function buildHTML({ mode = 'preset', value = 'last_day' } = {}) {
   return `

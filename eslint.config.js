@@ -25,10 +25,15 @@ module.exports = [
   },
   {
     // Test files — vitest plugin handles globals and adds test-specific rules
-    files: ["app/javascript/**/*.test.js", "app/javascript/test/**/*.js"],
+    files: ["test/javascript/**/*.test.js", "test/javascript/**/*.js"],
     plugins: { vitest },
     languageOptions: {
-      globals: vitest.environments.env.globals
+      ecmaVersion: 2022,
+      sourceType: "module",
+      globals: {
+        ...globals.browser,
+        ...vitest.environments.env.globals,
+      }
     },
     rules: {
       ...vitest.configs.recommended.rules,

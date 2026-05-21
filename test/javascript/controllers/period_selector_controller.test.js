@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest'
-import PeriodSelectorController from './period_selector_controller'
-import { mountController } from '../../test/setup'
+import PeriodSelectorController from '../../../app/javascript/rails_pulse/controllers/period_selector_controller'
+import { mountController } from '../setup'
 
 const HTML = `
   <div data-controller="period-selector">
