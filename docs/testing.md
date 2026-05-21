@@ -1189,10 +1189,10 @@ Controllers with clear, mockable logic are tested here:
 
 ### Test structure
 
-Tests live next to source files as `*.test.js`. The shared helper is at `app/javascript/test/setup.js`.
+Tests live in `test/javascript/controllers/` as `*.test.js`. The shared helper is at `test/javascript/setup.js`.
 
 ```js
-import { mountController } from '../../test/setup'
+import { mountController } from '../setup'
 
 // Mount a controller in a real Stimulus app; get the instance for direct calls
 const { app, element, teardown } = await mountController('my-id', MyController, html)
@@ -1230,7 +1230,7 @@ expect(url).toContain('chart_type=throughput')
 
 ### IntersectionObserver / ResizeObserver
 
-Both are polyfilled with no-op vi.fn() mocks in `app/javascript/test/setup.js` so controllers that reference them (e.g., `menu`) can be imported without errors.
+Both are polyfilled with no-op vi.fn() mocks in `test/javascript/setup.js` so controllers that reference them (e.g., `menu`) can be imported without errors.
 
 ---
 
