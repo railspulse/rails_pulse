@@ -307,6 +307,7 @@ module RailsPulse
       threads.each(&:join)
 
       group = ExceptionGroup.find_by!(fingerprint: fingerprint)
+
       assert_equal n, group.occurrence_count,
         "each concurrent capture must increment occurrence_count exactly once"
     end

@@ -65,7 +65,7 @@ module RailsPulse
         occurred_at: Time.current
       )
 
-      assert_equal [], occurrence.reload.backtrace
+      assert_empty occurrence.reload.backtrace
     end
 
     # Scopes
