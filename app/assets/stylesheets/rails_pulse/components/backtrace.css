@@ -199,9 +199,6 @@
   border-bottom: none;
 }
 
-.exception-params__row:nth-child(odd) {
-  background-color: var(--color-bg-subtle, #f9fafb);
-}
 
 .exception-params__key {
   flex-shrink: 0;
