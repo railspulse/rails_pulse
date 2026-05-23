@@ -28,6 +28,11 @@ Gem::Specification.new do |spec|
   spec.bindir = "exe"
   spec.executables = [ "rails_pulse_server" ]
 
+  spec.post_install_message = <<~MSG
+    Rails Pulse #{RailsPulse::VERSION} installed. If upgrading, run:
+      rails generate rails_pulse:upgrade && rails db:migrate
+  MSG
+
   spec.add_dependency "rails", ">= 7.1.0", "< 9.0.0"
   spec.add_dependency "request_store", "~> 1.5"
   spec.add_dependency "ransack", "~> 4.0"

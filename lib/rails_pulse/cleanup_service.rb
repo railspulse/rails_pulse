@@ -59,7 +59,7 @@ module RailsPulse
       # Only delete records from periods that have already been summarized.
       # This prevents count-based cleanup from removing data before the summary
       # job has had a chance to aggregate it.
-      cutoff = latest_summarized_cutoff
+      cutoff = summarized_cutoff
 
       # Operations: only delete those before the summarization cutoff
       ops_scope = cutoff ? RailsPulse::Operation.where("occurred_at < ?", cutoff) : RailsPulse::Operation.none
@@ -97,39 +97,35 @@ module RailsPulse
     end
 
     def cleanup_requests_by_time(cutoff_time)
-      request_ids = RailsPulse::Request.where("occurred_at < ?", cutoff_time).pluck(:id)
-      RailsPulse::Operation.where(request_id: request_ids).delete_all
-      RailsPulse::Request.where(id: request_ids).delete_all
-      request_ids.size
+      request_subquery = RailsPulse::Request.where("occurred_at < ?", cutoff_time).select(:id)
+      RailsPulse::Operation.where(request_id: request_subquery).delete_all
+      RailsPulse::Request.where("occurred_at < ?", cutoff_time).delete_all
     end
 
     def cleanup_queries_by_time(cutoff_time)
       RailsPulse::Query
         .where("created_at < ?", cutoff_time)
-        .where("id NOT IN (SELECT DISTINCT query_id FROM rails_pulse_operations WHERE query_id IS NOT NULL)")
+        .where("id NOT IN (SELECT query_id FROM rails_pulse_operations WHERE query_id IS NOT NULL)")
         .delete_all
     end
 
     def cleanup_routes_by_time(cutoff_time)
       RailsPulse::Route
         .where("created_at < ?", cutoff_time)
-        .where("id NOT IN (SELECT DISTINCT route_id FROM rails_pulse_requests WHERE route_id IS NOT NULL)")
+        .where("id NOT IN (SELECT route_id FROM rails_pulse_requests WHERE route_id IS NOT NULL)")
         .delete_all
     end
 
     def cleanup_job_runs_by_time(cutoff_time)
-      job_run_ids = RailsPulse::JobRun.where("occurred_at < ?", cutoff_time).pluck(:id)
-      return 0 if job_run_ids.empty?
-
-      RailsPulse::Operation.where(job_run_id: job_run_ids).delete_all
-      RailsPulse::JobRun.where(id: job_run_ids).delete_all
-      job_run_ids.size
+      job_run_subquery = RailsPulse::JobRun.where("occurred_at < ?", cutoff_time).select(:id)
+      RailsPulse::Operation.where(job_run_id: job_run_subquery).delete_all
+      RailsPulse::JobRun.where("occurred_at < ?", cutoff_time).delete_all
     end
 
     def cleanup_jobs_by_time(cutoff_time)
       RailsPulse::Job
         .where("created_at < ?", cutoff_time)
-        .where("id NOT IN (SELECT DISTINCT job_id FROM rails_pulse_job_runs WHERE job_id IS NOT NULL)")
+        .where("id NOT IN (SELECT job_id FROM rails_pulse_job_runs WHERE job_id IS NOT NULL)")
         .delete_all
     end
 
@@ -140,7 +136,7 @@ module RailsPulse
       return 0 unless max_records
 
       # Only delete requests from periods that have already been summarized
-      cutoff = latest_summarized_cutoff
+      cutoff = summarized_cutoff
       return 0 unless cutoff
 
       current_count = RailsPulse::Request.count
@@ -177,21 +173,21 @@ module RailsPulse
 
     def cleanup_queries_by_count
       scope = RailsPulse::Query.where(
-        "id NOT IN (SELECT DISTINCT query_id FROM rails_pulse_operations WHERE query_id IS NOT NULL)"
+        "id NOT IN (SELECT query_id FROM rails_pulse_operations WHERE query_id IS NOT NULL)"
       )
       cleanup_by_count(RailsPulse::Query, :rails_pulse_queries, order_column: :created_at, scope: scope)
     end
 
     def cleanup_routes_by_count
       scope = RailsPulse::Route.where(
-        "id NOT IN (SELECT DISTINCT route_id FROM rails_pulse_requests WHERE route_id IS NOT NULL)"
+        "id NOT IN (SELECT route_id FROM rails_pulse_requests WHERE route_id IS NOT NULL)"
       )
       cleanup_by_count(RailsPulse::Route, :rails_pulse_routes, order_column: :created_at, scope: scope)
     end
 
     def cleanup_jobs_by_count
       scope = RailsPulse::Job.where(
-        "id NOT IN (SELECT DISTINCT job_id FROM rails_pulse_job_runs WHERE job_id IS NOT NULL)"
+        "id NOT IN (SELECT job_id FROM rails_pulse_job_runs WHERE job_id IS NOT NULL)"
       )
       cleanup_by_count(RailsPulse::Job, :rails_pulse_jobs, order_column: :created_at, scope: scope)
     end
@@ -223,8 +219,8 @@ module RailsPulse
     # Returns the period_end of the most recent completed hourly overall-request
     # summary, or nil if the summary job has never run. Records with occurred_at
     # before this timestamp have been fully aggregated and are safe to delete.
-    def latest_summarized_cutoff
-      RailsPulse::Summary
+    def summarized_cutoff
+      @summarized_cutoff ||= RailsPulse::Summary
         .where(summarizable_type: "RailsPulse::Request", summarizable_id: 0, period_type: "hour")
         .maximum(:period_end)
     end

@@ -207,28 +207,31 @@ module RailsPulse
           end
 
           query = (operation_type == "sql" && queries.any?) ? queries.sample : nil
-          label = job_operation_label(operation_type, query)
           location = job_codebase_location(job_def)
 
-          ::RailsPulse::Operation.create!(
+          attrs = {
             job_run: job_run,
-            query: query,
             operation_type: operation_type,
-            label: label,
             duration: operation_duration,
             codebase_location: location,
             start_time: current_time,
             occurred_at: occurred_at
-          )
+          }
+
+          if operation_type == "sql"
+            attrs[:actual_sql] = query&.normalized_sql
+          else
+            attrs[:label] = job_operation_label(operation_type)
+          end
+
+          ::RailsPulse::Operation.create!(attrs)
 
           current_time += operation_duration
         end
       end
 
-      def self.job_operation_label(operation_type, query)
+      def self.job_operation_label(operation_type)
         case operation_type
-        when "sql"
-          query&.normalized_sql&.split(" ")&.first(5)&.join(" ") || "SQL Query"
         when "http"
           [ "GET https://api.example.com/notify", "POST https://api.stripe.com/charges", "GET https://s3.amazonaws.com/bucket" ].sample
         when "job"

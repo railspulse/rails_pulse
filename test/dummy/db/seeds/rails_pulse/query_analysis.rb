@@ -43,9 +43,8 @@ module RailsPulse
 
             ::RailsPulse::Operation.create!(
               request: request,
-              query: query,
               operation_type: "sql",
-              label: query.normalized_sql,
+              actual_sql: query.normalized_sql,
               duration: rand(100.0..400.0),
               codebase_location: [
                 "app/controllers/analytics_controller.rb:#{rand(20..80)}",

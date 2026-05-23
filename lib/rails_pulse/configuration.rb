@@ -31,6 +31,15 @@ module RailsPulse
                   :query_service_level_objectives,
                   :warn_on_stale_summaries
 
+    # Override the attr_accessor setter to track explicit assignment.
+    # The default (enabled in production) should not trigger a warning
+    # when no authentication_method is configured — only an explicit
+    # opt-in without a method should warn.
+    def authentication_enabled=(value)
+      @authentication_enabled_explicitly_set = true
+      @authentication_enabled = value
+    end
+
     # Read-only access to thresholds (use setters for validation)
     attr_reader :route_thresholds,
                 :request_thresholds,
@@ -67,6 +76,7 @@ module RailsPulse
       }
       @connects_to = nil
       @authentication_enabled = Rails.env.production?
+      @authentication_enabled_explicitly_set = false
       @authentication_method = nil
       @authentication_redirect_path = "/"
       @tags = [ "ignored", "critical", "experimental" ]
@@ -95,9 +105,9 @@ module RailsPulse
       @warn_on_stale_summaries = true
 
       # Validate defaults eagerly so that a misconfigured initializer raises at
-      # boot time rather than at the first request. All SLO defaults are nil so
-      # validation short-circuits harmlessly here; it becomes meaningful when
-      # RailsPulse.configure yields and sets real values.
+      # boot time rather than at the first request. Auth settings are not
+      # validated against defaults — only when the user explicitly enables
+      # authentication without configuring a method.
       validate_configuration!
     end
 
@@ -209,7 +219,7 @@ module RailsPulse
     end
 
     def validate_authentication_settings!
-      if @authentication_enabled && @authentication_method.nil?
+      if @authentication_enabled && @authentication_enabled_explicitly_set && @authentication_method.nil?
         RailsPulse.logger.warn "Authentication is enabled but no authentication method is configured. This will deny all access."
       end
 

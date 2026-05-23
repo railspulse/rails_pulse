@@ -207,4 +207,126 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
       RailsPulse.configuration.async = original_async
     end
   end
+
+  # Operations Edge Cases
+
+  test "handles nil operations key without raising" do
+    data = @tracking_data.merge(operations: nil)
+
+    RailsPulse::Tracker.track_request(data)
+
+    request = RailsPulse::Request.find_by(request_uuid: data[:request_uuid])
+
+    assert_not_nil request
+    assert_equal 0, request.operations.count
+  end
+
+  test "handles missing operations key without raising" do
+    data = @tracking_data.except(:operations)
+
+    RailsPulse::Tracker.track_request(data)
+
+    request = RailsPulse::Request.find_by(request_uuid: data[:request_uuid])
+
+    assert_not_nil request
+    assert_equal 0, request.operations.count
+  end
+
+  test "handles empty operations array without raising" do
+    data = @tracking_data.merge(operations: [])
+
+    RailsPulse::Tracker.track_request(data)
+
+    request = RailsPulse::Request.find_by(request_uuid: data[:request_uuid])
+
+    assert_not_nil request
+    assert_equal 0, request.operations.count
+  end
+
+  # Route Management
+
+  test "reuses existing route when same method and path are tracked again" do
+    path = "/route-reuse-#{SecureRandom.hex(4)}"
+    data1 = @tracking_data.merge(path: path, request_uuid: SecureRandom.uuid)
+    data2 = @tracking_data.merge(path: path, request_uuid: SecureRandom.uuid)
+
+    RailsPulse::Tracker.track_request(data1)
+
+    assert_difference -> { RailsPulse::Route.count }, 0 do
+      RailsPulse::Tracker.track_request(data2)
+    end
+
+    route = RailsPulse::Route.find_by(method: "GET", path: path)
+
+    assert_equal 2, RailsPulse::Request.where(route: route).count
+  end
+
+  # Return Values
+
+  test "returns created request record in sync mode" do
+    result = RailsPulse::Tracker.track_request(@tracking_data)
+
+    assert_kind_of RailsPulse::Request, result
+    assert_equal @tracking_data[:request_uuid], result.request_uuid
+  end
+
+  # Error Handling and Retry Logic
+
+  test "returns nil when an unrecoverable error occurs" do
+    RailsPulse::Request.stubs(:create!).raises(StandardError, "unexpected failure")
+
+    result = RailsPulse::Tracker.track_request(@tracking_data)
+
+    assert_nil result
+  ensure
+    RailsPulse::Request.unstub(:create!)
+  end
+
+  test "logs error message when tracking fails" do
+    log_output = StringIO.new
+    RailsPulse.stubs(:logger).returns(Logger.new(log_output))
+    RailsPulse::Request.stubs(:create!).raises(StandardError, "db failure")
+
+    RailsPulse::Tracker.track_request(@tracking_data)
+
+    assert_includes log_output.string, "Failed to persist tracking data"
+    assert_includes log_output.string, "db failure"
+  ensure
+    RailsPulse.unstub(:logger)
+    RailsPulse::Request.unstub(:create!)
+  end
+
+  test "returns nil after exhausting retries on connection not established errors" do
+    RailsPulse::Request.stubs(:create!).raises(ActiveRecord::ConnectionNotEstablished, "connection lost")
+
+    result = RailsPulse::Tracker.track_request(@tracking_data)
+
+    assert_nil result
+  ensure
+    RailsPulse::Request.unstub(:create!)
+  end
+
+  test "logs retry count in error message when connection retries are exhausted" do
+    log_output = StringIO.new
+    RailsPulse.stubs(:logger).returns(Logger.new(log_output))
+    RailsPulse::Request.stubs(:create!).raises(ActiveRecord::ConnectionNotEstablished, "connection lost")
+
+    RailsPulse::Tracker.track_request(@tracking_data)
+
+    assert_includes log_output.string, "after"
+    assert_includes log_output.string, "retries"
+  ensure
+    RailsPulse.unstub(:logger)
+    RailsPulse::Request.unstub(:create!)
+  end
+
+  test "returns nil after exhausting retries on statement invalid errors" do
+    RailsPulse::Request.stubs(:create!).raises(ActiveRecord::StatementInvalid, "statement error")
+
+    result = RailsPulse::Tracker.track_request(@tracking_data)
+
+    assert_nil result
+  ensure
+    RailsPulse::Request.unstub(:create!)
+  end
 end

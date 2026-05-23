@@ -18,7 +18,7 @@
       <div>
         <h4 class="text-xs font-medium text-subtle uppercase">Label</h4>
         <div class="text-sm p-2 bg-shade rounded-sm border break-words" style="font-family: monospace;">
-          <%= html_escape(operation.label) %>
+          <%= html_escape(operation.operation_type == "sql" ? (operation.actual_sql.presence || operation.query&.normalized_sql) : operation.label) %>
         </div>
       </div>
 
@@ -52,11 +52,12 @@
           </div>
         </div>
 
-        <% if operation.label&.match?(/SELECT.*FROM\s+(\w+)/i) %>
+        <% sql_source = operation.actual_sql.presence || operation.query&.normalized_sql %>
+        <% if sql_source&.match?(/SELECT.*FROM\s+(\w+)/i) %>
           <div>
             <h4 class="text-xs font-medium text-subtle uppercase">Table</h4>
             <div class="text-sm p-2 bg-shade rounded-sm border break-words">
-              <%= html_escape(operation.label.match(/FROM\s+(\w+)/i)&.captures&.first || "Unknown") %>
+              <%= html_escape(sql_source.match(/FROM\s+(\w+)/i)&.captures&.first || "Unknown") %>
             </div>
           </div>
         <% end %>

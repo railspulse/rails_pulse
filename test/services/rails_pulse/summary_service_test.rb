@@ -2,22 +2,110 @@ require "test_helper"
 
 module RailsPulse
   class SummaryServiceTest < ActiveSupport::TestCase
-    # TODO: Test that initialize normalizes period_start using Summary.normalize_period_start
-    # TODO: Test that initialize calculates period_end using Summary.calculate_period_end
-    # TODO: Test that perform aggregates requests, routes, and queries in a transaction
-    # TODO: Test aggregate_requests creates summary with summarizable_id = 0 for overall metrics
-    # TODO: Test aggregate_requests calculates avg, min, max, total, p50, p95, p99 durations correctly
-    # TODO: Test aggregate_requests counts status codes by category (2xx, 3xx, 4xx, 5xx)
-    # TODO: Test aggregate_requests calculates error_count and success_count correctly
-    # TODO: Test aggregate_requests calculates standard deviation correctly
-    # TODO: Test aggregate_routes creates individual summaries for each route
-    # TODO: Test aggregate_routes calculates percentiles and stats per route
-    # TODO: Test aggregate_queries creates summaries for each query from operations
-    # TODO: Test calculate_percentile returns correct percentile values
-    # TODO: Test calculate_percentile returns nil for empty array
-    # TODO: Test calculate_stddev returns correct standard deviation
-    # TODO: Test calculate_stddev returns nil for empty or single-value arrays
-    # TODO: Test that summaries are created or updated (upsert behavior)
-    # TODO: Test error handling and logging when perform fails
+    fixtures :rails_pulse_routes
+
+    def setup
+      RailsPulse::Summary.delete_all
+      RailsPulse::Operation.delete_all
+      RailsPulse::Request.delete_all
+      @route = rails_pulse_routes(:api_users)
+      @hour_start = Time.current.beginning_of_hour
+    end
+
+    # ============================================================================
+    # Error Count Tests
+    # ============================================================================
+
+    test "error_count only counts 5xx responses, not 4xx" do
+      travel_to @hour_start + 1.minute do
+        RailsPulse::Request.create!(
+          route: @route, duration: 50.0, status: 422,
+          request_uuid: SecureRandom.uuid, occurred_at: Time.current
+        )
+        RailsPulse::Request.create!(
+          route: @route, duration: 60.0, status: 404,
+          request_uuid: SecureRandom.uuid, occurred_at: Time.current
+        )
+        RailsPulse::Request.create!(
+          route: @route, duration: 70.0, status: 200,
+          request_uuid: SecureRandom.uuid, occurred_at: Time.current
+        )
+      end
+
+      SummaryService.new("hour", @hour_start).perform
+
+      summary = Summary.find_by!(
+        summarizable_type: "RailsPulse::Request",
+        summarizable_id: 0,
+        period_type: "hour",
+        period_start: @hour_start
+      )
+
+      assert_equal 0, summary.error_count
+      assert_equal 3, summary.count
+      assert_equal 0, summary.status_5xx
+      assert_equal 2, summary.status_4xx
+      assert_equal 1, summary.status_2xx
+      assert_equal 3, summary.success_count
+    end
+
+    test "error_count counts 5xx responses" do
+      travel_to @hour_start + 1.minute do
+        RailsPulse::Request.create!(
+          route: @route, duration: 50.0, status: 500,
+          request_uuid: SecureRandom.uuid, occurred_at: Time.current
+        )
+        RailsPulse::Request.create!(
+          route: @route, duration: 60.0, status: 503,
+          request_uuid: SecureRandom.uuid, occurred_at: Time.current
+        )
+        RailsPulse::Request.create!(
+          route: @route, duration: 70.0, status: 200,
+          request_uuid: SecureRandom.uuid, occurred_at: Time.current
+        )
+      end
+
+      SummaryService.new("hour", @hour_start).perform
+
+      summary = Summary.find_by!(
+        summarizable_type: "RailsPulse::Request",
+        summarizable_id: 0,
+        period_type: "hour",
+        period_start: @hour_start
+      )
+
+      assert_equal 2, summary.error_count
+      assert_equal 3, summary.count
+      assert_equal 2, summary.status_5xx
+      assert_equal 0, summary.status_4xx
+      assert_equal 1, summary.status_2xx
+      assert_equal 1, summary.success_count
+    end
+
+    test "error_count in route summaries only counts 5xx" do
+      travel_to @hour_start + 1.minute do
+        RailsPulse::Request.create!(
+          route: @route, duration: 50.0, status: 422,
+          request_uuid: SecureRandom.uuid, occurred_at: Time.current
+        )
+        RailsPulse::Request.create!(
+          route: @route, duration: 60.0, status: 500,
+          request_uuid: SecureRandom.uuid, occurred_at: Time.current
+        )
+      end
+
+      SummaryService.new("hour", @hour_start).perform
+
+      summary = Summary.find_by!(
+        summarizable_type: "RailsPulse::Route",
+        summarizable_id: @route.id,
+        period_type: "hour",
+        period_start: @hour_start
+      )
+
+      assert_equal 1, summary.error_count
+      assert_equal 1, summary.status_5xx
+      assert_equal 1, summary.status_4xx
+    end
   end
 end

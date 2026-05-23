@@ -88,12 +88,13 @@ module RailsPulse
       end
 
       def self.determine_status(route)
-        is_error = case route.path
+        error_roll = case route.path
         when "/error_prone" then rand < 0.04
         else rand < 0.005
         end
 
-        status = is_error ? [ 400, 404, 422, 500, 503 ].sample : [ 200, 201, 204 ].sample
+        status = error_roll ? [ 400, 404, 422, 500, 503 ].sample : [ 200, 201, 204 ].sample
+        is_error = status >= 500
         [ is_error, status ]
       end
 
@@ -118,19 +119,24 @@ module RailsPulse
           end
 
           query = select_query(queries, operation_type)
-          label = operation_label(operation_type, query, request)
           location = codebase_location(operation_type, query, route, request)
 
-          ::RailsPulse::Operation.create!(
+          attrs = {
             request: request,
-            query: query,
             operation_type: operation_type,
-            label: label,
             duration: operation_duration,
             codebase_location: location,
             start_time: current_time,
             occurred_at: occurred_at
-          )
+          }
+
+          if operation_type == "sql"
+            attrs[:actual_sql] = query&.normalized_sql
+          else
+            attrs[:label] = operation_label(operation_type, request)
+          end
+
+          ::RailsPulse::Operation.create!(attrs)
 
           current_time += operation_duration
         end
@@ -155,9 +161,8 @@ module RailsPulse
         end
       end
 
-      def self.operation_label(operation_type, query, request)
+      def self.operation_label(operation_type, request)
         case operation_type
-        when "sql"        then query&.normalized_sql&.split(" ")&.first(3)&.join(" ") || "SQL Query"
         when "template"   then [ "layouts/application", "home/index", "posts/show", "users/index" ].sample
         when "controller" then request.controller_action
         end
