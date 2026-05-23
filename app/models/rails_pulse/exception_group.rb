@@ -5,7 +5,7 @@ module RailsPulse
     has_many :occurrences, class_name: "RailsPulse::ExceptionOccurrence",
              foreign_key: :exception_group_id, dependent: :destroy
 
-    validates :fingerprint, presence: true, uniqueness: true
+    validates :fingerprint, presence: true
     validates :exception_class, presence: true
     validates :first_seen_at, :last_seen_at, presence: true
 

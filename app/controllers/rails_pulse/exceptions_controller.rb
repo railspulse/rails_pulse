@@ -18,8 +18,8 @@ module RailsPulse
 
     def show
       occurrences = @exception_group.occurrences.order(occurred_at: :desc)
+      @latest_occurrence = occurrences.first
       @pagination, @occurrences = paginate(occurrences, limit: session_pagination_limit)
-      @latest_occurrence = @exception_group.occurrences.order(occurred_at: :desc).first
     end
 
     private

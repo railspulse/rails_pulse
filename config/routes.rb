@@ -9,8 +9,10 @@ RailsPulse::Engine.routes.draw do
     end
   end
   resources :operations, only: %i[show]
-  resources :exceptions, only: %i[index show] do
-    resources :occurrences, only: %i[show], controller: "exception_occurrences"
+  if RailsPulse.configuration.track_exceptions
+    resources :exceptions, only: %i[index show] do
+      resources :occurrences, only: %i[show], controller: "exception_occurrences"
+    end
   end
 
   if RailsPulse.configuration.track_jobs

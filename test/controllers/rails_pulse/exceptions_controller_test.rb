@@ -123,4 +123,43 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  test "show latest_occurrence is the most recently occurred one for the group" do
+    get rails_pulse.exception_path(@group)
+
+    latest = assigns(:latest_occurrence)
+    # occurrence_one occurred_at 1.hour.ago, occurrence_two at 2.hours.ago
+    # latest must be occurrence_one (more recent)
+    assert_equal rails_pulse_exception_occurrences(:occurrence_one).id, latest.id
+  end
+
+  test "show latest_occurrence is nil when the group has no occurrences" do
+    empty_group = RailsPulse::ExceptionGroup.create!(
+      fingerprint: "empty_group_fp_#{SecureRandom.hex(4)}",
+      exception_class: "EmptyError",
+      first_seen_at: Time.current,
+      last_seen_at: Time.current
+    )
+
+    get rails_pulse.exception_path(empty_group)
+
+    assert_nil assigns(:latest_occurrence)
+  end
+
+  test "exceptions routes are accessible when track_exceptions is true (default)" do
+    assert RailsPulse.configuration.track_exceptions,
+      "track_exceptions must be true for this test to be meaningful"
+
+    get rails_pulse.exceptions_path
+
+    assert_response :success
+  end
+
+  test "exception_occurrences route is nested under exceptions" do
+    occurrence = rails_pulse_exception_occurrences(:occurrence_one)
+
+    get rails_pulse.exception_occurrence_path(@group, occurrence)
+
+    assert_response :success
+  end
 end

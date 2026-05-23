@@ -524,6 +524,28 @@ module RailsPulse
       end
     end
 
+    test "default configuration includes a max_table_records limit for exception occurrences" do
+      default_config = RailsPulse::Configuration.new
+
+      assert default_config.max_table_records.key?(:rails_pulse_exception_occurrences),
+        "max_table_records must include :rails_pulse_exception_occurrences so count-based cleanup is active by default"
+      assert_operator default_config.max_table_records[:rails_pulse_exception_occurrences], :>, 0
+    end
+
+    test "count-based cleanup enforces exception occurrence limit using the default key" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = @original_max_records.merge(
+        rails_pulse_exception_occurrences: 2
+      )
+
+      group = create_exception_group
+      3.times { |i| create_exception_occurrence(group, occurred_at: (10 - i).days.ago) }
+
+      assert_difference -> { RailsPulse::ExceptionOccurrence.count }, -1 do
+        CleanupService.perform
+      end
+    end
+
     # Edge Cases
 
     test "handles empty tables gracefully" do

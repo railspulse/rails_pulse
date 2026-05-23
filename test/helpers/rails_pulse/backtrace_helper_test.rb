@@ -233,4 +233,16 @@ class RailsPulse::BacktraceHelperTest < ActionView::TestCase
       assert_empty result
     end
   end
+
+  # ============================================================================
+  # APP_FRAME_PATTERN — consistency with ExceptionCaptureService
+  # ============================================================================
+
+  test "app_frame? recognises /lib/ paths as app frames (consistent with fingerprinting)" do
+    assert app_frame?("file" => "/home/deploy/myapp/lib/services/payment_service.rb")
+  end
+
+  test "app_frame? recognises /config/ paths as app frames (consistent with fingerprinting)" do
+    assert app_frame?("file" => "/home/deploy/myapp/config/initializers/stripe.rb")
+  end
 end

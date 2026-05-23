@@ -27,8 +27,9 @@ class CreateRailsPulseExceptions < ActiveRecord::Migration[7.0]
         t.string   :request_url,     comment: "Nullable — web requests only"
         t.string   :request_method,  comment: "GET, POST, etc."
         t.string   :environment,     comment: "production, staging, etc."
-        t.string   :deploy_sha,      comment: "Captured now even though Pro uses it — cannot backfill later"
-        t.datetime :occurred_at,     null: false
+        t.string   :deploy_sha,       comment: "Captured now even though Pro uses it — cannot backfill later"
+        t.text     :request_params,   comment: "JSON hash of filtered request params — web requests only"
+        t.datetime :occurred_at,      null: false
         t.timestamps
       end
 

@@ -18,19 +18,6 @@ module RailsPulse
       assert_includes group.errors[:fingerprint], "can't be blank"
     end
 
-    test "validates uniqueness of fingerprint" do
-      existing = rails_pulse_exception_groups(:record_not_found)
-      group = ExceptionGroup.new(
-        fingerprint: existing.fingerprint,
-        exception_class: "RuntimeError",
-        first_seen_at: Time.current,
-        last_seen_at: Time.current
-      )
-
-      refute_predicate group, :valid?
-      assert_includes group.errors[:fingerprint], "has already been taken"
-    end
-
     test "validates presence of exception_class" do
       group = ExceptionGroup.new(fingerprint: "unique123", first_seen_at: Time.current, last_seen_at: Time.current)
 
