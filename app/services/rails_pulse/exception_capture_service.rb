@@ -89,26 +89,49 @@ module RailsPulse
       message = @exception.message.to_s.truncate(500)
       conn    = ExceptionGroup.connection
 
-      conn.execute(<<~SQL)
-        INSERT INTO rails_pulse_exception_groups
-          (fingerprint, exception_class, message, first_seen_at, last_seen_at, occurrence_count, created_at, updated_at)
-        VALUES (
-          #{conn.quote(fingerprint)},
-          #{conn.quote(@exception.class.name)},
-          #{conn.quote(message)},
-          #{conn.quote(now)},
-          #{conn.quote(now)},
-          1,
-          #{conn.quote(now)},
-          #{conn.quote(now)}
-        )
-        ON CONFLICT (fingerprint) DO UPDATE SET
-          exception_class  = EXCLUDED.exception_class,
-          message          = EXCLUDED.message,
-          last_seen_at     = EXCLUDED.last_seen_at,
-          occurrence_count = rails_pulse_exception_groups.occurrence_count + 1,
-          updated_at       = EXCLUDED.updated_at
-      SQL
+      if conn.adapter_name.downcase.include?("mysql")
+        conn.execute(<<~SQL)
+          INSERT INTO rails_pulse_exception_groups
+            (fingerprint, exception_class, message, first_seen_at, last_seen_at, occurrence_count, created_at, updated_at)
+          VALUES (
+            #{conn.quote(fingerprint)},
+            #{conn.quote(@exception.class.name)},
+            #{conn.quote(message)},
+            #{conn.quote(now)},
+            #{conn.quote(now)},
+            1,
+            #{conn.quote(now)},
+            #{conn.quote(now)}
+          )
+          ON DUPLICATE KEY UPDATE
+            exception_class  = VALUES(exception_class),
+            message          = VALUES(message),
+            last_seen_at     = VALUES(last_seen_at),
+            occurrence_count = occurrence_count + 1,
+            updated_at       = VALUES(updated_at)
+        SQL
+      else
+        conn.execute(<<~SQL)
+          INSERT INTO rails_pulse_exception_groups
+            (fingerprint, exception_class, message, first_seen_at, last_seen_at, occurrence_count, created_at, updated_at)
+          VALUES (
+            #{conn.quote(fingerprint)},
+            #{conn.quote(@exception.class.name)},
+            #{conn.quote(message)},
+            #{conn.quote(now)},
+            #{conn.quote(now)},
+            1,
+            #{conn.quote(now)},
+            #{conn.quote(now)}
+          )
+          ON CONFLICT (fingerprint) DO UPDATE SET
+            exception_class  = EXCLUDED.exception_class,
+            message          = EXCLUDED.message,
+            last_seen_at     = EXCLUDED.last_seen_at,
+            occurrence_count = rails_pulse_exception_groups.occurrence_count + 1,
+            updated_at       = EXCLUDED.updated_at
+        SQL
+      end
 
       ExceptionGroup.find_by!(fingerprint: fingerprint)
     end
