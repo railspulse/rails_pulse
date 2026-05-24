@@ -3,6 +3,7 @@
   { field: :occurred_at, label: 'Occurred At', class: 'w-48' },
   { field: :duration, label: 'Response Time', class: 'w-36' },
   { field: :status, label: 'Status', class: 'w-20' },
+  { field: :response_size_bytes, label: 'Size', class: 'w-24' },
   { field: nil, label: 'Tags', class: 'w-32' }
 ] %>
 
@@ -34,6 +35,9 @@
         </td>
         <td class="whitespace-nowrap">
           <span class="text-green-600"><%= request.status %></span>
+        </td>
+        <td class="whitespace-nowrap">
+          <%= human_readable_bytes(request.response_size_bytes) %>
         </td>
         <td class="whitespace-nowrap"><%= display_tag_badges(request) %></td>
       </tr>
