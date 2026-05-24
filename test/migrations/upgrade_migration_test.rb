@@ -34,6 +34,9 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
 
   def teardown
     restore_current_schema
+    # Reload fixture data so tests that run after this one (e.g. when the full
+    # suite is run with `rails test`) find the database in a usable state.
+    reload_rails_pulse_fixtures
   end
 
   # Structure Tests
@@ -169,6 +172,19 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     drop_all_rails_pulse_tables
     silence_schema_output { load CURRENT_SCHEMA_FILE }
     @conn.schema_cache.clear!
+  end
+
+  def reload_rails_pulse_fixtures
+    fixture_path = File.expand_path("../fixtures", __dir__)
+    fixture_files = Dir[File.join(fixture_path, "rails_pulse_*.yml")].map { |f| File.basename(f, ".yml") }
+    class_names = fixture_files.each_with_object({}) do |table_name, map|
+      class_name = "RailsPulse::#{table_name.sub(/^rails_pulse_/, "").classify}"
+      map[table_name.to_sym] = class_name.constantize
+    rescue NameError
+      # skip unknown models
+    end
+    ActiveRecord::FixtureSet.reset_cache
+    ActiveRecord::FixtureSet.create_fixtures(fixture_path, fixture_files, class_names)
   end
 
   def silence_schema_output

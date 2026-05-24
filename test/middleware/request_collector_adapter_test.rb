@@ -4,10 +4,6 @@ module RailsPulse
   module Middleware
     class RequestCollectorAdapterTest < ActionDispatch::IntegrationTest
       setup do
-        # Delete in correct order due to foreign keys
-        RailsPulse::Operation.delete_all
-        RailsPulse::Request.delete_all
-        RailsPulse::Route.delete_all
         @original_async = RailsPulse.configuration.async
         RailsPulse.configuration.async = false  # Use sync mode for tests
       end
