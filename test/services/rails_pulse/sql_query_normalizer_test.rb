@@ -157,6 +157,29 @@ module RailsPulse
         "Expected all normalized queries to be unique: #{normalized_queries}"
     end
 
+    test "normalize handles IN subqueries with nested parentheses" do
+      examples = {
+        # Simple subquery — collapses to IN (?)
+        "SELECT * FROM users WHERE id IN (SELECT user_id FROM posts)" =>
+          "SELECT * FROM users WHERE id IN (?)",
+
+        # Subquery with HAVING (COUNT(*) > N) — nested parens inside the subquery
+        # previously produced the mangled form: IN (?) > ?))
+        'SELECT 1 AS one FROM "posts" WHERE "posts"."id" IN (SELECT "comments"."post_id" FROM "comments" GROUP BY "comments"."post_id" HAVING (COUNT(*) > 2)) LIMIT 1' =>
+          'SELECT ? AS one FROM "posts" WHERE "posts"."id" IN (?) LIMIT ?',
+
+        # Subquery with multiple levels of nesting
+        "SELECT * FROM users WHERE id IN (SELECT user_id FROM posts WHERE id IN (SELECT post_id FROM comments)) LIMIT 10" =>
+          "SELECT * FROM users WHERE id IN (?) LIMIT ?"
+      }
+
+      examples.each do |input, expected|
+        result = RailsPulse::SqlQueryNormalizer.normalize(input)
+
+        assert_equal expected, result, "Failed for input: #{input}"
+      end
+    end
+
     test "normalize handles complex SQL features" do
       examples = {
         # Multiple functions
@@ -169,11 +192,7 @@ module RailsPulse
 
         # Window functions
         "SELECT *, ROW_NUMBER() OVER (ORDER BY created_at) FROM posts WHERE user_id = 123" =>
-          "SELECT *, ROW_NUMBER() OVER (ORDER BY created_at) FROM posts WHERE user_id = ?",
-
-        # Simple subquery (current implementation treats whole IN content as values)
-        "SELECT * FROM users WHERE id IN (SELECT user_id FROM posts)" =>
-          "SELECT * FROM users WHERE id IN (?)"
+          "SELECT *, ROW_NUMBER() OVER (ORDER BY created_at) FROM posts WHERE user_id = ?"
       }
 
       examples.each do |input, expected|

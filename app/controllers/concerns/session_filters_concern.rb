@@ -7,7 +7,7 @@ module SessionFiltersConcern
 
   included do
     before_action :set_show_non_tagged_default
-    helper_method :session_global_filters, :session_disabled_tags, :session_time_range_preference
+    helper_method :session_global_filters, :session_disabled_tags, :session_time_range_preference, :session_show_deployment_markers
   end
 
   private
@@ -28,6 +28,12 @@ module SessionFiltersConcern
   # Can be a symbol/string for presets or a hash for custom ranges
   def session_time_range_preference
     session[:time_range_preference]
+  end
+
+  # Returns whether deployment markers should be shown by default
+  # Defaults to true (shown) unless explicitly disabled in global filters
+  def session_show_deployment_markers
+    session_global_filters.fetch("show_deployment_markers", true)
   end
 
   # Set default value for show_non_tagged if not already set

@@ -3,6 +3,13 @@ module RailsPulse
     # Main chart rendering method - unified API for all chart types
     # Uses Stimulus controller to handle chart initialization
     def render_stimulus_chart(data, type:, **options)
+      # Auto-inject deployment markers into time-axis charts only.
+      # Time-axis charts store timestamps inside series data as [timestamp_ms, value] pairs
+      # and have no separate :labels key. Category/string-label charts (e.g. dashboard) are excluded.
+      if data.is_a?(Hash) && data[:labels].nil? && data[:series].present? && @deployment_markers&.any?
+        data = data.merge(deployment_markers: @deployment_markers)
+      end
+
       chart_id = options[:id] || "rails-pulse-chart-#{SecureRandom.hex(8)}"
       height = options[:height] || "400px"
       width = options[:width] || "100%"
@@ -27,6 +34,8 @@ module RailsPulse
 
     # Base chart options shared across all chart types
     def base_chart_options(units: nil, zoom: false)
+      hourly = @period_type == "hour" || (@time_diff_hours && @time_diff_hours <= 25)
+      x_formatter = hourly ? "time" : "timestamp_to_date"
       {
         tooltip: {
           trigger: "axis",
@@ -40,7 +49,7 @@ module RailsPulse
           axisLine: { show: false },
           axisTick: { show: false },
           axisLabel: {
-            formatter: "timestamp_to_date"
+            formatter: x_formatter
           }
         },
         yAxis: {
@@ -137,34 +146,36 @@ module RailsPulse
         showDetail: false
       }
 
-      # Initialize zoom range if zoom parameters are provided
       if zoom_start.present? && zoom_end.present? && chart_data.present?
-        # Handle both old format { timestamp => value } and new format { labels: [...], series: [...] }
-        chart_timestamps = if chart_data.is_a?(Hash) && chart_data[:labels].present?
-          # New multi-series chart format - labels are timestamps in milliseconds
-          chart_data[:labels]
-        elsif chart_data.is_a?(Hash)
-          # Old format - keys are timestamps
-          chart_data.keys.select { |k| k.is_a?(Numeric) }
-        else
-          []
-        end
-
-        # Convert zoom parameters to integers (timestamps)
         zoom_start_int = zoom_start.respond_to?(:to_i) ? zoom_start.to_i : zoom_start
         zoom_end_int = zoom_end.respond_to?(:to_i) ? zoom_end.to_i : zoom_end
 
-        if chart_timestamps.any?
-          closest_start = chart_timestamps.min_by { |ts| (ts.to_i - zoom_start_int.to_i).abs }
-          closest_end = chart_timestamps.min_by { |ts| (ts.to_i - zoom_end_int.to_i).abs }
+        # Detect format: time-axis format has [timestamp_ms, value] pairs directly or under :value
+        first_point = chart_data.dig(:series, 0, :data, 0)
+        is_time_axis = first_point.is_a?(Array) || first_point.is_a?(Hash) && first_point[:value].is_a?(Array)
 
-          # Find the array indices of these timestamps
-          start_index = chart_timestamps.index(closest_start)
-          end_index = chart_timestamps.index(closest_end)
+        if is_time_axis
+          # Time axis: startValue/endValue are timestamps in milliseconds
+          zoom_config[:startValue] = zoom_start_int * 1000
+          zoom_config[:endValue] = zoom_end_int * 1000
+        else
+          # Category axis: convert zoom timestamps to array indices
+          chart_timestamps = if chart_data.is_a?(Hash) && chart_data[:labels].present?
+            chart_data[:labels]
+          elsif chart_data.is_a?(Hash)
+            chart_data.keys.select { |k| k.is_a?(Numeric) }
+          else
+            []
+          end
 
-          # Use array indices for dataZoom instead of timestamp values
-          zoom_config[:startValue] = start_index
-          zoom_config[:endValue] = end_index
+          if chart_timestamps.any?
+            closest_start = chart_timestamps.min_by { |ts| (ts.to_i - zoom_start_int.to_i).abs }
+            closest_end = chart_timestamps.min_by { |ts| (ts.to_i - zoom_end_int.to_i).abs }
+            start_index = chart_timestamps.index(closest_start)
+            end_index = chart_timestamps.index(closest_end)
+            zoom_config[:startValue] = start_index
+            zoom_config[:endValue] = end_index
+          end
         end
       end
 

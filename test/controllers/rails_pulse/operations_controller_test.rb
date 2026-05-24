@@ -182,7 +182,7 @@ class RailsPulse::OperationsControllerTest < ActionDispatch::IntegrationTest
 
   test "generates index optimization suggestion for SELECT queries" do
     select_operation = rails_pulse_operations(:sql_operation_1)
-    select_operation.update!(label: "SELECT * FROM users WHERE email = 'test@example.com'")
+    select_operation.update!(actual_sql: "SELECT * FROM users WHERE email = 'test@example.com'")
 
     get rails_pulse.operation_path(select_operation)
 
@@ -198,14 +198,14 @@ class RailsPulse::OperationsControllerTest < ActionDispatch::IntegrationTest
   test "generates N+1 query suggestion when similar queries detected" do
     request = rails_pulse_requests(:users_request_1)
     operation = rails_pulse_operations(:sql_operation_1)
-    operation.update!(request: request, label: "SELECT * FROM users WHERE id = 1")
+    operation.update!(request: request, actual_sql: "SELECT * FROM users WHERE id = 1")
 
-    # Create similar operations
+    # Create similar operations (same normalized query → same query_id → detected as N+1)
     3.times do |i|
       RailsPulse::Operation.create!(
         request: request,
         operation_type: "sql",
-        label: "SELECT * FROM users WHERE id = #{i + 2}",
+        actual_sql: "SELECT * FROM users WHERE id = #{i + 2}",
         occurred_at: operation.occurred_at + (i + 1).seconds,
         duration: 10
       )
@@ -225,13 +225,13 @@ class RailsPulse::OperationsControllerTest < ActionDispatch::IntegrationTest
   test "does not generate N+1 suggestion with 2 or fewer similar queries" do
     request = rails_pulse_requests(:users_request_1)
     operation = rails_pulse_operations(:sql_operation_1)
-    operation.update!(request: request, label: "SELECT * FROM users WHERE id = 1")
+    operation.update!(request: request, actual_sql: "SELECT * FROM users WHERE id = 1")
 
-    # Create only 1 similar operation (total 2)
+    # Create only 1 similar operation (total 2 — not enough to trigger suggestion)
     RailsPulse::Operation.create!(
       request: request,
       operation_type: "sql",
-      label: "SELECT * FROM users WHERE id = 2",
+      actual_sql: "SELECT * FROM users WHERE id = 2",
       occurred_at: operation.occurred_at + 1.second,
       duration: 10
     )

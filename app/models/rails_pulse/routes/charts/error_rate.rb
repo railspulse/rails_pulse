@@ -34,12 +34,11 @@ module RailsPulse
             daily_data[timestamp] = raw_data[timestamp] || default_value
           end
 
-          labels = daily_data.keys.map { |timestamp| timestamp * 1000 }
-
+          # Build series data as [timestamp_ms, value] pairs for ECharts time axis
           series = [
             {
               name: "4xx Errors",
-              data: daily_data.values.map { |d| d[:client_error_rate] },
+              data: daily_data.map { |ts, d| [ ts * 1000, d[:client_error_rate] ] },
               type: "bar",
               stack: "error_rate",
               color: RailsPulse::ChartColors::P99,
@@ -47,7 +46,7 @@ module RailsPulse
             },
             {
               name: "5xx Errors",
-              data: daily_data.values.map { |d| d[:error_rate] },
+              data: daily_data.map { |ts, d| [ ts * 1000, d[:error_rate] ] },
               type: "bar",
               stack: "error_rate",
               color: RailsPulse::ChartColors::P95,
@@ -55,7 +54,7 @@ module RailsPulse
             }
           ]
 
-          { labels: labels, series: series }
+          { series: series }
         end
 
         private

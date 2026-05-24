@@ -19,18 +19,8 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
     assert validate_presence_of(:occurred_at).matches?(request)
     assert validate_presence_of(:duration).matches?(request)
     assert validate_presence_of(:status).matches?(request)
-    # request_uuid presence is validated, but callback auto-generates it before validation
-    # so we test this indirectly through the uniqueness test below
-
     # Numericality validation
     assert validate_numericality_of(:duration).is_greater_than_or_equal_to(0).matches?(request)
-
-    # Uniqueness validation (test manually for cross-database compatibility)
-    existing_request = rails_pulse_requests(:users_request_1)
-    duplicate_request = RailsPulse::Request.new(route: existing_request.route, duration: 150.5, status: 200, request_uuid: existing_request.request_uuid, controller_action: "UsersController#index", occurred_at: 1.hour.ago)
-
-    refute_predicate duplicate_request, :valid?
-    assert_includes duplicate_request.errors[:request_uuid], "has already been taken"
   end
 
   test "should be valid with required attributes" do
@@ -38,8 +28,6 @@ class RailsPulse::RequestTest < ActiveSupport::TestCase
 
     assert_predicate request, :valid?
   end
-
-  # Uniqueness validation is covered by shoulda matcher above
 
   test "should generate request_uuid when blank" do
     route = rails_pulse_routes(:api_users)

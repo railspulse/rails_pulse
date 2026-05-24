@@ -48,9 +48,8 @@ module RailsPulse
             request_time_by_period[ts] += summary.total_duration || 0
           end
 
-          # Build labels (ms timestamps) and per-bar colored data
+          # Build time-axis bar data with per-point colors
           # <25% = green (healthy), 25-40% = yellow (watch), >40% = red (bottleneck)
-          labels = []
           bar_data = []
 
           (@start_time.to_i..@end_time.to_i).step(step) do |timestamp|
@@ -66,12 +65,13 @@ module RailsPulse
               "rgb(239, 68, 68)"  # red
             end
 
-            labels << timestamp * 1000
-            bar_data << { value: percentage, itemStyle: { color: color } }
+            bar_data << {
+              value: [ timestamp * 1000, percentage ],
+              itemStyle: { color: color }
+            }
           end
 
           {
-            labels: labels,
             series: [
               {
                 name: "DB Load",

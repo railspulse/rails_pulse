@@ -73,8 +73,8 @@ ask_yes_no() {
   fi
 
   while true; do
-    read -p "$prompt" -n 1 -r
-    echo
+    printf "%s" "$prompt"
+    read -r REPLY
     if [ -z "$REPLY" ]; then
       [ "$default" = "y" ] && return 0 || return 1
     fi
@@ -199,7 +199,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Check if [Unreleased] section has any content
-UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md | grep -v '^$')
+UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found && NF{print}' CHANGELOG.md)
 
 if [ -z "$UNRELEASED_CONTENT" ]; then
   echo -e "${YELLOW}⚠  The [Unreleased] section in CHANGELOG.md is empty.${NC}"
@@ -226,7 +226,7 @@ if ask_yes_no "Open CHANGELOG.md to review/update [Unreleased]?"; then
 fi
 
 # Final check — abort if still empty
-UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found{print}' CHANGELOG.md | grep -v '^$')
+UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found && NF{print}' CHANGELOG.md)
 if [ -z "$UNRELEASED_CONTENT" ]; then
   echo -e "${YELLOW}⚠  [Unreleased] section is still empty.${NC}"
   if ! ask_yes_no "Continue anyway?"; then

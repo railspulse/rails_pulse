@@ -59,6 +59,25 @@
                 <% end %>
               </div>
             </div>
+
+            <div class="flex flex-col gap" style="--row-gap: 0.5rem">
+              <label class="text-sm font-medium">Chart Options</label>
+              <div class="flex items-center gap">
+                <input
+                  type="checkbox"
+                  name="show_deployment_markers"
+                  id="show_deployment_markers"
+                  value="1"
+                  <%= 'checked="checked"' if session_show_deployment_markers %>
+                  class="switch"
+                  role="switch"
+                />
+                <label class="text-sm font-medium" for="show_deployment_markers">
+                  Show deployment markers by default
+                </label>
+              </div>
+              <p class="text-xs text-subtle">Display deployment markers on charts when first loading a page. You can still toggle them on/off per chart.</p>
+            </div>
           </div>
 
           <div class="flex items-center justify-end gap">

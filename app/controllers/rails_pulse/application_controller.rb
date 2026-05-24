@@ -5,6 +5,7 @@ module RailsPulse
 
     before_action :authenticate_rails_pulse_user!
     before_action :set_onboarding_state
+    before_action :load_deployment_markers
 
     def set_global_filters
       if params[:clear] == "true"
@@ -41,6 +42,9 @@ module RailsPulse
         else
           filters.delete("disabled_tags")
         end
+
+        # Update deployment markers visibility (absent checkbox param = unchecked = false)
+        filters["show_deployment_markers"] = params[:show_deployment_markers] == "1"
 
         session[:global_filters] = filters
       end
@@ -118,6 +122,11 @@ module RailsPulse
           username == expected_username && password == expected_password
         end
       end
+    end
+
+    def load_deployment_markers
+      @deployment_markers = []
+      @show_deployment_markers = session_show_deployment_markers
     end
 
     def set_onboarding_state

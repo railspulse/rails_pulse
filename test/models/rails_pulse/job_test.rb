@@ -7,11 +7,17 @@ module RailsPulse
 
       assert_not job.valid?
       assert_includes job.errors[:name], "can't be blank"
+    end
 
-      duplicate = Job.new(name: rails_pulse_jobs(:mailer_job).name)
+    test "database unique index enforces name uniqueness" do
+      existing = rails_pulse_jobs(:mailer_job)
 
-      assert_not duplicate.valid?
-      assert_includes duplicate.errors[:name], "has already been taken"
+      duplicate = Job.new(name: existing.name)
+
+      assert_predicate duplicate, :valid?
+      assert_raises ActiveRecord::RecordNotUnique do
+        duplicate.save!(validate: false)
+      end
     end
 
     test "failure rate calculation" do

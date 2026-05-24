@@ -17,7 +17,7 @@ module RailsPulse
 
         # Structure Tests
 
-        test "to_chart_data returns hash with required keys" do
+        test "to_chart_data returns hash with series key" do
           chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -28,11 +28,10 @@ module RailsPulse
           result = chart.to_chart_data
 
           assert_kind_of Hash, result
-          assert_includes result, :labels
           assert_includes result, :series
         end
 
-        test "labels is an array" do
+        test "series data contains timestamp/value pairs in milliseconds" do
           chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -41,8 +40,10 @@ module RailsPulse
           )
 
           result = chart.to_chart_data
+          first_point = result[:series].first[:data].first
 
-          assert_kind_of Array, result[:labels]
+          assert_kind_of Array, first_point
+          assert_operator first_point[0], :>, 1000000000000  # Unix timestamp in milliseconds
         end
 
         test "series is an array" do
@@ -76,9 +77,9 @@ module RailsPulse
           assert_equal RailsPulse::ChartColors::DEFAULT, series[:color]
         end
 
-        # Label Tests
+        # Data Shape Tests
 
-        test "labels are timestamps in milliseconds" do
+        test "timestamps and data have same length" do
           chart = ExecutionVolume.new(
             ransack_query: @ransack_query,
             period_type: :day,
@@ -88,23 +89,7 @@ module RailsPulse
 
           result = chart.to_chart_data
 
-          result[:labels].each do |label|
-            assert_kind_of Integer, label
-            assert_operator label, :>, 1000000000000  # Unix timestamp in milliseconds
-          end
-        end
-
-        test "labels and data have same length" do
-          chart = ExecutionVolume.new(
-            ransack_query: @ransack_query,
-            period_type: :day,
-            start_time: @start_time,
-            end_time: @end_time
-          )
-
-          result = chart.to_chart_data
-
-          assert_equal result[:labels].length, result[:series].first[:data].length
+          assert_operator result[:series].first[:data].length, :>, 0
         end
 
         # Period Type Tests
@@ -229,7 +214,7 @@ module RailsPulse
           # Should have entries for each day in the range
           expected_days = ((@end_time.to_date - @start_time.to_date).to_i + 1)
 
-          assert_equal expected_days, result[:labels].length
+          assert_equal expected_days, result[:series].first[:data].length
         end
 
         # Edge Cases
@@ -262,7 +247,7 @@ module RailsPulse
 
           result = chart.to_chart_data
 
-          assert_equal 1, result[:labels].length
+          assert_equal 1, result[:series].first[:data].length
         end
       end
     end

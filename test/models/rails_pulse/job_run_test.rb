@@ -12,6 +12,18 @@ module RailsPulse
       assert_includes run.errors[:occurred_at], "can't be blank"
     end
 
+    test "database unique index enforces run_id uniqueness" do
+      existing = rails_pulse_job_runs(:report_run_success)
+      job = rails_pulse_jobs(:report_job)
+
+      duplicate = JobRun.new(run_id: existing.run_id, job: job, status: "running", occurred_at: Time.current)
+
+      assert_predicate duplicate, :valid?
+      assert_raises ActiveRecord::RecordNotUnique do
+        duplicate.save!(validate: false)
+      end
+    end
+
     test "all_tags combines job and run tags" do
       job = rails_pulse_jobs(:report_job)
       job.update!(tags: '["critical"]')

@@ -45,7 +45,7 @@ module RailsPulse
         assert_kind_of TestPercentileChart, chart
       end
 
-      test "to_chart_data returns hash with labels and series keys" do
+      test "to_chart_data returns hash with series key" do
         create_summary(@route, 1.day.ago, p50: 100, p95: 300, p99: 500, count: 50)
 
         chart = TestPercentileChart.new(
@@ -57,11 +57,10 @@ module RailsPulse
         result = chart.to_chart_data
 
         assert_kind_of Hash, result
-        assert_includes result.keys, :labels
         assert_includes result.keys, :series
       end
 
-      test "labels are timestamps in milliseconds for JavaScript" do
+      test "series data contains timestamp/value pairs in milliseconds" do
         create_summary(@route, 1.day.ago, p50: 100, p95: 300, p99: 500, count: 50)
 
         chart = TestPercentileChart.new(
@@ -71,9 +70,10 @@ module RailsPulse
           end_time: @end_time
         )
         result = chart.to_chart_data
+        first_point = result[:series].find { |s| s[:name] == "P50" }[:data].first
 
-        assert_kind_of Array, result[:labels]
-        assert_operator result[:labels].first, :>, 1_000_000_000_000  # Milliseconds timestamp
+        assert_kind_of Array, first_point
+        assert_operator first_point[0], :>, 1_000_000_000_000  # ms timestamp
       end
 
       test "series contains P50, P95, and P99 by default" do
@@ -115,11 +115,11 @@ module RailsPulse
         result = chart.to_chart_data
         p50_series = result[:series].find { |s| s[:name] == "P50" }
 
-        # Find non-nil value (should be the weighted average)
-        non_nil_values = p50_series[:data].compact
+        # Find non-nil values (should be the weighted average)
+        non_nil_values = p50_series[:data].select { |v| !v[1].nil? }
 
         assert_equal 1, non_nil_values.length
-        assert_equal 300, non_nil_values.first
+        assert_equal 300, non_nil_values.first[1]
       end
 
       test "calculates weighted average P95 with different counts" do
@@ -140,11 +140,11 @@ module RailsPulse
         result = chart.to_chart_data
         p95_series = result[:series].find { |s| s[:name] == "P95" }
 
-        # Find non-nil value (should be the weighted average)
-        non_nil_values = p95_series[:data].compact
+        # Find non-nil values (should be the weighted average)
+        non_nil_values = p95_series[:data].select { |v| !v[1].nil? }
 
         assert_equal 1, non_nil_values.length
-        assert_equal 400, non_nil_values.first
+        assert_equal 400, non_nil_values.first[1]
       end
 
       test "rounds percentile values to 2 decimal places" do
@@ -160,7 +160,7 @@ module RailsPulse
 
         result[:series].each do |series|
           next if series[:name].include?("SLO")
-          non_nil_values = series[:data].compact
+          non_nil_values = series[:data].select { |v| !v[1].nil? }.map { |v| v[1] }
 
           non_nil_values.each do |value|
             assert_kind_of Numeric, value
@@ -187,9 +187,9 @@ module RailsPulse
         p50_series = result[:series].find { |s| s[:name] == "P50" }
 
         # Should have 8 data points (7 days + today)
-        assert_operator result[:labels].length, :>=, 7
+        assert_operator result[:series].first[:data].length, :>=, 7
         # Most should be nil (no data)
-        nil_count = p50_series[:data].count(nil)
+        nil_count = p50_series[:data].count { |v| v[1].nil? }
 
         assert_operator nil_count, :>, 5
       end
@@ -204,10 +204,11 @@ module RailsPulse
           end_time: @end_time
         )
         result = chart.to_chart_data
+        p50_data = result[:series].find { |s| s[:name] == "P50" }[:data]
 
-        # Check that labels are spaced 86400000 milliseconds apart (1 day)
-        if result[:labels].length > 1
-          diff = result[:labels][1] - result[:labels][0]
+        # Check that timestamps are spaced 86400000 milliseconds apart (1 day)
+        if p50_data.length > 1
+          diff = p50_data[1][0] - p50_data[0][0]
 
           assert_equal 86400000, diff
         end
@@ -226,10 +227,11 @@ module RailsPulse
           end_time: end_time
         )
         result = chart.to_chart_data
+        p50_data = result[:series].find { |s| s[:name] == "P50" }[:data]
 
-        # Check that labels are spaced 3600000 milliseconds apart (1 hour)
-        if result[:labels].length > 1
-          diff = result[:labels][1] - result[:labels][0]
+        # Check that timestamps are spaced 3600000 milliseconds apart (1 hour)
+        if p50_data.length > 1
+          diff = p50_data[1][0] - p50_data[0][0]
 
           assert_equal 3600000, diff
         end
@@ -258,10 +260,10 @@ module RailsPulse
         p50_series = result[:series].find { |s| s[:name] == "P50" }
 
         # Should only see @route's data (200), not route2's data (999)
-        non_nil_values = p50_series[:data].compact
+        non_nil_values = p50_series[:data].select { |v| !v[1].nil? }
 
         assert_equal 1, non_nil_values.length
-        assert_equal 200, non_nil_values.first
+        assert_equal 200, non_nil_values.first[1]
       end
 
       test "aggregates all subjects when subject is nil" do
@@ -282,10 +284,10 @@ module RailsPulse
         p50_series = result[:series].find { |s| s[:name] == "P50" }
 
         # Weighted average: (200*100 + 400*100) / 200 = 300
-        non_nil_values = p50_series[:data].compact
+        non_nil_values = p50_series[:data].select { |v| !v[1].nil? }
 
         assert_equal 1, non_nil_values.length
-        assert_equal 300, non_nil_values.first
+        assert_equal 300, non_nil_values.first[1]
       end
 
       # ============================================================================
@@ -311,10 +313,10 @@ module RailsPulse
         p50_series = result[:series].find { |s| s[:name] == "P50" }
 
         # Should only see api_users data (200), not api_cleanup (999)
-        non_nil_values = p50_series[:data].compact
+        non_nil_values = p50_series[:data].select { |v| !v[1].nil? }
 
         assert_equal 1, non_nil_values.length
-        assert_equal 200, non_nil_values.first
+        assert_equal 200, non_nil_values.first[1]
       end
 
       test "excludes non-tagged routes when show_non_tagged is false" do
@@ -334,10 +336,10 @@ module RailsPulse
         p50_series = result[:series].find { |s| s[:name] == "P50" }
 
         # Should only see tagged route data (200), not untagged (999)
-        non_nil_values = p50_series[:data].compact
+        non_nil_values = p50_series[:data].select { |v| !v[1].nil? }
 
         assert_equal 1, non_nil_values.length
-        assert_equal 200, non_nil_values.first
+        assert_equal 200, non_nil_values.first[1]
       end
 
       # ============================================================================
@@ -385,7 +387,7 @@ module RailsPulse
 
         slo_series = result[:series].find { |s| s[:name].include?("SLO") }
 
-        assert slo_series[:data].all? { |v| v == 500 }
+        assert slo_series[:data].all? { |v| v[1] == 500 }
       ensure
         RailsPulse.configuration.service_level_objectives = original_config
       end
@@ -452,12 +454,11 @@ module RailsPulse
         result = chart.to_chart_data
 
         assert_kind_of Hash, result
-        assert_kind_of Array, result[:labels]
         assert_kind_of Array, result[:series]
 
         p50_series = result[:series].find { |s| s[:name] == "P50" }
 
-        assert p50_series[:data].all? { |v| v.nil? }
+        assert p50_series[:data].all? { |v| v[1].nil? }
       end
 
       test "handles nil percentile values by treating as zero" do
@@ -483,10 +484,10 @@ module RailsPulse
         p50_series = result[:series].find { |s| s[:name] == "P50" }
 
         # Should have exactly one non-nil value which is 0
-        non_nil_values = p50_series[:data].compact
+        non_nil_values = p50_series[:data].select { |v| !v[1].nil? }
 
         assert_equal 1, non_nil_values.length
-        assert_equal 0, non_nil_values.first
+        assert_equal 0, non_nil_values.first[1]
       end
 
       test "handles zero count summaries" do
@@ -512,7 +513,7 @@ module RailsPulse
         p50_series = result[:series].find { |s| s[:name] == "P50" }
 
         # With zero count, all values should be nil (no data to aggregate)
-        non_nil_values = p50_series[:data].compact
+        non_nil_values = p50_series[:data].select { |v| !v[1].nil? }
 
         assert_empty non_nil_values
       end

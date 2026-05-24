@@ -66,4 +66,15 @@ namespace :rails_pulse do
     puts "Total summaries: #{RailsPulse::Summary.count}"
     puts "\nTo keep summaries up to date, schedule RailsPulse::SummaryJob to run hourly"
   end
+
+  desc "Record a deployment event. Usage: rake rails_pulse:record_deployment[revision]"
+  task :record_deployment, [ :revision ] => :environment do |_t, args|
+    revision = args[:revision]
+    abort "ERROR: revision is required. Usage: rake rails_pulse:record_deployment[abc1234]" if revision.blank?
+
+    deployment = RailsPulse::Deployment.create!(revision: revision, started_at: Time.current)
+    puts "[RailsPulse] Deployment recorded: #{deployment.revision} at #{deployment.started_at}"
+  rescue ActiveRecord::RecordInvalid => e
+    abort "ERROR: #{e.message}"
+  end
 end

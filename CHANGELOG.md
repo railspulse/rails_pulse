@@ -7,7 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.3.0.pre.1] - 2026-04-19
+### Added
+
+- **Deployment tracking** — Record deployments via `POST /rails_pulse/deployments` or `rake rails_pulse:record_deployment[sha]`. Deployments appear as vertical marker lines on performance charts so you can correlate releases with regressions
+- **`deployment_api_token` config option** — Secures the deployments endpoint with a token header for CI/CD use
+
+### Changed
+
+- All multi-series charts now use a native ECharts time axis (`[timestamp_ms, value]` pairs) instead of a separate labels array, enabling deployment markers and better zoom behaviour
+
+### Removed
+
+- `Queries::Charts::AverageQueryTimes` — superseded by `Queries::Charts::DatabaseLoad`
+
+## [0.3.0] - 2026-04-19
 
 This is the largest release to date — a full UI overhaul across every section of
 the dashboard. Charts are now switchable, the dashboard surfaces health status

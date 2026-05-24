@@ -90,7 +90,7 @@ module RailsPulse
         }
 
         # Look for repeated similar queries
-        normalized_queries = operations_group.map { |op| normalize_sql_for_pattern_detection(op.label) }
+        normalized_queries = operations_group.filter_map { |op| op.query&.normalized_sql }
         query_counts = normalized_queries.tally
 
         query_counts.each do |normalized_query, count|
@@ -223,7 +223,7 @@ module RailsPulse
 
       def detect_association_from_query(normalized_query)
         # Try to extract table/column info to suggest specific associations
-        match = normalized_query.match(/from\s+(\w+).*where\s+(\w+)\s*=/)
+        match = normalized_query.match(/from\s+(\w+).*where\s+(\w+)\s*=/i)
         return "Model.includes(:association)" unless match
 
         table = match[1]

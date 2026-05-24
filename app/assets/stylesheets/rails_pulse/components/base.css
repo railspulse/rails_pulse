@@ -8,6 +8,7 @@
   --color-link: var(--blue-700);
   /* Brand */
   --color-brand: #ffc91f;
+  --color-deploy: #22c55e;
 
   /* Header tokens */
   --header-bg: #ffc91f;
