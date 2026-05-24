@@ -214,6 +214,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     SQL
 
     job_id = @conn.select_value("SELECT id FROM rails_pulse_jobs WHERE name = '#{job_name}'")
+
     assert job_id, "job insert failed"
 
     @conn.execute(<<~SQL)
@@ -222,6 +223,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     SQL
 
     count = @conn.select_value("SELECT COUNT(*) FROM rails_pulse_job_runs WHERE run_id = '#{run_id}'").to_i
+
     assert_equal 1, count, "job_run insert failed"
   end
 
