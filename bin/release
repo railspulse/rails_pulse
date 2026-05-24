@@ -34,7 +34,7 @@ ${BOLD}Usage:${NC}
 
 ${BOLD}What it does:${NC}
   1. Pre-flight checks (git status, branch, etc.) — hard stop on failure
-  2. Pre-release tests (rake test_release — includes RuboCop, Brakeman, full matrix)
+  2. Pre-release tests (npm run test:js + rake test_release — includes RuboCop, Brakeman, full matrix)
   3. Changelog review
   4. Version bump (calls bin/bump_version)
   5. Commit changes (calls bin/commit_release)
@@ -164,6 +164,7 @@ echo "This will run:"
 echo "  • Git status check"
 echo "  • RuboCop linting"
 echo "  • Brakeman security scan"
+echo "  • JavaScript unit tests (npm run test:js)"
 echo "  • Asset building"
 echo "  • Gem build verification"
 echo "  • Generator tests"
@@ -172,7 +173,7 @@ echo ""
 echo -e "${YELLOW}Note: This may take 10-30 minutes${NC}"
 echo ""
 
-if ask_yes_no "Run pre-release tests? (rake test_release)" "y"; then
+if ask_yes_no "Run pre-release tests?" "y"; then
   echo ""
   if rake test_release; then
     echo ""
