@@ -114,3 +114,17 @@ To rebuild assets: `npm run build` (or `npm run build:dev` for source maps).
 ## Releases
 
 Run `rake test_release` before any release — it validates git status, RuboCop, Brakeman, asset build, gem build, generator tests, and the full test matrix. See `docs/releasing.md` for the full process.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in GitHub Issues (`railspulse/rails_pulse`). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+Default label vocabulary (`needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`). See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context repo — `CONTEXT.md` + `docs/adr/` at root. See `docs/agents/domain.md`.
