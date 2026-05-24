@@ -173,6 +173,35 @@ jobs:
     - name: Run RuboCop
       run: bundle exec rubocop
 
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Node dependencies
+      run: npm ci
+
+    - name: Run ESLint
+      run: npm run lint:js
+
+  js-test:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Set up Node.js
+      uses: actions/setup-node@v6
+      with:
+        node-version: '20'
+        cache: 'npm'
+
+    - name: Install Node dependencies
+      run: npm ci
+
+    - name: Run JavaScript tests
+      run: npm run test:js
+
   build:
     runs-on: ubuntu-latest
     steps:
@@ -187,11 +216,11 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v6
       with:
-        node-version: '18'
+        node-version: '20'
         cache: 'npm'
 
     - name: Install Node dependencies
-      run: npm install
+      run: npm ci
 
     - name: Build assets
       run: npm run build

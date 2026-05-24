@@ -263,7 +263,7 @@ task :test_release do
 
   failed_tasks = []
   current_step = 0
-  total_steps = 12
+  total_steps = 14
 
   # Step 1: Update appraisal gemfiles
   current_step += 1
@@ -360,7 +360,33 @@ task :test_release do
     failed_tasks << "npm_install"
   end
 
-  # Step 8: Build and verify assets
+  # Step 8: ESLint JS linting
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Running ESLint JS linting..."
+    puts "-" * 70
+    sh "npm run lint:js"
+    puts "✅ JS linting passed!"
+  rescue => e
+    puts "❌ ESLint linting failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "eslint"
+  end
+
+  # Step 9: JavaScript unit tests
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Running JavaScript unit tests..."
+    puts "-" * 70
+    sh "npm run test:js"
+    puts "✅ JavaScript tests passed!"
+  rescue => e
+    puts "❌ JavaScript tests failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "js_tests"
+  end
+
+  # Step 10: Build and verify assets
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Building production assets..."
@@ -407,7 +433,7 @@ task :test_release do
     failed_tasks << "npm_build"
   end
 
-  # Step 9: Verify gem builds
+  # Step 11: Verify gem builds
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Verifying gem builds correctly..."
@@ -425,7 +451,7 @@ task :test_release do
     failed_tasks << "gem_build"
   end
 
-  # Step 10: Run generator tests
+  # Step 12: Run generator tests
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running generator tests..."
@@ -438,7 +464,7 @@ task :test_release do
     failed_tasks << "test_generators"
   end
 
-  # Step 11: Run migration regression tests
+  # Step 13: Run migration regression tests
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running migration regression tests..."
@@ -451,7 +477,7 @@ task :test_release do
     failed_tasks << "test_migrations"
   end
 
-  # Step 12: Run full test matrix
+  # Step 14: Run full test matrix
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running full test matrix..."
