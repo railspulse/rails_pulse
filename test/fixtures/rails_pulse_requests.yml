@@ -5,6 +5,7 @@ users_request_1:
   is_error: false
   request_uuid: "test-uuid-1"
   controller_action: "UsersController#index"
+  response_size_bytes: 5120
   occurred_at: <%= Time.current - 1.hour %>
   created_at: <%= Time.current - 1.hour %>
   updated_at: <%= Time.current - 1.hour %>
@@ -16,6 +17,7 @@ users_request_2:
   is_error: false
   request_uuid: "test-uuid-2"
   controller_action: "UsersController#show"
+  response_size_bytes: 51200
   occurred_at: <%= Time.current - 2.hours %>
   created_at: <%= Time.current - 2.hours %>
   updated_at: <%= Time.current - 2.hours %>
@@ -27,6 +29,7 @@ posts_request:
   is_error: false
   request_uuid: "test-uuid-3"
   controller_action: "PostsController#create"
+  response_size_bytes: 256000
   occurred_at: <%= Time.current - 1.hour %>
   created_at: <%= Time.current - 1.hour %>
   updated_at: <%= Time.current - 1.hour %>
@@ -38,6 +41,7 @@ error_request:
   is_error: true
   request_uuid: "test-uuid-4"
   controller_action: "OtherController#action"
+  response_size_bytes: 1024
   occurred_at: <%= Time.current - 3.hours %>
   created_at: <%= Time.current - 3.hours %>
   updated_at: <%= Time.current - 3.hours %>
@@ -60,6 +64,7 @@ slow_request_2:
   is_error: false
   request_uuid: "slow-req-2"
   controller_action: "UsersController#index"
+  response_size_bytes: 102400
   occurred_at: <%= Time.current - 1.5.hours %>
   created_at: <%= Time.current - 1.5.hours %>
   updated_at: <%= Time.current - 1.5.hours %>
@@ -71,6 +76,7 @@ critical_request:
   is_error: true
   request_uuid: "critical-req-1"
   controller_action: "UsersController#heavy_operation"
+  response_size_bytes: 2097152
   occurred_at: <%= Time.current - 1.hour %>
   created_at: <%= Time.current - 1.hour %>
   updated_at: <%= Time.current - 1.hour %>
@@ -93,6 +99,7 @@ recent_request_2:
   is_error: false
   request_uuid: "recent-req-2"
   controller_action: "PostsController#index"
+  response_size_bytes: 10240
   occurred_at: <%= Time.current - 25.minutes %>
   created_at: <%= Time.current - 25.minutes %>
   updated_at: <%= Time.current - 25.minutes %>
@@ -104,6 +111,7 @@ recent_request_3:
   is_error: false
   request_uuid: "recent-req-3"
   controller_action: "PostsController#index"
+  response_size_bytes: 524288
   occurred_at: <%= Time.current - 20.minutes %>
   created_at: <%= Time.current - 20.minutes %>
   updated_at: <%= Time.current - 20.minutes %>

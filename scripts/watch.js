@@ -6,8 +6,6 @@ const { execSync } = require('child_process');
 
 // Configuration
 const ROOT_DIR = path.dirname(__dirname);
-const glob = require('glob');
-
 // Watch directories instead of individual files to handle Vim's safe-write behavior
 const WATCH_PATHS = [
   'app/assets/stylesheets/rails_pulse',
@@ -71,7 +69,7 @@ const debouncedBuild = debounce(runBuild, 500);
 
 // Initialize watcher with directory paths to handle Vim's safe-write behavior
 const watcher = chokidar.watch(WATCH_PATHS, {
-  ignored: /(^|[\/\\])\../, // ignore dotfiles
+  ignored: /(^|[/\\])\../, // ignore dotfiles
   persistent: true,
   ignoreInitial: true,
   usePolling: false,

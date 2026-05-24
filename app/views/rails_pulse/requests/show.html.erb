@@ -12,6 +12,8 @@
         <dd><%= @request.duration.round(2) %> ms</dd>
         <dt>Status</dt>
         <dd><%= @request.status %></dd>
+        <dt>Response Size</dt>
+        <dd><%= human_readable_bytes(@request.response_size_bytes) %></dd>
         <dt>Error</dt>
         <dd><%= @request.is_error? ? 'Yes' : 'No' %></dd>
       </dl>

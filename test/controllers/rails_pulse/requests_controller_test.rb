@@ -275,6 +275,101 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:table_data)
   end
 
+  # Response Size Filter & Sort Tests
+
+  test "index sortable by response_size_bytes asc" do
+    get rails_pulse.requests_path, params: { q: { s: "response_size_bytes asc" } }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    # Verify non-nil sizes are in ascending order; nil values may sort to either end depending on DB
+    sizes = requests.map(&:response_size_bytes).compact
+    if sizes.size > 1
+      sizes.each_cons(2) do |current, nxt|
+        assert_operator current, :<=, nxt
+      end
+    end
+  end
+
+  test "index sortable by response_size_bytes desc" do
+    get rails_pulse.requests_path, params: { q: { s: "response_size_bytes desc" } }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    sizes = requests.map(&:response_size_bytes).compact
+    if sizes.size > 1
+      sizes.each_cons(2) do |current, nxt|
+        assert_operator current, :>=, nxt
+      end
+    end
+  end
+
+  test "index with min_size_kb filter converts KB to bytes and excludes smaller requests" do
+    # Filter to >= 100 KB (102400 bytes); fixtures with response_size_bytes 1024, 5120, 10240, 51200 should be excluded
+    get rails_pulse.requests_path, params: { min_size_kb: "100" }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    requests.each do |req|
+      assert_not_nil req.response_size_bytes,
+                     "Filter should exclude rows with nil response_size_bytes"
+      assert_operator req.response_size_bytes, :>=, 100 * 1024
+    end
+  end
+
+  test "index with min_size_kb filter at 1 MB excludes mid-size fixtures" do
+    # Filter to >= 1024 KB (1 MB) — only critical_request (2 MB) qualifies
+    get rails_pulse.requests_path, params: { min_size_kb: "1024" }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    requests.each do |req|
+      assert_operator req.response_size_bytes, :>=, 1024 * 1024
+    end
+  end
+
+  test "index with blank min_size_kb applies no size filter" do
+    small_request = rails_pulse_requests(:error_request) # 1024 bytes (1 KB)
+
+    get rails_pulse.requests_path, params: { min_size_kb: "" }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    # Verify a 1 KB fixture is still eligible (i.e. no size filter was applied)
+    assert_includes requests.map(&:id), small_request.id
+  end
+
+  test "index with min_size_kb of zero applies no size filter" do
+    small_request = rails_pulse_requests(:error_request) # 1024 bytes (1 KB)
+    nil_size_request = rails_pulse_requests(:slow_request_1) # response_size_bytes: nil
+
+    get rails_pulse.requests_path, params: { min_size_kb: "0" }
+
+    assert_response :success
+    request_ids = assigns(:table_data).map(&:id)
+
+    # Zero is treated as "no filter": nil rows and small rows both remain eligible
+    assert_includes request_ids, small_request.id
+    assert_includes request_ids, nil_size_request.id
+  end
+
+  test "index with non-numeric min_size_kb is coerced safely with no filter applied" do
+    small_request = rails_pulse_requests(:error_request) # 1024 bytes (1 KB)
+
+    get rails_pulse.requests_path, params: { min_size_kb: "not-a-number" }
+
+    assert_response :success
+    requests = assigns(:table_data)
+
+    # to_i on non-numeric returns 0, which is treated as no filter — small fixture still eligible
+    assert_includes requests.map(&:id), small_request.id
+  end
+
   # Custom Time Range Handling Tests
 
   test "index with custom time range applies time filters" do

@@ -62,7 +62,7 @@ export default class extends Controller {
       if (this.chart && this.zrMouseMoveHandler) {
         this.chart.getZr().off('mousemove', this.zrMouseMoveHandler)
       }
-    } catch (e) { /* chart may already be disposed */ }
+    } catch { /* chart may already be disposed */ }
 
     // Clear any pending timeout
     if (this.pendingRequestTimeout) {
@@ -87,7 +87,7 @@ export default class extends Controller {
 
   // Called when the chart switcher changes the active chart
   handleChartSwitched(event) {
-    const { fromId, toId } = event.detail
+    const { toId } = event.detail
     if (!toId || toId === this.activeChartId) return
 
     // Capture current zoom state before switching
@@ -143,7 +143,7 @@ export default class extends Controller {
       const dataZoom = option.dataZoom?.[1] || option.dataZoom?.[0]
       if (!dataZoom) return null
       return { startValue: dataZoom.startValue, endValue: dataZoom.endValue }
-    } catch (e) {
+    } catch {
       return null
     }
   }
@@ -153,7 +153,7 @@ export default class extends Controller {
     try {
       this.chart.dispatchAction({ type: 'dataZoom', startValue: zoomState.startValue, endValue: zoomState.endValue })
       this.visibleData = this.getVisibleData()
-    } catch (e) {}
+    } catch { /* ignore */ }
   }
 
   teardownActiveChartListeners() {
@@ -168,7 +168,7 @@ export default class extends Controller {
         if (this.zrClickHandler) this.chart.getZr().off('click', this.zrClickHandler)
         if (this.zrMouseMoveHandler) this.chart.getZr().off('mousemove', this.zrMouseMoveHandler)
       }
-    } catch (e) {}
+    } catch { /* chart may already be disposed */ }
     this.zrClickHandler = null
     this.zrMouseMoveHandler = null
   }
@@ -417,7 +417,7 @@ export default class extends Controller {
         xAxis: xAxisData.slice(startValue, endValue + 1),
         series: seriesData.slice(startValue, endValue + 1)
       };
-    } catch (error) {
+    } catch {
       return { xAxis: [], series: [] };
     }
   }
