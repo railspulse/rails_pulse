@@ -1,7 +1,7 @@
 require "test_helper"
 
 class RoutesShowPageTest < ApplicationSystemTestCase
-  fixtures :rails_pulse_routes
+  fixtures :rails_pulse_routes, :rails_pulse_requests, :rails_pulse_summaries
 
   def setup
     super

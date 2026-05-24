@@ -1158,6 +1158,82 @@ Before submitting a test file, verify:
 
 ---
 
+## JavaScript Testing
+
+Rails Pulse uses **Vitest + JSDOM** to unit test Stimulus controllers without a browser. These tests are fast (< 2s), run independently of Ruby, and live alongside the controller source files.
+
+### Running JS tests
+
+```bash
+npm run test:js          # Single run (used in CI)
+npm run test:js:watch    # Watch mode for development
+npm run test:js:coverage # Run with V8 coverage report
+```
+
+### What is and isn't tested
+
+Controllers with clear, mockable logic are tested here:
+
+| Controller | What's covered |
+|---|---|
+| `color_scheme` | localStorage restore, light/dark toggle, custom event dispatch |
+| `collapsible` | collapsed/expanded class toggling, toggle text, start state |
+| `dialog` | show/showModal/close delegation, closeOnClickOutside |
+| `form` | submit, cancel, preventAttachment, debounce timing |
+| `series_toggle` | active state toggle, `rails-pulse:toggle-series` event detail |
+| `pagination` | URL param → select sync, sessionStorage fallback, updateLimit nav |
+| `chart_switcher` | default/URL-param selection, switch visibility, URL update |
+| `period_selector` | active styles, inactive styles on siblings |
+
+**Do not write JSDOM tests for**: `chart`, `index`, `flame_graph`, `popover`, `datepicker`. These rely on canvas rendering, `getBoundingClientRect`, or Flatpickr DOM manipulation that JSDOM doesn't support. Test them with system tests instead.
+
+### Test structure
+
+Tests live in `test/javascript/controllers/` as `*.test.js`. The shared helper is at `test/javascript/setup.js`.
+
+```js
+import { mountController } from '../setup'
+
+// Mount a controller in a real Stimulus app; get the instance for direct calls
+const { app, element, teardown } = await mountController('my-id', MyController, html)
+const ctrl = app.getControllerForElementAndIdentifier(element, 'my-id')
+```
+
+`mountController` handles:
+- Setting `document.body.innerHTML`
+- Starting a Stimulus `Application` and registering the controller
+- Waiting for the MutationObserver to fire (`nextTick`)
+- Returning a `teardown()` that stops the app and clears the DOM
+
+Always call `teardown()` in `afterEach` to prevent Stimulus app leaks between tests.
+
+### Mocking browser globals
+
+For controllers that read URL params or navigate, stub `window.location` with a plain object. The object **must** include `toString()` because the controller uses `new URL(window.location)`:
+
+```js
+vi.stubGlobal('location', {
+  href: 'http://localhost/?limit=50',
+  search: '?limit=50',
+  toString() { return this.href },
+})
+// ... test ...
+vi.unstubAllGlobals()
+```
+
+For `window.history.replaceState`, the third argument is a `URL` object — coerce it to a string before asserting:
+
+```js
+const url = String(window.history.replaceState.mock.calls[0][2])
+expect(url).toContain('chart_type=throughput')
+```
+
+### IntersectionObserver / ResizeObserver
+
+Both are polyfilled with no-op vi.fn() mocks in `test/javascript/setup.js` so controllers that reference them (e.g., `menu`) can be imported without errors.
+
+---
+
 ## Running Tests Across Multiple Environments
 
 RailsPulse is tested against multiple Rails versions and database adapters to ensure compatibility. Before submitting changes, verify that tests pass across all supported configurations.

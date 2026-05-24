@@ -29,6 +29,11 @@ module RailsPulse
       end
     end
 
+    def human_readable_bytes(value)
+      return "—" if value.nil?
+      number_to_human_size(value, precision: 2)
+    end
+
     def human_readable_summary_period(summary)
       return "" unless summary&.period_start&.present? && summary&.period_end&.present?
 
