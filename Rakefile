@@ -106,6 +106,20 @@ task :test_setup do
   end
 end
 
+desc "Run migration regression tests in an isolated process"
+task :test_migrations do
+  database = ENV["DB"] || "sqlite3"
+
+  puts "\n" + "=" * 50
+  puts "🔄 Rails Pulse Migration Regression Tests"
+  puts "=" * 50
+  puts "Database: #{database.upcase}"
+  puts "=" * 50
+  puts
+
+  sh "rails test test/migrations"
+end
+
 desc "Run test suite"
 task :test do
   database = ENV['DB'] || 'sqlite3'
@@ -249,7 +263,7 @@ task :test_release do
 
   failed_tasks = []
   current_step = 0
-  total_steps = 13
+  total_steps = 14
 
   # Step 1: Update appraisal gemfiles
   current_step += 1
@@ -450,7 +464,20 @@ task :test_release do
     failed_tasks << "test_generators"
   end
 
-  # Step 13: Run full test matrix
+  # Step 13: Run migration regression tests
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Running migration regression tests..."
+    puts "-" * 70
+    sh "rake test_migrations"
+    puts "✅ Migration regression tests passed!"
+  rescue => e
+    puts "❌ Migration regression tests failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "test_migrations"
+  end
+
+  # Step 14: Run full test matrix
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Running full test matrix..."

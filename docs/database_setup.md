@@ -264,7 +264,12 @@ When adding a new feature that requires a database column:
 
 3. **For new tables only**: Add the table name to `RAILS_PULSE_TABLES` in `lib/generators/rails_pulse/base_methods.rb`. This list is the fallback used when the upgrade generator cannot parse the host app's `db/rails_pulse_schema.rb`, so it must stay in sync with the actual set of tables.
 
-4. Users run the upgrade generator to get the migration:
+4. Update the migration regression tests in `test/migrations/upgrade_migration_test.rb`:
+   - Add the new class name to `MIGRATION_CLASSES` (in filename sort order)
+   - Add an assertion verifying the new column/table exists after upgrading from v0.2.7
+   - Run `rake test_migrations` to verify
+
+5. Users run the upgrade generator to get the migration:
    ```bash
    rails generate rails_pulse:upgrade
    rails db:migrate
