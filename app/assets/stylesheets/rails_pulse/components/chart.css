@@ -60,11 +60,16 @@
 }
 
 .panel-tabs__toggles {
+  display: flex;
   gap: var(--size-1);
   align-items: center;
   padding-left: var(--size-3);
   margin-left: var(--size-1);
   border-left: 1px solid var(--color-border);
+}
+
+.text-deploy {
+  color: var(--color-deploy);
 }
 
 .panel-tab {

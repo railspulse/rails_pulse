@@ -385,7 +385,7 @@ module RailsPulse
 
     test "validate_authentication_settings! tolerates nil Rails.logger" do
       config = Configuration.new
-      config.instance_variable_set(:@authentication_enabled, true)
+      config.authentication_enabled = true
       config.instance_variable_set(:@authentication_method, nil)
 
       original_logger = Rails.logger

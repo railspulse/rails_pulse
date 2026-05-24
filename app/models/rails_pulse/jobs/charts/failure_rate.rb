@@ -29,18 +29,16 @@ module RailsPulse
             daily_data[timestamp] = raw_data[timestamp] || nil
           end
 
-          labels = daily_data.keys.map { |timestamp| timestamp * 1000 }
-
           series = [
             {
               name: "Failure Rate",
-              data: daily_data.values,
+              data: daily_data.map { |ts, v| [ ts * 1000, v ] },
               type: "bar",
               color: RailsPulse::ChartColors::P95
             }
           ]
 
-          { labels: labels, series: series }
+          { series: series }
         end
 
         private

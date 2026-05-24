@@ -233,6 +233,31 @@ RailsPulse.configure do |config|
   # }
 
   # ====================================================================================================
+  #                                             DEPLOYMENT TRACKING
+  # ====================================================================================================
+  # Record deployments to display vertical marker lines on performance charts, making it easy
+  # to correlate performance changes with specific releases.
+  #
+  # API token for the POST /rails_pulse/deployments endpoint.
+  # When set, requests must include an `X-Rails-Pulse-Token` header matching this value.
+  # When nil, the endpoint falls back to the standard dashboard authentication.
+  #
+  # Set this in your CI/CD pipeline and store the value in credentials or an environment variable:
+  #   config.deployment_api_token = Rails.application.credentials.dig(:rails_pulse, :deployment_api_token)
+  #   config.deployment_api_token = ENV["RAILS_PULSE_DEPLOYMENT_TOKEN"]
+  #
+  # Record a deployment from your CI/CD pipeline:
+  #   curl -X POST https://yourapp.com/rails_pulse/deployments \
+  #     -H "X-Rails-Pulse-Token: $RAILS_PULSE_DEPLOYMENT_TOKEN" \
+  #     -H "Content-Type: application/json" \
+  #     -d '{"deployment": {"revision": "abc1234", "metadata": {"environment": "production"}}}'
+  #
+  # Or use the rake task for simple shell-based deploys:
+  #   rake rails_pulse:record_deployment[abc1234]
+
+  # config.deployment_api_token = ENV["RAILS_PULSE_DEPLOYMENT_TOKEN"]
+
+  # ====================================================================================================
   #                                               DATA CLEANUP
   # ====================================================================================================
   # Configure automatic cleanup of old performance data to manage database size.

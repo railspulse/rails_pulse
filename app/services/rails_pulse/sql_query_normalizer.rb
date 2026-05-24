@@ -92,21 +92,49 @@ module RailsPulse
     end
 
     def handle_special_constructs(query)
-      normalized = query.dup
+      normalized = normalize_in_clauses(query)
+      normalized.gsub(/\bBETWEEN\s+\?\s+AND\s+\?/i, "BETWEEN ? AND ?")
+    end
 
-      # Handle IN clauses with multiple values - replace content but preserve structure
-      normalized = normalized.gsub(/\bIN\s*\(\s*([^)]+)\)/i) do |match|
-        content = $1
-        # Count commas to determine number of values
-        value_count = content.split(",").length
-        placeholders = Array.new(value_count, "?").join(", ")
-        "IN (#{placeholders})"
+    # Replaces IN clause contents with placeholders using paren-depth tracking
+    # so that subqueries containing nested parens (e.g. HAVING (COUNT(*) > N))
+    # are handled correctly. A flat [^)]+ regex stops at the first ) it finds,
+    # which breaks when the subquery contains function calls or nested clauses.
+    def normalize_in_clauses(query)
+      result = +""
+      i = 0
+      while i < query.length
+        at_word_boundary = i == 0 || !query[i - 1].match?(/[a-zA-Z_0-9]/i)
+        m = at_word_boundary && query[i..].match(/\AIN\s*\(\s*/i)
+
+        if m
+          content_start = i + m[0].length
+          depth = 1
+          j = content_start
+
+          while j < query.length && depth > 0
+            case query[j]
+            when "(" then depth += 1
+            when ")" then depth -= 1
+            end
+            j += 1 if depth > 0
+          end
+
+          content = query[content_start...j]
+
+          if content.strip.match?(/\ASELECT\s/i)
+            result << "IN (?)"
+          else
+            value_count = [ content.split(",").length, 1 ].max
+            result << "IN (#{Array.new(value_count, "?").join(", ")})"
+          end
+          i = j + 1
+        else
+          result << query[i]
+          i += 1
+        end
       end
-
-      # Handle BETWEEN clauses
-      normalized = normalized.gsub(/\bBETWEEN\s+\?\s+AND\s+\?/i, "BETWEEN ? AND ?")
-
-      normalized
+      result
     end
 
     def restore_identifiers(query, identifier_mapping)

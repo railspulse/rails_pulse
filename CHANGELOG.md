@@ -5,6 +5,21 @@ All notable changes to Rails Pulse will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **Deployment tracking** — Record deployments via `POST /rails_pulse/deployments` or `rake rails_pulse:record_deployment[sha]`. Deployments appear as vertical marker lines on performance charts so you can correlate releases with regressions
+- **`deployment_api_token` config option** — Secures the deployments endpoint with a token header for CI/CD use
+
+### Changed
+
+- All multi-series charts now use a native ECharts time axis (`[timestamp_ms, value]` pairs) instead of a separate labels array, enabling deployment markers and better zoom behaviour
+
+### Removed
+
+- `Queries::Charts::AverageQueryTimes` — superseded by `Queries::Charts::DatabaseLoad`
+
 ## [0.3.0] - 2026-04-19
 
 This is the largest release to date — a full UI overhaul across every section of

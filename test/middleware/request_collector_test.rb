@@ -9,9 +9,9 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
 
   test "flags repeated SQL operations with repetition_count and group" do
     ops = [
-      { operation_type: "sql", label: "SELECT * FROM users WHERE id = 1" },
-      { operation_type: "sql", label: "SELECT * FROM users WHERE id = 2" },
-      { operation_type: "sql", label: "SELECT * FROM users WHERE id = 3" }
+      { operation_type: "sql", actual_sql: "SELECT * FROM users WHERE id = 1" },
+      { operation_type: "sql", actual_sql: "SELECT * FROM users WHERE id = 2" },
+      { operation_type: "sql", actual_sql: "SELECT * FROM users WHERE id = 3" }
     ]
 
     @collector.send(:detect_n_plus_one, ops)
@@ -24,8 +24,8 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
 
   test "repeated_query_group contains normalized SQL" do
     ops = [
-      { operation_type: "sql", label: "SELECT * FROM posts WHERE id = 1" },
-      { operation_type: "sql", label: "SELECT * FROM posts WHERE id = 2" }
+      { operation_type: "sql", actual_sql: "SELECT * FROM posts WHERE id = 1" },
+      { operation_type: "sql", actual_sql: "SELECT * FROM posts WHERE id = 2" }
     ]
 
     @collector.send(:detect_n_plus_one, ops)
@@ -39,9 +39,9 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
 
   test "does not flag unique SQL operations" do
     ops = [
-      { operation_type: "sql", label: "SELECT * FROM users" },
-      { operation_type: "sql", label: "SELECT * FROM posts" },
-      { operation_type: "sql", label: "SELECT COUNT(*) FROM comments" }
+      { operation_type: "sql", actual_sql: "SELECT * FROM users" },
+      { operation_type: "sql", actual_sql: "SELECT * FROM posts" },
+      { operation_type: "sql", actual_sql: "SELECT COUNT(*) FROM comments" }
     ]
 
     @collector.send(:detect_n_plus_one, ops)
@@ -53,7 +53,7 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
   end
 
   test "does not flag operations when fewer than 2 SQL ops total" do
-    ops = [ { operation_type: "sql", label: "SELECT * FROM users" } ]
+    ops = [ { operation_type: "sql", actual_sql: "SELECT * FROM users" } ]
 
     @collector.send(:detect_n_plus_one, ops)
 
@@ -63,8 +63,8 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
   test "does not modify non-SQL operations" do
     ops = [
       { operation_type: "template", label: "app/views/users/index.html.erb" },
-      { operation_type: "sql", label: "SELECT * FROM users WHERE id = 1" },
-      { operation_type: "sql", label: "SELECT * FROM users WHERE id = 2" }
+      { operation_type: "sql", actual_sql: "SELECT * FROM users WHERE id = 1" },
+      { operation_type: "sql", actual_sql: "SELECT * FROM users WHERE id = 2" }
     ]
 
     @collector.send(:detect_n_plus_one, ops)
@@ -77,9 +77,9 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
 
   test "handles mixed repeated and unique SQL operations" do
     ops = [
-      { operation_type: "sql", label: "SELECT * FROM users WHERE id = 1" },
-      { operation_type: "sql", label: "SELECT * FROM users WHERE id = 2" },
-      { operation_type: "sql", label: "SELECT COUNT(*) FROM posts" }
+      { operation_type: "sql", actual_sql: "SELECT * FROM users WHERE id = 1" },
+      { operation_type: "sql", actual_sql: "SELECT * FROM users WHERE id = 2" },
+      { operation_type: "sql", actual_sql: "SELECT COUNT(*) FROM posts" }
     ]
 
     @collector.send(:detect_n_plus_one, ops)
@@ -93,10 +93,10 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
     assert_nothing_raised { @collector.send(:detect_n_plus_one, []) }
   end
 
-  test "handles operations with nil labels" do
+  test "handles operations with nil actual_sql" do
     ops = [
-      { operation_type: "sql", label: nil },
-      { operation_type: "sql", label: nil }
+      { operation_type: "sql", actual_sql: nil },
+      { operation_type: "sql", actual_sql: nil }
     ]
 
     assert_nothing_raised { @collector.send(:detect_n_plus_one, ops) }
@@ -106,10 +106,10 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
 
   test "groups queries from different tables separately" do
     ops = [
-      { operation_type: "sql", label: "SELECT * FROM users WHERE id = 1" },
-      { operation_type: "sql", label: "SELECT * FROM users WHERE id = 2" },
-      { operation_type: "sql", label: "SELECT * FROM posts WHERE id = 1" },
-      { operation_type: "sql", label: "SELECT * FROM posts WHERE id = 2" }
+      { operation_type: "sql", actual_sql: "SELECT * FROM users WHERE id = 1" },
+      { operation_type: "sql", actual_sql: "SELECT * FROM users WHERE id = 2" },
+      { operation_type: "sql", actual_sql: "SELECT * FROM posts WHERE id = 1" },
+      { operation_type: "sql", actual_sql: "SELECT * FROM posts WHERE id = 2" }
     ]
 
     @collector.send(:detect_n_plus_one, ops)

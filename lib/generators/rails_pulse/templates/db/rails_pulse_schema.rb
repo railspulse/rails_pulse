@@ -5,7 +5,7 @@
 RailsPulse::Schema ||= lambda do |connection|
   adapter = connection.adapter_name.downcase
   # Skip if all tables already exist to prevent conflicts
-  required_tables = [ :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_jobs, :rails_pulse_job_runs, :rails_pulse_summaries ]
+  required_tables = [ :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_jobs, :rails_pulse_job_runs, :rails_pulse_summaries, :rails_pulse_deployments ]
 
   # Check which tables already exist
   existing_tables = required_tables.select { |table| connection.table_exists?(table) }
@@ -40,8 +40,8 @@ RailsPulse::Schema ||= lambda do |connection|
 
   unless connection.table_exists?(:rails_pulse_queries)
     connection.create_table :rails_pulse_queries do |t|
-      t.string :hashed_sql, limit: 32, null: false, comment: "MD5 hash of normalized SQL for indexing"
-      t.text :normalized_sql, null: false, comment: "Normalized SQL query string (e.g., SELECT * FROM users WHERE id = ?)"
+      t.string :hashed_sql, limit: 32, null: false, comment: "MD5 hash of normalized SQL for fast lookups and uniqueness"
+      t.text :normalized_sql, null: false, comment: "Full normalized SQL query string (e.g., SELECT * FROM users WHERE id = ?)"
       t.datetime :analyzed_at, comment: "When query analysis was last performed"
       t.text :explain_plan, comment: "EXPLAIN output from actual SQL execution"
       t.text :issues, comment: "JSON array of detected performance issues"
@@ -68,6 +68,7 @@ RailsPulse::Schema ||= lambda do |connection|
       t.string :controller_action, comment: "Controller and action handling the request (e.g., PostsController#show)"
       t.timestamp :occurred_at, null: false, comment: "When the request started"
       t.text :tags, comment: "JSON array of tags for filtering and categorization"
+      t.integer :response_size_bytes, comment: "HTTP response body size in bytes"
       t.timestamps
     end
 
@@ -126,11 +127,16 @@ RailsPulse::Schema ||= lambda do |connection|
       t.references :job_run, null: true, foreign_key: { to_table: :rails_pulse_job_runs }, comment: "Link to a background job execution"
       t.references :query, foreign_key: { to_table: :rails_pulse_queries }, index: false, comment: "Link to the normalized SQL query"
       t.string :operation_type, null: false, comment: "Type of operation (e.g., database, view, gem_call)"
-      t.string :label, null: false, comment: "Descriptive name (e.g., SELECT FROM users WHERE id = 1, render layout)"
+      t.string :label, null: false, comment: "Display label: normalized SQL (≤255) for sql ops, controller#action / render path / cache key etc. for others"
       t.decimal :duration, precision: 15, scale: 6, null: false, comment: "Operation duration in milliseconds"
       t.string :codebase_location, comment: "File and line number (e.g., app/models/user.rb:25)"
       t.float :start_time, null: false, default: 0.0, comment: "Operation start time in milliseconds"
       t.timestamp :occurred_at, null: false, comment: "When the request started"
+      t.integer :row_count, comment: "Number of rows returned (SQL operations, Rails 7.1+)"
+      t.boolean :cache_hit, comment: "Whether a cache_read operation hit the cache"
+      t.text :actual_sql, comment: "Actual SQL that ran for sql operations — comment-stripped, unparameterized, unbounded"
+      t.text :repeated_query_group, comment: "Normalized SQL key identifying an N+1 group"
+      t.integer :repetition_count, comment: "Number of times this query pattern repeated in the request"
       t.timestamps
     end
 
@@ -154,7 +160,7 @@ RailsPulse::Schema ||= lambda do |connection|
       t.string :period_type, null: false, comment: "Aggregation period type: hour, day, week, month"
 
       # Polymorphic association to handle both routes and queries
-      t.references :summarizable, polymorphic: true, null: false, index: false, comment: "Link to Route or Query"
+      t.references :summarizable, polymorphic: true, null: false, index: true, comment: "Link to Route or Query"
       # This creates summarizable_type (e.g., 'RailsPulse::Route', 'RailsPulse::Query')
       # and summarizable_id (route_id or query_id)
 
@@ -188,6 +194,21 @@ RailsPulse::Schema ||= lambda do |connection|
     connection.add_index :rails_pulse_summaries, :created_at, name: "index_rails_pulse_summaries_on_created_at"
     connection.add_index :rails_pulse_summaries, :summarizable_id, name: "index_rails_pulse_summaries_on_summarizable_id"
     connection.add_index :rails_pulse_summaries, :period_start, name: "index_rails_pulse_summaries_on_period_start"
+  end
+
+  unless connection.table_exists?(:rails_pulse_deployments)
+    connection.create_table :rails_pulse_deployments do |t|
+      t.string   :revision,    null: false, comment: "Git SHA, tag, or version string"
+      t.datetime :started_at,  null: false, comment: "When the deployment started"
+      t.datetime :finished_at,             comment: "When the deployment finished (nil if still in progress or unknown)"
+      t.text     :metadata,                comment: "JSON object of arbitrary deployment metadata"
+      t.timestamps
+    end
+
+    connection.add_index :rails_pulse_deployments, :started_at,
+      name: "index_rails_pulse_deployments_on_started_at"
+    connection.add_index :rails_pulse_deployments, :revision,
+      name: "index_rails_pulse_deployments_on_revision"
   end
 
   # Add indexes to existing tables for efficient aggregation

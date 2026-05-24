@@ -15,7 +15,9 @@ export default class extends Controller {
   selectedColumnIndex = null;
   zrClickHandler = null;
   highlightBarName = '__rp_col_bg__';
+  deploymentMarkerSeriesId = 'rails-pulse-deployment-markers';
   charts = {};          // all chart instances keyed by container ID
+  chartControllers = {}; // chart Stimulus controllers keyed by container ID
   chartSetup = {};      // tracks which charts have been fully set up
   activeChartId = null; // ID of the currently active chart
 
@@ -60,7 +62,7 @@ export default class extends Controller {
       if (this.chart && this.zrMouseMoveHandler) {
         this.chart.getZr().off('mousemove', this.zrMouseMoveHandler)
       }
-    } catch (e) { /* chart may already be disposed */ }
+    } catch { /* chart may already be disposed */ }
 
     // Clear any pending timeout
     if (this.pendingRequestTimeout) {
@@ -70,10 +72,11 @@ export default class extends Controller {
 
   // After the chart is initialized, set up the event listeners and data tracking
   onChartInitialized(event) {
-    const { containerId, chart } = event.detail
+    const { containerId, chart, controller } = event.detail
 
     // Store every chart instance as it renders
     this.charts[containerId] = chart
+    this.chartControllers[containerId] = controller
 
     // Only fully set up the initially active chart
     if (containerId === this.activeChartId) {
@@ -84,7 +87,7 @@ export default class extends Controller {
 
   // Called when the chart switcher changes the active chart
   handleChartSwitched(event) {
-    const { fromId, toId } = event.detail
+    const { toId } = event.detail
     if (!toId || toId === this.activeChartId) return
 
     // Capture current zoom state before switching
@@ -103,6 +106,19 @@ export default class extends Controller {
     this.chart = this.charts[toId]
 
     if (!this.chart) return // chart not initialized yet (shouldn't happen with zoom: false on hidden charts)
+
+    // Charts initialized in hidden tab panels can have a 0x0 canvas until explicitly resized.
+    // Re-apply the chart config after the new panel becomes visible so ECharts can fully lay out.
+    requestAnimationFrame(() => {
+      const controller = this.chartControllers[toId]
+      if (this.chart) this.chart.resize()
+      if (controller?.chart) {
+        controller.chart.setOption(controller.buildChartConfig(), true)
+      }
+      setTimeout(() => {
+        if (this.chart) this.chart.resize()
+      }, 0)
+    })
 
     // Apply the same zoom to the new chart
     if (zoomState) {
@@ -127,7 +143,7 @@ export default class extends Controller {
       const dataZoom = option.dataZoom?.[1] || option.dataZoom?.[0]
       if (!dataZoom) return null
       return { startValue: dataZoom.startValue, endValue: dataZoom.endValue }
-    } catch (e) {
+    } catch {
       return null
     }
   }
@@ -137,7 +153,7 @@ export default class extends Controller {
     try {
       this.chart.dispatchAction({ type: 'dataZoom', startValue: zoomState.startValue, endValue: zoomState.endValue })
       this.visibleData = this.getVisibleData()
-    } catch (e) {}
+    } catch { /* ignore */ }
   }
 
   teardownActiveChartListeners() {
@@ -152,7 +168,7 @@ export default class extends Controller {
         if (this.zrClickHandler) this.chart.getZr().off('click', this.zrClickHandler)
         if (this.zrMouseMoveHandler) this.chart.getZr().off('mousemove', this.zrMouseMoveHandler)
       }
-    } catch (e) {}
+    } catch { /* chart may already be disposed */ }
     this.zrClickHandler = null
     this.zrMouseMoveHandler = null
   }
@@ -218,32 +234,145 @@ export default class extends Controller {
 
     // Use ZRender (the underlying canvas renderer) to catch clicks anywhere in the
     // chart grid — not just on data point markers — then map the pixel position back
-    // to an x-axis category index so any click in a column triggers filtering.
+    // to the nearest x-axis bucket so any click in a column triggers filtering.
     this.zrClickHandler = (params) => {
-      const dataCoord = this.chart.convertFromPixel(
-        { seriesIndex: 0 },
-        [params.offsetX, params.offsetY]
-      )
-      if (!dataCoord) return // click was outside the grid area
+      if (this.isClickOnDeploymentMarker(params)) return
 
-      const dataIndex = Math.round(dataCoord[0])
-      const option = this.chart.getOption()
-      if (!option.xAxis?.[0]?.data) return
-      if (dataIndex < 0 || dataIndex >= option.xAxis[0].data.length) return
-
+      const dataIndex = this.getDataIndexFromPixel(params)
+      if (dataIndex == null) return
       this.handleColumnClick({ dataIndex })
     }
     this.chart.getZr().on('click', this.zrClickHandler)
 
     // Show a pointer cursor when hovering over the clickable grid area.
     this.zrMouseMoveHandler = (params) => {
-      const dataCoord = this.chart.convertFromPixel(
-        { seriesIndex: 0 },
-        [params.offsetX, params.offsetY]
-      )
-      this.chart.getZr().setCursorStyle(dataCoord ? 'pointer' : 'default')
+      const dataIndex = this.getDataIndexFromPixel(params)
+      this.chart.getZr().setCursorStyle(dataIndex == null ? 'default' : 'pointer')
     }
     this.chart.getZr().on('mousemove', this.zrMouseMoveHandler)
+  }
+
+  getPrimaryDataSeries(option = this.chart?.getOption()) {
+    return (option?.series || []).find(series =>
+      series?.name !== this.highlightBarName &&
+      series?.id !== this.deploymentMarkerSeriesId &&
+      Array.isArray(series?.data) &&
+      series.data.length > 0
+    ) || null
+  }
+
+  getPrimaryDataSeriesIndex(option = this.chart?.getOption()) {
+    return (option?.series || []).findIndex(series =>
+      series?.name !== this.highlightBarName &&
+      series?.id !== this.deploymentMarkerSeriesId &&
+      Array.isArray(series?.data) &&
+      series.data.length > 0
+    )
+  }
+
+  getXAxisValues(option = this.chart?.getOption()) {
+    const axisData = option?.xAxis?.[0]?.data
+    if (Array.isArray(axisData) && axisData.length > 0) return axisData
+
+    const series = this.getPrimaryDataSeries(option)
+    if (!series) return []
+
+    return series.data
+      .map(point => {
+        if (Array.isArray(point)) return point[0]
+        if (Array.isArray(point?.value)) return point.value[0]
+        return null
+      })
+      .filter(value => value !== null && value !== undefined)
+  }
+
+  getAxisType(option = this.chart?.getOption()) {
+    return option?.xAxis?.[0]?.type || 'category'
+  }
+
+  getDataIndexFromPixel(params) {
+    if (!this.chart) return null
+
+    const option = this.chart.getOption()
+    const axisType = this.getAxisType(option)
+    const xAxisValues = this.getXAxisValues(option)
+    const primarySeriesIndex = this.getPrimaryDataSeriesIndex(option)
+    const pixel = [ params.offsetX, params.offsetY ]
+
+    if (xAxisValues.length === 0) return null
+
+    if (!this.chart.containPixel({ gridIndex: 0 }, pixel)) return null
+
+    const gridCoord = this.chart.convertFromPixel({ gridIndex: 0 }, pixel)
+
+    if (axisType === 'time') {
+      let axisValue = Array.isArray(gridCoord) ? Number(gridCoord[0]) : Number(gridCoord)
+
+      if (Number.isNaN(axisValue) && primarySeriesIndex >= 0) {
+        const seriesCoord = this.chart.convertFromPixel({ seriesIndex: primarySeriesIndex }, pixel)
+        axisValue = Array.isArray(seriesCoord) ? Number(seriesCoord[0]) : Number(seriesCoord)
+      }
+
+      if (Number.isNaN(axisValue)) return null
+
+      let closestIndex = 0
+      let closestDistance = Infinity
+      xAxisValues.forEach((value, index) => {
+        const distance = Math.abs(Number(value) - axisValue)
+        if (distance < closestDistance) {
+          closestDistance = distance
+          closestIndex = index
+        }
+      })
+
+      return closestIndex
+    }
+
+    const dataCoord = Array.isArray(gridCoord) ? gridCoord : this.chart.convertFromPixel(
+      { seriesIndex: primarySeriesIndex >= 0 ? primarySeriesIndex : 0 },
+      pixel
+    )
+
+    if (!dataCoord) return null
+
+    const dataIndex = Math.round(dataCoord[0])
+    if (dataIndex < 0 || dataIndex >= xAxisValues.length) return null
+
+    return dataIndex
+  }
+
+  getTimeBucketRange(xAxisValues, index) {
+    const current = Number(xAxisValues[index])
+    const previous = index > 0 ? Number(xAxisValues[index - 1]) : null
+    const next = index < xAxisValues.length - 1 ? Number(xAxisValues[index + 1]) : null
+
+    const fallbackStep = previous != null ? current - previous : (next != null ? next - current : 3600000)
+    const leftStep = previous != null ? current - previous : fallbackStep
+    const rightStep = next != null ? next - current : fallbackStep
+
+    return {
+      start: current - (leftStep / 2),
+      end: current + (rightStep / 2)
+    }
+  }
+
+  isClickOnDeploymentMarker(params) {
+    if (!this.chart) return false
+
+    const option = this.chart.getOption()
+    const markerSeries = (option?.series || []).find(series => series?.id === this.deploymentMarkerSeriesId)
+    const markerData = markerSeries?.markLine?.data || []
+    if (markerData.length === 0) return false
+
+    const pixel = [ params.offsetX, params.offsetY ]
+    if (!this.chart.containPixel({ gridIndex: 0 }, pixel)) return false
+
+    const thresholdPx = 8
+    return markerData.some(marker => {
+      const x = this.chart.convertToPixel({ xAxisIndex: 0 }, marker.xAxis)
+      const markerX = Array.isArray(x) ? x[0] : x
+      return typeof markerX === 'number' && !Number.isNaN(markerX) && Math.abs(markerX - params.offsetX) <= thresholdPx
+    })
   }
 
   // This returns the visible data from the chart based on the current zoom level.
@@ -260,16 +389,26 @@ export default class extends Controller {
       // Try to find the correct dataZoom component
       let dataZoom = currentOption.dataZoom[1] || currentOption.dataZoom[0];
 
-      if (!currentOption.xAxis || !currentOption.xAxis[0] || !currentOption.xAxis[0].data) {
+      const xAxisData = this.getXAxisValues(currentOption);
+      const primarySeries = this.getPrimaryDataSeries(currentOption);
+      const seriesData = primarySeries?.data || [];
+
+      if (xAxisData.length === 0 || seriesData.length === 0) {
         return { xAxis: [], series: [] };
       }
 
-      if (!currentOption.series || !currentOption.series[0] || !currentOption.series[0].data) {
-        return { xAxis: [], series: [] };
-      }
+      if (this.getAxisType(currentOption) === 'time') {
+        const startValue = dataZoom.startValue || xAxisData[0];
+        const endValue = dataZoom.endValue || xAxisData[xAxisData.length - 1];
 
-      const xAxisData = currentOption.xAxis[0].data;
-      const seriesData = currentOption.series[0].data;
+        return {
+          xAxis: xAxisData.filter(value => value >= startValue && value <= endValue),
+          series: seriesData.filter(point => {
+            const xValue = Array.isArray(point) ? point[0] : point?.value?.[0]
+            return xValue >= startValue && xValue <= endValue
+          })
+        };
+      }
 
       const startValue = dataZoom.startValue || 0;
       const endValue = dataZoom.endValue || xAxisData.length - 1;
@@ -278,7 +417,7 @@ export default class extends Controller {
         xAxis: xAxisData.slice(startValue, endValue + 1),
         series: seriesData.slice(startValue, endValue + 1)
       };
-    } catch (error) {
+    } catch {
       return { xAxis: [], series: [] };
     }
   }
@@ -412,6 +551,34 @@ export default class extends Controller {
       const primaryType = option.series?.[0]?.type
       if (primaryType === 'bar') return
 
+      const axisType = option.xAxis?.[0]?.type
+      if (axisType === 'time') {
+        this.chart.setOption({
+          series: [
+            ...(option.series || []),
+            {
+              name: this.highlightBarName,
+              type: 'line',
+              data: [],
+              showSymbol: false,
+              silent: true,
+              z: 0,
+              animation: false,
+              legendHoverLink: false,
+              lineStyle: { opacity: 0 },
+              itemStyle: { opacity: 0 },
+              tooltip: { show: false },
+              markArea: {
+                silent: true,
+                itemStyle: { color: 'rgba(128, 128, 128, 0.2)' },
+                data: []
+              }
+            }
+          ]
+        })
+        return
+      }
+
       const xAxisLength = option.xAxis?.[0]?.data?.length || 0
       const existingYAxes = Array.isArray(option.yAxis) ? option.yAxis : [option.yAxis || {}]
 
@@ -446,10 +613,31 @@ export default class extends Controller {
   highlightColumn(selectedIndex) {
     try {
       const option = this.chart.getOption()
-      const xAxisLength = option.xAxis?.[0]?.data?.length
-      if (!xAxisLength || selectedIndex < 0 || selectedIndex >= xAxisLength) return
+      const xAxisValues = this.getXAxisValues(option)
+      if (!xAxisValues.length || selectedIndex < 0 || selectedIndex >= xAxisValues.length) return
 
       const isPrimaryBar = option.series?.[0]?.type === 'bar'
+
+      if (this.getAxisType(option) === 'time' && !isPrimaryBar) {
+        const range = this.getTimeBucketRange(xAxisValues, selectedIndex)
+
+        this.chart.setOption({
+          series: option.series.map(s =>
+            s.name === this.highlightBarName
+              ? {
+                markArea: {
+                  silent: true,
+                  itemStyle: { color: 'rgba(128, 128, 128, 0.2)' },
+                  data: [[ { xAxis: range.start }, { xAxis: range.end } ]]
+                }
+              }
+              : {}
+          )
+        })
+        return
+      }
+
+      const xAxisLength = option.xAxis?.[0]?.data?.length
 
       if (isPrimaryBar) {
         // Cache original item styles before first modification so we can restore colors on reset
@@ -464,7 +652,7 @@ export default class extends Controller {
         this.chart.setOption({
           series: option.series.slice(0, 1).map(s => ({
             data: (s.data || []).map((val, i) => ({
-              value: typeof val === 'object' ? val.value : val,
+              value: (val && typeof val === 'object' && !Array.isArray(val)) ? val.value : val,
               itemStyle: { ...(this.originalBarItemStyles[i] || {}), opacity: i === selectedIndex ? 1 : 0.25 }
             }))
           }))
@@ -493,6 +681,17 @@ export default class extends Controller {
       const xAxisLength = option.xAxis?.[0]?.data?.length || 0
       const isPrimaryBar = option.series?.[0]?.type === 'bar'
 
+      if (this.getAxisType(option) === 'time' && !isPrimaryBar) {
+        this.chart.setOption({
+          series: option.series.map(s =>
+            s.name === this.highlightBarName
+              ? { markArea: { data: [] } }
+              : {}
+          )
+        })
+        return
+      }
+
       if (isPrimaryBar) {
         // Restore full opacity on all bars, preserving original per-bar colors
         const originalStyles = this.originalBarItemStyles || []
@@ -500,7 +699,7 @@ export default class extends Controller {
         this.chart.setOption({
           series: option.series.slice(0, 1).map(s => ({
             data: (s.data || []).map((val, i) => ({
-              value: typeof val === 'object' ? val.value : val,
+              value: (val && typeof val === 'object' && !Array.isArray(val)) ? val.value : val,
               itemStyle: { ...(originalStyles[i] || {}), opacity: 1 }
             }))
           }))
@@ -522,7 +721,7 @@ export default class extends Controller {
   sendColumnSelectionRequest(columnIndex) {
     // Get the timestamp for the selected column
     const option = this.chart.getOption();
-    const xAxisData = option.xAxis[0].data;
+    const xAxisData = this.getXAxisValues(option);
     const selectedTimestamp = xAxisData[columnIndex];
 
     if (!selectedTimestamp) {
@@ -585,18 +784,22 @@ export default class extends Controller {
     if (!zoomStartTime || !zoomEndTime) return
 
     const option = this.chart.getOption()
-    if (!option.xAxis?.[0]?.data) return
+    const xAxisData = this.getXAxisValues(option)
+    if (xAxisData.length === 0) return
 
-    const xAxisData = option.xAxis[0].data
     const startMs = parseInt(zoomStartTime)
     const endMs = parseInt(zoomEndTime)
 
-    const startIndex = xAxisData.reduce((best, ts, i) =>
-      Math.abs(parseInt(ts) - startMs) < Math.abs(parseInt(xAxisData[best]) - startMs) ? i : best, 0)
-    const endIndex = xAxisData.reduce((best, ts, i) =>
-      Math.abs(parseInt(ts) - endMs) < Math.abs(parseInt(xAxisData[best]) - endMs) ? i : best, 0)
+    if (this.getAxisType(option) === 'time') {
+      this.chart.dispatchAction({ type: 'dataZoom', startValue: startMs, endValue: endMs })
+    } else {
+      const startIndex = xAxisData.reduce((best, ts, i) =>
+        Math.abs(parseInt(ts) - startMs) < Math.abs(parseInt(xAxisData[best]) - startMs) ? i : best, 0)
+      const endIndex = xAxisData.reduce((best, ts, i) =>
+        Math.abs(parseInt(ts) - endMs) < Math.abs(parseInt(xAxisData[best]) - endMs) ? i : best, 0)
 
-    this.chart.dispatchAction({ type: 'dataZoom', startValue: startIndex, endValue: endIndex })
+      this.chart.dispatchAction({ type: 'dataZoom', startValue: startIndex, endValue: endIndex })
+    }
     this.visibleData = this.getVisibleData()
   }
 
@@ -608,11 +811,10 @@ export default class extends Controller {
     if (selectedColumnTime) {
       // Find the column index that matches this timestamp
       const option = this.chart.getOption();
-      if (!option.xAxis || !option.xAxis[0] || !option.xAxis[0].data) {
+      const xAxisData = this.getXAxisValues(option);
+      if (xAxisData.length === 0) {
         return;
       }
-
-      const xAxisData = option.xAxis[0].data;
 
       // Try exact match first
       let columnIndex = xAxisData.findIndex(timestamp => timestamp.toString() === selectedColumnTime);

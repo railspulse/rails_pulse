@@ -3,6 +3,7 @@ sql_operation_1:
   query: complex_query
   operation_type: "sql"
   label: "SELECT * FROM posts WHERE id = ?"
+  actual_sql: "SELECT * FROM posts WHERE id = ?"
   duration: 45.0
   codebase_location: "app/models/post.rb:25"
   start_time: 10.0
@@ -35,6 +36,7 @@ sql_operation_2:
   query: complex_query
   operation_type: "sql"
   label: "SELECT * FROM posts WHERE id = ?"
+  actual_sql: "SELECT * FROM posts WHERE id = ?"
   duration: 35.0
   codebase_location: "app/models/post.rb:15"
   start_time: 8.0
@@ -47,6 +49,7 @@ sql_operation_3:
   query: simple_query
   operation_type: "sql"
   label: "SELECT * FROM users WHERE id = ?"
+  actual_sql: "SELECT * FROM users WHERE id = ?"
   duration: 120.0
   codebase_location: "app/models/user.rb:10"
   start_time: 15.0
@@ -59,16 +62,19 @@ sql_operation_4:
   query: analyzed_query
   operation_type: "sql"
   label: "SELECT * FROM orders WHERE id = ?"
+  actual_sql: "SELECT * FROM orders WHERE id = ?"
   duration: 502.0
   codebase_location: "app/models/order.rb:5"
   start_time: 20.0
   occurred_at: <%= Time.current - 1.hour %>
   created_at: <%= Time.current - 1.hour %>
   updated_at: <%= Time.current - 1.hour %>
+
 job_sql_operation:
   job_run: report_run_retried
   operation_type: "sql"
   label: "SELECT count(*) FROM reports"
+  actual_sql: "SELECT count(*) FROM reports"
   duration: 75.0
   codebase_location: "app/jobs/generate_report_job.rb:42"
   start_time: 2.0

@@ -16,7 +16,7 @@ module RailsPulse
     validates :duration, presence: true, numericality: { greater_than_or_equal_to: 0 }
     validates :status, presence: true
     validates :is_error, inclusion: { in: [ true, false ] }
-    validates :request_uuid, presence: true, uniqueness: true
+    validates :request_uuid, presence: true
 
     before_validation :set_request_uuid, on: :create
 

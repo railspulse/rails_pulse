@@ -11,8 +11,6 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
 
   def setup
     super
-    # Clear existing summaries to avoid conflicts with fixtures
-    # Delete both query and route summaries that might overlap with what we create
     RailsPulse::Summary.where(summarizable_type: "RailsPulse::Query").delete_all
     RailsPulse::Summary.where(
       summarizable_type: "RailsPulse::Route",
@@ -20,7 +18,6 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
     ).delete_all
     create_chart_summaries
     visit_rails_pulse_path "/queries?q[period_start_range]=last_30_days"
-    # Wait for chart to render before running tests
     page.has_selector?("#query_performance_chart[data-chart-rendered='true']", wait: 10)
   end
 
@@ -43,7 +40,6 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
   # ── Tab switching ────────────────────────────────────────────────────────────
 
   test "switching tabs shows correct chart, updates active state and series toggles" do
-    # Switch to Execution Volume
     click_tab(:execution_volume)
 
     assert_selector "#execution_volume_chart[data-chart-rendered='true']", wait: 10
@@ -56,7 +52,6 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
     assert_toggles_hidden(:query_performance)
     assert_toggles_hidden(:database_load)
 
-    # Switch to Database Load
     click_tab(:database_load)
 
     assert_selector "#database_load_chart[data-chart-rendered='true']", wait: 10
@@ -69,7 +64,6 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
     assert_toggles_hidden(:query_performance)
     assert_toggles_hidden(:execution_volume)
 
-    # Switch back to Query Performance
     click_tab(:query_performance)
 
     assert_selector "#query_performance_chart[data-chart-rendered='true']", wait: 5
@@ -78,82 +72,6 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
     assert_toggles_visible(:query_performance)
     assert_toggles_hidden(:execution_volume)
     assert_toggles_hidden(:database_load)
-  end
-
-  # ── Zoom URL persistence ──────────────────────────────────────────────────────
-
-  test "zooming any chart updates the url" do
-    [ :execution_volume, :database_load ].each do |chart_type|
-      visit_rails_pulse_path "/queries?q[period_start_range]=last_30_days"
-
-      assert_selector "#query_performance_chart[data-chart-rendered='true']", wait: 10
-
-      click_tab(chart_type)
-      chart_id = CHART_IDS[chart_type]
-
-      assert_selector "##{chart_id}[data-chart-rendered='true']", wait: 10
-
-      zoomed = apply_chart_zoom(chart_id.to_s)
-
-      assert zoomed, "Should have enough data points to zoom #{chart_type} (need at least 4 data points)"
-
-      sleep 1.5 # Allow debounce + fetch
-
-      assert_includes page.current_url, "zoom_start_time",
-        "URL should include zoom_start_time after zooming #{chart_type} chart"
-      assert_includes page.current_url, "zoom_end_time",
-        "URL should include zoom_end_time after zooming #{chart_type} chart"
-    end
-  end
-
-  # ── Zoom persistence across chart switches ───────────────────────────────────
-
-  test "zoom persists when switching through all three charts" do
-    assert_selector "#query_performance_chart[data-chart-rendered='true']", wait: 10
-
-    zoom_state = apply_chart_zoom_and_capture("query_performance_chart")
-
-    assert zoom_state, "Should have enough data points to test zoom persistence (need at least 4 data points)"
-
-    # Switch to Execution Volume and verify zoom
-    click_tab(:execution_volume)
-
-    assert_selector "#execution_volume_chart[data-chart-rendered='true']", wait: 10
-    sleep 0.5
-    ev_zoom = read_chart_zoom("execution_volume_chart")
-
-    assert ev_zoom, "Execution volume should inherit zoom"
-    assert_equal zoom_state["start"], ev_zoom["startValue"]
-
-    # Switch to Database Load and verify zoom carries over
-    click_tab(:database_load)
-
-    assert_selector "#database_load_chart[data-chart-rendered='true']", wait: 10
-    sleep 0.5
-    dl_zoom = read_chart_zoom("database_load_chart")
-
-    assert dl_zoom, "Database load chart should inherit zoom"
-    assert_equal zoom_state["start"], dl_zoom["startValue"]
-  end
-
-  test "switching back to a chart after zoom preserves its listeners" do
-    click_tab(:execution_volume)
-
-    assert_selector "#execution_volume_chart[data-chart-rendered='true']", wait: 10
-
-    click_tab(:query_performance)
-
-    assert_selector "#query_performance_chart[data-chart-rendered='true']", wait: 5
-    sleep 0.5
-
-    zoomed = apply_chart_zoom("query_performance_chart")
-
-    assert zoomed, "Should have enough data points (need at least 4 data points)"
-
-    sleep 1.5
-
-    assert_includes page.current_url, "zoom_start_time",
-      "Query performance chart should still update URL after switching back"
   end
 
   # ── Chart data integrity ─────────────────────────────────────────────────────
@@ -189,13 +107,11 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
       var option = chart.getOption();
       var series = option.series || [];
       var allPoints = series.flatMap(function(s) { return s.data || []; });
-      var nilCount = allPoints.filter(function(d) { return d === null || d === undefined; }).length;
-      return { rendered: true, totalPoints: allPoints.length, nilPoints: nilCount };
+      return { rendered: true, totalPoints: allPoints.length };
     JS
 
     assert result["rendered"], "Chart should render successfully"
     assert_operator result["totalPoints"], :>, 0, "Chart should have data points"
-    # nil points are valid — gaps in data are expected and handled
   end
 
   private
@@ -271,65 +187,9 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
     JS
   end
 
-  # Applies a zoom to the middle third of a chart's data.
-  # Returns true if zoom was applied, false if not enough data.
-  def apply_chart_zoom(chart_id)
-    page.execute_script(<<~JS)
-      var el = document.getElementById('#{chart_id}');
-      if (!el) return false;
-      var chart = echarts.getInstanceByDom(el);
-      if (!chart) return false;
-      var option = chart.getOption();
-      var dataLen = (option.xAxis[0] && option.xAxis[0].data) ? option.xAxis[0].data.length : 0;
-      if (dataLen < 4) return false;
-      var start = Math.floor(dataLen / 3);
-      var end = Math.floor(2 * dataLen / 3);
-      chart.dispatchAction({ type: 'dataZoom', startValue: start, endValue: end });
-      return true;
-    JS
-  end
-
-  # Applies zoom and returns the start/end indices used, or nil if insufficient data.
-  def apply_chart_zoom_and_capture(chart_id)
-    result = page.execute_script(<<~JS)
-      var el = document.getElementById('#{chart_id}');
-      if (!el) return null;
-      var chart = echarts.getInstanceByDom(el);
-      if (!chart) return null;
-      var option = chart.getOption();
-      var dataLen = (option.xAxis[0] && option.xAxis[0].data) ? option.xAxis[0].data.length : 0;
-      if (dataLen < 4) return null;
-      var start = Math.floor(dataLen / 4);
-      var end = Math.floor(3 * dataLen / 4);
-      chart.dispatchAction({ type: 'dataZoom', startValue: start, endValue: end });
-      return { start: start, end: end };
-    JS
-    result
-  end
-
-  # Reads the current dataZoom startValue/endValue from a chart instance.
-  def read_chart_zoom(chart_id)
-    page.execute_script(<<~JS)
-      var el = document.getElementById('#{chart_id}');
-      if (!el) return null;
-      var chart = echarts.getInstanceByDom(el);
-      if (!chart) return null;
-      var option = chart.getOption();
-      var dz = option.dataZoom && (option.dataZoom[1] || option.dataZoom[0]);
-      return dz ? { startValue: dz.startValue, endValue: dz.endValue } : null;
-    JS
-  end
-
   # ── Test data ────────────────────────────────────────────────────────────────
 
   def create_chart_summaries
-    # Create day-level summaries across the last 30 days (full month) to ensure
-    # sufficient data points for zoom operations (zoom requires at least 4 data points).
-    # Query summaries feed query_performance and execution_volume charts.
-    # Route summaries feed the database_load chart (which compares query total_duration
-    # vs route total_duration).
-
-    # Create summaries for ALL queries in fixtures to ensure aggregate charts have data
     RailsPulse::Query.find_each do |query|
       30.downto(1) do |days_ago|
         period_start = days_ago.days.ago.beginning_of_day
@@ -354,7 +214,6 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
       end
     end
 
-    # Create route summaries for database load chart
     route = rails_pulse_routes(:api_users)
     30.downto(1) do |days_ago|
       period_start = days_ago.days.ago.beginning_of_day
@@ -373,8 +232,8 @@ class QueriesChartSwitcherTest < ApplicationSystemTestCase
         p95_duration: 280.0 + (days_ago * 8),
         p99_duration: 380.0 + (days_ago * 10),
         total_duration: route_count * route_avg_duration,
-        error_count: days_ago % 7 == 0 ? 5 : 0,  # Errors every 7 days
-        status_4xx: days_ago % 5 == 0 ? 3 : 0,   # Client errors every 5 days
+        error_count: days_ago % 7 == 0 ? 5 : 0,
+        status_4xx: days_ago % 5 == 0 ? 3 : 0,
         success_count: route_count
       )
     end

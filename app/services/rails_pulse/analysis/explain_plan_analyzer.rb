@@ -8,8 +8,8 @@ module RailsPulse
       def analyze
         return { explain_plan: nil, issues: [] } if recent_operations.empty?
 
-        actual_sql = recent_operations.first.label
-        explain_plan = generate_explain_plan(actual_sql)
+        sql_to_explain = recent_operations.first.actual_sql.presence || recent_operations.first.query&.normalized_sql
+        explain_plan = generate_explain_plan(sql_to_explain)
 
         {
           explain_plan: explain_plan,

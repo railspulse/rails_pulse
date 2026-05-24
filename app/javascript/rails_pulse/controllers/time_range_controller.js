@@ -9,7 +9,6 @@ export default class extends Controller {
 
     const button = event.currentTarget
     const preset = button.dataset.preset
-    const label = button.dataset.label
 
     // Submit to server
     this.submitTimeRange(preset, null, null)

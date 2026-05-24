@@ -45,7 +45,8 @@ const REQUIRED_ICONS = [
   'move-right',
   'eye',
   'zap',
-  'shield-check'
+  'shield-check',
+  'bell'
 ];
 
 // Icon name mappings for different naming conventions

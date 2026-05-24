@@ -9,6 +9,20 @@ module RailsPulse
   class << self
     attr_accessor :configuration
 
+    def register_nav_item(label:, path_helper:, icon:, position: 100)
+      @nav_items ||= []
+      @nav_items << { label: label, path_helper: path_helper, icon: icon, position: position }
+      @nav_items.sort_by! { |item| item[:position] }
+    end
+
+    def nav_items
+      @nav_items || []
+    end
+
+    def pro?
+      defined?(RailsPulse::Pro) == "constant"
+    end
+
     def configure
       self.configuration ||= Configuration.new
       yield(configuration)

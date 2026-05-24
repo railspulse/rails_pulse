@@ -35,6 +35,61 @@ module RailsPulse
     scope :by_type, ->(type) { where(operation_type: type) }
 
     before_validation :associate_query
+    before_validation :truncate_label
+
+    # Bulk-insert a batch of operation hashes captured during a request or job run.
+    # `context` is merged into every row to bind it to its parent — either
+    # `{ request_id: id }` or `{ job_run_id: id, request_id: nil }`.
+    #
+    # SQL operations are handled in two phases to minimise DB round-trips:
+    #   1. Normalise each unique SQL source once and collect hashed→normalised pairs.
+    #   2. Resolve (or create) the corresponding Query records in bulk rather than
+    #      one create_or_find_by per operation, which matters for N+1-heavy requests.
+    #
+    # insert_all! is used instead of individual creates to bypass ActiveRecord
+    # callbacks and validations — normalisation and truncation are done inline above.
+    # All rows must have the same key set, so keys are union-normalised before insert.
+    def self.persist_bulk(ops, context)
+      return if ops.empty?
+
+      # Phase 1: normalise each unique SQL source once.
+      # norm_cache avoids re-normalising repeated SQL (e.g. N+1 queries).
+      # norm_map feeds the bulk Query resolver: { hashed_sql => normalized_sql }.
+      norm_cache = {}
+      norm_map = {}
+      ops.each do |op|
+        next unless op[:operation_type] == "sql"
+        sql_source = op[:actual_sql].presence || op[:label].presence
+        next unless sql_source
+        unless norm_cache.key?(sql_source)
+          normalized = RailsPulse::SqlQueryNormalizer.normalize(sql_source)
+          hashed = Digest::MD5.hexdigest(normalized)
+          norm_cache[sql_source] = [ hashed, normalized ]
+          norm_map[hashed] ||= normalized
+        end
+      end
+
+      # Phase 2: resolve Query IDs in bulk (1 SELECT in steady state).
+      query_id_map = RailsPulse::Query.bulk_find_or_create(norm_map)
+
+      now = Time.current
+      rows = ops.map do |op|
+        op = op.merge(context).merge(created_at: now, updated_at: now)
+        if op[:operation_type] == "sql"
+          sql_source = op[:actual_sql].presence || op[:label].presence
+          if sql_source && (meta = norm_cache[sql_source])
+            hashed, normalized = meta
+            op = op.merge(label: normalized.truncate(255), query_id: query_id_map[hashed])
+          end
+        end
+        op[:label] = op[:label]&.truncate(255)
+        op
+      end
+      # insert_all! requires every row to have identical keys.
+      all_keys = rows.flat_map(&:keys).uniq
+      rows = rows.map { |r| all_keys.each_with_object({}) { |k, h| h[k] = r[k] } }
+      insert_all!(rows)
+    end
 
     def self.ransackable_attributes(auth_object = nil)
       %w[id occurred_at label duration start_time average_query_time_ms query_count operation_type query_id]
@@ -85,20 +140,26 @@ module RailsPulse
       errors.add(:base, "Operation must belong to a request or a job run")
     end
 
-    def associate_query
-      return unless operation_type == "sql" && label.present?
-
-      normalized = normalize_query_label(label)
-      hashed = Digest::MD5.hexdigest(normalized)
-
-      self.query = RailsPulse::Query.find_or_create_by(hashed_sql: hashed) do |q|
-        q.normalized_sql = normalized
-      end
+    def truncate_label
+      self.label = label&.truncate(255)
     end
 
-    # Normalize SQL query using the dedicated service
-    def normalize_query_label(label)
-      RailsPulse::SqlQueryNormalizer.normalize(label)
+    def associate_query
+      return unless operation_type == "sql"
+
+      # actual_sql is the canonical source; fall back to label for pre-migration records
+      sql_source = actual_sql.presence || label.presence
+      return unless sql_source
+
+      normalized = RailsPulse::SqlQueryNormalizer.normalize(sql_source)
+      hashed = Digest::MD5.hexdigest(normalized)
+
+      unless self.query&.hashed_sql == hashed
+        self.query = RailsPulse::Query.create_or_find_by(hashed_sql: hashed) do |q|
+          q.normalized_sql = normalized
+        end
+      end
+      self.label = normalized.truncate(255)
     end
   end
 end

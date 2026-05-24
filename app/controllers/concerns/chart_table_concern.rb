@@ -16,8 +16,10 @@ module ChartTableConcern
     include TimeRangeConcern
     include ResponseRangeConcern
     include ZoomRangeConcern
+    include DeploymentMarkersConcern
 
     before_action :setup_time_and_response_ranges
+    before_action :populate_deployment_markers
     before_action :setup_zoom_range_data
   end
 
@@ -113,15 +115,17 @@ module ChartTableConcern
 
     @chart_data[:series].any? { |series|
       !series[:name].to_s.include?(" SLO ") &&
-        series[:data].any? { |v| !v.nil? }
+        series[:data].any? { |v| !chart_data_value(v).nil? }
     }
   end
 
   def has_meaningful_data?
     has_chart_data = if @chart_data.is_a?(Hash) && @chart_data.key?(:series)
-      # New multi-series chart format (line charts)
-      # Exclude SLO series as it always has positive threshold values
-      @chart_data[:series].any? { |series| !series[:name].to_s.include?(" SLO ") && series[:data].any? { |v| v.to_f > 0 } }
+      # Multi-series chart format — exclude SLO series (always has positive threshold values)
+      # Supports both plain values and [timestamp_ms, value] pairs
+      @chart_data[:series].any? { |series|
+        !series[:name].to_s.include?(" SLO ") && series[:data].any? { |v| chart_data_value(v).to_f > 0 }
+      }
     elsif @chart_data.is_a?(Hash)
       # Old simple hash format (bar charts)
       @chart_data.values.any? { |v| v.is_a?(Numeric) && v > 0 }
@@ -130,6 +134,15 @@ module ChartTableConcern
     end
     has_table_data = @table_data && @table_data.any?
     has_chart_data || has_table_data
+  end
+
+  # Extracts the numeric value from a data point.
+  # Handles plain values, [timestamp_ms, value] pairs, and { value: [timestamp_ms, value] } objects.
+  def chart_data_value(v)
+    return v[1] if v.is_a?(Array)
+    return v[:value][1] if v.is_a?(Hash) && v[:value].is_a?(Array)
+
+    v
   end
 
   def handle_pagination

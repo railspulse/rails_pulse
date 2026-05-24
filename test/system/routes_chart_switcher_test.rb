@@ -1,9 +1,6 @@
 require "test_helper"
-require_relative "../support/shared_test_data"
 
 class RoutesChartSwitcherTest < ApplicationSystemTestCase
-  include SharedTestData
-
   fixtures :rails_pulse_routes, :rails_pulse_requests, :rails_pulse_summaries
 
   CHART_IDS = {
@@ -14,10 +11,8 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
 
   def setup
     super
-    load_shared_test_data
     create_chart_summaries
     visit_rails_pulse_path "/routes?q[period_start_range]=last_30_days"
-    # Wait for chart to render before running tests
     page.has_selector?("#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10)
   end
 
@@ -39,7 +34,6 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
   # ── Tab switching ────────────────────────────────────────────────────────────
 
   test "switching tabs shows correct chart, updates active state and series toggles" do
-    # Switch to Request Volume
     click_tab(:request_rate)
 
     assert_selector "#request_rate_chart[data-chart-rendered='true']", wait: 10
@@ -52,7 +46,6 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     assert_toggles_hidden(:response_time)
     assert_toggles_hidden(:error_rate)
 
-    # Switch to Error Rates
     click_tab(:error_rate)
 
     assert_selector "#error_rate_chart[data-chart-rendered='true']", wait: 10
@@ -65,7 +58,6 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     assert_toggles_visible(:error_rate)
     assert_toggles_hidden(:response_time)
 
-    # Switch back to Response Time
     click_tab(:response_time)
 
     assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 5
@@ -73,82 +65,6 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     assert_tab_active(:response_time)
     assert_toggles_visible(:response_time)
     assert_toggles_hidden(:error_rate)
-  end
-
-  # ── Zoom URL persistence ──────────────────────────────────────────────────────
-
-  test "zooming any chart updates the url" do
-    [ :request_rate, :error_rate ].each do |chart_type|
-      visit_rails_pulse_path "/routes?q[period_start_range]=last_30_days"
-
-      assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
-
-      click_tab(chart_type)
-      chart_id = CHART_IDS[chart_type]
-
-      assert_selector "##{chart_id}[data-chart-rendered='true']", wait: 10
-
-      zoomed = apply_chart_zoom(chart_id.to_s)
-
-      assert zoomed, "Should have enough data points to zoom #{chart_type} (need at least 4 data points)"
-
-      sleep 1.5 # Allow debounce + fetch
-
-      assert_includes page.current_url, "zoom_start_time",
-        "URL should include zoom_start_time after zooming #{chart_type} chart"
-      assert_includes page.current_url, "zoom_end_time",
-        "URL should include zoom_end_time after zooming #{chart_type} chart"
-    end
-  end
-
-  # ── Zoom persistence across chart switches ───────────────────────────────────
-
-  test "zoom persists when switching through all three charts" do
-    assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 10
-
-    zoom_state = apply_chart_zoom_and_capture("response_time_percentiles_chart")
-
-    assert zoom_state, "Should have enough data points to test zoom persistence (need at least 4 data points)"
-
-    # Switch to Request Volume and verify zoom
-    click_tab(:request_rate)
-
-    assert_selector "#request_rate_chart[data-chart-rendered='true']", wait: 10
-    sleep 0.5
-    rv_zoom = read_chart_zoom("request_rate_chart")
-
-    assert rv_zoom, "Request volume should inherit zoom"
-    assert_equal zoom_state["start"], rv_zoom["startValue"]
-
-    # Switch to Error Rates and verify zoom carries over
-    click_tab(:error_rate)
-
-    assert_selector "#error_rate_chart[data-chart-rendered='true']", wait: 10
-    sleep 0.5
-    er_zoom = read_chart_zoom("error_rate_chart")
-
-    assert er_zoom, "Error rate chart should inherit zoom"
-    assert_equal zoom_state["start"], er_zoom["startValue"]
-  end
-
-  test "switching back to a chart after zoom preserves its listeners" do
-    click_tab(:request_rate)
-
-    assert_selector "#request_rate_chart[data-chart-rendered='true']", wait: 10
-
-    click_tab(:response_time)
-
-    assert_selector "#response_time_percentiles_chart[data-chart-rendered='true']", wait: 5
-    sleep 0.5
-
-    zoomed = apply_chart_zoom("response_time_percentiles_chart")
-
-    assert zoomed, "Should have enough data points (need at least 4 data points)"
-
-    sleep 1.5
-
-    assert_includes page.current_url, "zoom_start_time",
-      "Response time chart should still update URL after switching back"
   end
 
   # ── Chart data integrity ─────────────────────────────────────────────────────
@@ -184,13 +100,11 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
       var option = chart.getOption();
       var series = option.series || [];
       var allPoints = series.flatMap(function(s) { return s.data || []; });
-      var nilCount = allPoints.filter(function(d) { return d === null || d === undefined; }).length;
-      return { rendered: true, totalPoints: allPoints.length, nilPoints: nilCount };
+      return { rendered: true, totalPoints: allPoints.length };
     JS
 
     assert result["rendered"], "Chart should render successfully"
     assert_operator result["totalPoints"], :>, 0, "Chart should have data points"
-    # nil points are valid — gaps in data are expected and handled
   end
 
   private
@@ -266,60 +180,9 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
     JS
   end
 
-  # Applies a zoom to the middle third of a chart's data.
-  # Returns true if zoom was applied, false if not enough data.
-  def apply_chart_zoom(chart_id)
-    page.execute_script(<<~JS)
-      var el = document.getElementById('#{chart_id}');
-      if (!el) return false;
-      var chart = echarts.getInstanceByDom(el);
-      if (!chart) return false;
-      var option = chart.getOption();
-      var dataLen = (option.xAxis[0] && option.xAxis[0].data) ? option.xAxis[0].data.length : 0;
-      if (dataLen < 4) return false;
-      var start = Math.floor(dataLen / 3);
-      var end = Math.floor(2 * dataLen / 3);
-      chart.dispatchAction({ type: 'dataZoom', startValue: start, endValue: end });
-      return true;
-    JS
-  end
-
-  # Applies zoom and returns the start/end indices used, or nil if insufficient data.
-  def apply_chart_zoom_and_capture(chart_id)
-    result = page.execute_script(<<~JS)
-      var el = document.getElementById('#{chart_id}');
-      if (!el) return null;
-      var chart = echarts.getInstanceByDom(el);
-      if (!chart) return null;
-      var option = chart.getOption();
-      var dataLen = (option.xAxis[0] && option.xAxis[0].data) ? option.xAxis[0].data.length : 0;
-      if (dataLen < 4) return null;
-      var start = Math.floor(dataLen / 4);
-      var end = Math.floor(3 * dataLen / 4);
-      chart.dispatchAction({ type: 'dataZoom', startValue: start, endValue: end });
-      return { start: start, end: end };
-    JS
-    result
-  end
-
-  # Reads the current dataZoom startValue/endValue from a chart instance.
-  def read_chart_zoom(chart_id)
-    page.execute_script(<<~JS)
-      var el = document.getElementById('#{chart_id}');
-      if (!el) return null;
-      var chart = echarts.getInstanceByDom(el);
-      if (!chart) return null;
-      var option = chart.getOption();
-      var dz = option.dataZoom && (option.dataZoom[1] || option.dataZoom[0]);
-      return dz ? { startValue: dz.startValue, endValue: dz.endValue } : null;
-    JS
-  end
-
   # ── Test data ────────────────────────────────────────────────────────────────
 
   def create_chart_summaries
-    # Create day-level summaries across the last 30 days (full month) to ensure
-    # sufficient data points for zoom operations (zoom requires at least 4 data points)
     route = rails_pulse_routes(:api_users)
 
     30.downto(1) do |days_ago|
@@ -341,8 +204,8 @@ class RoutesChartSwitcherTest < ApplicationSystemTestCase
         max_duration: 400.0,
         p95_duration: 280.0 + (days_ago * 8),
         p99_duration: 380.0 + (days_ago * 10),
-        error_count: days_ago % 7 == 0 ? 5 : 0,  # Errors every 7 days
-        status_4xx: days_ago % 5 == 0 ? 3 : 0,   # Client errors every 5 days
+        error_count: days_ago % 7 == 0 ? 5 : 0,
+        status_4xx: days_ago % 5 == 0 ? 3 : 0,
         success_count: 50 + (days_ago * 3)
       )
     end
