@@ -180,7 +180,7 @@ jobs:
         cache: 'npm'
 
     - name: Install Node dependencies
-      run: npm install
+      run: npm ci
 
     - name: Run ESLint
       run: npm run lint:js
@@ -197,7 +197,7 @@ jobs:
         cache: 'npm'
 
     - name: Install Node dependencies
-      run: npm install
+      run: npm ci
 
     - name: Run JavaScript tests
       run: npm run test:js
@@ -220,7 +220,7 @@ jobs:
         cache: 'npm'
 
     - name: Install Node dependencies
-      run: npm install
+      run: npm ci
 
     - name: Build assets
       run: npm run build
