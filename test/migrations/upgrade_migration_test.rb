@@ -73,6 +73,14 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert @conn.column_exists?(:rails_pulse_operations, :actual_sql), "actual_sql missing on operations"
   end
 
+  test "upgrade from v0.2.7 ensures job_runs table exists" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    assert @conn.table_exists?(:rails_pulse_jobs), "jobs table missing"
+    assert @conn.table_exists?(:rails_pulse_job_runs), "job_runs table missing"
+  end
+
   test "upgrade from v0.3.1 creates deployments table" do
     load_baseline(RailsPulse::TestSchemas::V031)
     run_all_migrations
@@ -102,6 +110,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     run_all_migrations
 
     assert @conn.table_exists?(:rails_pulse_deployments)
+    assert @conn.table_exists?(:rails_pulse_job_runs)
     assert @conn.column_exists?(:rails_pulse_operations, :actual_sql)
     assert @conn.column_exists?(:rails_pulse_jobs, :p95_duration)
   end
@@ -114,6 +123,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
 
     assert_can_insert_core_records
     assert_can_insert_deployment
+    assert_can_insert_job_run
   end
 
   test "can insert records after upgrading from v0.3.1" do
@@ -122,6 +132,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
 
     assert_can_insert_core_records
     assert_can_insert_deployment
+    assert_can_insert_job_run
   end
 
   private
@@ -190,6 +201,28 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     request_count = @conn.select_value("SELECT COUNT(*) FROM rails_pulse_requests WHERE request_uuid = '#{uuid}'").to_i
 
     assert_equal 1, request_count, "request insert failed"
+  end
+
+  def assert_can_insert_job_run
+    now = Time.current.iso8601(6)
+    job_name = "MigrationTestJob-#{SecureRandom.hex(4)}"
+    run_id = SecureRandom.uuid
+
+    @conn.execute(<<~SQL)
+      INSERT INTO rails_pulse_jobs (name, runs_count, failures_count, retries_count, created_at, updated_at)
+      VALUES ('#{job_name}', 0, 0, 0, '#{now}', '#{now}')
+    SQL
+
+    job_id = @conn.select_value("SELECT id FROM rails_pulse_jobs WHERE name = '#{job_name}'")
+    assert job_id, "job insert failed"
+
+    @conn.execute(<<~SQL)
+      INSERT INTO rails_pulse_job_runs (job_id, run_id, status, attempts, occurred_at, created_at, updated_at)
+      VALUES (#{job_id}, '#{run_id}', 'completed', 0, '#{now}', '#{now}', '#{now}')
+    SQL
+
+    count = @conn.select_value("SELECT COUNT(*) FROM rails_pulse_job_runs WHERE run_id = '#{run_id}'").to_i
+    assert_equal 1, count, "job_run insert failed"
   end
 
   def assert_can_insert_deployment
