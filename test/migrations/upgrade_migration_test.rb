@@ -25,6 +25,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     CreateRailsPulseDeployments
     AddActualQueryToOperations
     CreateRailsPulseJobRuns
+    MakeCacheHitOnOperationsNullable
   ].freeze
 
   def setup
@@ -50,6 +51,9 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert @conn.column_exists?(:rails_pulse_operations, :repeated_query_group), "repeated_query_group missing on operations"
     assert @conn.column_exists?(:rails_pulse_operations, :repetition_count), "repetition_count missing on operations"
     assert @conn.column_exists?(:rails_pulse_requests, :response_size_bytes), "response_size_bytes missing on requests"
+
+    cache_hit_col = @conn.columns(:rails_pulse_operations).find { |c| c.name == "cache_hit" }
+    assert cache_hit_col.null, "cache_hit should be nullable after MakeCacheHitOnOperationsNullable"
   end
 
   test "upgrade from v0.2.7 adds p95 and p99 duration to jobs" do

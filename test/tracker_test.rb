@@ -296,7 +296,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Request.unstub(:create!)
   end
 
-  test "returns nil after exhausting retries on connection not established errors" do
+  test "returns nil on connection not established error" do
     RailsPulse::Request.stubs(:create!).raises(ActiveRecord::ConnectionNotEstablished, "connection lost")
 
     result = RailsPulse::Tracker.track_request(@tracking_data)
@@ -306,21 +306,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Request.unstub(:create!)
   end
 
-  test "logs retry count in error message when connection retries are exhausted" do
-    log_output = StringIO.new
-    RailsPulse.stubs(:logger).returns(Logger.new(log_output))
-    RailsPulse::Request.stubs(:create!).raises(ActiveRecord::ConnectionNotEstablished, "connection lost")
-
-    RailsPulse::Tracker.track_request(@tracking_data)
-
-    assert_includes log_output.string, "after"
-    assert_includes log_output.string, "retries"
-  ensure
-    RailsPulse.unstub(:logger)
-    RailsPulse::Request.unstub(:create!)
-  end
-
-  test "returns nil after exhausting retries on statement invalid errors" do
+  test "returns nil on statement invalid error" do
     RailsPulse::Request.stubs(:create!).raises(ActiveRecord::StatementInvalid, "statement error")
 
     result = RailsPulse::Tracker.track_request(@tracking_data)

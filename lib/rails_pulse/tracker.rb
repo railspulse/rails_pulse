@@ -22,55 +22,38 @@ module RailsPulse
 
       private
 
-      def perform_tracking(data, retry_count = 0)
+      def perform_tracking(data)
         RailsPulse::ApplicationRecord.connection_pool.with_connection do
-          # Set recursion prevention flag
           RequestStore.store[:skip_recording_rails_pulse_activity] = true
 
-          begin
-            # Find or create route
-            route = RailsPulse::Route.find_by(method: data[:method], path: data[:path]) ||
-                    RailsPulse::Route.create_or_find_by(method: data[:method], path: data[:path])
+          route = RailsPulse::Route.find_by(method: data[:method], path: data[:path]) ||
+                  RailsPulse::Route.create_or_find_by(method: data[:method], path: data[:path])
 
+          request = RailsPulse::Request.create!(
+            route: route,
+            duration: data[:duration],
+            status: data[:status],
+            is_error: data[:is_error],
+            request_uuid: data[:request_uuid],
+            controller_action: data[:controller_action],
+            occurred_at: data[:occurred_at],
+            response_size_bytes: data[:response_size_bytes]
+          )
 
-            # Create request record
-            request = RailsPulse::Request.create!(
-              route: route,
-              duration: data[:duration],
-              status: data[:status],
-              is_error: data[:is_error],
-              request_uuid: data[:request_uuid],
-              controller_action: data[:controller_action],
-              occurred_at: data[:occurred_at],
-              response_size_bytes: data[:response_size_bytes]
-            )
+          ops = data[:operations] || []
+          RailsPulse::Operation.persist_bulk(ops, request_id: request.id)
 
-            # Create operation records
-            ops = data[:operations] || []
-            RailsPulse::Operation.persist_bulk(ops, request_id: request.id)
-
-            request
-          rescue ActiveRecord::ConnectionNotEstablished, ActiveRecord::StatementInvalid => e
-            # Retry transient database errors with exponential backoff
-            if retry_count < 2
-              sleep(0.1 * (2**retry_count))  # 0.1s, 0.2s
-              perform_tracking(data, retry_count + 1)
-            else
-              log_error(e, retry_count)
-              nil
-            end
-          rescue => e
-            log_error(e, retry_count)
-            nil  # Don't raise - never fail main request
-          ensure
-            RequestStore.store[:skip_recording_rails_pulse_activity] = false
-          end
+          request
+        rescue => e
+          log_error(e)
+          nil
+        ensure
+          RequestStore.store[:skip_recording_rails_pulse_activity] = false
         end
       end
 
-      def log_error(error, retry_count = 0)
-        retry_info = retry_count > 0 ? " (after #{retry_count} retries)" : ""
-        RailsPulse.logger.error("Failed to persist tracking data#{retry_info}: #{error.message}")
+      def log_error(error)
+        RailsPulse.logger.error("Failed to persist tracking data: #{error.message}")
         RailsPulse.logger.error(error.backtrace.join("\n")) if RailsPulse.logger.debug?
       end
     end
