@@ -29,7 +29,7 @@ module RailsPulse
     test "Rack session enabled? returns true indicating session is active" do
       session = Rack::Session::Abstract::SessionHash.new(nil, {})
 
-      assert session.enabled?
+      assert_predicate session, :enabled?
     end
   end
 end
