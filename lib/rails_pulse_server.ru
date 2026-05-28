@@ -62,6 +62,7 @@ $stderr.sync = true
 # Build the Rack app with session support
 require "rack/session/cookie"
 require "securerandom"
+require_relative "rails_pulse/rack_compat"
 
 # Simple Rack app that just serves the dashboard
 class DashboardApp
