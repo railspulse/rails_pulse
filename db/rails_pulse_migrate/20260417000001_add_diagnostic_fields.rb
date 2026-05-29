@@ -4,7 +4,7 @@ class AddDiagnosticFields < ActiveRecord::Migration[7.0]
       add_column :rails_pulse_operations, :row_count, :integer
     end
     unless column_exists?(:rails_pulse_operations, :cache_hit)
-      add_column :rails_pulse_operations, :cache_hit, :boolean, null: false, default: false
+      add_column :rails_pulse_operations, :cache_hit, :boolean
     end
     unless column_exists?(:rails_pulse_operations, :repeated_query_group)
       add_column :rails_pulse_operations, :repeated_query_group, :text
