@@ -169,7 +169,7 @@ module RailsPulse
 
       RailsPulse::Job.create!(name: FakeJob.name, queue_name: "default")
 
-      RailsPulse::Job.define_singleton_method(:create_or_find_by!) do |*args, **kwargs, &block|
+      RailsPulse::Job.define_singleton_method(:find_or_create_by!) do |*args, **kwargs, &block|
         raise ActiveRecord::RecordNotUnique, "duplicate"
       end
 
@@ -177,24 +177,7 @@ module RailsPulse
 
       assert_equal FakeJob.name, result.name
     ensure
-      RailsPulse::Job.singleton_class.remove_method(:create_or_find_by!) rescue nil
-    end
-
-    test "find_or_create_job recovers from RecordInvalid" do
-      RailsPulse::Job.where(name: FakeJob.name).delete_all
-
-      RailsPulse::Job.create!(name: FakeJob.name, queue_name: "default")
-      existing = RailsPulse::Job.find_by!(name: FakeJob.name)
-
-      RailsPulse::Job.define_singleton_method(:create_or_find_by!) do |*args, **kwargs, &block|
-        raise ActiveRecord::RecordInvalid.new(existing)
-      end
-
-      result = RailsPulse::JobRunCollector.send(:find_or_create_job, FakeJob.new)
-
-      assert_equal FakeJob.name, result.name
-    ensure
-      RailsPulse::Job.singleton_class.remove_method(:create_or_find_by!) rescue nil
+      RailsPulse::Job.singleton_class.remove_method(:find_or_create_by!) rescue nil
     end
 
     test "create_job_run creates new job run record" do

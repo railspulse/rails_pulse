@@ -13,7 +13,7 @@ module RailsPulse
     validates :path, presence: true
 
     def self.by_method_and_path(method, path)
-      create_or_find_by(method: method, path: path) || find_by!(method: method, path: path)
+      find_or_create_by!(method: method, path: path)
     end
 
     def self.ransackable_attributes(auth_object = nil)
