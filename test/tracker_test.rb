@@ -40,28 +40,12 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     assert_equal 1, request.operations.count
   end
 
-  test "creates route and request records with operations" do
-    RailsPulse::Tracker.track_request(@tracking_data)
-
-    route = RailsPulse::Route.find_by(method: @tracking_data[:method], path: @tracking_data[:path])
-
-    assert_not_nil route
-
-    request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
-
-    assert_not_nil request
-    assert_equal 1, request.operations.count
-  end
-
   test "handles errors gracefully" do
-    # Stub to raise an error
-    RailsPulse::Route.stubs(:find_or_create_by).raises(StandardError, "DB Error")
+    RailsPulse::Route.stubs(:find_by).raises(StandardError, "DB Error")
 
     assert_nothing_raised do
       RailsPulse::Tracker.track_request(@tracking_data)
     end
-
-    RailsPulse::Route.unstub(:find_or_create_by)
   end
 
   test "healthy? returns true when database is connected" do

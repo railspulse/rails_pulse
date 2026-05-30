@@ -157,7 +157,7 @@ module RailsPulse
       hashed = Digest::MD5.hexdigest(normalized)
 
       unless self.query&.hashed_sql == hashed
-        self.query = RailsPulse::Query.create_or_find_by(hashed_sql: hashed) do |q|
+        self.query = RailsPulse::Query.find_or_create_by(hashed_sql: hashed) do |q|
           q.normalized_sql = normalized
         end
       end
