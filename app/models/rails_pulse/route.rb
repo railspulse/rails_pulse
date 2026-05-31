@@ -13,7 +13,20 @@ module RailsPulse
     validates :path, presence: true
 
     def self.by_method_and_path(method, path)
-      find_or_create_by!(method: method, path: path)
+      # Fast path: route already exists (the common case for recurring requests).
+      route = find_by(method: method, path: path)
+      return route if route
+
+      # Use INSERT ... ON CONFLICT DO NOTHING rather than create_or_find_by so that
+      # concurrent inserts for the same route are silently skipped at the database level.
+      # create_or_find_by rescues RecordNotUnique at the Ruby level, but PostgreSQL still
+      # logs a constraint violation ERROR before raising — causing noisy logs.
+      # Tags must be set explicitly here because insert bypasses before_save callbacks.
+      insert(
+        { method: method, path: path, tags: "[]", created_at: Time.current, updated_at: Time.current },
+        unique_by: %i[method path]
+      )
+      find_by!(method: method, path: path)
     end
 
     def self.ransackable_attributes(auth_object = nil)
