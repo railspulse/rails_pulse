@@ -150,6 +150,13 @@ module RailsPulse
       assert_in_delta 200.0, job.p99_duration, 0.01
     end
 
+    test "apply_run! returns gracefully when the job record has been deleted" do
+      job = rails_pulse_jobs(:report_job)
+      run = rails_pulse_job_runs(:report_run_success)
+      job.destroy!
+      assert_nothing_raised { job.apply_run!(run) }
+    end
+
     test "performance_status respects thresholds" do
       job = Job.create!(name: "ThresholdJob", avg_duration: 0, queue_name: "default")
       original_thresholds = RailsPulse.configuration.job_thresholds.dup

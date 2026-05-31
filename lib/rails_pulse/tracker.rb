@@ -26,8 +26,7 @@ module RailsPulse
         RailsPulse::ApplicationRecord.connection_pool.with_connection do
           RequestStore.store[:skip_recording_rails_pulse_activity] = true
 
-          route = RailsPulse::Route.find_by(method: data[:method], path: data[:path]) ||
-                  RailsPulse::Route.create_or_find_by(method: data[:method], path: data[:path])
+          route = RailsPulse::Route.by_method_and_path(data[:method], data[:path])
 
           request = RailsPulse::Request.create!(
             route: route,

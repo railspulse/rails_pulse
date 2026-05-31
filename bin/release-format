@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+# Enhances aha HTML output with foldable sections for release logs.
+# Usage: aha [args] < release.log | bin/release-format > output.html
+
+import sys
+
+STYLE = """<style>
+  body { background: #fff; color: #1a1a1a; padding: 24px; margin: 0; font-family: 'SF Mono', Monaco, monospace; }
+  .preamble { display: none; }
+  details { margin: 2px 0; }
+  details[data-level="top"] { border-left: 3px solid #ddd; padding-left: 8px; margin: 6px 0; }
+  details[data-level="sub"] { margin: 2px 0 2px 16px; border-left: 2px solid #eee; padding-left: 8px; }
+  details[data-level="top"].passed { border-left-color: #2da44e; }
+  details[data-level="top"].failed { border-left-color: #cf222e; }
+  details[data-level="sub"].passed  { border-left-color: #2da44e; }
+  details[data-level="sub"].failed  { border-left-color: #cf222e; }
+  summary { padding: 5px 4px; cursor: pointer; user-select: none; list-style: none; display: flex; align-items: center; gap: 6px; font-size: 13px; }
+  details[data-level="top"] > summary { font-weight: 600; font-size: 14px; }
+  summary:hover { background: #f6f8fa; }
+  summary::marker, summary::-webkit-details-marker { display: none; }
+  .arrow { display: inline-block; transition: transform 0.15s; color: #999; font-size: 9px; }
+  details[open] > summary .arrow { transform: rotate(90deg); }
+  .icon { font-size: 12px; }
+  details > pre { margin: 4px 0 8px; padding: 10px 12px; font-size: 11px; background: #f6f8fa; border-radius: 4px; white-space: pre-wrap; word-break: break-all; overflow-x: auto; }
+  pre { background: transparent; }
+</style>"""
+
+SCRIPT = r"""<script>
+(function() {
+  const hasFail = s => s.includes('❌');
+  const hasPass = s => s.includes('✅');
+  const icon    = s => hasFail(s) ? '❌' : hasPass(s) ? '✅' : '—';
+  const cls     = s => hasFail(s) ? 'failed' : hasPass(s) ? 'passed' : '';
+
+  function makeDetails(level, title) {
+    const d   = document.createElement('details');
+    d.dataset.level = level;
+    const sum = document.createElement('summary');
+    const arr = document.createElement('span'); arr.className = 'arrow'; arr.textContent = '▶';
+    const ic  = document.createElement('span'); ic.className = 'icon';
+    const t   = document.createElement('span'); t.className = 'title'; t.textContent = ' ' + title;
+    sum.append(arr, ic, t);
+    d.appendChild(sum);
+    d._ic = ic;
+    d._buf = '';
+    return d;
+  }
+
+  function finalise(d) {
+    if (!d) return;
+    d.className = cls(d._buf);
+    d._ic.textContent = icon(d._buf);
+    if (hasFail(d._buf)) d.open = true;
+  }
+
+  const pre = document.querySelector('pre');
+  if (!pre) return;
+
+  const marked = pre.innerHTML
+    .replace(/^[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]+/gm, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .replace(/<span style="font-weight:bold;"><\/span><span style="color:blue;">([^<]+)<\/span>\n━+/g,
+             '\x00TOP\x01$1\x02')
+    .replace(/\[(\d+)\/(\d+)\] ([^\n]+)\n-{50,}/g,
+             '\x00SUB\x01[$1/$2] $3\x02');
+
+  const parts = marked.split('\x00');
+  const wrap  = document.createElement('div');
+
+  if (parts[0].trim()) {
+    const p = document.createElement('pre'); p.className = 'preamble'; p.innerHTML = parts[0]; wrap.appendChild(p);
+  }
+
+  let top = null;
+
+  for (let i = 1; i < parts.length; i++) {
+    const s1 = parts[i].indexOf('\x01'), s2 = parts[i].indexOf('\x02');
+    const type    = parts[i].substring(0, s1);
+    const title   = parts[i].substring(s1 + 1, s2);
+    const content = parts[i].substring(s2 + 1);
+
+    if (type === 'TOP') {
+      finalise(top);
+      top = makeDetails('top', title);
+      top._buf = content;
+      if (content.trim()) { const p = document.createElement('pre'); p.innerHTML = content; top.appendChild(p); }
+      wrap.appendChild(top);
+    } else if (type === 'SUB') {
+      const sub = makeDetails('sub', title);
+      sub._buf = content; sub.className = cls(content); sub._ic.textContent = icon(content);
+      if (hasFail(content)) sub.open = true;
+      const p = document.createElement('pre'); p.innerHTML = content; sub.appendChild(p);
+      if (top) { top._buf += content; top.appendChild(sub); } else wrap.appendChild(sub);
+    }
+  }
+
+  finalise(top);
+  pre.replaceWith(wrap);
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', arguments.callee);
+  }
+})();
+</script>"""
+
+
+def enhance(html):
+    html = html.replace('</head>', STYLE + '\n</head>', 1)
+    html = html.replace('</body>', SCRIPT + '\n</body>', 1)
+    return html
+
+
+if __name__ == '__main__':
+    print(enhance(sys.stdin.read()))

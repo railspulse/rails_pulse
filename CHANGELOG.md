@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## 0.3.3.pre.2 - 2026-05-31
 
+- Updated the Github workflow and release script to ensure the changelog is kept up to date
+
+## 0.3.3.pre.2 - 2026-05-31
+
 ### Added
 
 - **Deployment tracking** — Record deployments via `POST /rails_pulse/deployments` or `rake rails_pulse:record_deployment[sha]`. Deployments appear as vertical marker lines on performance charts so you can correlate releases with regressions
