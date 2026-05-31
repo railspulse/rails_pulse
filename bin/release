@@ -199,7 +199,7 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 
 # Check if [Unreleased] section has any content
-UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found && NF{print}' CHANGELOG.md)
+UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## (\[|[0-9])/{exit} found && NF{print}' CHANGELOG.md)
 
 if [ -z "$UNRELEASED_CONTENT" ]; then
   echo -e "${YELLOW}⚠  The [Unreleased] section in CHANGELOG.md is empty.${NC}"
@@ -226,7 +226,7 @@ if ask_yes_no "Open CHANGELOG.md to review/update [Unreleased]?"; then
 fi
 
 # Final check — abort if still empty
-UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## \[/{exit} found && NF{print}' CHANGELOG.md)
+UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## (\[|[0-9])/{exit} found && NF{print}' CHANGELOG.md)
 if [ -z "$UNRELEASED_CONTENT" ]; then
   echo -e "${YELLOW}⚠  [Unreleased] section is still empty.${NC}"
   if ! ask_yes_no "Continue anyway?"; then
@@ -278,6 +278,21 @@ if ! ask_yes_no "Proceed with version bump?"; then
 fi
 
 echo ""
+
+# Rename [Unreleased] → versioned section in CHANGELOG.md
+TODAY=$(date +%Y-%m-%d)
+awk -v version="$NEW_VERSION" -v date="$TODAY" '
+  /^## \[Unreleased\]/ {
+    print $0
+    print ""
+    print "## [" version "] - " date
+    next
+  }
+  { print }
+' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
+echo -e "${GREEN}✓${NC} Renamed [Unreleased] → [$NEW_VERSION] - $TODAY in CHANGELOG.md"
+echo ""
+
 ./bin/bump_version "$NEW_VERSION"
 
 echo ""
