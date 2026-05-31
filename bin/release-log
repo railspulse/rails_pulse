@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# Runs bin/release inside a recorded terminal session and converts output to HTML.
+# Requires: aha (brew install aha)
+
+set -e
+
+TIMESTAMP=$(date +%Y%m%d-%H%M%S)
+LOG_FILE="tmp/release-${TIMESTAMP}.log"
+HTML_FILE="tmp/release-${TIMESTAMP}.html"
+
+mkdir -p tmp
+
+echo "Recording release session → $LOG_FILE"
+echo ""
+
+script -q "$LOG_FILE" bin/release
+
+echo ""
+
+if command -v aha &> /dev/null; then
+  aha --title "Rails Pulse Release ${TIMESTAMP}" < "$LOG_FILE" > "$HTML_FILE"
+  echo "HTML report → $HTML_FILE"
+  open "$HTML_FILE"
+else
+  echo "Install aha to convert to HTML:  brew install aha"
+  echo "Raw log saved to: $LOG_FILE"
+fi
