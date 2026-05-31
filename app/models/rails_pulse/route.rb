@@ -21,10 +21,11 @@ module RailsPulse
       # concurrent inserts for the same route are silently skipped at the database level.
       # create_or_find_by rescues RecordNotUnique at the Ruby level, but PostgreSQL still
       # logs a constraint violation ERROR before raising — causing noisy logs.
+      # unique_by is omitted for cross-database compatibility (MySQL rejects it); there is
+      # only one unique constraint on this table so DO NOTHING resolves unambiguously.
       # Tags must be set explicitly here because insert bypasses before_save callbacks.
       insert(
-        { method: method, path: path, tags: "[]", created_at: Time.current, updated_at: Time.current },
-        unique_by: %i[method path]
+        { method: method, path: path, tags: "[]", created_at: Time.current, updated_at: Time.current }
       )
       find_by!(method: method, path: path)
     end
