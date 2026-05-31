@@ -76,20 +76,7 @@ module RailsPulse
     end
 
     def generate_optimization_suggestions
-      service_class = case @operation.operation_type
-      when "sql"
-        Suggestions::SqlSuggestionsService
-      when "template", "partial", "layout", "collection"
-        Suggestions::ViewSuggestionsService
-      when "controller"
-        Suggestions::ControllerSuggestionsService
-      when "cache_read", "cache_write"
-        Suggestions::CacheSuggestionsService
-      when "http"
-        Suggestions::HttpSuggestionsService
-      end
-
-      service_class ? service_class.new(@operation, @parent).generate : []
+      OperationSuggestions.for(@operation, parent: @parent)
     end
   end
 end
