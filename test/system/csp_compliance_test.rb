@@ -23,15 +23,18 @@ class CspComplianceTest < ApplicationSystemTestCase
     # Wait for icons to load
     sleep 1
 
-    # Check that valid icons load
-    menu_icon = find('[data-rails-pulse--icon-name-value="menu"]')
+    # Scope within the icon test card to avoid matching the nav menu icon in the layout
+    within(".card", text: "Icon Controller Test") do
+      # Check that valid icons load
+      menu_icon = find('[data-rails-pulse--icon-name-value="menu"]')
 
-    assert_predicate menu_icon, :present?
+      assert_predicate menu_icon, :present?
 
-    # Check that missing icon shows error but doesn't break CSP
-    missing_icon = find('[data-rails-pulse--icon-name-value="nonexistent"]')
+      # Check that missing icon shows error but doesn't break CSP
+      missing_icon = find('[data-rails-pulse--icon-name-value="nonexistent"]')
 
-    assert_predicate missing_icon, :present?
+      assert_predicate missing_icon, :present?
+    end
   end
 
   test "popover controller functions under CSP" do
