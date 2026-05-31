@@ -60,6 +60,8 @@ module RailsPulse
 
         update!(updates)
       end
+    rescue ActiveRecord::RecordNotFound
+      RailsPulse.logger.warn "RailsPulse::Job #{id} was deleted concurrently; skipping cache update for run #{run.id}"
     end
 
     def failure_rate
