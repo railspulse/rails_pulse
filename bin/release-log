@@ -14,14 +14,17 @@ echo "Recording release session → $LOG_FILE"
 echo ""
 
 script -q "$LOG_FILE" bin/release
+RELEASE_EXIT=$?
 
 echo ""
 
 if command -v aha &> /dev/null; then
-  aha --title "Rails Pulse Release ${TIMESTAMP}" < "$LOG_FILE" > "$HTML_FILE"
+  aha --title "Rails Pulse Release ${TIMESTAMP}" < "$LOG_FILE" | bin/release-format > "$HTML_FILE"
   echo "HTML report → $HTML_FILE"
   open "$HTML_FILE"
 else
   echo "Install aha to convert to HTML:  brew install aha"
   echo "Raw log saved to: $LOG_FILE"
 fi
+
+exit $RELEASE_EXIT
