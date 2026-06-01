@@ -113,21 +113,8 @@ module RailsPulse
       :last_14_days
     end
 
-    # Override table data setup to handle custom sorting logic for index page
-    def setup_table_data(ransack_params)
-      table_ransack_params = build_table_ransack_params(ransack_params)
-      @ransack_query = table_model.ransack(table_ransack_params)
-
-      # Only apply default sort if not using Routes::Tables::Index (which handles its own sorting)
-      if show_action?
-        @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?
-      end
-
-      table_results = build_table_results
-      handle_pagination
-
-      @pagination, @table_data = paginate(table_results, limit: session_pagination_limit)
-    end
+    # Routes::Tables::Index handles index-page sorting; only apply ransack sort on show.
+    def apply_ransack_sort? = show_action?
 
     def set_route
       @route = Route.find(params[:id])

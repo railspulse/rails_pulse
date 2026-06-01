@@ -113,6 +113,11 @@ module RailsPulse
       "period_start desc"
     end
 
+    def duration_range_type = :query
+
+    # Queries::Tables::Index handles index-page sorting; only apply ransack sort on show.
+    def apply_ransack_sort? = show_action?
+
     def build_table_results
       if show_action?
         # For Summary model on show page - ransack params already include query ID and type filters
@@ -128,27 +133,6 @@ module RailsPulse
           show_non_tagged: session[:show_non_tagged] != false
         ).to_table
       end
-    end
-
-    # Override table data setup to handle custom sorting logic for index page
-    def setup_table_data(ransack_params)
-      table_ransack_params = build_table_ransack_params(ransack_params)
-      @ransack_query = table_model.ransack(table_ransack_params)
-
-      # Only apply default sort if not using Queries::Tables::Index (which handles its own sorting)
-      if show_action?
-        @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?
-      end
-
-      table_results = build_table_results
-      handle_pagination
-
-      @pagination, @table_data = paginate(table_results, limit: session_pagination_limit)
-    end
-
-    def setup_time_and_response_ranges
-      @start_time, @end_time, @selected_time_range, @time_diff_hours = setup_time_range
-      @start_duration, @selected_response_range = setup_duration_range(:query)
     end
 
     def set_query
