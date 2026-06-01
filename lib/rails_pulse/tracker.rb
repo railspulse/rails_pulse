@@ -2,6 +2,12 @@ require "async"
 
 module RailsPulse
   module Tracker
+    # PG::Connection::PQTRANS_INERROR — the connection's transaction was aborted by a
+    # DB-level error and no ROLLBACK has been issued yet. Defined as a constant so the
+    # intent is clear without a hard dependency on the pg gem.
+    PG_TRANSACTION_INERROR = 2
+    private_constant :PG_TRANSACTION_INERROR
+
     class << self
       def track_request(data)
         return if RequestStore.store[:skip_recording_rails_pulse_activity]
@@ -23,7 +29,8 @@ module RailsPulse
       private
 
       def perform_tracking(data)
-        RailsPulse::ApplicationRecord.connection_pool.with_connection do
+        RailsPulse::ApplicationRecord.connection_pool.with_connection do |conn|
+          clear_aborted_transaction(conn)
           RequestStore.store[:skip_recording_rails_pulse_activity] = true
 
           route = RailsPulse::Route.by_method_and_path(data[:method], data[:path])
@@ -49,6 +56,15 @@ module RailsPulse
         ensure
           RequestStore.store[:skip_recording_rails_pulse_activity] = false
         end
+      end
+
+      def clear_aborted_transaction(conn)
+        raw = conn.raw_connection
+        # Non-PostgreSQL adapters don't expose transaction_status, so this is a no-op for them.
+        return unless raw.respond_to?(:transaction_status) && raw.transaction_status == PG_TRANSACTION_INERROR
+        conn.rollback_db_transaction
+      rescue ActiveRecord::StatementInvalid
+        nil
       end
 
       def log_error(error)
