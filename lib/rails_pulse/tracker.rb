@@ -2,10 +2,11 @@ require "async"
 
 module RailsPulse
   module Tracker
-    # PG::Connection::PQTRANS_INERROR — the connection's transaction was aborted by a
-    # DB-level error and no ROLLBACK has been issued yet. Defined as a constant so the
-    # intent is clear without a hard dependency on the pg gem.
-    PG_TRANSACTION_INERROR = 2
+    # PG::Connection::PQTRANS_INERROR (libpq enum value 3) — the connection's transaction
+    # was aborted by a DB-level error and no ROLLBACK has been issued yet. Defined as a
+    # constant to avoid a hard dependency on the pg gem. The full enum is:
+    #   PQTRANS_IDLE=0, PQTRANS_ACTIVE=1, PQTRANS_INTRANS=2, PQTRANS_INERROR=3, PQTRANS_UNKNOWN=4
+    PG_TRANSACTION_INERROR = 3
     private_constant :PG_TRANSACTION_INERROR
 
     class << self

@@ -306,7 +306,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     # Simulate a raw PostgreSQL connection reporting PQTRANS_INERROR (value 2).
     # We stub raw_connection only — query execution uses @raw_connection directly
     # via with_raw_connection, so actual DB operations are unaffected by this stub.
-    mock_raw_conn = Struct.new(:transaction_status).new(2)
+    mock_raw_conn = Struct.new(:transaction_status).new(3) # PQTRANS_INERROR
 
     conn = RailsPulse::ApplicationRecord.connection
     conn.stubs(:raw_connection).returns(mock_raw_conn)
