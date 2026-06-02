@@ -18,12 +18,39 @@ module ChartTableConcern
     include ZoomRangeConcern
     include DeploymentMarkersConcern
 
-    before_action :setup_time_and_response_ranges
+    before_action :setup_page_timings
     before_action :populate_deployment_markers
-    before_action :setup_zoom_range_data
   end
 
   private
+
+  def setup_page_timings
+    start_time, end_time, selected_time_range, time_diff_hours = setup_time_range
+    start_duration, selected_response_range = setup_duration_range(duration_range_type)
+    zoom_start, zoom_end, table_start_time, table_end_time =
+      setup_zoom_range(start_time, end_time)
+
+    @page_timings = PageTimings.new(
+      start_time: start_time, end_time: end_time,
+      table_start_time: table_start_time, table_end_time: table_end_time,
+      zoom_start: zoom_start, zoom_end: zoom_end,
+      time_diff_hours: time_diff_hours, start_duration: start_duration,
+      selected_time_range: selected_time_range, selected_response_range: selected_response_range
+    )
+
+    # Keep individual @vars for backward compat with views, helpers, and other
+    # concerns (DeploymentMarkersConcern, MetricCardConcern, ChartHelper).
+    @start_time = start_time
+    @end_time = end_time
+    @time_diff_hours = time_diff_hours
+    @start_duration = start_duration
+    @selected_time_range = selected_time_range
+    @selected_response_range = selected_response_range
+    @zoom_start = zoom_start
+    @zoom_end = zoom_end
+    @table_start_time = table_start_time
+    @table_end_time = table_end_time
+  end
 
   def setup_chart_and_table_data
     ransack_params = params[:q] || {}
@@ -51,9 +78,9 @@ module ChartTableConcern
     common_options = {
       ransack_query: chart_ransack_query,
       period_type: period_type,
-      start_time: @start_time,
-      end_time: @end_time,
-      start_duration: @start_duration,
+      start_time: @page_timings.start_time,
+      end_time: @page_timings.end_time,
+      start_duration: @page_timings.start_duration,
       disabled_tags: session_disabled_tags,
       show_non_tagged: session[:show_non_tagged] != false,
       **chart_options
@@ -74,7 +101,7 @@ module ChartTableConcern
   def setup_table_data(ransack_params)
     table_ransack_params = build_table_ransack_params(ransack_params)
     @ransack_query = table_model.ransack(table_ransack_params)
-    @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?
+    @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty? && apply_ransack_sort?
 
     table_results = build_table_results
     handle_pagination
@@ -82,21 +109,12 @@ module ChartTableConcern
     @pagination, @table_data = paginate(table_results, limit: session_pagination_limit)
   end
 
-  def setup_zoom_range_data
-    @zoom_start, @zoom_end, @table_start_time, @table_end_time = setup_zoom_range(@start_time, @end_time)
-  end
-
-  def setup_time_and_response_ranges
-    @start_time, @end_time, @selected_time_range, @time_diff_hours = setup_time_range
-    @start_duration, @selected_response_range = setup_duration_range
-  end
-
-
   def period_type
-    # Determine period type based on time range
-    type = if @time_diff_hours.nil?
+    time_diff = @page_timings&.time_diff_hours
+
+    type = if time_diff.nil?
       "day"  # Default to day for "recent" mode or when time_diff isn't set
-    elsif @time_diff_hours <= 25
+    elsif time_diff <= 25
       "hour"
     else
       "day"
@@ -156,15 +174,15 @@ module ChartTableConcern
 
   # Builds ransack parameters for chart queries
   # Common pattern: time range + optional duration filter + resource scope
-  # Handles "recent" mode where @start_time/@end_time may be nil
+  # Handles "recent" mode where @page_timings.start_time/@end_time may be nil
   def build_chart_ransack_params(ransack_params)
     base_params = ransack_params.except(:s)
 
     # Add time filters if we have time boundaries (not in "recent" mode)
-    if @start_time && @end_time
+    if @page_timings&.start_time && @page_timings&.end_time
       base_params.merge!(
-        period_start_gteq: Time.at(@start_time),
-        period_start_lt: Time.at(@end_time)
+        period_start_gteq: Time.at(@page_timings.start_time),
+        period_start_lt: Time.at(@page_timings.end_time)
       )
     end
 
@@ -172,7 +190,9 @@ module ChartTableConcern
     base_params.merge!(summarizable_type_eq: summarizable_type) if summarizable_type
 
     # Only add duration filter if we have a meaningful threshold
-    base_params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+    if @page_timings&.start_duration && @page_timings.start_duration > 0
+      base_params[:avg_duration_gteq] = @page_timings.start_duration
+    end
 
     # Scope to specific resource on show pages
     if show_action?
@@ -198,15 +218,17 @@ module ChartTableConcern
     params = ransack_params.dup
 
     # Add time filters if we have time boundaries (not in "recent" mode)
-    if @table_start_time && @table_end_time
+    if @page_timings&.table_start_time && @page_timings&.table_end_time
       params.merge!(
-        occurred_at_gteq: Time.at(@table_start_time),
-        occurred_at_lt: Time.at(@table_end_time)
+        occurred_at_gteq: Time.at(@page_timings.table_start_time),
+        occurred_at_lt: Time.at(@page_timings.table_end_time)
       )
     end
 
     params.merge!(show_resource_filter)
-    params[:duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+    if @page_timings&.start_duration && @page_timings.start_duration > 0
+      params[:duration_gteq] = @page_timings.start_duration
+    end
     params
   end
 
@@ -216,17 +238,27 @@ module ChartTableConcern
     params = ransack_params.dup
 
     # Add time filters if we have time boundaries (not in "recent" mode)
-    if @table_start_time && @table_end_time
+    if @page_timings&.table_start_time && @page_timings&.table_end_time
       params.merge!(
-        period_start_gteq: Time.at(@table_start_time),
-        period_start_lt: Time.at(@table_end_time)
+        period_start_gteq: Time.at(@page_timings.table_start_time),
+        period_start_lt: Time.at(@page_timings.table_end_time)
       )
     end
 
     params.merge!(summarizable_type_eq: summarizable_type) if summarizable_type
-    params[:avg_duration_gteq] = @start_duration if @start_duration && @start_duration > 0
+    if @page_timings&.start_duration && @page_timings.start_duration > 0
+      params[:avg_duration_gteq] = @page_timings.start_duration
+    end
     params
   end
+
+  # Hook: override to change the threshold type passed to setup_duration_range.
+  # Return :query for query controllers, :job for job controllers, etc.
+  def duration_range_type = :route
+
+  # Hook: override to return false when the table's own query handles sorting
+  # (e.g. index pages that delegate to a Tables::Index class).
+  def apply_ransack_sort? = true
 
   # Abstract methods - must be implemented by including controllers
 
@@ -238,12 +270,6 @@ module ChartTableConcern
   # Returns the ActiveRecord model used for table queries (varies by action)
   def table_model
     raise NotImplementedError, "#{self.class} must implement #table_model"
-  end
-
-  # DEPRECATED: Use chart_definitions instead
-  # Returns the primary chart class for backward compatibility
-  def chart_class
-    raise NotImplementedError, "#{self.class} must implement #chart_class"
   end
 
   # Returns a hash of { instance_variable_name: ChartClass }

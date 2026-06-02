@@ -27,7 +27,6 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     assert_includes private_methods, :chart_model
     assert_includes private_methods, :table_model
-    assert_includes private_methods, :chart_class
     assert_includes private_methods, :set_route
   end
 

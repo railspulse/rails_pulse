@@ -29,7 +29,6 @@ class ChartTableConcernTest < ActionController::TestCase
 
     def chart_model; RailsPulse::Summary; end
     def table_model; RailsPulse::Summary; end
-    def chart_class; TestChartClass; end
     def chart_definitions; { chart_data: TestChartClass }; end
     def default_table_sort; "avg_duration desc"; end
     def build_table_results; RailsPulse::Summary.none; end
@@ -48,7 +47,13 @@ class ChartTableConcernTest < ActionController::TestCase
     @controller = TestController.new
   end
 
-  # Existing Tests - Keep These
+  # Structure Tests
+
+  test "VALID_PERIOD_TYPES constant contains only hour and day" do
+    assert_equal %w[hour day], ChartTableConcern::VALID_PERIOD_TYPES
+  end
+
+  # has_meaningful_data? Tests
 
   test "has_meaningful_data? returns true for new multi-series chart format with data" do
     @controller.instance_variable_set(:@chart_data, {
@@ -105,7 +110,7 @@ class ChartTableConcernTest < ActionController::TestCase
     assert @controller.send(:has_meaningful_data?)
   end
 
-  # New Tests - setup_chart_and_table_data
+  # setup_chart_and_table_data Tests
 
   test "setup_chart_and_table_data calls setup_chart_data when not turbo frame" do
     @controller.stubs(:partial_request?).returns(false)
@@ -165,20 +170,56 @@ class ChartTableConcernTest < ActionController::TestCase
     @controller.stubs(:meaningful_chart_data?).returns(true)
     @controller.stubs(:has_meaningful_data?).returns(true)
 
-    # The concern calls setup_chart_data and setup_table_data with params[:q]
     @controller.stubs(:setup_chart_data)
     @controller.stubs(:setup_table_data)
 
-    # Should not raise any errors with valid params structure
     assert_nothing_raised do
       @controller.send(:setup_chart_and_table_data)
     end
   end
 
+  # setup_page_timings Tests
+
+  test "setup_page_timings builds @page_timings and sets backward-compat vars" do
+    @controller.expects(:setup_time_range).returns([ 1.day.ago.to_i, Time.current.to_i, "last_24_hours", 24.0 ])
+    @controller.expects(:setup_duration_range).with(:route).returns([ 0, :all ])
+    @controller.stubs(:setup_zoom_range).returns([ nil, nil, 1.day.ago.to_i, Time.current.to_i ])
+
+    @controller.send(:setup_page_timings)
+
+    assert_not_nil @controller.instance_variable_get(:@page_timings)
+    assert_kind_of PageTimings, @controller.instance_variable_get(:@page_timings)
+    assert @controller.instance_variable_defined?(:@start_time)
+    assert @controller.instance_variable_defined?(:@end_time)
+    assert @controller.instance_variable_defined?(:@selected_time_range)
+    assert @controller.instance_variable_defined?(:@time_diff_hours)
+    assert @controller.instance_variable_defined?(:@start_duration)
+    assert @controller.instance_variable_defined?(:@selected_response_range)
+  end
+
+  test "setup_page_timings calls setup_zoom_range with times from setup_time_range" do
+    start_time = 7.days.ago.to_i
+    end_time = Time.current.to_i
+
+    @controller.expects(:setup_time_range).returns([ start_time, end_time, "last_7_days", 168.0 ])
+    @controller.expects(:setup_duration_range).with(:route).returns([ 0, :all ])
+    @controller.expects(:setup_zoom_range).with(start_time, end_time).returns([ nil, nil, start_time, end_time ])
+
+    @controller.send(:setup_page_timings)
+  end
+
+  test "setup_page_timings passes duration_range_type to setup_duration_range" do
+    @controller.expects(:setup_time_range).returns([ 1.day.ago.to_i, Time.current.to_i, "last_24_hours", 24.0 ])
+    @controller.expects(:setup_duration_range).with(:route).returns([ 0, :all ])
+    @controller.stubs(:setup_zoom_range).returns([ nil, nil, 1.day.ago.to_i, Time.current.to_i ])
+
+    @controller.send(:setup_page_timings)
+  end
+
   # period_type Tests
 
   test "period_type returns hour string when time_diff_hours <= 25" do
-    @controller.instance_variable_set(:@time_diff_hours, 20.0)
+    @controller.instance_variable_set(:@page_timings, PageTimings.new(time_diff_hours: 20.0))
 
     result = @controller.send(:period_type)
 
@@ -187,7 +228,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "period_type returns day string when time_diff_hours > 25" do
-    @controller.instance_variable_set(:@time_diff_hours, 30.0)
+    @controller.instance_variable_set(:@page_timings, PageTimings.new(time_diff_hours: 30.0))
 
     result = @controller.send(:period_type)
 
@@ -196,7 +237,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "period_type returns day string when time_diff_hours nil" do
-    @controller.instance_variable_set(:@time_diff_hours, nil)
+    @controller.instance_variable_set(:@page_timings, PageTimings.new(time_diff_hours: nil))
 
     result = @controller.send(:period_type)
 
@@ -204,16 +245,18 @@ class ChartTableConcernTest < ActionController::TestCase
     assert_kind_of String, result
   end
 
+  test "period_type returns day when @page_timings is nil" do
+    @controller.instance_variable_set(:@page_timings, nil)
+
+    assert_equal "day", @controller.send(:period_type)
+  end
+
   test "period_type validates returned value is in VALID_PERIOD_TYPES" do
-    @controller.instance_variable_set(:@time_diff_hours, 20.0)
+    @controller.instance_variable_set(:@page_timings, PageTimings.new(time_diff_hours: 20.0))
 
     result = @controller.send(:period_type)
 
     assert_includes ChartTableConcern::VALID_PERIOD_TYPES, result
-  end
-
-  test "period_type constant contains only hour and day" do
-    assert_equal %w[hour day], ChartTableConcern::VALID_PERIOD_TYPES
   end
 
   # meaningful_chart_data? Tests
@@ -277,6 +320,7 @@ class ChartTableConcernTest < ActionController::TestCase
   # build_chart_ransack_params Tests
 
   test "build_chart_ransack_params excludes sort param" do
+    @controller.instance_variable_set(:@page_timings, PageTimings.new)
     ransack_params = { s: "name desc", other: "value" }
 
     result = @controller.send(:build_chart_ransack_params, ransack_params)
@@ -286,8 +330,8 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_chart_ransack_params adds time filters when times present" do
-    @controller.instance_variable_set(:@start_time, 7.days.ago.to_i)
-    @controller.instance_variable_set(:@end_time, Time.current.to_i)
+    @controller.instance_variable_set(:@page_timings,
+      PageTimings.new(start_time: 7.days.ago.to_i, end_time: Time.current.to_i))
 
     result = @controller.send(:build_chart_ransack_params, {})
 
@@ -298,8 +342,8 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_chart_ransack_params skips time filters when times nil" do
-    @controller.instance_variable_set(:@start_time, nil)
-    @controller.instance_variable_set(:@end_time, nil)
+    @controller.instance_variable_set(:@page_timings,
+      PageTimings.new(start_time: nil, end_time: nil))
 
     result = @controller.send(:build_chart_ransack_params, {})
 
@@ -308,6 +352,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_chart_ransack_params adds summarizable_type when present" do
+    @controller.instance_variable_set(:@page_timings, PageTimings.new)
     @controller.stubs(:summarizable_type).returns("RailsPulse::Query")
 
     result = @controller.send(:build_chart_ransack_params, {})
@@ -316,7 +361,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_chart_ransack_params adds avg_duration_gteq when threshold > 0" do
-    @controller.instance_variable_set(:@start_duration, 500)
+    @controller.instance_variable_set(:@page_timings, PageTimings.new(start_duration: 500))
 
     result = @controller.send(:build_chart_ransack_params, {})
 
@@ -324,7 +369,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_chart_ransack_params skips duration filter when 0" do
-    @controller.instance_variable_set(:@start_duration, 0)
+    @controller.instance_variable_set(:@page_timings, PageTimings.new(start_duration: 0))
 
     result = @controller.send(:build_chart_ransack_params, {})
 
@@ -332,6 +377,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_chart_ransack_params adds resource scope for show action" do
+    @controller.instance_variable_set(:@page_timings, PageTimings.new)
     @controller.stubs(:show_action?).returns(true)
     @controller.stubs(:current_resource).returns(stub(id: 123))
 
@@ -341,6 +387,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_chart_ransack_params returns base params for index action" do
+    @controller.instance_variable_set(:@page_timings, PageTimings.new)
     @controller.stubs(:show_action?).returns(false)
 
     result = @controller.send(:build_chart_ransack_params, { test: "value" })
@@ -368,8 +415,8 @@ class ChartTableConcernTest < ActionController::TestCase
   # build_show_table_ransack_params Tests
 
   test "build_show_table_ransack_params adds occurred_at filters when times present" do
-    @controller.instance_variable_set(:@table_start_time, 5.days.ago.to_i)
-    @controller.instance_variable_set(:@table_end_time, Time.current.to_i)
+    @controller.instance_variable_set(:@page_timings,
+      PageTimings.new(table_start_time: 5.days.ago.to_i, table_end_time: Time.current.to_i))
 
     result = @controller.send(:build_show_table_ransack_params, {})
 
@@ -380,8 +427,8 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_show_table_ransack_params skips time filters when times nil" do
-    @controller.instance_variable_set(:@table_start_time, nil)
-    @controller.instance_variable_set(:@table_end_time, nil)
+    @controller.instance_variable_set(:@page_timings,
+      PageTimings.new(table_start_time: nil, table_end_time: nil))
 
     result = @controller.send(:build_show_table_ransack_params, {})
 
@@ -390,6 +437,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_show_table_ransack_params merges show_resource_filter" do
+    @controller.instance_variable_set(:@page_timings, PageTimings.new)
     @controller.stubs(:show_resource_filter).returns({ route_id_eq: 456 })
 
     result = @controller.send(:build_show_table_ransack_params, {})
@@ -398,7 +446,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_show_table_ransack_params adds duration_gteq when threshold > 0" do
-    @controller.instance_variable_set(:@start_duration, 300)
+    @controller.instance_variable_set(:@page_timings, PageTimings.new(start_duration: 300))
 
     result = @controller.send(:build_show_table_ransack_params, {})
 
@@ -408,8 +456,8 @@ class ChartTableConcernTest < ActionController::TestCase
   # build_index_table_ransack_params Tests
 
   test "build_index_table_ransack_params adds period_start filters when times present" do
-    @controller.instance_variable_set(:@table_start_time, 7.days.ago.to_i)
-    @controller.instance_variable_set(:@table_end_time, Time.current.to_i)
+    @controller.instance_variable_set(:@page_timings,
+      PageTimings.new(table_start_time: 7.days.ago.to_i, table_end_time: Time.current.to_i))
 
     result = @controller.send(:build_index_table_ransack_params, {})
 
@@ -420,8 +468,8 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_index_table_ransack_params skips time filters when times nil" do
-    @controller.instance_variable_set(:@table_start_time, nil)
-    @controller.instance_variable_set(:@table_end_time, nil)
+    @controller.instance_variable_set(:@page_timings,
+      PageTimings.new(table_start_time: nil, table_end_time: nil))
 
     result = @controller.send(:build_index_table_ransack_params, {})
 
@@ -430,6 +478,7 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_index_table_ransack_params adds summarizable_type when present" do
+    @controller.instance_variable_set(:@page_timings, PageTimings.new)
     @controller.stubs(:summarizable_type).returns("RailsPulse::Job")
 
     result = @controller.send(:build_index_table_ransack_params, {})
@@ -438,11 +487,21 @@ class ChartTableConcernTest < ActionController::TestCase
   end
 
   test "build_index_table_ransack_params adds avg_duration_gteq when threshold > 0" do
-    @controller.instance_variable_set(:@start_duration, 1000)
+    @controller.instance_variable_set(:@page_timings, PageTimings.new(start_duration: 1000))
 
     result = @controller.send(:build_index_table_ransack_params, {})
 
     assert_equal 1000, result[:avg_duration_gteq]
+  end
+
+  # Hook Tests
+
+  test "apply_ransack_sort? returns true by default" do
+    assert @controller.send(:apply_ransack_sort?)
+  end
+
+  test "duration_range_type returns :route by default" do
+    assert_equal :route, @controller.send(:duration_range_type)
   end
 
   # Helper Method Tests
@@ -471,27 +530,5 @@ class ChartTableConcernTest < ActionController::TestCase
     @controller.expects(:set_pagination_limit).never
 
     @controller.send(:handle_pagination)
-  end
-
-  test "setup_zoom_range_data calls setup_zoom_range with times" do
-    @controller.instance_variable_set(:@start_time, 7.days.ago.to_i)
-    @controller.instance_variable_set(:@end_time, Time.current.to_i)
-    @controller.expects(:setup_zoom_range).with(7.days.ago.to_i, Time.current.to_i).returns([ nil, nil, 7.days.ago.to_i, Time.current.to_i ])
-
-    @controller.send(:setup_zoom_range_data)
-  end
-
-  test "setup_time_and_response_ranges calls setup_time_range and setup_duration_range" do
-    @controller.expects(:setup_time_range).returns([ 1.day.ago.to_i, Time.current.to_i, "last_24_hours", 24.0 ])
-    @controller.expects(:setup_duration_range).returns([ 0, :all ])
-
-    @controller.send(:setup_time_and_response_ranges)
-
-    assert @controller.instance_variable_defined?(:@start_time)
-    assert @controller.instance_variable_defined?(:@end_time)
-    assert @controller.instance_variable_defined?(:@selected_time_range)
-    assert @controller.instance_variable_defined?(:@time_diff_hours)
-    assert @controller.instance_variable_defined?(:@start_duration)
-    assert @controller.instance_variable_defined?(:@selected_response_range)
   end
 end
