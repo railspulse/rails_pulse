@@ -7,6 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+- **`ChartTableConcern` refactored** — Consolidated time/zoom/duration setup into a single `setup_page_timings` before-action backed by a new `PageTimings` struct
 - Updated the Github workflow and release script to ensure the changelog is kept up to date
 
 ## 0.3.3.pre.2 - 2026-05-31
