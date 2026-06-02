@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - **`ChartTableConcern` refactored** — Consolidated time/zoom/duration setup into a single `setup_page_timings` before-action backed by a new `PageTimings` struct
+- **Operation suggestions refactored** — Five separate suggestion service classes (`CacheSuggestionsService`, `ControllerSuggestionsService`, `HttpSuggestionsService`, `SqlSuggestionsService`, `ViewSuggestionsService`) consolidated into a single `OperationSuggestions` service
 
 ## [0.3.3.pre.4] - 2026-06-01
 
