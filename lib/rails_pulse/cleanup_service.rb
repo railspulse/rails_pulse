@@ -72,7 +72,8 @@ module RailsPulse
       @stats[:count_based][:routes]                = cleanup_routes_by_count
       @stats[:count_based][:jobs]                  = cleanup_jobs_by_count
       @stats[:count_based][:exception_occurrences] = cleanup_exception_occurrences_by_count
-      @stats[:count_based][:exception_groups]      = cleanup_orphaned_exception_groups
+      @stats[:count_based][:exception_groups]      = cleanup_exception_groups_by_count
+      @stats[:count_based][:orphaned_exception_groups] = cleanup_orphaned_exception_groups
     end
 
     # Shared helper: delete oldest records beyond a configured max count
@@ -200,10 +201,18 @@ module RailsPulse
       cleanup_by_count(RailsPulse::ExceptionOccurrence, :rails_pulse_exception_occurrences, order_column: :occurred_at)
     end
 
+    def cleanup_exception_groups_by_count
+      scope = RailsPulse::ExceptionGroup.where(preserve: false).where.not(status: "ignored")
+      cleanup_by_count(RailsPulse::ExceptionGroup, :rails_pulse_exception_groups, order_column: :last_seen_at, scope: scope)
+    end
+
     # Delete groups whose last occurrence was removed — uses an atomic subquery
     # so no orphan can be deleted while a concurrent occurrence is being inserted.
+    # preserve: true and ignored groups are never deleted automatically.
     def cleanup_orphaned_exception_groups
       RailsPulse::ExceptionGroup
+        .where(preserve: false)
+        .where.not(status: "ignored")
         .where("id NOT IN (SELECT DISTINCT exception_group_id FROM rails_pulse_exception_occurrences)")
         .delete_all
     end

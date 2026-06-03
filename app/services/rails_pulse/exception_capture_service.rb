@@ -56,7 +56,7 @@ module RailsPulse
       now         = Time.current
 
       group = upsert_group(fingerprint, now)
-      create_occurrence(group, frames, now)
+      create_occurrence(group, frames, now) unless group.status == "ignored"
     rescue => e
       Rails.logger.error("[RailsPulse] ExceptionCaptureService error: #{e.message}")
       nil
@@ -77,8 +77,13 @@ module RailsPulse
     end
 
     def compute_fingerprint(exception_class, frames)
-      frame    = first_app_frame(frames)
-      location = frame ? "#{frame[:file]}:#{frame[:line]}" : "unknown"
+      frame = first_app_frame(frames)
+      location = if frame
+        anonymous = frame[:method].include?("block") || frame[:method].start_with?("<")
+        anonymous ? "#{frame[:file]}:#{frame[:line]}" : "#{frame[:file]}##{frame[:method]}"
+      else
+        "unknown"
+      end
       Digest::SHA256.hexdigest("#{exception_class}:#{location}")
     end
 
@@ -133,7 +138,12 @@ module RailsPulse
         SQL
       end
 
-      ExceptionGroup.find_by!(fingerprint: fingerprint)
+      group = ExceptionGroup.find_by!(fingerprint: fingerprint)
+
+      ExceptionGroup.where(id: group.id, status: "resolved")
+                    .update_all(status: "open", resolved_at: nil, updated_at: Time.current)
+
+      group
     end
 
     def current_deploy_sha

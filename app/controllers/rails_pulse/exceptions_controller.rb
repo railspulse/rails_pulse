@@ -10,6 +10,7 @@ module RailsPulse
       ransack_params = (params[:q] || {}).dup
       ransack_params[:last_seen_at_gteq] = Time.zone.at(@start_time)
       ransack_params[:last_seen_at_lteq] = Time.zone.at(@end_time)
+      ransack_params[:status_eq] ||= "open"
 
       @ransack_query = ExceptionGroup.ransack(ransack_params)
       @ransack_query.sorts = "last_seen_at desc" if @ransack_query.sorts.empty?

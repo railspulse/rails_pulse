@@ -284,7 +284,7 @@ module RailsPulse
     test "concurrent captures of the same exception produce exactly one group" do
       exception = make_exception(RuntimeError, "concurrent")
       exception.stubs(:backtrace).returns([ "/app/models/post.rb:77:in 'save'" ])
-      fingerprint = Digest::SHA256.hexdigest("RuntimeError:/app/models/post.rb:77")
+      fingerprint = Digest::SHA256.hexdigest("RuntimeError:/app/models/post.rb#save")
 
       threads = 5.times.map do
         Thread.new { ExceptionCaptureService.capture(exception) }
@@ -298,7 +298,7 @@ module RailsPulse
     test "concurrent captures accumulate occurrence_count correctly" do
       exception = make_exception(RuntimeError, "counter race")
       exception.stubs(:backtrace).returns([ "/app/models/order.rb:12:in 'save'" ])
-      fingerprint = Digest::SHA256.hexdigest("RuntimeError:/app/models/order.rb:12")
+      fingerprint = Digest::SHA256.hexdigest("RuntimeError:/app/models/order.rb#save")
 
       n = 4
       threads = n.times.map do

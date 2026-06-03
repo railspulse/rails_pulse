@@ -72,7 +72,8 @@ module RailsPulse
         rails_pulse_queries: 10_000,
         rails_pulse_routes: 1_000,
         rails_pulse_jobs: 1_000,
-        rails_pulse_exception_occurrences: 50_000
+        rails_pulse_exception_occurrences: 50_000,
+        rails_pulse_exception_groups: 10_000
       }
       @connects_to = nil
       @authentication_enabled = Rails.env.production?
