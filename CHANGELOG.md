@@ -7,15 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Fixed
-
 - **Negative durations no longer cause a database overflow** — when `Timecop` or `travel_to` freezes time mid-request, finish can precede start in ActiveSupport notifications, producing a duration of billions of negative milliseconds. Durations are now clamped to zero, and the flame graph renderer and `time_ago_in_words` helper have the same guard.
-
 - **Tracking no longer fails when a PostgreSQL transaction is left in an aborted state** — if application code leaves a database connection in a `PQTRANS_INERROR` state (e.g. a `LOCK TABLE` or raw SQL command inside a transaction that subsequently fails), Rails Pulse now detects this and issues a `ROLLBACK` before running its own tracking queries. Previously, all tracking queries would be rejected by PostgreSQL and the request would go unrecorded. This is a no-op for MySQL and SQLite, which do not have this transaction state.
+- **`ChartTableConcern` refactored** — Consolidated time/zoom/duration setup into a single `setup_page_timings` before-action backed by a new `PageTimings` struct
+- **Operation suggestions refactored** — Five separate suggestion service classes (`CacheSuggestionsService`, `ControllerSuggestionsService`, `HttpSuggestionsService`, `SqlSuggestionsService`, `ViewSuggestionsService`) consolidated into a single `OperationSuggestions` service
 
 ## [0.3.3.pre.4] - 2026-06-01
 
 - Updated the Github workflow and release script to ensure the changelog is kept up to date
+- **Tracking no longer fails when a PostgreSQL transaction is left in an aborted state** — if application code leaves a database connection in a `PQTRANS_INERROR` state (e.g. a `LOCK TABLE` or raw SQL command inside a transaction that subsequently fails), Rails Pulse now detects this and issues a `ROLLBACK` before running its own tracking queries. Previously, all tracking queries would be rejected by PostgreSQL and the request would go unrecorded. This is a no-op for MySQL and SQLite, which do not have this transaction state.
 
 ## 0.3.3.pre.2 - 2026-05-31
 

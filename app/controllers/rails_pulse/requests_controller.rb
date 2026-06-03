@@ -118,18 +118,6 @@ module RailsPulse
       base_query
     end
 
-    # Override table data setup to handle "recent" mode
-    def setup_table_data(ransack_params)
-      table_ransack_params = build_table_ransack_params(ransack_params)
-      @ransack_query = table_model.ransack(table_ransack_params)
-      @ransack_query.sorts = default_table_sort if @ransack_query.sorts.empty?
-
-      table_results = build_table_results
-      handle_pagination
-
-      @pagination, @table_data = paginate(table_results, limit: session_pagination_limit)
-    end
-
     def set_request
       @request = Request.includes(operations: :query).find(params[:id])
     end
