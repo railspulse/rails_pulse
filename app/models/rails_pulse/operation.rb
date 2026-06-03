@@ -86,8 +86,10 @@ module RailsPulse
         op
       end
       # insert_all! requires every row to have identical keys.
+      # cache_hit defaults to false for non-cache operations so we don't send explicit nil
+      # into a column that may carry a NOT NULL constraint from the add_diagnostic_fields migration.
       all_keys = rows.flat_map(&:keys).uniq
-      rows = rows.map { |r| all_keys.each_with_object({}) { |k, h| h[k] = r[k] } }
+      rows = rows.map { |r| all_keys.each_with_object({}) { |k, h| h[k] = r.fetch(k) { k == :cache_hit ? false : nil } } }
       insert_all!(rows)
     end
 
@@ -155,7 +157,7 @@ module RailsPulse
       hashed = Digest::MD5.hexdigest(normalized)
 
       unless self.query&.hashed_sql == hashed
-        self.query = RailsPulse::Query.create_or_find_by(hashed_sql: hashed) do |q|
+        self.query = RailsPulse::Query.find_or_create_by(hashed_sql: hashed) do |q|
           q.normalized_sql = normalized
         end
       end

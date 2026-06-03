@@ -1,98 +1,69 @@
 module RailsPulse
   module Queries
     module Tables
-      class Index
-        def initialize(ransack_query:, period_type: nil, start_time:, params:, query: nil, disabled_tags: [], show_non_tagged: true)
-          @ransack_query = ransack_query
-          @period_type = period_type
-          @start_time = start_time
-          @params = params
+      class Index < RailsPulse::Tables::Base
+        def initialize(query: nil, **kwargs)
+          super(**kwargs)
           @query = query
-          @disabled_tags = disabled_tags
-          @show_non_tagged = show_non_tagged
         end
 
-        def to_table
-          # Check if we have explicit ransack sorts
-          has_sorts = @ransack_query.sorts.any?
+        private
 
-          base_query = @ransack_query.result(distinct: false)
-            .joins("INNER JOIN rails_pulse_queries ON rails_pulse_queries.id = rails_pulse_summaries.summarizable_id")
-            .where(
-              summarizable_type: "RailsPulse::Query",
-              period_type: @period_type
-            )
-
-          # Apply tag filters by excluding queries with disabled tags
-          # Separate "non_tagged" from actual tags (it's a virtual tag)
-          actual_disabled_tags = @disabled_tags.reject { |tag| tag == "non_tagged" }
-
-          # Exclude queries with actual disabled tags
-          actual_disabled_tags.each do |tag|
-            sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
-            base_query = base_query.where.not("rails_pulse_queries.tags LIKE ?", "%#{sanitized_tag}%")
-          end
-
-          # Exclude non-tagged queries if show_non_tagged is false
-          unless @show_non_tagged
-            base_query = base_query.where("rails_pulse_queries.tags IS NOT NULL AND rails_pulse_queries.tags != '[]'")
-          end
-
-          base_query = base_query.where(summarizable_id: @query.id) if @query
-
-          # Apply grouping and aggregation
-          grouped_query = base_query
-            .group(
-              "rails_pulse_summaries.summarizable_id",
-              "rails_pulse_summaries.summarizable_type",
-              "rails_pulse_queries.id",
-              "rails_pulse_queries.normalized_sql",
-              "rails_pulse_queries.tags"
-            )
-            .select(
-              "rails_pulse_summaries.summarizable_id",
-              "rails_pulse_summaries.summarizable_type",
-              "rails_pulse_queries.id as query_id",
-              "rails_pulse_queries.normalized_sql",
-              "rails_pulse_queries.tags",
-              "AVG(rails_pulse_summaries.avg_duration) as avg_duration",
-              "MAX(rails_pulse_summaries.max_duration) as max_duration",
-              "SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0) as p95_duration",
-              "SUM(rails_pulse_summaries.p99_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0) as p99_duration",
-              "SUM(rails_pulse_summaries.count) as execution_count",
-              "SUM(rails_pulse_summaries.count * rails_pulse_summaries.avg_duration) as total_time_consumed"
-            )
-
-          # Apply sorting based on ransack sorts or use default
-          if has_sorts
-            # Apply custom sorting based on ransack parameters
-            sort = @ransack_query.sorts.first
-            direction = sort.dir == "desc" ? :desc : :asc
-
-            case sort.name
-            when "avg_duration_sort"
-              grouped_query = grouped_query.order(Arel.sql("AVG(rails_pulse_summaries.avg_duration)").send(direction))
-            when "p95_duration_sort"
-              grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0)").send(direction))
-            when "p99_duration_sort"
-              grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.p99_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0)").send(direction))
-            when "execution_count_sort"
-              grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.count)").send(direction))
-            when "total_time_consumed_sort"
-              grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.count * rails_pulse_summaries.avg_duration)").send(direction))
-            when "normalized_sql"
-              grouped_query = grouped_query.order(Arel.sql("rails_pulse_queries.normalized_sql").send(direction))
-            else
-              # Unknown sort field, fallback to default
-              grouped_query = grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0)").desc)
-            end
-          else
-            # Apply default sort when no explicit sort is provided
-            grouped_query = grouped_query.order(Arel.sql("AVG(rails_pulse_summaries.p95_duration)").desc)
-          end
-
-          grouped_query
+        def apply_extra_filters(query)
+          @query ? query.where(summarizable_id: @query.id) : query
         end
+
+        def join_clause
+          "INNER JOIN rails_pulse_queries ON rails_pulse_queries.id = rails_pulse_summaries.summarizable_id"
+        end
+
+        def summarizable_type = "RailsPulse::Query"
+        def model_table = "rails_pulse_queries"
+
+        def group_columns
+          %w[
+            rails_pulse_summaries.summarizable_id
+            rails_pulse_summaries.summarizable_type
+            rails_pulse_queries.id
+            rails_pulse_queries.normalized_sql
+            rails_pulse_queries.tags
+          ]
+        end
+
+        def select_columns
+          [
+            "rails_pulse_summaries.summarizable_id",
+            "rails_pulse_summaries.summarizable_type",
+            "rails_pulse_queries.id as query_id",
+            "rails_pulse_queries.normalized_sql",
+            "rails_pulse_queries.tags",
+            "AVG(rails_pulse_summaries.avg_duration) as avg_duration",
+            "MAX(rails_pulse_summaries.max_duration) as max_duration",
+            "#{WEIGHTED_P95} as p95_duration",
+            "#{WEIGHTED_P99} as p99_duration",
+            "SUM(rails_pulse_summaries.count) as execution_count",
+            "SUM(rails_pulse_summaries.count * rails_pulse_summaries.avg_duration) as total_time_consumed"
+          ]
+        end
+
+        def named_sort(grouped_query, sort_name, direction)
+          case sort_name
+          when "avg_duration_sort"
+            grouped_query.order(Arel.sql("AVG(rails_pulse_summaries.avg_duration)").send(direction))
+          when "p95_duration_sort"
+            grouped_query.order(Arel.sql(WEIGHTED_P95).send(direction))
+          when "p99_duration_sort"
+            grouped_query.order(Arel.sql(WEIGHTED_P99).send(direction))
+          when "execution_count_sort"
+            grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.count)").send(direction))
+          when "total_time_consumed_sort"
+            grouped_query.order(Arel.sql("SUM(rails_pulse_summaries.count * rails_pulse_summaries.avg_duration)").send(direction))
+          when "normalized_sql"
+            grouped_query.order(Arel.sql("rails_pulse_queries.normalized_sql").send(direction))
+          end
+        end
+
+        def default_sort = Arel.sql("AVG(rails_pulse_summaries.p95_duration)").desc
       end
     end
   end

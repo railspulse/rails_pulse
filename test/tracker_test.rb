@@ -40,28 +40,12 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     assert_equal 1, request.operations.count
   end
 
-  test "creates route and request records with operations" do
-    RailsPulse::Tracker.track_request(@tracking_data)
-
-    route = RailsPulse::Route.find_by(method: @tracking_data[:method], path: @tracking_data[:path])
-
-    assert_not_nil route
-
-    request = RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
-
-    assert_not_nil request
-    assert_equal 1, request.operations.count
-  end
-
   test "handles errors gracefully" do
-    # Stub to raise an error
-    RailsPulse::Route.stubs(:find_or_create_by).raises(StandardError, "DB Error")
+    RailsPulse::Route.stubs(:find_by).raises(StandardError, "DB Error")
 
     assert_nothing_raised do
       RailsPulse::Tracker.track_request(@tracking_data)
     end
-
-    RailsPulse::Route.unstub(:find_or_create_by)
   end
 
   test "healthy? returns true when database is connected" do
@@ -296,7 +280,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Request.unstub(:create!)
   end
 
-  test "returns nil after exhausting retries on connection not established errors" do
+  test "returns nil on connection not established error" do
     RailsPulse::Request.stubs(:create!).raises(ActiveRecord::ConnectionNotEstablished, "connection lost")
 
     result = RailsPulse::Tracker.track_request(@tracking_data)
@@ -306,21 +290,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     RailsPulse::Request.unstub(:create!)
   end
 
-  test "logs retry count in error message when connection retries are exhausted" do
-    log_output = StringIO.new
-    RailsPulse.stubs(:logger).returns(Logger.new(log_output))
-    RailsPulse::Request.stubs(:create!).raises(ActiveRecord::ConnectionNotEstablished, "connection lost")
-
-    RailsPulse::Tracker.track_request(@tracking_data)
-
-    assert_includes log_output.string, "after"
-    assert_includes log_output.string, "retries"
-  ensure
-    RailsPulse.unstub(:logger)
-    RailsPulse::Request.unstub(:create!)
-  end
-
-  test "returns nil after exhausting retries on statement invalid errors" do
+  test "returns nil on statement invalid error" do
     RailsPulse::Request.stubs(:create!).raises(ActiveRecord::StatementInvalid, "statement error")
 
     result = RailsPulse::Tracker.track_request(@tracking_data)
@@ -328,5 +298,25 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     assert_nil result
   ensure
     RailsPulse::Request.unstub(:create!)
+  end
+
+  # Aborted Transaction Recovery
+
+  test "clears aborted postgresql transaction state before tracking" do
+    # Simulate a raw PostgreSQL connection reporting PQTRANS_INERROR (value 2).
+    # We stub raw_connection only — query execution uses @raw_connection directly
+    # via with_raw_connection, so actual DB operations are unaffected by this stub.
+    mock_raw_conn = Struct.new(:transaction_status).new(3) # PQTRANS_INERROR
+
+    conn = RailsPulse::ApplicationRecord.connection
+    conn.stubs(:raw_connection).returns(mock_raw_conn)
+    conn.expects(:rollback_db_transaction).once
+
+    result = RailsPulse::Tracker.track_request(@tracking_data)
+
+    assert_kind_of RailsPulse::Request, result
+    assert_equal @tracking_data[:request_uuid], result.request_uuid
+  ensure
+    conn.unstub(:raw_connection)
   end
 end

@@ -227,3 +227,20 @@ jobs:
 
     - name: Build gem
       run: bundle exec rake build
+
+  changelog:
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Check [Unreleased] section has content
+      run: |
+        UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## (\[|[0-9])/{exit} found && NF{print}' CHANGELOG.md)
+        if [ -z "$UNRELEASED_CONTENT" ]; then
+          echo "❌ [Unreleased] section in CHANGELOG.md is empty"
+          echo ""
+          echo "Add your changes under '## [Unreleased]' before merging."
+          exit 1
+        fi
+        echo "✓ [Unreleased] section has content"

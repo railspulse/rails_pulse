@@ -18,6 +18,7 @@ module RailsPulse
   autoload :QueryAnalysisService, File.expand_path("../../app/services/rails_pulse/query_analysis_service", __dir__)
   autoload :TagFilterService, File.expand_path("../../app/services/rails_pulse/tag_filter_service", __dir__)
   autoload :ExceptionCaptureService, File.expand_path("../../app/services/rails_pulse/exception_capture_service", __dir__)
+  autoload :OperationSuggestions, File.expand_path("../../app/services/rails_pulse/operation_suggestions", __dir__)
 
   # Analysis services
   module Analysis
@@ -28,16 +29,6 @@ module RailsPulse
     autoload :NPlusOneDetector, File.expand_path("../../app/services/rails_pulse/analysis/n_plus_one_detector", __dir__)
     autoload :QueryCharacteristicsAnalyzer, File.expand_path("../../app/services/rails_pulse/analysis/query_characteristics_analyzer", __dir__)
     autoload :SuggestionGenerator, File.expand_path("../../app/services/rails_pulse/analysis/suggestion_generator", __dir__)
-  end
-
-  # Optimization suggestion services
-  module Suggestions
-    autoload :Base, File.expand_path("../../app/services/rails_pulse/suggestions/base", __dir__)
-    autoload :SqlSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/sql_suggestions_service", __dir__)
-    autoload :ViewSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/view_suggestions_service", __dir__)
-    autoload :ControllerSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/controller_suggestions_service", __dir__)
-    autoload :CacheSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/cache_suggestions_service", __dir__)
-    autoload :HttpSuggestionsService, File.expand_path("../../app/services/rails_pulse/suggestions/http_suggestions_service", __dir__)
   end
 
   # Installer services

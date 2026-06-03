@@ -12,8 +12,8 @@ route_summary_1:
 
 route_summary_api_users_day:
   summarizable: api_users (RailsPulse::Route)
-  period_start: <%= Time.current.beginning_of_day %>
-  period_end: <%= Time.current.end_of_day %>
+  period_start: <%= (Time.current - 2.hours).beginning_of_day %>
+  period_end: <%= (Time.current - 2.hours).end_of_day %>
   period_type: "day"
   count: 120
   avg_duration: 2200.0
