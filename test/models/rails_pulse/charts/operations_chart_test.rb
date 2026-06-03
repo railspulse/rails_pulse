@@ -72,6 +72,37 @@ module RailsPulse
         assert_equal 1, chart.total_duration
       end
 
+      test "total_duration is at least 1 when negative operation durations make max_end less than min_start" do
+        # If every operation has a large negative duration, max_end < min_start and
+        # total_duration is negative — dividing by it inverts left_pct for bars with
+        # higher start_times, producing negative CSS percentages.
+        ops = [
+          make_op(type: "controller", start_time: 500,   duration: -600),
+          make_op(type: "sql",        start_time: 1_000, duration: -900)
+        ]
+        chart = OperationsChart.new(ops)
+
+        assert_operator chart.total_duration, :>=, 1
+        chart.bars.each do |bar|
+          assert_operator bar.left_pct,  :>=, 0, "left_pct was #{bar.left_pct}"
+          assert_operator bar.width_pct, :>=, 0, "width_pct was #{bar.width_pct}"
+        end
+      end
+
+      test "bar width_pct is non-negative when an individual operation has a negative duration" do
+        # total_duration stays positive here (the controller op anchors it), but the
+        # SQL bar's negative duration produces a negative width_pct without clamping.
+        ops = [
+          make_op(type: "controller", start_time: 0, duration: 100),
+          make_op(type: "sql",        start_time: 0, duration: -50)
+        ]
+        chart = OperationsChart.new(ops)
+
+        sql_bar = chart.bars.find { |b| b.operation.operation_type == "sql" }
+
+        assert_operator sql_bar.width_pct, :>=, 0, "width_pct was #{sql_bar.width_pct}"
+      end
+
       # Calculation Tests
 
       test "min_start equals smallest start_time" do
