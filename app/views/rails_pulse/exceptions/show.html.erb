@@ -1,11 +1,18 @@
 <%= render 'rails_pulse/components/page_header' %>
 
-<%= render 'rails_pulse/components/panel', title: 'Exception Details' do %>
+<% status_actions = [
+     { label: "Resolve", url: exception_path(@exception_group), method: :patch, params: { status: "resolved" }, class: "btn", disabled: @exception_group.status == "resolved" },
+     { label: "Ignore",  url: exception_path(@exception_group), method: :patch, params: { status: "ignored" },  class: "btn", disabled: @exception_group.status == "ignored" },
+     { label: "Open",    url: exception_path(@exception_group), method: :patch, params: { status: "open" },     class: "btn", disabled: @exception_group.status == "open" }
+   ] %>
+<%= render 'rails_pulse/components/panel', title: 'Exception Details', actions: status_actions do %>
   <dl class="descriptive-list mbs-4">
     <dt>Class</dt>
     <dd><code><%= @exception_group.exception_class %></code></dd>
     <dt>Message</dt>
     <dd><%= @exception_group.message.presence || "—" %></dd>
+    <dt>Status</dt>
+    <dd><%= render 'rails_pulse/exceptions/status_badge', group: @exception_group %></dd>
     <dt>First Seen</dt>
     <dd><%= human_readable_occurred_at(@exception_group.first_seen_at) %></dd>
     <dt>Last Seen</dt>

@@ -1,7 +1,8 @@
 <% columns = [
-  { field: :exception_class, label: 'Exception', cell_class: 'truncate-cell' },
-  { field: :last_seen_at,    label: 'Last Seen',  class: 'w-48' },
-  { field: :first_seen_at,   label: 'First Seen', class: 'w-48' },
+  { field: :exception_class,  label: 'Exception', cell_class: 'truncate-cell' },
+  { field: :status,           label: 'Status',    class: 'w-28', sortable: false },
+  { field: :last_seen_at,     label: 'Last Seen', class: 'w-48' },
+  { field: :first_seen_at,    label: 'First Seen', class: 'w-48' },
   { field: :occurrence_count, label: 'Count',     class: 'w-24' }
 ] %>
 
@@ -17,6 +18,7 @@
             <div class="text-subtle text-xs truncate"><%= group.message %></div>
           <% end %>
         </td>
+        <td><%= render 'rails_pulse/exceptions/status_badge', group: group %></td>
         <td class="whitespace-nowrap"><%= human_readable_occurred_at(group.last_seen_at) %></td>
         <td class="whitespace-nowrap"><%= human_readable_occurred_at(group.first_seen_at) %></td>
         <td class="whitespace-nowrap"><%= number_with_delimiter(group.occurrence_count) %></td>

@@ -185,7 +185,9 @@ module RailsPulse
       private
 
       def self.compute_fingerprint(exception_class, frame)
-        location = "#{frame[:file]}:#{frame[:line]}"
+        method_name = frame[:method].to_s
+        anonymous = method_name.include?("block") || method_name.start_with?("<")
+        location = anonymous ? "#{frame[:file]}:#{frame[:line]}" : "#{frame[:file]}##{method_name}"
         Digest::SHA256.hexdigest("#{exception_class}:#{location}")
       end
 

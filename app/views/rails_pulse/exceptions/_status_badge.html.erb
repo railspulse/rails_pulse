@@ -1,0 +1,6 @@
+<% badge_class = case group.status
+  when "resolved" then "badge--positive"
+  when "ignored"  then "badge--secondary"
+  else                 "badge--negative"
+  end %>
+<span class="badge <%= badge_class %>"><%= group.status.capitalize %></span>

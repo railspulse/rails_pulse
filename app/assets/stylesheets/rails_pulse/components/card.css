@@ -4,6 +4,7 @@
   border-width: var(--border);
   padding: var(--size-6);
   box-shadow: var(--shadow-sm);
+  position: relative;
 }
 
 /* Metric strip — single card with vertical dividers between metrics */

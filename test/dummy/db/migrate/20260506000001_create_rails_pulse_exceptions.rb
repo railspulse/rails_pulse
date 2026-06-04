@@ -8,7 +8,7 @@ class CreateRailsPulseExceptions < ActiveRecord::Migration[7.0]
         t.datetime :first_seen_at,    null: false
         t.datetime :last_seen_at,     null: false
         t.integer  :occurrence_count, null: false, default: 0
-        t.string   :status,           null: false, default: "open", comment: "open, resolved, ignored — UI actions are Pro-gated"
+        t.string   :status,           null: false, default: "open", comment: "open, resolved, ignored"
         t.datetime :resolved_at,                   comment: "When the group was last resolved"
         t.boolean  :preserve,         null: false, default: false, comment: "Exempt from count-based and orphan cleanup"
         t.timestamps

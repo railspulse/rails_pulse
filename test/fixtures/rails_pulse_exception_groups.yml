@@ -2,6 +2,8 @@ record_not_found:
   fingerprint: "abc1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab"
   exception_class: "ActiveRecord::RecordNotFound"
   message: "Couldn't find Post with 'id'=999"
+  status: open
+  preserve: false
   first_seen_at: <%= 2.days.ago %>
   last_seen_at: <%= 1.hour.ago %>
   occurrence_count: 5
@@ -12,8 +14,35 @@ zero_division:
   fingerprint: "def4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd"
   exception_class: "ZeroDivisionError"
   message: "divided by 0"
+  status: open
+  preserve: false
   first_seen_at: <%= 1.day.ago %>
   last_seen_at: <%= 30.minutes.ago %>
   occurrence_count: 1
   created_at: <%= 1.day.ago %>
   updated_at: <%= 30.minutes.ago %>
+
+resolved_group:
+  fingerprint: "aaa1111111111111111111111111111111111111111111111111111111111aa"
+  exception_class: "ArgumentError"
+  message: "bad argument"
+  status: resolved
+  preserve: false
+  resolved_at: <%= 1.day.ago %>
+  first_seen_at: <%= 3.days.ago %>
+  last_seen_at: <%= 1.day.ago %>
+  occurrence_count: 2
+  created_at: <%= 3.days.ago %>
+  updated_at: <%= 1.day.ago %>
+
+ignored_group:
+  fingerprint: "bbb2222222222222222222222222222222222222222222222222222222222bb"
+  exception_class: "Net::ReadTimeout"
+  message: "execution expired"
+  status: ignored
+  preserve: false
+  first_seen_at: <%= 5.days.ago %>
+  last_seen_at: <%= 2.days.ago %>
+  occurrence_count: 10
+  created_at: <%= 5.days.ago %>
+  updated_at: <%= 2.days.ago %>

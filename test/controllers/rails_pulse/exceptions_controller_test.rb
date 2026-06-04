@@ -19,11 +19,12 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
     assert_operator RailsPulse::ExceptionsController, :<, RailsPulse::ApplicationController
   end
 
-  test "controller has index and show actions" do
+  test "controller has index, show, and update actions" do
     controller = RailsPulse::ExceptionsController.new
 
     assert_respond_to controller, :index
     assert_respond_to controller, :show
+    assert_respond_to controller, :update
   end
 
   # Index Action Tests
@@ -161,5 +162,75 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.exception_occurrence_path(@group, occurrence)
 
     assert_response :success
+  end
+
+  # Update Action Tests
+
+  test "update resolves an open group" do
+    patch rails_pulse.exception_path(@group), params: { status: "resolved" }
+
+    assert_equal "resolved", @group.reload.status
+  end
+
+  test "update sets resolved_at when resolving" do
+    freeze_time do
+      patch rails_pulse.exception_path(@group), params: { status: "resolved" }
+
+      assert_in_delta Time.current, @group.reload.resolved_at, 1
+    end
+  end
+
+  test "update ignores an open group" do
+    patch rails_pulse.exception_path(@group), params: { status: "ignored" }
+
+    assert_equal "ignored", @group.reload.status
+  end
+
+  test "update reopens a resolved group" do
+    resolved = rails_pulse_exception_groups(:resolved_group)
+
+    patch rails_pulse.exception_path(resolved), params: { status: "open" }
+
+    assert_equal "open", resolved.reload.status
+  end
+
+  test "update clears resolved_at when reopening" do
+    resolved = rails_pulse_exception_groups(:resolved_group)
+
+    patch rails_pulse.exception_path(resolved), params: { status: "open" }
+
+    assert_nil resolved.reload.resolved_at
+  end
+
+  test "update clears resolved_at when ignoring" do
+    resolved = rails_pulse_exception_groups(:resolved_group)
+
+    patch rails_pulse.exception_path(resolved), params: { status: "ignored" }
+
+    assert_nil resolved.reload.resolved_at
+  end
+
+  test "update redirects to the exception show page" do
+    patch rails_pulse.exception_path(@group), params: { status: "resolved" }
+
+    assert_redirected_to rails_pulse.exception_path(@group)
+  end
+
+  test "update sets a flash notice" do
+    patch rails_pulse.exception_path(@group), params: { status: "resolved" }
+
+    assert_equal "Exception marked as resolved.", flash[:notice]
+  end
+
+  test "update returns 422 for an invalid status" do
+    patch rails_pulse.exception_path(@group), params: { status: "deleted" }
+
+    assert_response :unprocessable_entity
+  end
+
+  test "update returns 404 for an unknown group" do
+    patch rails_pulse.exception_path(id: 0), params: { status: "resolved" }
+
+    assert_response :not_found
   end
 end

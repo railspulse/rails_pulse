@@ -2,7 +2,7 @@ module RailsPulse
   class ExceptionsController < ApplicationController
     include TimeRangeConcern
 
-    before_action :set_exception_group, only: :show
+    before_action :set_exception_group, only: %i[show update]
 
     def index
       @start_time, @end_time, @selected_time_range = setup_time_range
@@ -21,6 +21,22 @@ module RailsPulse
       occurrences = @exception_group.occurrences.order(occurred_at: :desc)
       @latest_occurrence = occurrences.first
       @pagination, @occurrences = paginate(occurrences, limit: session_pagination_limit)
+    end
+
+    def update
+      new_status = params[:status]
+      unless ExceptionGroup::STATUSES.include?(new_status)
+        head :unprocessable_entity
+        return
+      end
+
+      @exception_group.update!(
+        status: new_status,
+        resolved_at: new_status == "resolved" ? Time.current : nil
+      )
+
+      flash[:notice] = "Exception marked as #{new_status}."
+      redirect_to exception_path(@exception_group)
     end
 
     private
