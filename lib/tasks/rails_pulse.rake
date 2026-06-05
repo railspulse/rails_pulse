@@ -9,6 +9,10 @@ namespace :db do
         if schema_file.exist?
           load schema_file
           puts "Rails Pulse schema loaded successfully"
+          # Record any copied migrations as already applied so they don't show as
+          # pending after a fresh schema load. The schema file creates all tables and
+          # columns directly, so the incremental migrations are logically already done.
+          record_rails_pulse_migrations_applied
         else
           puts "Rails Pulse schema file not found. Run: rails generate rails_pulse:install --database=separate"
         end
@@ -28,12 +32,64 @@ namespace :db do
   end
 end
 
+# Hook into test database preparation so the separate Rails Pulse DB is populated
+# for test runs, not just for development/production db:prepare.
+# The task may be namespaced as "app:db:schema:load_rails_pulse" in engine context
+# vs "db:schema:load_rails_pulse" in a host app — try both.
+Rake::Task["db:test:prepare"].enhance do
+  if separate_database_setup?
+    task_name = %w[db:schema:load_rails_pulse app:db:schema:load_rails_pulse]
+      .find { |name| Rake::Task.task_defined?(name) }
+    if task_name
+      Rake::Task[task_name].reenable
+      Rake::Task[task_name].invoke
+    end
+  end
+end if Rake::Task.task_defined?("db:test:prepare")
+
 # Helper function to detect database setup type
 def separate_database_setup?
   # Check if there's a rails_pulse_migrate directory (indicates separate database)
   Rails.root.join("db/rails_pulse_migrate").exist? ||
   # Check if database.yml has rails_pulse configuration
   (Rails.application.config.database_configuration.dig(Rails.env, "rails_pulse").present?)
+end
+
+# After a schema load, insert version numbers for any migration files already in
+# db/rails_pulse_migrate/ into schema_migrations so Rails does not report them as
+# pending. The schema already includes every column those migrations would add, so
+# running them would be a no-op — but Rails still needs the version recorded.
+def record_rails_pulse_migrations_applied
+  return unless defined?(RailsPulse::ApplicationRecord)
+
+  migrations_path = Rails.root.join("db/rails_pulse_migrate")
+  return unless migrations_path.exist?
+
+  connection = RailsPulse::ApplicationRecord.connection
+
+  # Create schema_migrations if this is a brand-new database that has not yet
+  # had any migrations run against it (e.g. just after db:create).
+  unless connection.table_exists?(:schema_migrations)
+    connection.create_table :schema_migrations, id: false do |t|
+      t.string :version, null: false
+    end
+    connection.add_index :schema_migrations, :version,
+      unique: true, name: "unique_schema_migrations"
+  end
+
+  Dir.glob("#{migrations_path}/*.rb").sort.each do |file|
+    version = File.basename(file, ".rb").split("_").first
+    next if connection.select_values(
+      "SELECT version FROM schema_migrations WHERE version = #{connection.quote(version)}"
+    ).any?
+
+    connection.execute(
+      "INSERT INTO schema_migrations (version) VALUES (#{connection.quote(version)})"
+    )
+    puts "[RailsPulse] Marked migration #{version} as applied (schema already up to date)"
+  end
+rescue => e
+  warn "[RailsPulse] Could not mark migrations as applied: #{e.message}"
 end
 
 namespace :rails_pulse do

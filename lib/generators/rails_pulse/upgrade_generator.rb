@@ -38,16 +38,20 @@ module RailsPulse
         # Override with command line option if provided
         return options[:database].to_sym if options[:database] != "detect"
 
-        # Check for existing Rails Pulse tables
-        tables_exist = rails_pulse_tables_exist?
+        # Determine database type before checking tables so the table lookup
+        # uses the correct connection pool for separate-database setups.
+        @is_separate_db = has_separate_database_config?
+        tables_exist    = rails_pulse_tables_exist?
+        schema_path     = File.join(root_path, "db/rails_pulse_schema.rb")
 
-        schema_path = File.join(root_path, "db/rails_pulse_schema.rb")
-
-        if !tables_exist && File.exist?(schema_path)
+        # :schema_only only applies to single-database users who have the schema file
+        # but haven't run the install migration yet. Separate-database users legitimately
+        # have no Rails Pulse tables on the primary connection — that is not an error.
+        if !tables_exist && !@is_separate_db && File.exist?(schema_path)
           :schema_only
         elsif !tables_exist
           :not_installed
-        elsif has_separate_database_config?
+        elsif @is_separate_db
           :separate
         else
           :single
@@ -56,25 +60,30 @@ module RailsPulse
 
       def has_separate_database_config?
         config_path = File.join(root_path, "config/database.yml")
-
         return false unless File.exist?(config_path)
 
         require "yaml"
-        db_config = YAML.safe_load(File.read(config_path), aliases: true)
-
-        # Check if any environment has a rails_pulse database configuration
+        require "erb"
+        # Process ERB before YAML parsing — database.yml files commonly use ERB
+        # for environment-specific values. YAML.safe_load alone raises SyntaxError
+        # on ERB tags.
+        yaml_content = ERB.new(File.read(config_path)).result
+        db_config = YAML.safe_load(yaml_content, aliases: true)
         db_config.values.any? { |env| env.is_a?(Hash) && env.key?("rails_pulse") }
-      rescue Psych::SyntaxError, Psych::AliasesNotEnabled, Errno::ENOENT
-        # If we can't read or parse the file, assume single database
+      rescue
         false
       end
 
       def rails_pulse_tables_exist?
         return false unless defined?(ActiveRecord::Base)
 
-        connection = ActiveRecord::Base.connection
-        required_tables = get_rails_pulse_table_names
+        connection = if @is_separate_db && defined?(RailsPulse::ApplicationRecord)
+          RailsPulse::ApplicationRecord.connection
+        else
+          ActiveRecord::Base.connection
+        end
 
+        required_tables = get_rails_pulse_table_names
         required_tables.all? { |table| connection.table_exists?(table) }
       rescue
         false
@@ -170,7 +179,11 @@ module RailsPulse
       def detect_missing_columns
         return {} unless rails_pulse_tables_exist?
 
-        connection = ActiveRecord::Base.connection
+        connection = if @is_separate_db && defined?(RailsPulse::ApplicationRecord)
+          RailsPulse::ApplicationRecord.connection
+        else
+          ActiveRecord::Base.connection
+        end
         missing = {}
 
         get_expected_schema_from_file.each do |table_name, columns|
