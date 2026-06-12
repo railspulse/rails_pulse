@@ -185,6 +185,15 @@ class RailsPulse::FormattingHelperTest < ActionView::TestCase
     assert_equal "Unknown", result
   end
 
+  test "time_ago_in_words returns zero seconds for a future time" do
+    # When time travel moves the clock backward mid-request, the stored timestamp
+    # can end up in the future relative to Time.now, making seconds_ago negative.
+    # Without clamping, the else branch renders "-Nd ago" with a negative integer.
+    result = time_ago_in_words(Time.now + 3.years)
+
+    assert_equal "0s ago", result
+  end
+
   test "time_ago_in_words handles very recent time (0 seconds)" do
     time = Time.now
     result = time_ago_in_words(time)

@@ -120,6 +120,36 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     assert_operator operation[:duration], :>=, 0
   end
 
+  test "duration is clamped to zero when finish precedes start due to time travel mid-request" do
+    # A host-app test that calls Timecop.freeze or travel_to after a page visit
+    # but while an in-flight AJAX request is still being handled can cause the
+    # process_action.action_controller notification to capture start at real
+    # wall-clock time and finish at the frozen (past) time. With finish < start,
+    # (finish - start) * 1000 produces a value like -99,732,412,858 ms (~3 years),
+    # which overflows the duration column's numeric(15, 6) constraint (max ~10^9).
+    real_time = Time.current
+    past_time = real_time - 3.years
+
+    payload = { controller: "UsersController", action: "index" }
+
+    RailsPulse::Subscribers::OperationSubscriber.send(
+      :capture_operation,
+      "process_action.action_controller",
+      real_time,
+      past_time,
+      payload,
+      "controller",
+      :controller
+    )
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_not_nil operation
+    assert_operator operation[:duration], :>=, 0,
+      "Duration was #{operation[:duration]}ms — must be clamped to zero when " \
+      "finish precedes start (clock moved backward via time travel mid-request)"
+  end
+
   test "should capture partial rendering operations" do
     payload = {
       identifier: "/app/views/users/_user.html.erb"

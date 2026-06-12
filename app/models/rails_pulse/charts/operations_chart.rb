@@ -26,7 +26,7 @@ module RailsPulse
         @operations = operations.to_a
         @min_start = @operations.map(&:start_time).min || 0
         @max_end = @operations.map { |op| op.start_time + op.duration }.max || 1
-        @total_duration = (@max_end - @min_start).nonzero? || 1
+        @total_duration = [ @max_end - @min_start, 0 ].max.nonzero? || 1
         @bars = build_bars
         @max_depth = @bars.map(&:depth).max || 0
         @lane_labels = build_lane_labels
@@ -38,7 +38,7 @@ module RailsPulse
         depth_map = build_depth_map
         @operations.map do |operation|
           left_pct = ((operation.start_time - @min_start).to_f / @total_duration) * (100 - px_to_pct) + px_to_pct / 2
-          width_pct = (operation.duration.to_f / @total_duration) * (100 - px_to_pct)
+          width_pct = [ (operation.duration.to_f / @total_duration) * (100 - px_to_pct), 0 ].max
           OperationBar.new(operation, operation.duration.round(0), left_pct, width_pct, depth_map[operation.object_id])
         end
       end

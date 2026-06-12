@@ -121,7 +121,7 @@ module RailsPulse
             operation_type: operation_type,
             label: label,
             actual_sql: actual_sql,
-            duration: (finish - start) * 1000,
+            duration: [ (finish - start) * 1000, 0 ].max,
             codebase_location: codebase_location,
             start_time: start.to_f,
             occurred_at: Time.zone.at(start)
@@ -143,7 +143,7 @@ module RailsPulse
             job_run_id: job_run_id,
             operation_type: operation_type,
             label: label,
-            duration: (finish - start) * 1000,
+            duration: [ (finish - start) * 1000, 0 ].max,
             codebase_location: codebase_location,
             start_time: start.to_f,
             occurred_at: Time.zone.at(start)
