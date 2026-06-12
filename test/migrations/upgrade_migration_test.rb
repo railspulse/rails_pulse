@@ -26,6 +26,8 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     AddActualQueryToOperations
     CreateRailsPulseJobRuns
     MakeCacheHitOnOperationsNullable
+    AddControllerActionToRailsPulseRoutes
+    ChangeRailsPulseRoutesToMultiVerbModel
   ].freeze
 
   def setup
@@ -38,6 +40,30 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
   end
 
   # Structure Tests
+
+  test "upgrade from v0.2.7 adds controller_action to routes" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    assert @conn.column_exists?(:rails_pulse_routes, :controller_action), "controller_action missing on routes"
+
+    col = @conn.columns(:rails_pulse_routes).find { |c| c.name == "controller_action" }
+
+    assert col.null, "controller_action should be nullable"
+  end
+
+  test "upgrade from v0.2.7 converts routes to multi-verb model" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    assert @conn.column_exists?(:rails_pulse_routes, :http_methods), "http_methods missing on routes"
+    assert_not @conn.column_exists?(:rails_pulse_routes, :method), "old method column should be removed"
+    assert @conn.column_exists?(:rails_pulse_requests, :method), "method column missing on requests"
+
+    assert @conn.index_exists?(:rails_pulse_routes, [ :controller_action, :path ],
+      name: "index_rails_pulse_routes_on_controller_action_and_path"),
+      "new unique index missing on routes"
+  end
 
   test "upgrade from v0.2.7 adds diagnostic columns to operations and requests" do
     load_baseline(RailsPulse::TestSchemas::V027)
@@ -190,17 +216,19 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     path = "/migration-test-#{SecureRandom.hex(4)}"
 
     @conn.execute(<<~SQL)
-      INSERT INTO rails_pulse_routes (method, path, created_at, updated_at)
-      VALUES ('GET', '#{path}', '#{now}', '#{now}')
+      INSERT INTO rails_pulse_routes (http_methods, path, controller_action, created_at, updated_at)
+      VALUES ('["GET"]', '#{path}', 'home#index', '#{now}', '#{now}')
     SQL
 
     route_id = @conn.select_value("SELECT id FROM rails_pulse_routes WHERE path = '#{path}'")
 
     assert route_id, "route insert failed"
 
+    is_error_value = @conn.adapter_name.downcase == "postgresql" ? "false" : "0"
+
     @conn.execute(<<~SQL)
       INSERT INTO rails_pulse_requests (route_id, duration, status, is_error, request_uuid, occurred_at, created_at, updated_at)
-      VALUES (#{route_id}, 42.5, 200, 0, '#{uuid}', '#{now}', '#{now}', '#{now}')
+      VALUES (#{route_id}, 42.5, 200, #{is_error_value}, '#{uuid}', '#{now}', '#{now}', '#{now}')
     SQL
 
     request_count = @conn.select_value("SELECT COUNT(*) FROM rails_pulse_requests WHERE request_uuid = '#{uuid}'").to_i

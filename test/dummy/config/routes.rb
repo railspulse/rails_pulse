@@ -13,4 +13,8 @@ Rails.application.routes.draw do
 
   get  "jobs",         to: "jobs#index"
   post "jobs/trigger", to: "jobs#trigger", as: :trigger_job
+
+  get "posts", to: "home#index", as: :posts
+  get "posts/:id", to: "home#index", as: :post
+  get "partners/:client_id/submissions/:uuid", to: "home#index", as: :partner_submission
 end

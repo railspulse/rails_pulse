@@ -25,7 +25,11 @@
           data-rails-pulse--chart-switcher-target="chartTypeInput"
         >
         <%= form.search_field :route_path_cont,
-                          placeholder: "Filter by route",
+                          placeholder: "Filter by path",
+                          autocomplete: "off",
+                          class: "input" %>
+        <%= form.search_field :route_controller_action_cont,
+                          placeholder: "Filter by action",
                           autocomplete: "off",
                           class: "input" %>
         <%= form.select :avg_duration,

@@ -43,7 +43,8 @@ module RailsPulse
 
             assert_includes first_result.attributes.keys, "route_id"
             assert_includes first_result.attributes.keys, "path"
-            assert_includes first_result.attributes.keys, "route_method"
+            assert_includes first_result.attributes.keys, "route_methods"
+            assert_includes first_result.attributes.keys, "controller_action"
           end
         end
 
@@ -72,22 +73,22 @@ module RailsPulse
           end
         end
 
-        test "groups by route" do
+        test "groups by controller_action and path" do
           results = create_table
 
-          # Each route should appear only once
-          route_ids = results.map(&:route_id)
+          # Each (controller_action, path) combination should appear only once
+          groups = results.map { |r| [ r.controller_action, r.path ] }
 
-          assert_equal route_ids.uniq.length, route_ids.length
+          assert_equal groups.uniq.length, groups.length
         end
 
         test "joins with rails_pulse_routes table" do
           results = create_table
 
           if results.any?
-            # Should have route path and method from routes table
+            # Should have route path and aggregated methods from routes table
             assert_kind_of String, results.first.path
-            assert_kind_of String, results.first.route_method
+            assert_kind_of String, results.first.route_methods
           end
         end
 
@@ -98,7 +99,7 @@ module RailsPulse
             first_result = results.first
             assert_kind_of Numeric, first_result.route_id if first_result.route_id
             assert_kind_of String, first_result.path if first_result.path
-            assert_kind_of String, first_result.route_method if first_result.route_method
+            assert_kind_of String, first_result.route_methods if first_result.route_methods
           end
         end
 
@@ -580,28 +581,65 @@ module RailsPulse
           assert_operator results.to_a.length, :>=, 0
         end
 
-        test "multiple routes in same period aggregated separately" do
+        test "multiple routes in same period aggregated by controller_action and path" do
           results = create_table
           results_array = results.to_a
 
-          # Each route should have its own aggregated row
-          route_ids = results_array.map(&:route_id).uniq
+          # Each (controller_action, path) group should appear exactly once
+          groups = results_array.map { |r| [ r.controller_action, r.path ] }
 
-          assert_equal results_array.length, route_ids.length
+          assert_equal groups.uniq.length, groups.length
         end
 
         test "single route across multiple periods aggregated together" do
           results = create_table
           results_array = results.to_a
 
-          # Single route across multiple time periods should be one row
+          # Single (controller_action, path) group across multiple periods → one row
           if results_array.any?
-            route_ids = results_array.map(&:route_id)
+            groups = results_array.map { |r| [ r.controller_action, r.path ] }
 
-            assert_equal route_ids.uniq.length, route_ids.length
+            assert_equal groups.uniq.length, groups.length
           else
             assert_kind_of ActiveRecord::Relation, results
           end
+        end
+
+        test "multi-verb route shows all accepted methods in route_methods" do
+          now = Time.current
+          shared_path = "/multi-verb-test-#{SecureRandom.hex(4)}"
+
+          route = RailsPulse::Route.create!(
+            http_methods: '["GET","POST"]',
+            path: shared_path,
+            controller_action: "home#index",
+            tags: "[]"
+          )
+          RailsPulse::Summary.create!(
+            summarizable: route,
+            period_type: :day,
+            period_start: now.beginning_of_day,
+            period_end: now.end_of_day,
+            count: 20,
+            avg_duration: 50.0,
+            min_duration: 10.0,
+            max_duration: 100.0,
+            total_duration: 1000.0,
+            p50_duration: 50.0,
+            p95_duration: 90.0,
+            p99_duration: 95.0,
+            stddev_duration: 20.0,
+            error_count: 0,
+            success_count: 20
+          )
+
+          results = create_table.to_a
+          matching = results.select { |r| r.path == shared_path }
+
+          assert_equal 1, matching.length, "multi-verb route should produce exactly one row"
+          methods = JSON.parse(matching.first.route_methods || "[]")
+          assert_includes methods, "GET"
+          assert_includes methods, "POST"
         end
 
         test "combines with controller parameters correctly" do
@@ -609,6 +647,58 @@ module RailsPulse
           results = create_table
 
           assert_kind_of ActiveRecord::Relation, results
+        end
+
+        # Path / action filter Tests
+
+        test "filters by route_path_cont via ransack" do
+          now = Time.current
+          unique = SecureRandom.hex(4)
+          matching_path = "/path-filter-match-#{unique}"
+          other_path    = "/path-filter-other-#{unique}"
+
+          [ matching_path, other_path ].each_with_index do |path, i|
+            route = RailsPulse::Route.create!(http_methods: '["GET"]', path: path, controller_action: "home#index", tags: "[]")
+            RailsPulse::Summary.create!(
+              summarizable: route, period_type: :day,
+              period_start: now.beginning_of_day, period_end: now.end_of_day,
+              count: 10, avg_duration: 50.0, min_duration: 10.0, max_duration: 100.0,
+              total_duration: 500.0, p50_duration: 50.0, p95_duration: 90.0,
+              p99_duration: 95.0, stddev_duration: 20.0, error_count: 0, success_count: 10
+            )
+          end
+
+          @ransack_query = RailsPulse::Summary.ransack(route_path_cont: "path-filter-match-#{unique}")
+          results = create_table.to_a
+
+          assert_includes results.map(&:path), matching_path
+          refute_includes results.map(&:path), other_path
+        end
+
+        test "filters by route_controller_action_cont via ransack" do
+          now = Time.current
+          unique = SecureRandom.hex(4)
+          matching_ca = "acme_#{unique}#show"
+          other_ca    = "other_#{unique}#index"
+
+          [ matching_ca, other_ca ].each_with_index do |ca, i|
+            route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/ca-filter-#{i}-#{unique}", controller_action: ca, tags: "[]")
+            RailsPulse::Summary.create!(
+              summarizable: route, period_type: :day,
+              period_start: now.beginning_of_day, period_end: now.end_of_day,
+              count: 10, avg_duration: 50.0, min_duration: 10.0, max_duration: 100.0,
+              total_duration: 500.0, p50_duration: 50.0, p95_duration: 90.0,
+              p99_duration: 95.0, stddev_duration: 20.0, error_count: 0, success_count: 10
+            )
+          end
+
+          @ransack_query = RailsPulse::Summary.ransack(route_controller_action_cont: "acme_#{unique}")
+          results = create_table.to_a
+
+          assert results.any? { |r| r.controller_action == matching_ca },
+                 "expected matching controller_action in results"
+          refute results.any? { |r| r.controller_action == other_ca },
+                 "expected non-matching controller_action to be excluded"
         end
       end
     end

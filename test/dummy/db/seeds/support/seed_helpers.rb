@@ -18,15 +18,19 @@ module SeedHelpers
   end
 
   def self.controller_action_for(route)
+    return route.controller_action if route.controller_action.present?
+
+    # Fallback for routes without a stored controller_action (e.g. long/unrecognized paths).
+    # Uses lowercase "controller#action" format consistent with path_params derivation.
     parts = route.path.split("/").reject { |p| p.empty? || p.start_with?(":") }
-    controller_name = (parts.last || "home").split("_").map(&:capitalize).join
-    action = case route.method
-    when "GET"    then route.path.include?(":id") ? "show" : "index"
+    controller = (parts.last || "home").downcase
+    action = case route.http_methods_list.first
+    when "GET"    then route.path.include?(":") ? "show" : "index"
     when "POST"   then "create"
     when "PUT", "PATCH" then "update"
     when "DELETE" then "destroy"
     else "index"
     end
-    "#{controller_name}Controller##{action}"
+    "#{controller}##{action}"
   end
 end

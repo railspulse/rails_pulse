@@ -2,9 +2,9 @@ require "test_helper"
 
 class RailsPulse::TaggableTest < ActiveSupport::TestCase
   setup do
-    @exact    = RailsPulse::Route.create!(method: "GET", path: "/taggable_test/exact",    tags: '["api"]')
-    @extended = RailsPulse::Route.create!(method: "GET", path: "/taggable_test/extended", tags: '["api_internal"]')
-    @untagged = RailsPulse::Route.create!(method: "GET", path: "/taggable_test/untagged", tags: "[]")
+    @exact    = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/taggable_test/exact",    tags: '["api"]')
+    @extended = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/taggable_test/extended", tags: '["api_internal"]')
+    @untagged = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/taggable_test/untagged", tags: "[]")
   end
 
   # with_tag
@@ -61,7 +61,7 @@ class RailsPulse::TaggableTest < ActiveSupport::TestCase
   end
 
   test "with_tags excludes records with empty array" do
-    empty_array_route = RailsPulse::Route.create!(method: "GET", path: "/empty", tags: "[]")
+    empty_array_route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/empty", tags: "[]")
     results = RailsPulse::Route.with_tags
 
     assert_not_includes results, empty_array_route
@@ -79,14 +79,14 @@ class RailsPulse::TaggableTest < ActiveSupport::TestCase
   end
 
   test "tag_list returns empty array for nil tags" do
-    route = RailsPulse::Route.new(method: "GET", path: "/nil_tags")
+    route = RailsPulse::Route.new(http_methods: '["GET"]', path: "/nil_tags")
     route.tags = nil
 
     assert_empty route.tag_list
   end
 
   test "tag_list handles malformed JSON gracefully" do
-    route = RailsPulse::Route.create!(method: "GET", path: "/malformed")
+    route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/malformed")
     route.update_column(:tags, "invalid json")
 
     assert_empty route.tag_list
@@ -171,7 +171,7 @@ class RailsPulse::TaggableTest < ActiveSupport::TestCase
     valid_tags = [ "api", "api-v2", "api_internal", "test123", "TEST" ]
 
     valid_tags.each do |tag|
-      route = RailsPulse::Route.create!(method: "GET", path: "/test_#{tag}")
+      route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/test_#{tag}")
       result = route.add_tag(tag)
 
       assert result, "Should accept tag: #{tag}"
@@ -210,7 +210,7 @@ class RailsPulse::TaggableTest < ActiveSupport::TestCase
   # ensure_tags_is_array callback
 
   test "ensure_tags_is_array converts nil to empty array on save" do
-    route = RailsPulse::Route.new(method: "GET", path: "/callback_test")
+    route = RailsPulse::Route.new(http_methods: '["GET"]', path: "/callback_test")
     route.tags = nil
     route.save!
 
@@ -218,7 +218,7 @@ class RailsPulse::TaggableTest < ActiveSupport::TestCase
   end
 
   test "ensure_tags_is_array converts array to JSON on save" do
-    route = RailsPulse::Route.new(method: "GET", path: "/callback_array")
+    route = RailsPulse::Route.new(http_methods: '["GET"]', path: "/callback_array")
     route.tags = [ "test", "demo" ]
     route.save!
 
@@ -226,7 +226,7 @@ class RailsPulse::TaggableTest < ActiveSupport::TestCase
   end
 
   test "ensure_tags_is_array leaves valid JSON string unchanged" do
-    route = RailsPulse::Route.new(method: "GET", path: "/callback_json")
+    route = RailsPulse::Route.new(http_methods: '["GET"]', path: "/callback_json")
     route.tags = '["already_json"]'
     route.save!
 

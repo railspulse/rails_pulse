@@ -22,4 +22,13 @@ namespace :rails_pulse do
   task cleanup_stats: :environment do
     RailsPulse::Stats::CleanupStatsReporter.report
   end
+
+  desc "Migrate existing routes: backfill controller actions, normalize paths, consolidate multi-verb routes."
+  task migrate_routes: :environment do
+    ca_results = RailsPulse::RouteControllerActionBackfiller.call
+    puts "Controller action backfill: #{ca_results[:updated]} updated, #{ca_results[:skipped]} skipped, #{ca_results[:already_set]} already set"
+
+    path_results = RailsPulse::RouteMigrator.call
+    puts "Path normalization: #{path_results[:merged]} merged, #{path_results[:skipped]} skipped, #{path_results[:unchanged]} unchanged"
+  end
 end

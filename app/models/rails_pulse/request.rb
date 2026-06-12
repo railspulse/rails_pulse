@@ -21,7 +21,7 @@ module RailsPulse
     before_validation :set_request_uuid, on: :create
 
     def self.ransackable_attributes(auth_object = nil)
-      %w[id route_id occurred_at duration status status_category status_indicator route_path response_size_bytes]
+      %w[id route_id occurred_at duration status status_category status_indicator route_path http_method response_size_bytes]
     end
 
     def self.ransackable_associations(auth_object = nil)
@@ -34,6 +34,10 @@ module RailsPulse
 
     ransacker :route_path do |parent|
       Arel.sql("rails_pulse_routes.path")
+    end
+
+    ransacker :http_method do |parent|
+      parent.table[:method]
     end
 
     ransacker :status_category do |parent|

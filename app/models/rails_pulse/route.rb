@@ -9,25 +9,56 @@ module RailsPulse
     has_many :summaries, as: :summarizable, class_name: "RailsPulse::Summary", dependent: :destroy
 
     # Validations
-    validates :method, presence: true
     validates :path, presence: true
+    validates :http_methods, presence: true
 
-    def self.by_method_and_path(method, path)
-      # Fast path: route already exists (the common case for recurring requests).
-      route = find_by(method: method, path: path)
-      return route if route
+    # Find an existing route by controller_action + path, or create one.
+    # When a route already exists, the incoming http_method is appended to its
+    # http_methods array if not already present (self-healing for PATCH/PUT etc.).
+    # For requests without a controller_action (404s, middleware short-circuits),
+    # falls back to grouping by path alone.
+    def self.find_or_create_for_request(http_method, path, controller_action: nil)
+      if controller_action.present?
+        route = find_by(controller_action: controller_action, path: path)
+        if route
+          route.add_http_method(http_method)
+          return route
+        end
 
-      # Use INSERT ... ON CONFLICT DO NOTHING rather than create_or_find_by so that
-      # concurrent inserts for the same route are silently skipped at the database level.
-      # create_or_find_by rescues RecordNotUnique at the Ruby level, but PostgreSQL still
-      # logs a constraint violation ERROR before raising — causing noisy logs.
-      # unique_by is omitted for cross-database compatibility (MySQL rejects it); there is
-      # only one unique constraint on this table so DO NOTHING resolves unambiguously.
-      # Tags must be set explicitly here because insert bypasses before_save callbacks.
-      insert(
-        { method: method, path: path, tags: "[]", created_at: Time.current, updated_at: Time.current }
-      )
-      find_by!(method: method, path: path)
+        # Use INSERT ... ON CONFLICT DO NOTHING rather than create_or_find_by so that
+        # concurrent inserts for the same route are silently skipped at the database level.
+        insert(
+          { http_methods: [ http_method ].to_json, path: path, controller_action: controller_action,
+            tags: "[]", created_at: Time.current, updated_at: Time.current }
+        )
+        find_by!(controller_action: controller_action, path: path)
+      else
+        route = find_by(controller_action: nil, path: path)
+        if route
+          route.add_http_method(http_method)
+          return route
+        end
+
+        insert(
+          { http_methods: [ http_method ].to_json, path: path, controller_action: nil,
+            tags: "[]", created_at: Time.current, updated_at: Time.current }
+        )
+        where(controller_action: nil, path: path).order(:id).first!
+      end
+    end
+
+    def http_methods_list
+      return [] if http_methods.blank?
+      JSON.parse(http_methods)
+    rescue JSON::ParserError
+      []
+    end
+
+    def add_http_method(http_method)
+      return if http_method.blank?
+      current = http_methods_list
+      return if current.include?(http_method)
+      update_column(:http_methods, (current + [ http_method ]).sort.to_json)
     end
 
     def self.ransackable_attributes(auth_object = nil)
@@ -69,13 +100,11 @@ module RailsPulse
     end
 
     ransacker :requests_per_minute do
-      # Use a simpler database-agnostic approach - this is mainly used for sorting/filtering
-      # so exact precision isn't as critical as avoiding database-specific functions
       Arel.sql("COUNT(rails_pulse_requests.id)")
     end
 
     def to_breadcrumb
-      "#{method.upcase} #{path}".truncate(60)
+      "#{http_methods_list.sort.join('|')} #{path}".truncate(60)
     end
 
     def self.average_response_time
@@ -83,7 +112,7 @@ module RailsPulse
     end
 
     def path_and_method
-      "#{path} #{method}"
+      "#{path} #{http_methods_list.join('|')}"
     end
   end
 end

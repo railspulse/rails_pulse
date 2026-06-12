@@ -73,7 +73,8 @@ module RailsPulse
     def self.ransackable_attributes(auth_object = nil)
       %w[
         period_start period_end avg_duration min_duration max_duration p95_duration p99_duration
-        count error_count requests_per_minute error_rate_percentage route_path_cont
+        count error_count requests_per_minute error_rate_percentage
+        route_path route_controller_action
         execution_count total_time_consumed normalized_sql
         summarizable_id summarizable_type
       ]
@@ -101,14 +102,15 @@ module RailsPulse
       Arel.sql("rails_pulse_routes.path")
     end
 
-    # Ransacker for route path filtering using subquery (works without JOIN)
-    ransacker :route_path_cont do |parent|
-      Arel.sql(<<-SQL)
-        rails_pulse_summaries.summarizable_id IN (
-          SELECT id FROM rails_pulse_routes
-          WHERE rails_pulse_routes.path LIKE '%' || ? || '%'
-        )
-      SQL
+    # Ransacker for controller_action sorting (when joined with routes table)
+    ransacker :route_controller_action do
+      Arel.sql("rails_pulse_routes.controller_action")
+    end
+
+    # Placeholder ransacker for method aggregation sorting; actual ORDER BY is
+    # applied by Routes::Tables::Index#named_sort using the DB-appropriate expression.
+    ransacker :route_methods_sort do
+      Arel.sql("rails_pulse_routes.method")
     end
 
     # Sorting-specific ransackers for GROUP BY compatibility (used only in ORDER BY)
