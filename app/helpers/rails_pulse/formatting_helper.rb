@@ -15,7 +15,7 @@ module RailsPulse
       # Convert to local system timezone for consistent calculation
       time = time.getlocal
 
-      seconds_ago = Time.now - time
+      seconds_ago = [ Time.now - time, 0 ].max
 
       case seconds_ago
       when 0..59
