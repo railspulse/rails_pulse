@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+# Warns when test/dummy/db/schema.rb is from a different branch.
+# Rails 8.1 loads schema.rb instead of running migrations on a fresh DB,
+# so a stale schema.rb silently applies the wrong table structure.
+BRANCH_SWITCH=$3
+if [ "$BRANCH_SWITCH" = "1" ]; then
+  SCHEMA="test/dummy/db/schema.rb"
+  if [ -f "$SCHEMA" ]; then
+    VERSION=$(grep -o 'version: [0-9_]*' "$SCHEMA" | tr -d 'version: _')
+    if [ -n "$VERSION" ] && ! ls test/dummy/db/migrate/${VERSION}_*.rb 2>/dev/null | grep -q .; then
+      echo ""
+      echo "⚠️  test/dummy/db/schema.rb (v$VERSION) is from a different branch."
+      echo "   Run: rm -f test/dummy/db/schema.rb && rails db:drop db:create db:migrate"
+      echo ""
+    fi
+  fi
+fi
