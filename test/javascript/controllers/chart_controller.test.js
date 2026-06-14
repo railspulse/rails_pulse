@@ -82,6 +82,21 @@ describe('ChartController', () => {
       expect(label10).toBe('10:00')
       expect(label11).toBe('11:00')
     })
+
+    it('formats sub-hour timestamps to different labels (not all HH:00)', async () => {
+      const html = makeTimePairHTML([{ name: 'P95', data: [] }])
+      const ctrl = await mountChart(html)
+      const formatter = ctrl.getSafeFormatter('time')
+
+      const t705 = new Date('2024-01-15T07:05:00').getTime()
+      const t710 = new Date('2024-01-15T07:10:00').getTime()
+      const t715 = new Date('2024-01-15T07:15:00').getTime()
+
+      expect(formatter(t705)).toBe('07:05')
+      expect(formatter(t710)).toBe('07:10')
+      expect(formatter(t715)).toBe('07:15')
+      expect(formatter(t705)).not.toBe(formatter(t710))
+    })
   })
 
   // # buildChartConfig() — formatter preservation

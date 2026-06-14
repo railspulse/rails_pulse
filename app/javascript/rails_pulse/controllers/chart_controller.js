@@ -445,7 +445,8 @@ export default class extends Controller {
             return value.toString()
           }
 
-          return hours.toString().padStart(2, '0') + ':00'
+          const minutes = date.getMinutes()
+          return hours.toString().padStart(2, '0') + ':' + minutes.toString().padStart(2, '0')
         }
         return value
       },
@@ -467,13 +468,15 @@ export default class extends Controller {
       },
 
       // Tooltip formatters (these receive params array, not a single value)
-      // Tooltip with time (HH:00) and milliseconds
+      // Tooltip with time (HH:MM) and milliseconds
       'tooltip_time_ms': (params) => {
         if (!Array.isArray(params) || params.length === 0) return ''
 
         const data = params[0]
         const date = new Date(data.axisValue)
-        const dateString = date.getHours().toString().padStart(2, '0') + ':00'
+        const hours = date.getHours().toString().padStart(2, '0')
+        const minutes = date.getMinutes().toString().padStart(2, '0')
+        const dateString = `${hours}:${minutes}`
         const value = parseInt(data.data)
 
         return `${dateString} <br /> ${data.marker} ${value} ms`
@@ -491,13 +494,15 @@ export default class extends Controller {
         return `${dateString} <br /> ${data.marker} ${value} ms`
       },
 
-      // Tooltip with time (HH:00) - generic
+      // Tooltip with time (HH:MM) - generic
       'tooltip_time': (params) => {
         if (!Array.isArray(params) || params.length === 0) return ''
 
         const data = params[0]
         const date = new Date(data.axisValue)
-        const dateString = date.getHours().toString().padStart(2, '0') + ':00'
+        const hours = date.getHours().toString().padStart(2, '0')
+        const minutes = date.getMinutes().toString().padStart(2, '0')
+        const dateString = `${hours}:${minutes}`
 
         return `${dateString} <br /> ${data.marker} ${data.data}`
       },
