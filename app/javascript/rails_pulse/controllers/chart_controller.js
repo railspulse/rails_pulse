@@ -539,7 +539,7 @@ export default class extends Controller {
         params.forEach(param => {
           // param.value may be [timestamp, value] for time axis or a plain number
           const rawValue = Array.isArray(param.value) ? param.value[1] : param.value
-          const value = typeof rawValue === 'number' ? Math.round(rawValue) : rawValue
+          const value = typeof rawValue === 'number' ? Math.round(rawValue).toLocaleString('en-US') : (rawValue ?? 0)
           html += `${param.marker} ${param.seriesName}: ${value}<br/>`
         })
 
@@ -590,7 +590,7 @@ export default class extends Controller {
         params.forEach(param => {
           // param.value may be [timestamp, value] for time axis or a plain number
           const rawValue = Array.isArray(param.value) ? param.value[1] : param.value
-          const value = typeof rawValue === 'number' ? Math.round(rawValue) : rawValue
+          const value = typeof rawValue === 'number' ? Math.round(rawValue).toLocaleString('en-US') : (rawValue ?? 0)
           html += `${param.marker} ${param.seriesName}: ${value}<br/>`
         })
 
@@ -603,7 +603,7 @@ export default class extends Controller {
 
         const data = params[0]
         let axisValue = data.axisValue
-        const value = typeof data.value === 'number' ? Math.round(data.value) : data.value
+        const value = typeof data.value === 'number' ? Math.round(data.value).toLocaleString('en-US') : (data.value ?? 0)
         const seriesName = data.seriesName || 'Value'
 
         // Format timestamp as hour if it's a number (timestamp in milliseconds)
