@@ -1,12 +1,13 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import ChartController from '../../../app/javascript/rails_pulse/controllers/chart_controller'
 import { mountController } from '../setup'
 
 const HTML = `
-  <div
-    data-controller="chart"
-    data-chart-config-value="{}"
-  ></div>
+  <div data-controller="chart"
+       data-chart-type-value="line"
+       data-chart-data-value="{}"
+       data-chart-options-value="{}">
+  </div>
 `
 
 describe('ChartController', () => {
@@ -15,6 +16,14 @@ describe('ChartController', () => {
   afterEach(() => teardown?.())
 
   async function mount() {
+    vi.stubGlobal('echarts', {
+      init: vi.fn(() => ({
+        setOption: vi.fn(),
+        on: vi.fn(),
+        resize: vi.fn(),
+        dispose: vi.fn(),
+      })),
+    })
     ;({ app, element, teardown } = await mountController('chart', ChartController, HTML))
   }
 
@@ -156,5 +165,120 @@ describe('ChartController', () => {
       const html = formatter(params)
       expect(html).toContain('P95: 43')
     })
+  })
+
+  // # Tooltip formatters — number formatting
+
+  it('formats large numbers with thousands separators in tooltip_with_timestamp', async () => {
+    await mount()
+    const formatter = ctrl().getSafeFormatter('tooltip_with_timestamp')
+    expect(typeof formatter).toBe('function')
+
+    const params = [
+      {
+        axisValue: 'Jan 1',
+        axisValueLabel: 'Jan 1',
+        seriesName: 'P95',
+        marker: '●',
+        value: 15752,
+      },
+    ]
+
+    const html = formatter(params)
+    expect(html).toContain('15,752')
+    expect(html).not.toMatch(/\b15752\b/)
+  })
+
+  it('formats large array values with thousands separators in tooltip_with_timestamp', async () => {
+    await mount()
+    const formatter = ctrl().getSafeFormatter('tooltip_with_timestamp')
+
+    const params = [
+      {
+        axisValue: 'Jan 1',
+        axisValueLabel: 'Jan 1',
+        seriesName: 'P95',
+        marker: '●',
+        value: [1700000000000, 15752],
+      },
+    ]
+
+    const html = formatter(params)
+    expect(html).toContain('15,752')
+    expect(html).not.toMatch(/\b15752\b/)
+  })
+
+  it('leaves small numbers unchanged in tooltip_with_timestamp', async () => {
+    await mount()
+    const formatter = ctrl().getSafeFormatter('tooltip_with_timestamp')
+
+    const params = [
+      {
+        axisValue: 'Jan 1',
+        axisValueLabel: 'Jan 1',
+        seriesName: 'P50',
+        marker: '●',
+        value: 42,
+      },
+    ]
+
+    const html = formatter(params)
+    expect(html).toContain('42')
+  })
+
+  it('formats large numbers with thousands separators in auto_date_tooltip', async () => {
+    await mount()
+    const formatter = ctrl().getSafeFormatter('auto_date_tooltip')
+    expect(typeof formatter).toBe('function')
+
+    const params = [
+      {
+        axisValue: 'Jan 1',
+        seriesName: 'Requests',
+        marker: '●',
+        value: 123456,
+      },
+    ]
+
+    const html = formatter(params)
+    expect(html).toContain('123,456')
+    expect(html).not.toMatch(/\b123456\b/)
+  })
+
+  it('formats large array values with thousands separators in auto_date_tooltip', async () => {
+    await mount()
+    const formatter = ctrl().getSafeFormatter('auto_date_tooltip')
+
+    const params = [
+      {
+        axisValue: String(1700000000000),
+        seriesName: 'Requests',
+        marker: '●',
+        value: [1700000000000, 123456],
+      },
+    ]
+
+    const html = formatter(params)
+    expect(html).toContain('123,456')
+    expect(html).not.toMatch(/\b123456\b/)
+  })
+
+  it('formats large numbers with thousands separators in sparkline_tooltip', async () => {
+    await mount()
+    const formatter = ctrl().getSafeFormatter('sparkline_tooltip')
+    expect(typeof formatter).toBe('function')
+
+    const params = [
+      {
+        axisValue: 'Apr 5',
+        seriesName: 'P95',
+        marker: '●',
+        value: 15752,
+      },
+    ]
+
+    const html = formatter(params)
+    expect(html).toContain('15,752')
+    expect(html).not.toMatch(/\b15752\b/)
   })
 })
