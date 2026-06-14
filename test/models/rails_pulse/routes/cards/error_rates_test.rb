@@ -102,6 +102,8 @@ module RailsPulse
             assert_kind_of Hash, data_point
             assert_includes data_point.keys, :value
             assert_kind_of Numeric, data_point[:value]
+            assert_operator data_point[:value], :>=, 0
+            assert_operator data_point[:value], :<=, 100
           end
         end
 

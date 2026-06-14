@@ -391,4 +391,80 @@ describe('ChartController', () => {
     expect(html).toContain('15,752')
     expect(html).not.toMatch(/\b15752\b/)
   })
+
+  it('sparkline_tooltip shows actual minutes for sub-hour timestamps', async () => {
+    await mount()
+    const formatter = ctrl().getSafeFormatter('sparkline_tooltip')
+    const t715 = new Date('2024-01-15T07:15:00').getTime()
+    const params = [{ axisValue: t715, seriesName: 'P95', marker: '●', value: 42 }]
+
+    const html = formatter(params)
+    expect(html).toContain('07:15')
+    expect(html).not.toContain('07:00')
+  })
+
+  // # sparkline_rate_tooltip
+
+  describe('sparkline_rate_tooltip', () => {
+    it('formats value as a percentage with two decimal places', async () => {
+      await mount()
+      const formatter = ctrl().getSafeFormatter('sparkline_rate_tooltip')
+      expect(typeof formatter).toBe('function')
+
+      const params = [{ axisValue: 'Apr 5', seriesName: 'Error Rate', marker: '●', value: 7.5 }]
+      const html = formatter(params)
+      expect(html).toContain('7.50%')
+    })
+
+    it('shows 0.00% for zero error rate', async () => {
+      await mount()
+      const formatter = ctrl().getSafeFormatter('sparkline_rate_tooltip')
+      const params = [{ axisValue: 'Apr 5', seriesName: 'Error Rate', marker: '●', value: 0 }]
+      const html = formatter(params)
+      expect(html).toContain('0.00%')
+    })
+
+    it('formats timestamp as HH:MM', async () => {
+      await mount()
+      const formatter = ctrl().getSafeFormatter('sparkline_rate_tooltip')
+      const t715 = new Date('2024-01-15T07:15:00').getTime()
+      const params = [{ axisValue: t715, seriesName: 'Error Rate', marker: '●', value: 3.5 }]
+      const html = formatter(params)
+      expect(html).toContain('07:15')
+      expect(html).toContain('3.50%')
+    })
+  })
+
+  // # tooltip_with_timestamp_rate
+
+  describe('tooltip_with_timestamp_rate', () => {
+    it('formats values as percentages with two decimal places', async () => {
+      await mount()
+      const formatter = ctrl().getSafeFormatter('tooltip_with_timestamp_rate')
+      expect(typeof formatter).toBe('function')
+
+      const t = new Date('2024-01-15T14:00:00').getTime()
+      const params = [
+        { axisValue: String(t), axisValueLabel: '14:00', seriesName: '5xx Errors', marker: '●', value: [t, 7.5] },
+        { axisValue: String(t), axisValueLabel: '14:00', seriesName: '4xx Errors', marker: '●', value: [t, 0.25] }
+      ]
+
+      const html = formatter(params)
+      expect(html).toContain('7.50%')
+      expect(html).toContain('0.25%')
+      expect(html).not.toMatch(/\b7\.5\b(?!%)/)
+    })
+
+    it('shows 0.00% for null values', async () => {
+      await mount()
+      const formatter = ctrl().getSafeFormatter('tooltip_with_timestamp_rate')
+      const t = new Date('2024-01-15T14:00:00').getTime()
+      const params = [
+        { axisValue: String(t), axisValueLabel: '14:00', seriesName: '5xx Errors', marker: '●', value: [t, null] }
+      ]
+      const html = formatter(params)
+      expect(html).toContain('0.00%')
+      expect(html).not.toContain('null')
+    })
+  })
 })

@@ -38,16 +38,12 @@ module RailsPulse
             trend_icon, trend_amount = has_data ? trend_for(current_total, previous_total) : [ "move-right", "—" ]
           end
 
-          # Build sparkline data using base class helpers
+          # Build sparkline data as error rate (%) per period
           sparkline_query = build_sparkline_query("RailsPulse::Route")
+          grouped_counts = group_sparkline_by_period(sparkline_query, :count)
           grouped_errors = group_sparkline_by_period(sparkline_query, :error_count)
-          grouped_4xx = group_sparkline_by_period(sparkline_query, :status_4xx)
-
-          # Combine error counts for each period
-          combined_errors = grouped_errors.merge(grouped_4xx) { |_key, errors, fourxx| errors + fourxx }
-
-          # Use base class sparkline generation (handles hour vs day automatically)
-          sparkline_data = sparkline_from(combined_errors)
+          grouped_4xx    = group_sparkline_by_period(sparkline_query, :status_4xx)
+          sparkline_data = sparkline_from_error_rates(grouped_errors, grouped_4xx, grouped_counts)
 
           total_rate = has_data ? (server_rate + client_rate).round(2) : 0
           summary = has_data ? "#{total_rate}% of requests" : "—"
@@ -59,6 +55,7 @@ module RailsPulse
             title: "Error Rate",
             summary: summary,
             chart_data: sparkline_data,
+            sparkline_options: { tooltip: { formatter: "sparkline_rate_tooltip" } },
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: (show_trend? ? comparison_period_text : nil),
@@ -72,6 +69,32 @@ module RailsPulse
 
         def subject_id
           @route&.id
+        end
+
+        def sparkline_from_error_rates(errors_by_period, client_errors_by_period, counts_by_period)
+          if @period_type == "hour"
+            start_time = current_window_start.beginning_of_hour
+            end_time   = now.beginning_of_hour
+            result = {}
+            current_time = start_time
+            while current_time <= end_time
+              errors = errors_by_period[current_time].to_f + client_errors_by_period[current_time].to_f
+              total  = counts_by_period[current_time].to_f
+              rate   = total.zero? ? 0.0 : (errors / total * 100).round(2)
+              result[current_time.to_i * 1000] = { value: rate }
+              current_time += 1.hour
+            end
+            result
+          else
+            start_date = current_window_start.to_date
+            end_date   = now.to_date
+            (start_date..end_date).each_with_object({}) do |day, hash|
+              errors = errors_by_period[day].to_f + client_errors_by_period[day].to_f
+              total  = counts_by_period[day].to_f
+              rate   = total.zero? ? 0.0 : (errors / total * 100).round(2)
+              hash[day.strftime("%b %-d")] = { value: rate }
+            end
+          end
         end
       end
     end
