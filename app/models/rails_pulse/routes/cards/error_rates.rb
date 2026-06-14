@@ -55,7 +55,7 @@ module RailsPulse
             title: "Error Rate",
             summary: summary,
             chart_data: sparkline_data,
-            sparkline_options: { tooltip: { formatter: "sparkline_rate_tooltip" } },
+            sparkline_options: { tooltip: { formatter: "sparkline_percentage_tooltip" } },
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: (show_trend? ? comparison_period_text : nil),

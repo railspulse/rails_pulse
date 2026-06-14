@@ -628,7 +628,7 @@ export default class extends Controller {
       },
 
       // Sparkline tooltip for rate metrics - shows value as a percentage
-      'sparkline_rate_tooltip': (params) => {
+      'sparkline_percentage_tooltip': (params) => {
         if (!Array.isArray(params) || params.length === 0) return ''
 
         const data = params[0]

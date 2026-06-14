@@ -403,12 +403,12 @@ describe('ChartController', () => {
     expect(html).not.toContain('07:00')
   })
 
-  // # sparkline_rate_tooltip
+  // # sparkline_percentage_tooltip
 
-  describe('sparkline_rate_tooltip', () => {
+  describe('sparkline_percentage_tooltip', () => {
     it('formats value as a percentage with two decimal places', async () => {
       await mount()
-      const formatter = ctrl().getSafeFormatter('sparkline_rate_tooltip')
+      const formatter = ctrl().getSafeFormatter('sparkline_percentage_tooltip')
       expect(typeof formatter).toBe('function')
 
       const params = [{ axisValue: 'Apr 5', seriesName: 'Error Rate', marker: '●', value: 7.5 }]
@@ -418,7 +418,7 @@ describe('ChartController', () => {
 
     it('shows 0.00% for zero error rate', async () => {
       await mount()
-      const formatter = ctrl().getSafeFormatter('sparkline_rate_tooltip')
+      const formatter = ctrl().getSafeFormatter('sparkline_percentage_tooltip')
       const params = [{ axisValue: 'Apr 5', seriesName: 'Error Rate', marker: '●', value: 0 }]
       const html = formatter(params)
       expect(html).toContain('0.00%')
@@ -426,7 +426,7 @@ describe('ChartController', () => {
 
     it('formats timestamp as HH:MM', async () => {
       await mount()
-      const formatter = ctrl().getSafeFormatter('sparkline_rate_tooltip')
+      const formatter = ctrl().getSafeFormatter('sparkline_percentage_tooltip')
       const t715 = new Date('2024-01-15T07:15:00').getTime()
       const params = [{ axisValue: t715, seriesName: 'Error Rate', marker: '●', value: 3.5 }]
       const html = formatter(params)
