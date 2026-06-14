@@ -198,6 +198,24 @@ module RailsPulse
           assert_equal 0, result[:series][1][:data][yesterday_index]
         end
 
+        test "includes 4xx errors in the Errors series" do
+          create_route_day_summary(rails_pulse_routes(:api_users), 1.day.ago, count: 200, error_count: 5, status_4xx: 3)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7).to_chart_data
+          yesterday_index = result[:labels].index(1.day.ago.to_date.strftime("%b %-d"))
+
+          assert_equal 8, result[:series][1][:data][yesterday_index]  # 5xx (5) + 4xx (3) = 8
+        end
+
+        test "shows zero errors when both error_count and status_4xx are zero" do
+          create_route_day_summary(rails_pulse_routes(:api_users), 1.day.ago, count: 100, error_count: 0, status_4xx: 0)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7).to_chart_data
+          yesterday_index = result[:labels].index(1.day.ago.to_date.strftime("%b %-d"))
+
+          assert_equal 0, result[:series][1][:data][yesterday_index]
+        end
+
         test "works with 30-day period" do
           create_route_day_summary(rails_pulse_routes(:api_users), 15.days.ago, count: 100, error_count: 5)
 
@@ -287,7 +305,7 @@ module RailsPulse
 
         private
 
-        def create_route_day_summary(route, date, count:, error_count:)
+        def create_route_day_summary(route, date, count:, error_count:, status_4xx: 0)
           RailsPulse::Summary.create!(
             summarizable: route,
             period_start: date.beginning_of_day,
@@ -295,6 +313,7 @@ module RailsPulse
             period_type: "day",
             count: count,
             error_count: error_count,
+            status_4xx: status_4xx,
             avg_duration: 100.0
           )
         end

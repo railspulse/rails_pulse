@@ -25,7 +25,8 @@ module RailsPulse
               .select(
                 :period_start,
                 "SUM(count) as total_count",
-                "SUM(error_count) as total_errors"
+                "SUM(error_count) as total_5xx",
+                "SUM(status_4xx) as total_4xx"
               )
 
             return nil if summaries.empty?
@@ -35,7 +36,7 @@ module RailsPulse
               time_key = summary.period_start.beginning_of_hour
               hourly_data[time_key] = {
                 requests: summary.total_count || 0,
-                errors: summary.total_errors || 0
+                errors: (summary.total_5xx || 0) + (summary.total_4xx || 0)
               }
             end
 
@@ -84,7 +85,8 @@ module RailsPulse
               .select(
                 :period_start,
                 "SUM(count) as total_count",
-                "SUM(error_count) as total_errors"
+                "SUM(error_count) as total_5xx",
+                "SUM(status_4xx) as total_4xx"
               )
 
             return nil if summaries.empty?
@@ -94,7 +96,7 @@ module RailsPulse
               date = summary.period_start.to_date
               daily_data[date] = {
                 requests: summary.total_count || 0,
-                errors: summary.total_errors || 0
+                errors: (summary.total_5xx || 0) + (summary.total_4xx || 0)
               }
             end
 

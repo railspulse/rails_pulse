@@ -611,19 +611,74 @@ export default class extends Controller {
         const value = typeof data.value === 'number' ? Math.round(data.value).toLocaleString('en-US') : (data.value ?? 0)
         const seriesName = data.seriesName || 'Value'
 
-        // Format timestamp as hour if it's a number (timestamp in milliseconds)
+        // Format timestamp as HH:MM if it's a number (timestamp in milliseconds)
         const numValue = typeof axisValue === 'string' ? parseFloat(axisValue) : axisValue
         if (typeof numValue === 'number' && !isNaN(numValue) && numValue > 1000000000000) {
           const date = new Date(numValue)
           if (!isNaN(date.getTime())) {
-            // Format as hour (e.g., "08:00")
-            axisValue = date.getHours().toString().padStart(2, '0') + ':00'
+            const hours = date.getHours().toString().padStart(2, '0')
+            const minutes = date.getMinutes().toString().padStart(2, '0')
+            axisValue = `${hours}:${minutes}`
           }
         }
         // If it's already a formatted string (like "Apr 5"), leave it as-is
 
         // Show marker, series name, and value (e.g., "● P95: 150")
         return `${axisValue}<br/>${data.marker} ${seriesName}: ${value}`
+      },
+
+      // Sparkline tooltip for rate metrics - shows value as a percentage
+      'sparkline_percentage_tooltip': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        const data = params[0]
+        let axisValue = data.axisValue
+        const rawValue = typeof data.value === 'number' ? data.value : (data.value ?? 0)
+        const value = typeof rawValue === 'number' ? rawValue.toFixed(2) + '%' : rawValue
+        const seriesName = data.seriesName || 'Value'
+
+        // Format timestamp as HH:MM if it's a number (timestamp in milliseconds)
+        const numValue = typeof axisValue === 'string' ? parseFloat(axisValue) : axisValue
+        if (typeof numValue === 'number' && !isNaN(numValue) && numValue > 1000000000000) {
+          const date = new Date(numValue)
+          if (!isNaN(date.getTime())) {
+            const hours = date.getHours().toString().padStart(2, '0')
+            const minutes = date.getMinutes().toString().padStart(2, '0')
+            axisValue = `${hours}:${minutes}`
+          }
+        }
+
+        return `${axisValue}<br/>${data.marker} ${seriesName}: ${value}`
+      },
+
+      // Multi-series tooltip for rate/percentage charts (e.g. error rate chart)
+      'tooltip_with_timestamp_rate': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        const axisValue = params[0].axisValue
+        const ts = Number(axisValue)
+        let dateString
+
+        if (!isNaN(ts) && ts > 1000000000000) {
+          const date = new Date(ts)
+          const axisLabel = params[0].axisValueLabel || ''
+          const isHourly = /^\d{2}:\d{2}$/.test(axisLabel)
+          dateString = isHourly
+            ? date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+            : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        } else {
+          dateString = axisValue
+        }
+
+        let html = `${dateString}<br/>`
+        params.forEach(param => {
+          const rawValue = Array.isArray(param.value) ? param.value[1] : param.value
+          const numericValue = typeof rawValue === 'number' ? rawValue : 0
+          const value = numericValue.toFixed(2) + '%'
+          html += `${param.marker} ${param.seriesName}: ${value}<br/>`
+        })
+
+        return html
       }
     }
 
