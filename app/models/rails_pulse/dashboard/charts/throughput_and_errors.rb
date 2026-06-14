@@ -47,12 +47,10 @@ module RailsPulse
               current_time += 1.hour
             end
 
-            labels = time_range.map { |time| time.strftime("%H:%M") }
-
             series = [
               {
                 name: "Requests",
-                data: time_range.map { |time| hourly_data[time]&.[](:requests) || 0 },
+                data: time_range.map { |time| [ time.to_i * 1000, hourly_data[time]&.[](:requests) || 0 ] },
                 type: "bar",
                 color: RailsPulse::ChartColors::DEFAULT,
                 itemStyle: { borderRadius: [ 5, 5, 0, 0 ] },
@@ -60,7 +58,7 @@ module RailsPulse
               },
               {
                 name: "Errors",
-                data: time_range.map { |time| hourly_data[time]&.[](:errors) || 0 },
+                data: time_range.map { |time| [ time.to_i * 1000, hourly_data[time]&.[](:errors) || 0 ] },
                 type: "bar",
                 color: "#dc2626",
                 itemStyle: { borderRadius: [ 5, 5, 0, 0 ] },
@@ -68,6 +66,8 @@ module RailsPulse
                 z: 2
               }
             ]
+
+            return { series: series }
           else
             start_date = @period.days.ago.beginning_of_day.to_date
             end_date = Time.current.to_date

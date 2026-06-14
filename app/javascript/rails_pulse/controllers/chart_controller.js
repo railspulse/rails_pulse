@@ -160,20 +160,6 @@ export default class extends Controller {
       config.xAxis = config.xAxis || {}
       if (isTimePairs) {
         config.xAxis.type = 'time'
-        // ECharts time axis leveledFormat doesn't support JS function formatters —
-        // it expects native format strings ('{MM}/{dd}') or undefined. Replace any
-        // function formatter with an appropriate native time format string.
-        if (config.xAxis.axisLabel) {
-          if (typeof config.xAxis.axisLabel.formatter === 'function') {
-            // Detect granularity from data: < 1 day between points = hourly
-            const p0 = data.series[0]?.data?.[0]
-            const p1 = data.series[0]?.data?.[1]
-            const t0 = Array.isArray(p0) ? p0[0] : p0?.value?.[0]
-            const t1 = Array.isArray(p1) ? p1[0] : p1?.value?.[0]
-            const isHourly = t0 && t1 && (t1 - t0) < 86400000
-            config.xAxis.axisLabel.formatter = isHourly ? '{HH}:{mm}' : '{MM}/{dd}'
-          }
-        }
       } else {
         config.xAxis.type = 'category'
         config.xAxis.data = data.labels
@@ -459,7 +445,8 @@ export default class extends Controller {
             return value.toString()
           }
 
-          return hours.toString().padStart(2, '0') + ':00'
+          const minutes = date.getMinutes()
+          return hours.toString().padStart(2, '0') + ':' + minutes.toString().padStart(2, '0')
         }
         return value
       },
@@ -481,13 +468,15 @@ export default class extends Controller {
       },
 
       // Tooltip formatters (these receive params array, not a single value)
-      // Tooltip with time (HH:00) and milliseconds
+      // Tooltip with time (HH:MM) and milliseconds
       'tooltip_time_ms': (params) => {
         if (!Array.isArray(params) || params.length === 0) return ''
 
         const data = params[0]
         const date = new Date(data.axisValue)
-        const dateString = date.getHours().toString().padStart(2, '0') + ':00'
+        const hours = date.getHours().toString().padStart(2, '0')
+        const minutes = date.getMinutes().toString().padStart(2, '0')
+        const dateString = `${hours}:${minutes}`
         const value = parseInt(data.data)
 
         return `${dateString} <br /> ${data.marker} ${value} ms`
@@ -505,13 +494,15 @@ export default class extends Controller {
         return `${dateString} <br /> ${data.marker} ${value} ms`
       },
 
-      // Tooltip with time (HH:00) - generic
+      // Tooltip with time (HH:MM) - generic
       'tooltip_time': (params) => {
         if (!Array.isArray(params) || params.length === 0) return ''
 
         const data = params[0]
         const date = new Date(data.axisValue)
-        const dateString = date.getHours().toString().padStart(2, '0') + ':00'
+        const hours = date.getHours().toString().padStart(2, '0')
+        const minutes = date.getMinutes().toString().padStart(2, '0')
+        const dateString = `${hours}:${minutes}`
 
         return `${dateString} <br /> ${data.marker} ${data.data}`
       },
