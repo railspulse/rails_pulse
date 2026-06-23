@@ -116,6 +116,16 @@ To rebuild assets: `npm run build` (or `npm run build:dev` for source maps).
 
 Run `rake test_release` before any release — it validates git status, RuboCop, Brakeman, asset build, gem build, generator tests, and the full test matrix. See `docs/releasing.md` for the full process.
 
+## Git Hooks
+
+Shared hooks live in `.githooks/`. Run once after cloning to activate them:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The `post-checkout` hook warns when `test/dummy/db/schema.rb` is from a different branch (Rails 8.1 silently loads schema.rb instead of running migrations on a fresh DB, applying the wrong table structure).
+
 ## Agent skills
 
 ### Issue tracker

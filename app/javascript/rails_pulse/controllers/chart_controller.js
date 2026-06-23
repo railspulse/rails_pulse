@@ -160,20 +160,6 @@ export default class extends Controller {
       config.xAxis = config.xAxis || {}
       if (isTimePairs) {
         config.xAxis.type = 'time'
-        // ECharts time axis leveledFormat doesn't support JS function formatters —
-        // it expects native format strings ('{MM}/{dd}') or undefined. Replace any
-        // function formatter with an appropriate native time format string.
-        if (config.xAxis.axisLabel) {
-          if (typeof config.xAxis.axisLabel.formatter === 'function') {
-            // Detect granularity from data: < 1 day between points = hourly
-            const p0 = data.series[0]?.data?.[0]
-            const p1 = data.series[0]?.data?.[1]
-            const t0 = Array.isArray(p0) ? p0[0] : p0?.value?.[0]
-            const t1 = Array.isArray(p1) ? p1[0] : p1?.value?.[0]
-            const isHourly = t0 && t1 && (t1 - t0) < 86400000
-            config.xAxis.axisLabel.formatter = isHourly ? '{HH}:{mm}' : '{MM}/{dd}'
-          }
-        }
       } else {
         config.xAxis.type = 'category'
         config.xAxis.data = data.labels
@@ -459,7 +445,8 @@ export default class extends Controller {
             return value.toString()
           }
 
-          return hours.toString().padStart(2, '0') + ':00'
+          const minutes = date.getMinutes()
+          return hours.toString().padStart(2, '0') + ':' + minutes.toString().padStart(2, '0')
         }
         return value
       },
@@ -481,13 +468,15 @@ export default class extends Controller {
       },
 
       // Tooltip formatters (these receive params array, not a single value)
-      // Tooltip with time (HH:00) and milliseconds
+      // Tooltip with time (HH:MM) and milliseconds
       'tooltip_time_ms': (params) => {
         if (!Array.isArray(params) || params.length === 0) return ''
 
         const data = params[0]
         const date = new Date(data.axisValue)
-        const dateString = date.getHours().toString().padStart(2, '0') + ':00'
+        const hours = date.getHours().toString().padStart(2, '0')
+        const minutes = date.getMinutes().toString().padStart(2, '0')
+        const dateString = `${hours}:${minutes}`
         const value = parseInt(data.data)
 
         return `${dateString} <br /> ${data.marker} ${value} ms`
@@ -505,13 +494,15 @@ export default class extends Controller {
         return `${dateString} <br /> ${data.marker} ${value} ms`
       },
 
-      // Tooltip with time (HH:00) - generic
+      // Tooltip with time (HH:MM) - generic
       'tooltip_time': (params) => {
         if (!Array.isArray(params) || params.length === 0) return ''
 
         const data = params[0]
         const date = new Date(data.axisValue)
-        const dateString = date.getHours().toString().padStart(2, '0') + ':00'
+        const hours = date.getHours().toString().padStart(2, '0')
+        const minutes = date.getMinutes().toString().padStart(2, '0')
+        const dateString = `${hours}:${minutes}`
 
         return `${dateString} <br /> ${data.marker} ${data.data}`
       },
@@ -553,7 +544,7 @@ export default class extends Controller {
         params.forEach(param => {
           // param.value may be [timestamp, value] for time axis or a plain number
           const rawValue = Array.isArray(param.value) ? param.value[1] : param.value
-          const value = typeof rawValue === 'number' ? Math.round(rawValue) : rawValue
+          const value = typeof rawValue === 'number' ? Math.round(rawValue).toLocaleString('en-US') : (rawValue ?? 0)
           html += `${param.marker} ${param.seriesName}: ${value}<br/>`
         })
 
@@ -604,7 +595,7 @@ export default class extends Controller {
         params.forEach(param => {
           // param.value may be [timestamp, value] for time axis or a plain number
           const rawValue = Array.isArray(param.value) ? param.value[1] : param.value
-          const value = typeof rawValue === 'number' ? Math.round(rawValue) : rawValue
+          const value = typeof rawValue === 'number' ? Math.round(rawValue).toLocaleString('en-US') : (rawValue ?? 0)
           html += `${param.marker} ${param.seriesName}: ${value}<br/>`
         })
 
@@ -617,22 +608,77 @@ export default class extends Controller {
 
         const data = params[0]
         let axisValue = data.axisValue
-        const value = typeof data.value === 'number' ? Math.round(data.value) : data.value
+        const value = typeof data.value === 'number' ? Math.round(data.value).toLocaleString('en-US') : (data.value ?? 0)
         const seriesName = data.seriesName || 'Value'
 
-        // Format timestamp as hour if it's a number (timestamp in milliseconds)
+        // Format timestamp as HH:MM if it's a number (timestamp in milliseconds)
         const numValue = typeof axisValue === 'string' ? parseFloat(axisValue) : axisValue
         if (typeof numValue === 'number' && !isNaN(numValue) && numValue > 1000000000000) {
           const date = new Date(numValue)
           if (!isNaN(date.getTime())) {
-            // Format as hour (e.g., "08:00")
-            axisValue = date.getHours().toString().padStart(2, '0') + ':00'
+            const hours = date.getHours().toString().padStart(2, '0')
+            const minutes = date.getMinutes().toString().padStart(2, '0')
+            axisValue = `${hours}:${minutes}`
           }
         }
         // If it's already a formatted string (like "Apr 5"), leave it as-is
 
         // Show marker, series name, and value (e.g., "● P95: 150")
         return `${axisValue}<br/>${data.marker} ${seriesName}: ${value}`
+      },
+
+      // Sparkline tooltip for rate metrics - shows value as a percentage
+      'sparkline_percentage_tooltip': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        const data = params[0]
+        let axisValue = data.axisValue
+        const rawValue = typeof data.value === 'number' ? data.value : (data.value ?? 0)
+        const value = typeof rawValue === 'number' ? rawValue.toFixed(2) + '%' : rawValue
+        const seriesName = data.seriesName || 'Value'
+
+        // Format timestamp as HH:MM if it's a number (timestamp in milliseconds)
+        const numValue = typeof axisValue === 'string' ? parseFloat(axisValue) : axisValue
+        if (typeof numValue === 'number' && !isNaN(numValue) && numValue > 1000000000000) {
+          const date = new Date(numValue)
+          if (!isNaN(date.getTime())) {
+            const hours = date.getHours().toString().padStart(2, '0')
+            const minutes = date.getMinutes().toString().padStart(2, '0')
+            axisValue = `${hours}:${minutes}`
+          }
+        }
+
+        return `${axisValue}<br/>${data.marker} ${seriesName}: ${value}`
+      },
+
+      // Multi-series tooltip for rate/percentage charts (e.g. error rate chart)
+      'tooltip_with_timestamp_rate': (params) => {
+        if (!Array.isArray(params) || params.length === 0) return ''
+
+        const axisValue = params[0].axisValue
+        const ts = Number(axisValue)
+        let dateString
+
+        if (!isNaN(ts) && ts > 1000000000000) {
+          const date = new Date(ts)
+          const axisLabel = params[0].axisValueLabel || ''
+          const isHourly = /^\d{2}:\d{2}$/.test(axisLabel)
+          dateString = isHourly
+            ? date.toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false })
+            : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+        } else {
+          dateString = axisValue
+        }
+
+        let html = `${dateString}<br/>`
+        params.forEach(param => {
+          const rawValue = Array.isArray(param.value) ? param.value[1] : param.value
+          const numericValue = typeof rawValue === 'number' ? rawValue : 0
+          const value = numericValue.toFixed(2) + '%'
+          html += `${param.marker} ${param.seriesName}: ${value}<br/>`
+        })
+
+        return html
       }
     }
 

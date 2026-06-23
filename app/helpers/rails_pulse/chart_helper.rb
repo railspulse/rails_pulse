@@ -36,11 +36,12 @@ module RailsPulse
     def base_chart_options(units: nil, zoom: false)
       hourly = @period_type == "hour" || (@time_diff_hours && @time_diff_hours <= 25)
       x_formatter = hourly ? "time" : "timestamp_to_date"
+      tooltip_formatter = units == "%" ? "tooltip_with_timestamp_rate" : "tooltip_with_timestamp"
       {
         tooltip: {
           trigger: "axis",
           axisPointer: { type: "shadow" },
-          formatter: "tooltip_with_timestamp"
+          formatter: tooltip_formatter
         },
         toolbox: {
           feature: { saveAsImage: { show: false } }

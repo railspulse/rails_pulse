@@ -198,6 +198,24 @@ module RailsPulse
           assert_equal 0, result[:series][1][:data][yesterday_index]
         end
 
+        test "includes 4xx errors in the Errors series" do
+          create_route_day_summary(rails_pulse_routes(:api_users), 1.day.ago, count: 200, error_count: 5, status_4xx: 3)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7).to_chart_data
+          yesterday_index = result[:labels].index(1.day.ago.to_date.strftime("%b %-d"))
+
+          assert_equal 8, result[:series][1][:data][yesterday_index]  # 5xx (5) + 4xx (3) = 8
+        end
+
+        test "shows zero errors when both error_count and status_4xx are zero" do
+          create_route_day_summary(rails_pulse_routes(:api_users), 1.day.ago, count: 100, error_count: 0, status_4xx: 0)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7).to_chart_data
+          yesterday_index = result[:labels].index(1.day.ago.to_date.strftime("%b %-d"))
+
+          assert_equal 0, result[:series][1][:data][yesterday_index]
+        end
+
         test "works with 30-day period" do
           create_route_day_summary(rails_pulse_routes(:api_users), 15.days.ago, count: 100, error_count: 5)
 
@@ -207,14 +225,106 @@ module RailsPulse
           assert_includes result[:labels], 15.days.ago.to_date.strftime("%b %-d")
         end
 
+        # Hourly Structure Tests
+
+        test "hourly mode returns nil when no summaries exist" do
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period_type: "hour").to_chart_data
+
+          assert_nil result
+        end
+
+        test "hourly mode returns hash with series key" do
+          create_route_hour_summary(rails_pulse_routes(:api_users), 1.hour.ago, count: 50, error_count: 2)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7, period_type: "hour").to_chart_data
+
+          assert_kind_of Hash, result
+          assert_includes result.keys, :series
+        end
+
+        test "hourly mode does not return a labels key" do
+          create_route_hour_summary(rails_pulse_routes(:api_users), 1.hour.ago, count: 50, error_count: 2)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7, period_type: "hour").to_chart_data
+
+          refute_includes result.keys, :labels
+        end
+
+        test "hourly mode returns two series" do
+          create_route_hour_summary(rails_pulse_routes(:api_users), 1.hour.ago, count: 50, error_count: 2)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7, period_type: "hour").to_chart_data
+
+          assert_equal 2, result[:series].length
+        end
+
+        test "hourly mode series data contains [timestamp_ms, value] pairs" do
+          create_route_hour_summary(rails_pulse_routes(:api_users), 1.hour.ago, count: 50, error_count: 2)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7, period_type: "hour").to_chart_data
+          first_point = result[:series][0][:data][0]
+
+          assert_kind_of Array, first_point
+          assert_equal 2, first_point.length
+          assert_operator first_point[0], :>, 1_000_000_000_000, "first element should be a ms timestamp"
+          assert_kind_of Integer, first_point[1]
+        end
+
+        test "hourly mode series data does not contain plain integers" do
+          create_route_hour_summary(rails_pulse_routes(:api_users), 1.hour.ago, count: 50, error_count: 2)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7, period_type: "hour").to_chart_data
+
+          result[:series].each do |series|
+            series[:data].each do |point|
+              refute_kind_of Integer, point, "data points should be [timestamp, value] pairs, not plain integers"
+            end
+          end
+        end
+
+        test "hourly mode returns correct request count at the right timestamp" do
+          target_hour = 2.hours.ago.beginning_of_hour
+          create_route_hour_summary(rails_pulse_routes(:api_users), target_hour, count: 99, error_count: 3)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7, period_type: "hour").to_chart_data
+          target_ms = target_hour.to_i * 1000
+          matching = result[:series][0][:data].find { |ts, _| ts == target_ms }
+
+          assert_not_nil matching, "Expected a data point with timestamp #{target_ms}"
+          assert_equal 99, matching[1]
+        end
+
+        test "hourly mode fills zero for hours with no data" do
+          create_route_hour_summary(rails_pulse_routes(:api_users), 1.hour.ago, count: 50, error_count: 2)
+
+          result = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(period: 7, period_type: "hour").to_chart_data
+          zero_points = result[:series][0][:data].select { |_, val| val == 0 }
+
+          assert_operator zero_points.length, :>, 0, "Expected some zero-value data points for hours with no data"
+        end
+
         private
 
-        def create_route_day_summary(route, date, count:, error_count:)
+        def create_route_day_summary(route, date, count:, error_count:, status_4xx: 0)
           RailsPulse::Summary.create!(
             summarizable: route,
             period_start: date.beginning_of_day,
             period_end: date.end_of_day,
             period_type: "day",
+            count: count,
+            error_count: error_count,
+            status_4xx: status_4xx,
+            avg_duration: 100.0
+          )
+        end
+
+        def create_route_hour_summary(route, time, count:, error_count:)
+          hour = time.beginning_of_hour
+          RailsPulse::Summary.create!(
+            summarizable: route,
+            period_start: hour,
+            period_end: hour.end_of_hour,
+            period_type: "hour",
             count: count,
             error_count: error_count,
             avg_duration: 100.0
