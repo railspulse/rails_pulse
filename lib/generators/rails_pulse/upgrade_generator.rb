@@ -41,8 +41,8 @@ module RailsPulse
         # Determine database type before checking tables so the table lookup
         # uses the correct connection pool for separate-database setups.
         @is_separate_db = has_separate_database_config?
-        tables_exist    = rails_pulse_tables_exist?
-        schema_path     = File.join(root_path, "db/rails_pulse_schema.rb")
+        tables_exist = rails_pulse_tables_exist?
+        schema_path = File.join(root_path, "db/rails_pulse_schema.rb")
 
         # :schema_only only applies to single-database users who have the schema file
         # but haven't run the install migration yet. Separate-database users legitimately
