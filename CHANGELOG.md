@@ -7,30 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-- **Negative durations no longer cause a database overflow** — when `Timecop` or `travel_to` freezes time mid-request, finish can precede start in ActiveSupport notifications, producing a duration of billions of negative milliseconds. Durations are now clamped to zero, and the flame graph renderer and `time_ago_in_words` helper have the same guard.
-- **Tracking no longer fails when a PostgreSQL transaction is left in an aborted state** — if application code leaves a database connection in a `PQTRANS_INERROR` state (e.g. a `LOCK TABLE` or raw SQL command inside a transaction that subsequently fails), Rails Pulse now detects this and issues a `ROLLBACK` before running its own tracking queries. Previously, all tracking queries would be rejected by PostgreSQL and the request would go unrecorded. This is a no-op for MySQL and SQLite, which do not have this transaction state.
-- **`ChartTableConcern` refactored** — Consolidated time/zoom/duration setup into a single `setup_page_timings` before-action backed by a new `PageTimings` struct
-- **Operation suggestions refactored** — Five separate suggestion service classes (`CacheSuggestionsService`, `ControllerSuggestionsService`, `HttpSuggestionsService`, `SqlSuggestionsService`, `ViewSuggestionsService`) consolidated into a single `OperationSuggestions` service
+- Fixed upgrading when using separate database installation
 
-## [0.3.3.pre.4] - 2026-06-01
-
-- Updated the Github workflow and release script to ensure the changelog is kept up to date
-- **Tracking no longer fails when a PostgreSQL transaction is left in an aborted state** — if application code leaves a database connection in a `PQTRANS_INERROR` state (e.g. a `LOCK TABLE` or raw SQL command inside a transaction that subsequently fails), Rails Pulse now detects this and issues a `ROLLBACK` before running its own tracking queries. Previously, all tracking queries would be rejected by PostgreSQL and the request would go unrecorded. This is a no-op for MySQL and SQLite, which do not have this transaction state.
-
-## 0.3.3.pre.2 - 2026-05-31
-
-### Added
+## [0.3.3] - 2026-06-23
 
 - **Deployment tracking** — Record deployments via `POST /rails_pulse/deployments` or `rake rails_pulse:record_deployment[sha]`. Deployments appear as vertical marker lines on performance charts so you can correlate releases with regressions
 - **`deployment_api_token` config option** — Secures the deployments endpoint with a token header for CI/CD use
-
-### Changed
-
 - All multi-series charts now use a native ECharts time axis (`[timestamp_ms, value]` pairs) instead of a separate labels array, enabling deployment markers and better zoom behaviour
-
-### Removed
-
-- `Queries::Charts::AverageQueryTimes` — superseded by `Queries::Charts::DatabaseLoad`
 
 ## [0.3.0] - 2026-04-19
 

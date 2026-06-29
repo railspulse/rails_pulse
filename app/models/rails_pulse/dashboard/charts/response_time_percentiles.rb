@@ -64,13 +64,11 @@ module RailsPulse
               current_time += 1.hour
             end
 
-            # Build labels array (hourly format)
-            labels = time_range.map { |time| time.strftime("%H:%M") }
-
-            # Build series data
-            p50_data = time_range.map { |time| final_data[time]&.[](:p50) }
-            p95_data = time_range.map { |time| final_data[time]&.[](:p95) }
-            p99_data = time_range.map { |time| final_data[time]&.[](:p99) }
+            # Build series data as [timestamp_ms, value] pairs for ECharts time axis
+            timestamps_ms = time_range.map { |t| t.to_i * 1000 }
+            p50_data = time_range.map { |time| [ time.to_i * 1000, final_data[time]&.[](:p50) ] }
+            p95_data = time_range.map { |time| [ time.to_i * 1000, final_data[time]&.[](:p95) ] }
+            p99_data = time_range.map { |time| [ time.to_i * 1000, final_data[time]&.[](:p99) ] }
           else
             # Daily grouping (existing logic)
             start_date = @period.days.ago.beginning_of_day.to_date
@@ -150,9 +148,14 @@ module RailsPulse
           slo_configs = RailsPulse.configuration.service_level_objectives
           slo_configs.each do |slo|
             color = slo[:percentile] == 95 ? RailsPulse::ChartColors::P95 : RailsPulse::ChartColors::P99
+            slo_data = if @period_type == "hour"
+              timestamps_ms.map { |ts| [ ts, slo[:threshold] ] }
+            else
+              Array.new(labels.length, slo[:threshold])
+            end
             series.unshift({
               name: "P#{slo[:percentile]} SLO (#{slo[:threshold]}ms)",
-              data: Array.new(labels.length, slo[:threshold]),
+              data: slo_data,
               type: "line",
               lineStyle: { type: "dashed", width: 2 },
               color: color,
@@ -160,10 +163,11 @@ module RailsPulse
             })
           end
 
-          {
-            labels: labels,
-            series: series
-          }
+          if @period_type == "hour"
+            { series: series }
+          else
+            { labels: labels, series: series }
+          end
         end
       end
     end

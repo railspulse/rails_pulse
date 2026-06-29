@@ -221,12 +221,14 @@ class GeneratorTester
     RUBY
 
     Dir.chdir(test_dir) do
-      # Run upgrade generator
-      run_command "bin/rails generate rails_pulse:upgrade --database=separate"
+      # Run upgrade generator WITHOUT explicit --database flag to exercise auto-detection.
+      # The dummy app's database.yml includes a rails_pulse: entry in the test environment,
+      # so the generator should auto-detect the separate database setup.
+      run_command "bin/rails generate rails_pulse:upgrade"
 
-      # Verify migration was copied
+      # Verify migration was copied to the separate-DB directory (not db/migrate)
       if Dir.glob("db/rails_pulse_migrate/*add_another_feature*.rb").any?
-        pass "Migration copied to db/rails_pulse_migrate"
+        pass "Migration copied to db/rails_pulse_migrate (auto-detection worked)"
         pass "Upgrade generator completed successfully"
       else
         pass "No new migrations (Rails Pulse is up to date)"
