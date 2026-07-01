@@ -59,11 +59,27 @@ test "detects separate database setup from database.yml" do
   test "detects separate database setup when database.yml uses YAML aliases" do
     File.write(File.join(destination_root, "config/database.yml"), separate_database_yml_with_aliases)
 
-    output = mock_tables_exist do
+    # Tables exist only on the ApplicationRecord connection (separate DB), not on
+    # the primary ActiveRecord::Base connection — the real separate-database scenario.
+    output = mock_tables_exist_on_app_record_only do
       run_generator([], {})
     end
 
     assert_match(/Detected database setup: separate/, output)
+  end
+
+  test "auto-detects separate database without explicit flag when tables are on separate connection" do
+    # This is the regression test for issue #166 Bug 1: the generator was returning
+    # :schema_only for separate-DB users because it checked ActiveRecord::Base.connection
+    # (primary DB, no tables) before checking has_separate_database_config?.
+    File.write(File.join(destination_root, "config/database.yml"), separate_database_yml)
+
+    output = mock_tables_exist_on_app_record_only do
+      run_generator([], {})
+    end
+
+    assert_match(/Detected database setup: separate/, output)
+    assert_no_match(/schema detected but no tables found/, output)
   end
 
   test "detects schema_only when schema exists but no tables" do
@@ -181,81 +197,72 @@ test "separate database upgrade copies migrations to rails_pulse_migrate" do
   private
 
   def mock_tables_exist
-    # Create a simple object that has tables with all columns including tags
-    connection = Object.new
-    schema = complete_schema_columns
-
-    def connection.table_exists?(_table)
-      true
-    end
-
-    # Return columns based on the specific table being queried
-    connection.define_singleton_method(:columns) do |table|
-      table_name = table.to_s.to_sym
-      columns = schema[table_name] || []
-      columns.map { |col| OpenStruct.new(name: col) }
-    end
-
+    connection = build_connection_with_tables(complete_schema_columns)
     ActiveRecord::Base.stubs(:connection).returns(connection)
+    RailsPulse::ApplicationRecord.stubs(:connection).returns(connection)
     result = yield if block_given?
     ActiveRecord::Base.unstub(:connection)
+    RailsPulse::ApplicationRecord.unstub(:connection)
+    result
+  end
+
+  # Simulates a separate-database user: Rails Pulse tables exist only on the
+  # ApplicationRecord connection, not on the primary ActiveRecord::Base connection.
+  # This is the scenario that previously triggered the :schema_only false positive.
+  def mock_tables_exist_on_app_record_only
+    tables_connection = build_connection_with_tables(complete_schema_columns)
+    no_tables_connection = build_connection_without_tables
+
+    ActiveRecord::Base.stubs(:connection).returns(no_tables_connection)
+    RailsPulse::ApplicationRecord.stubs(:connection).returns(tables_connection)
+    result = yield if block_given?
+    ActiveRecord::Base.unstub(:connection)
+    RailsPulse::ApplicationRecord.unstub(:connection)
     result
   end
 
   def mock_no_tables_exist
-    # Create a simple object that responds to table_exists? with false
-    connection = Object.new
-    def connection.table_exists?(_table)
-      false
-    end
-
+    connection = build_connection_without_tables
     ActiveRecord::Base.stubs(:connection).returns(connection)
+    RailsPulse::ApplicationRecord.stubs(:connection).returns(connection)
     result = yield if block_given?
     ActiveRecord::Base.unstub(:connection)
+    RailsPulse::ApplicationRecord.unstub(:connection)
     result
   end
 
   def mock_tables_with_missing_columns
-    # Create a simple object that has tables but missing tag columns
-    connection = Object.new
-    schema = schema_without_tags
-
-    def connection.table_exists?(_table)
-      true
-    end
-
-    # Return columns based on the specific table being queried (without tags)
-    connection.define_singleton_method(:columns) do |table|
-      table_name = table.to_s.to_sym
-      columns = schema[table_name] || []
-      columns.map { |col| OpenStruct.new(name: col) }
-    end
-
+    connection = build_connection_with_tables(schema_without_tags)
     ActiveRecord::Base.stubs(:connection).returns(connection)
+    RailsPulse::ApplicationRecord.stubs(:connection).returns(connection)
     result = yield if block_given?
     ActiveRecord::Base.unstub(:connection)
+    RailsPulse::ApplicationRecord.unstub(:connection)
     result
   end
 
   def mock_complete_tables
-    # Create a simple object that has complete tables with tags
-    connection = Object.new
-    schema = complete_schema_columns
-
-    def connection.table_exists?(_table)
-      true
-    end
-
-    # Return columns based on the specific table being queried
-    connection.define_singleton_method(:columns) do |table|
-      table_name = table.to_s.to_sym
-      columns = schema[table_name] || []
-      columns.map { |col| OpenStruct.new(name: col) }
-    end
-
+    connection = build_connection_with_tables(complete_schema_columns)
     ActiveRecord::Base.stubs(:connection).returns(connection)
+    RailsPulse::ApplicationRecord.stubs(:connection).returns(connection)
     result = yield if block_given?
     ActiveRecord::Base.unstub(:connection)
+    RailsPulse::ApplicationRecord.unstub(:connection)
     result
+  end
+
+  def build_connection_with_tables(schema)
+    connection = Object.new
+    def connection.table_exists?(_table) = true
+    connection.define_singleton_method(:columns) do |table|
+      (schema[table.to_s.to_sym] || []).map { |col| OpenStruct.new(name: col) }
+    end
+    connection
+  end
+
+  def build_connection_without_tables
+    connection = Object.new
+    def connection.table_exists?(_table) = false
+    connection
   end
 end

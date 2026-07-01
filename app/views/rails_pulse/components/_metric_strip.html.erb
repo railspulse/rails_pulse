@@ -16,7 +16,7 @@
           name: short_name,
           itemStyle: { color: chart_color }
         }
-      )
+      ).deep_merge(data[:sparkline_options] || {})
 
       badge = case trend_icon
       when "trending-up"   then "badge--negative-inverse"
