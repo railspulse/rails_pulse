@@ -26,7 +26,7 @@
     "autoprefixer": "^10.4.16",
     "chokidar": "^4.0.3",
     "cssnano": "^6.0.3",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.1",
     "eslint": "^9.39.4",
     "glob": "^10.5.0",
     "globals": "^17.5.0",

@@ -43,6 +43,58 @@ This validates (14 steps total):
 - Generator tests (install + upgrade)
 - Full test matrix (all databases × Rails versions + system tests)
 
+#### Separate-DB Upgrade Smoke Test
+
+**Required when the release includes any new migration.**
+
+The automated suite runs single-database only. Run this manual check to verify the
+separate-database upgrade path before shipping:
+
+1. Temporarily uncomment `config.connects_to` in
+   `test/dummy/config/initializers/rails_pulse.rb` and point it at a fresh SQLite file:
+   ```ruby
+   config.connects_to = { database: { writing: :rails_pulse, reading: :rails_pulse } }
+   ```
+
+2. Load a historical schema baseline into that database (use the V027 schema to test the
+   widest upgrade path):
+   ```ruby
+   # In a rails console or one-off script in the dummy app:
+   conn = RailsPulse::ApplicationRecord.connection
+   RailsPulse::TestSchemas::V027.call(conn)
+   ```
+
+3. Insert at least one SQL operation row so any data-backfill migration has real rows to
+   process:
+   ```ruby
+   conn.execute("INSERT INTO rails_pulse_routes (method, path, created_at, updated_at) VALUES ('GET', '/test', datetime('now'), datetime('now'))")
+   route_id = conn.select_value("SELECT id FROM rails_pulse_routes LIMIT 1")
+   conn.execute("INSERT INTO rails_pulse_requests (route_id, duration, status, is_error, request_uuid, occurred_at, created_at, updated_at) VALUES (#{route_id}, 10.0, 200, 0, 'test-uuid', datetime('now'), datetime('now'), datetime('now'))")
+   request_id = conn.select_value("SELECT id FROM rails_pulse_requests LIMIT 1")
+   conn.execute("INSERT INTO rails_pulse_operations (request_id, operation_type, label, duration, start_time, occurred_at, created_at, updated_at) VALUES (#{request_id}, 'sql', 'SELECT * FROM users', 5.0, 0.0, datetime('now'), datetime('now'), datetime('now'))")
+   ```
+
+4. Run the upgrade generator **without** the `--database=separate` flag to verify
+   auto-detection:
+   ```bash
+   cd test/dummy && bin/rails generate rails_pulse:upgrade
+   # Expected: "Detected database setup: separate"
+   ```
+
+5. Run the migrations and verify they complete without rollback:
+   ```bash
+   bin/rails db:migrate:rails_pulse
+   ```
+
+6. Verify new columns exist and the backfill ran correctly:
+   ```bash
+   bin/rails runner "puts RailsPulse::Operation.first&.actual_sql"
+   # Expected: the SQL string that was in the label column
+   ```
+
+7. Restore the initializer: comment `connects_to` back out and delete the temporary
+   SQLite file.
+
 ### 2. Update Version
 
 ```bash

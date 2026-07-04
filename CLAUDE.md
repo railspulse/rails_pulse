@@ -46,6 +46,7 @@ The test dummy app needs its schema kept in sync:
 - Do not modify existing table structure in `db/rails_pulse_schema.rb` — it only creates tables, never alters them
 - Do not add columns directly to the schema file without also adding an incremental migration in `db/rails_pulse_migrate/`
 - Do not use acronyms in migration filenames (e.g. `sql`, `url`, `id`). Rails camelizes `add_actual_sql_to_operations` to `AddActualSqlToOperations`, but some host apps use inflection rules that produce `AddActualSQLToOperations`, causing a `NameError` at runtime. Use full words instead: `add_actual_query_to_operations`, `add_endpoint_to_routes`, etc.
+- **Never use model classes inside `up` migrations for data backfills.** `Model.where(...).update_all(...)` checks out a connection from the model's pool. On separate-database setups with SQLite, the column added earlier in the same migration transaction is invisible to that second pool, causing the migration to roll back. Always use `execute(<<~SQL ... SQL)` for data changes within migrations — `execute` runs on the migration's own connection and sees all DDL performed in the same transaction.
 
 Full architecture details: `docs/database_setup.md`
 
@@ -114,6 +115,16 @@ To rebuild assets: `npm run build` (or `npm run build:dev` for source maps).
 ## Releases
 
 Run `rake test_release` before any release — it validates git status, RuboCop, Brakeman, asset build, gem build, generator tests, and the full test matrix. See `docs/releasing.md` for the full process.
+
+## Git Hooks
+
+Shared hooks live in `.githooks/`. Run once after cloning to activate them:
+
+```bash
+git config core.hooksPath .githooks
+```
+
+The `post-checkout` hook warns when `test/dummy/db/schema.rb` is from a different branch (Rails 8.1 silently loads schema.rb instead of running migrations on a fresh DB, applying the wrong table structure).
 
 ## Agent skills
 
