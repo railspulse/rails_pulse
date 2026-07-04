@@ -68,7 +68,7 @@
   },
   "dependencies": {
     "@floating-ui/dom": "^1.7.2",
-    "echarts": "^5.6.0",
+    "echarts": "^6.1.0",
     "flatpickr": "^4.6.13"
   }
 }
