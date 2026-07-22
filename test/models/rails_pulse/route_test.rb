@@ -85,13 +85,13 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
   test "http_methods_list returns empty array when http_methods is blank" do
     route = RailsPulse::Route.new
 
-    assert_equal [], route.http_methods_list
+    assert_empty route.http_methods_list
   end
 
   test "http_methods_list returns empty array on malformed JSON" do
     route = RailsPulse::Route.new(http_methods: "not-json")
 
-    assert_equal [], route.http_methods_list
+    assert_empty route.http_methods_list
   end
 
   # add_http_method Tests
@@ -154,6 +154,7 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
 
   test "find_or_create_for_request appends a new http method to an existing route" do
     existing = rails_pulse_routes(:api_users)
+
     assert_equal [ "GET" ], existing.http_methods_list
 
     RailsPulse::Route.find_or_create_for_request("POST", existing.path, controller_action: existing.controller_action)
@@ -197,7 +198,7 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
   test "to_breadcrumb truncates long paths" do
     route = RailsPulse::Route.new(http_methods: '["GET"]', path: "/very/long/path/#{'x' * 100}")
 
-    assert route.to_breadcrumb.length <= 60
+    assert_operator route.to_breadcrumb.length, :<=, 60
   end
 
   # path_and_method Tests

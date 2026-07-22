@@ -38,7 +38,8 @@ module RailsPulse
 
     test "does not parameterize the format extension itself" do
       result = normalize("/users/42.json", { id: "42", format: "json" })
-      refute result.include?(":format"), "format should not appear as a param segment"
+
+      refute_includes result, ":format", "format should not appear as a param segment"
     end
 
     # Static Path Tests
@@ -72,19 +73,22 @@ module RailsPulse
     test "safe fallback for ambiguous duplicate param values" do
       # Both user_id and id are "42" — cannot safely determine which segment is which
       result = normalize("/users/42/similar/42", { user_id: "42", id: "42" })
+
       assert_equal "/users/42/similar/42", result
     end
 
     test "skips controller, action, and format keys" do
       result = normalize("/search", { controller: "home", action: "search" })
+
       assert_equal "/search", result
-      refute result.include?(":controller")
-      refute result.include?(":action")
+      refute_includes result, ":controller"
+      refute_includes result, ":action"
     end
 
     test "class method delegates to instance" do
       class_result = RailsPulse::RoutePathNormalizer.normalize("/posts/5", { id: "5" })
       instance_result = RailsPulse::RoutePathNormalizer.new("/posts/5", { id: "5" }).normalize
+
       assert_equal "/posts/:id", class_result
       assert_equal class_result, instance_result
     end

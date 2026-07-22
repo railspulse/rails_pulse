@@ -638,6 +638,7 @@ module RailsPulse
 
           assert_equal 1, matching.length, "multi-verb route should produce exactly one row"
           methods = JSON.parse(matching.first.route_methods || "[]")
+
           assert_includes methods, "GET"
           assert_includes methods, "POST"
         end

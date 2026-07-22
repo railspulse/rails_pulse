@@ -116,6 +116,7 @@ module RailsPulse
       call_backfiller
 
       survivor = RailsPulse::Route.find_by(controller_action: "home#index", path: "/posts/99")
+
       assert survivor
       assert_equal 1, RailsPulse::Route.where(path: "/posts/99").count
       assert_equal survivor.id, request.reload.route_id
@@ -130,6 +131,7 @@ module RailsPulse
       call_backfiller
 
       survivor = RailsPulse::Route.find_by(controller_action: "home#index", path: "/sign_in")
+
       assert survivor
       assert_equal 1, RailsPulse::Route.where(path: "/sign_in").count
       assert_equal [ "GET", "POST" ], survivor.http_methods_list.sort

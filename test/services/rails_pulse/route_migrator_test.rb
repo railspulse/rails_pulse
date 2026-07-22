@@ -16,6 +16,7 @@ module RailsPulse
         "raw route should be destroyed after merge"
 
       normalized = RailsPulse::Route.find_by(path: "/posts/:id")
+
       assert normalized, "normalized route should exist"
       assert_equal normalized.id, request.reload.route_id,
         "request should be reassigned to normalized route"
@@ -30,6 +31,7 @@ module RailsPulse
       RailsPulse::RouteMigrator.call
 
       normalized = RailsPulse::Route.find_by(path: "/posts/:id")
+
       assert normalized
       assert_equal normalized.id, req1.reload.route_id
       assert_equal normalized.id, req2.reload.route_id
@@ -100,6 +102,7 @@ module RailsPulse
       end
 
       normalized = RailsPulse::Route.find_by(path: "/posts/:id")
+
       assert normalized
       assert_equal normalized.id, request.reload.route_id
       assert_equal 2, calls
@@ -180,6 +183,7 @@ module RailsPulse
       RailsPulse::RouteMigrator.call
 
       normalized = RailsPulse::Route.find_by(path: "/posts/:id")
+
       assert_equal 3, normalized.requests.count
     end
 

@@ -128,9 +128,11 @@ module RailsPulse
         get "/posts/42"
 
         route = RailsPulse::Route.find_by(controller_action: "home#index", path: "/posts/:id")
+
         assert route, "route should be stored with normalized path /posts/:id"
 
         raw_route = RailsPulse::Route.find_by(path: "/posts/42")
+
         assert_nil raw_route, "raw path /posts/42 should not be stored as a separate route"
       end
 
@@ -138,6 +140,7 @@ module RailsPulse
         get "/posts/42"
 
         route = RailsPulse::Route.find_by(controller_action: "home#index", path: "/posts/:id")
+
         assert route
         assert_equal "home#index", route.controller_action
       end
