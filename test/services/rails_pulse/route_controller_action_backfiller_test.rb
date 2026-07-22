@@ -52,6 +52,14 @@ module RailsPulse
       assert_equal "jobs#trigger", route.reload.controller_action
     end
 
+    test "sets controller_action for warden-constrained route" do
+      route = create_route("GET", "/warden_protected")
+
+      call_backfiller
+
+      assert_equal "home#index", route.reload.controller_action
+    end
+
     test "sets controller_action for multi-verb route using first listed method" do
       route = create_route([ "GET", "POST" ], "/sign_in")
 
@@ -84,6 +92,49 @@ module RailsPulse
       assert_equal "posts#show", route.reload.controller_action
       assert_equal @baseline[:already_set] + 1, results[:already_set]
       assert_equal @baseline[:updated], results[:updated]
+    end
+
+    test "merges into existing route when controller_action would collide" do
+      existing = create_route("GET", "/posts/99", controller_action: "home#index")
+      duplicate = create_route("GET", "/posts/99")
+      request = create_request(duplicate)
+
+      results = call_backfiller
+
+      assert_not RailsPulse::Route.exists?(id: duplicate.id)
+      assert_equal existing.id, request.reload.route_id
+      assert_equal [ "GET" ], existing.reload.http_methods_list
+      assert_equal @baseline[:merged] + 1, results[:merged]
+      assert_equal @baseline[:updated], results[:updated]
+    end
+
+    test "merges sibling null-controller_action routes that resolve to the same action" do
+      first = create_route("GET", "/posts/99")
+      second = create_route("GET", "/posts/99")
+      request = create_request(second)
+
+      call_backfiller
+
+      survivor = RailsPulse::Route.find_by(controller_action: "home#index", path: "/posts/99")
+      assert survivor
+      assert_equal 1, RailsPulse::Route.where(path: "/posts/99").count
+      assert_equal survivor.id, request.reload.route_id
+      assert_includes [ first.id, second.id ], survivor.id
+    end
+
+    test "merges different-verb siblings for the same path into one multi-verb route" do
+      get_route = create_route("GET", "/sign_in")
+      post_route = create_route("POST", "/sign_in")
+      request = create_request(post_route)
+
+      call_backfiller
+
+      survivor = RailsPulse::Route.find_by(controller_action: "home#index", path: "/sign_in")
+      assert survivor
+      assert_equal 1, RailsPulse::Route.where(path: "/sign_in").count
+      assert_equal [ "GET", "POST" ], survivor.http_methods_list.sort
+      assert_equal survivor.id, request.reload.route_id
+      assert_includes [ get_route.id, post_route.id ], survivor.id
     end
 
     test "backfills blank controller_action string" do
@@ -195,23 +246,24 @@ module RailsPulse
       assert_equal @baseline[:updated], results[:updated]
     end
 
-    test "results hash has all three keys" do
+    test "results hash has all expected keys" do
       results = call_backfiller
 
       assert results.key?(:updated)
       assert results.key?(:skipped)
       assert results.key?(:already_set)
+      assert results.key?(:merged)
     end
 
-    test "result counts sum to total route count" do
+    test "result counts sum to routes processed" do
       create_route("GET", "/posts/#{SecureRandom.hex(4)}")
       create_route("GET", "/ghost/#{SecureRandom.hex(4)}")
       create_route("GET", "/posts/#{SecureRandom.hex(4)}", controller_action: "preset#show")
 
       results = call_backfiller
 
-      assert_equal RailsPulse::Route.count,
-        results[:updated] + results[:skipped] + results[:already_set]
+      assert_equal RailsPulse::Route.count + results[:merged],
+        results[:updated] + results[:skipped] + results[:already_set] + results[:merged]
     end
 
     test "processes multiple new routes in a single run" do
@@ -286,6 +338,19 @@ module RailsPulse
         path: path,
         tags: "[]",
         controller_action: controller_action
+      )
+    end
+
+    def create_request(route)
+      RailsPulse::Request.create!(
+        route: route,
+        method: route.http_methods_list.first || "GET",
+        duration: 100.0,
+        status: 200,
+        is_error: false,
+        request_uuid: SecureRandom.uuid,
+        controller_action: "PostsController#show",
+        occurred_at: Time.current
       )
     end
   end

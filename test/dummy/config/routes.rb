@@ -14,6 +14,17 @@ Rails.application.routes.draw do
   get  "jobs",         to: "jobs#index"
   post "jobs/trigger", to: "jobs#trigger", as: :trigger_job
 
+  get  "sign_in", to: "home#index"
+  post "sign_in", to: "home#index"
+
+  # Simulate Devise/Warden constraints that touch request env (used by RouteRecognizer tests).
+  constraints(->(req) { req.env["warden"].authenticated? }) do
+    get "warden_protected", to: "home#index"
+  end
+  constraints(->(req) { !req.env["warden"].authenticated? }) do
+    get "warden_public", to: "home#index"
+  end
+
   get "posts", to: "home#index", as: :posts
   get "posts/:id", to: "home#index", as: :post
   get "partners/:client_id/submissions/:uuid", to: "home#index", as: :partner_submission

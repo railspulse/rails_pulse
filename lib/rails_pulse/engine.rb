@@ -18,6 +18,8 @@ module RailsPulse
   autoload :TagFilterService, File.expand_path("../../app/services/rails_pulse/tag_filter_service", __dir__)
   autoload :OperationSuggestions, File.expand_path("../../app/services/rails_pulse/operation_suggestions", __dir__)
   autoload :RoutePathNormalizer,             File.expand_path("../../app/services/rails_pulse/route_path_normalizer", __dir__)
+  autoload :RouteRecognizer,                 File.expand_path("../../app/services/rails_pulse/route_recognizer", __dir__)
+  autoload :RouteMerger,                     File.expand_path("../../app/services/rails_pulse/route_merger", __dir__)
   autoload :RouteMigrator,                   File.expand_path("../../app/services/rails_pulse/route_migrator", __dir__)
   autoload :RouteControllerActionBackfiller, File.expand_path("../../app/services/rails_pulse/route_controller_action_backfiller", __dir__)
 
