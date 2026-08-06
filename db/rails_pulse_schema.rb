@@ -2,7 +2,7 @@
 # This file contains the complete schema for Rails Pulse tables
 # Load with: rails db:schema:load_rails_pulse or db:prepare
 
-RailsPulse::Schema ||= lambda do |connection|
+RailsPulse::Schema = lambda do |connection|
   adapter = connection.adapter_name.downcase
   # Skip if all tables already exist to prevent conflicts
   required_tables = [ :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_jobs, :rails_pulse_job_runs, :rails_pulse_summaries, :rails_pulse_deployments, :rails_pulse_exception_groups, :rails_pulse_exception_occurrences ]
@@ -267,7 +267,7 @@ RailsPulse::Schema ||= lambda do |connection|
   if newly_created.any?
     puts "[RailsPulse::Schema] Successfully created tables: #{newly_created.join(', ')}"
   end
-end
+end unless defined?(RailsPulse::Schema)
 
 if defined?(RailsPulse::ApplicationRecord)
   RailsPulse::Schema.call(RailsPulse::ApplicationRecord.connection)
