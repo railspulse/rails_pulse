@@ -96,6 +96,10 @@ module RailsPulse
 
       # Shared upgrade logic for both single and separate database setups
       def upgrade_installation(migration_dir:, next_steps:)
+        # Refresh the schema file so fresh databases (test, CI) built from
+        # db/rails_pulse_schema.rb include all current columns and tables.
+        copy_file "db/rails_pulse_schema.rb", "db/rails_pulse_schema.rb"
+
         gem_migrations = get_gem_migrations
         existing_migrations = get_user_migrations(migration_dir)
         new_migrations = gem_migrations - existing_migrations
