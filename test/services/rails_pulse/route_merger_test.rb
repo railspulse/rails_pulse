@@ -52,6 +52,7 @@ module RailsPulse
 
       assert_not RailsPulse::Summary.exists?(id: source_summary.id)
       target_summary.reload
+
       assert_equal target.id, target_summary.summarizable_id
       assert_equal 40, target_summary.count
       assert_in_delta 175.0, target_summary.avg_duration, 0.01
