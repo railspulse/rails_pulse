@@ -119,8 +119,14 @@ RailsPulse.configure do |config|
   # ====================================================================================================
   #                                          EXCEPTION TRACKING
   # ====================================================================================================
-  # When enabled, Rails Pulse captures unhandled exceptions raised during web requests and
-  # background jobs, groups them by class and location, and displays them in the Exceptions tab.
+  # When enabled, Rails Pulse captures unhandled exceptions raised during web requests,
+  # groups them by class and location, and displays them in the Exceptions tab.
+  # Background job exception capture is not automatic in v1 — call
+  # ExceptionCaptureService.capture yourself if needed.
+  #
+  # Capture runs synchronously on the request thread (upsert + insert). That keeps the
+  # implementation simple for v1; under an error storm it adds DB latency to failing
+  # requests. Disable with track_exceptions = false if that cost is unacceptable.
 
   # Enable or disable exception tracking
   config.track_exceptions = true
@@ -298,6 +304,7 @@ RailsPulse.configure do |config|
     rails_pulse_operations: 50000,                # Operations within requests (high volume)
     rails_pulse_routes: 1000,                     # Unique routes (low volume)
     rails_pulse_queries: 500,                     # Normalized SQL queries (low volume)
-    rails_pulse_exception_occurrences: 50000      # Individual exception raises (high volume)
+    rails_pulse_exception_occurrences: 50000,     # Individual exception raises (high volume)
+    rails_pulse_exception_groups: 10000           # Distinct exception sites (moderate volume)
   }
 end

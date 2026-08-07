@@ -15,5 +15,9 @@ module RailsPulse
     def self.ransackable_attributes(auth_object = nil)
       %w[id exception_class message occurred_at request_url environment]
     end
+
+    def self.ransackable_associations(auth_object = nil)
+      %w[exception_group]
+    end
   end
 end

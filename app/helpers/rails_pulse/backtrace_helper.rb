@@ -39,6 +39,7 @@ module RailsPulse
       line = frame["line"].to_i
       return nil if file.blank? || line < 1
       return nil unless File.exist?(file) && File.file?(file)
+      return nil unless path_within_rails_root?(file)
 
       first_line = [ line - radius, 1 ].max
       last_line  = line + radius
@@ -51,6 +52,18 @@ module RailsPulse
       lines
     rescue Errno::EACCES, Errno::ENOENT
       nil
+    end
+
+    private
+
+    # Only read source for files under Rails.root to avoid leaking arbitrary
+    # filesystem contents via crafted backtrace paths.
+    def path_within_rails_root?(file)
+      real = File.realpath(file)
+      root = Rails.root.realpath.to_s
+      real == root || real.start_with?("#{root}#{File::SEPARATOR}")
+    rescue Errno::ENOENT
+      false
     end
   end
 end

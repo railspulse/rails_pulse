@@ -4,6 +4,10 @@ module RailsPulse
 
     STATUSES = %w[open resolved ignored].freeze
 
+    # SQLite schema dumps omit boolean DEFAULT false; without a model default,
+    # AR inserts NULL and SQLite rejects the NOT NULL constraint.
+    attribute :preserve, :boolean, default: false
+
     has_many :occurrences, class_name: "RailsPulse::ExceptionOccurrence",
              foreign_key: :exception_group_id, dependent: :destroy
 
@@ -20,6 +24,10 @@ module RailsPulse
 
     def self.ransackable_attributes(auth_object = nil)
       %w[id exception_class fingerprint first_seen_at last_seen_at occurrence_count status resolved_at preserve]
+    end
+
+    def self.ransackable_associations(auth_object = nil)
+      %w[occurrences]
     end
   end
 end

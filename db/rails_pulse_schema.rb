@@ -233,7 +233,7 @@ RailsPulse::Schema = lambda do |connection|
 
   unless connection.table_exists?(:rails_pulse_exception_occurrences)
     connection.create_table :rails_pulse_exception_occurrences do |t|
-      t.references :exception_group, null: false,
+      t.references :exception_group, null: false, index: false,
                    foreign_key: { to_table: :rails_pulse_exception_groups },
                    comment: "FK to the group this occurrence belongs to"
       t.string   :exception_class, null: false

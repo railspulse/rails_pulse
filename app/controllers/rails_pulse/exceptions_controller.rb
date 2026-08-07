@@ -24,6 +24,26 @@ module RailsPulse
     end
 
     def update
+      if params.key?(:preserve)
+        update_preserve
+      else
+        update_status
+      end
+    end
+
+    private
+
+    def set_exception_group
+      @exception_group = ExceptionGroup.find(params[:id])
+    end
+
+    def update_preserve
+      @exception_group.update!(preserve: ActiveModel::Type::Boolean.new.cast(params[:preserve]))
+      flash[:notice] = @exception_group.preserve? ? "Exception preserved from cleanup." : "Exception no longer preserved."
+      redirect_to exception_path(@exception_group)
+    end
+
+    def update_status
       new_status = params[:status]
       unless ExceptionGroup::STATUSES.include?(new_status)
         head :unprocessable_entity
@@ -37,12 +57,6 @@ module RailsPulse
 
       flash[:notice] = "Exception marked as #{new_status}."
       redirect_to exception_path(@exception_group)
-    end
-
-    private
-
-    def set_exception_group
-      @exception_group = ExceptionGroup.find(params[:id])
     end
   end
 end

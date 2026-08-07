@@ -145,11 +145,8 @@ class RailsPulse::BacktraceHelperTest < ActionView::TestCase
   # ============================================================================
 
   test "frame_source_lines returns lines centred on the target line" do
-    Tempfile.create([ "backtrace_helper_test", ".rb" ]) do |f|
-      f.write((1..20).map { |i| "line #{i}" }.join("\n"))
-      f.flush
-
-      result = frame_source_lines({ "file" => f.path, "line" => 10 })
+    with_source_file((1..20).map { |i| "line #{i}" }.join("\n")) do |path|
+      result = frame_source_lines({ "file" => path, "line" => 10 })
 
       assert_equal (7..13).to_a, result.keys
       assert_equal "line 10", result[10]
@@ -157,11 +154,8 @@ class RailsPulse::BacktraceHelperTest < ActionView::TestCase
   end
 
   test "frame_source_lines clamps to line 1 at the top of the file" do
-    Tempfile.create([ "backtrace_helper_test", ".rb" ]) do |f|
-      f.write((1..10).map { |i| "line #{i}" }.join("\n"))
-      f.flush
-
-      result = frame_source_lines({ "file" => f.path, "line" => 2 })
+    with_source_file((1..10).map { |i| "line #{i}" }.join("\n")) do |path|
+      result = frame_source_lines({ "file" => path, "line" => 2 })
 
       assert_includes result.keys, 1
       assert_equal "line 1", result[1]
@@ -169,11 +163,8 @@ class RailsPulse::BacktraceHelperTest < ActionView::TestCase
   end
 
   test "frame_source_lines respects a custom radius" do
-    Tempfile.create([ "backtrace_helper_test", ".rb" ]) do |f|
-      f.write((1..20).map { |i| "line #{i}" }.join("\n"))
-      f.flush
-
-      result = frame_source_lines({ "file" => f.path, "line" => 10 }, radius: 1)
+    with_source_file((1..20).map { |i| "line #{i}" }.join("\n")) do |path|
+      result = frame_source_lines({ "file" => path, "line" => 10 }, radius: 1)
 
       assert_equal [ 9, 10, 11 ], result.keys
     end
@@ -194,43 +185,41 @@ class RailsPulse::BacktraceHelperTest < ActionView::TestCase
   end
 
   test "frame_source_lines returns nil when line is zero" do
-    Tempfile.create([ "backtrace_helper_test", ".rb" ]) do |f|
-      f.write("some content")
-      f.flush
-
-      assert_nil frame_source_lines({ "file" => f.path, "line" => 0 })
+    with_source_file("some content") do |path|
+      assert_nil frame_source_lines({ "file" => path, "line" => 0 })
     end
   end
 
   test "frame_source_lines returns nil when line is negative" do
-    Tempfile.create([ "backtrace_helper_test", ".rb" ]) do |f|
-      f.write("some content")
-      f.flush
-
-      assert_nil frame_source_lines({ "file" => f.path, "line" => -1 })
+    with_source_file("some content") do |path|
+      assert_nil frame_source_lines({ "file" => path, "line" => -1 })
     end
   end
 
   test "frame_source_lines strips trailing whitespace from lines" do
-    Tempfile.create([ "backtrace_helper_test", ".rb" ]) do |f|
-      f.write("  indented line   \n")
-      f.flush
-
-      result = frame_source_lines({ "file" => f.path, "line" => 1 })
+    with_source_file("  indented line   \n") do |path|
+      result = frame_source_lines({ "file" => path, "line" => 1 })
 
       assert_equal "  indented line", result[1]
     end
   end
 
   test "frame_source_lines returns empty hash when target line is beyond end of file" do
-    Tempfile.create([ "backtrace_helper_test", ".rb" ]) do |f|
-      f.write("only one line")
-      f.flush
-
+    with_source_file("only one line") do |path|
       # radius 3 makes first_line = max(5-3, 1) = 2, but file only has line 1
-      result = frame_source_lines({ "file" => f.path, "line" => 5 })
+      result = frame_source_lines({ "file" => path, "line" => 5 })
 
       assert_empty result
+    end
+  end
+
+  test "frame_source_lines returns nil for files outside Rails.root" do
+    Tempfile.create([ "outside_rails_root", ".rb" ]) do |f|
+      f.write("secret\n")
+      f.flush
+
+      assert_nil frame_source_lines({ "file" => f.path, "line" => 1 }),
+        "must not read files outside Rails.root"
     end
   end
 
@@ -244,5 +233,18 @@ class RailsPulse::BacktraceHelperTest < ActionView::TestCase
 
   test "app_frame? recognises /config/ paths as app frames (consistent with fingerprinting)" do
     assert app_frame?("file" => "/home/deploy/myapp/config/initializers/stripe.rb")
+  end
+
+  private
+
+  # Source preview is restricted to Rails.root — write fixtures under tmp/.
+  def with_source_file(contents)
+    dir = Rails.root.join("tmp")
+    FileUtils.mkdir_p(dir)
+    path = dir.join("backtrace_helper_test_#{SecureRandom.hex(8)}.rb")
+    File.write(path, contents)
+    yield path.to_s
+  ensure
+    FileUtils.rm_f(path) if path
   end
 end

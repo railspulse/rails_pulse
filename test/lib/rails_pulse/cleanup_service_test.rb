@@ -546,6 +546,64 @@ module RailsPulse
       end
     end
 
+    test "count-based cleanup deletes oldest exception groups and their occurrences without FK errors" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_exception_groups: 1
+      }
+      RailsPulse::ExceptionOccurrence.delete_all
+      RailsPulse::ExceptionGroup.delete_all
+
+      old_group = create_exception_group
+      old_group.update!(last_seen_at: 10.days.ago)
+      create_exception_occurrence(old_group, occurred_at: 10.days.ago)
+
+      new_group = create_exception_group
+      new_group.update!(last_seen_at: 1.day.ago)
+      create_exception_occurrence(new_group, occurred_at: 1.day.ago)
+
+      assert_nothing_raised do
+        CleanupService.perform
+      end
+
+      assert_not RailsPulse::ExceptionGroup.exists?(old_group.id)
+      assert_equal 0, RailsPulse::ExceptionOccurrence.where(exception_group_id: old_group.id).count
+      assert RailsPulse::ExceptionGroup.exists?(new_group.id)
+    end
+
+    test "count-based cleanup skips preserved and ignored exception groups" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      # 4 groups total; max 3 means one deletion. Only open_old is eligible among the oldest.
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_exception_groups: 3
+      }
+      RailsPulse::ExceptionOccurrence.delete_all
+      RailsPulse::ExceptionGroup.delete_all
+
+      preserved = create_exception_group
+      preserved.update!(preserve: true, last_seen_at: 10.days.ago)
+      create_exception_occurrence(preserved, occurred_at: 10.days.ago)
+
+      ignored = create_exception_group
+      ignored.update!(status: "ignored", last_seen_at: 9.days.ago)
+      create_exception_occurrence(ignored, occurred_at: 9.days.ago)
+
+      open_old = create_exception_group
+      open_old.update!(last_seen_at: 8.days.ago)
+      create_exception_occurrence(open_old, occurred_at: 8.days.ago)
+
+      keeper = create_exception_group
+      keeper.update!(last_seen_at: 1.day.ago)
+      create_exception_occurrence(keeper, occurred_at: 1.day.ago)
+
+      CleanupService.perform
+
+      assert RailsPulse::ExceptionGroup.exists?(preserved.id)
+      assert RailsPulse::ExceptionGroup.exists?(ignored.id)
+      assert_not RailsPulse::ExceptionGroup.exists?(open_old.id)
+      assert RailsPulse::ExceptionGroup.exists?(keeper.id)
+    end
+
     # Edge Cases
 
     test "handles empty tables gracefully" do

@@ -233,4 +233,23 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :not_found
   end
+
+  test "update preserves a group" do
+    refute @group.preserve?
+
+    patch rails_pulse.exception_path(@group), params: { preserve: true }
+
+    assert @group.reload.preserve?
+    assert_redirected_to rails_pulse.exception_path(@group)
+    assert_equal "Exception preserved from cleanup.", flash[:notice]
+  end
+
+  test "update unpreserves a group" do
+    @group.update!(preserve: true)
+
+    patch rails_pulse.exception_path(@group), params: { preserve: false }
+
+    refute @group.reload.preserve?
+    assert_equal "Exception no longer preserved.", flash[:notice]
+  end
 end

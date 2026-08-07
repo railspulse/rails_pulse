@@ -3,7 +3,10 @@
 <% status_actions = [
      { label: "Resolve", url: exception_path(@exception_group), method: :patch, params: { status: "resolved" }, class: "btn", disabled: @exception_group.status == "resolved" },
      { label: "Ignore",  url: exception_path(@exception_group), method: :patch, params: { status: "ignored" },  class: "btn", disabled: @exception_group.status == "ignored" },
-     { label: "Open",    url: exception_path(@exception_group), method: :patch, params: { status: "open" },     class: "btn", disabled: @exception_group.status == "open" }
+     { label: "Open",    url: exception_path(@exception_group), method: :patch, params: { status: "open" },     class: "btn", disabled: @exception_group.status == "open" },
+     { label: @exception_group.preserve? ? "Unpreserve" : "Preserve",
+       url: exception_path(@exception_group), method: :patch,
+       params: { preserve: !@exception_group.preserve? }, class: "btn" }
    ] %>
 <%= render 'rails_pulse/components/panel', title: 'Exception Details', actions: status_actions do %>
   <dl class="descriptive-list mbs-4">
@@ -19,6 +22,8 @@
     <dd><%= human_readable_occurred_at(@exception_group.last_seen_at) %></dd>
     <dt>Total Occurrences</dt>
     <dd><%= number_with_delimiter(@exception_group.occurrence_count) %></dd>
+    <dt>Preserve</dt>
+    <dd><%= @exception_group.preserve? ? "Yes — exempt from cleanup" : "No" %></dd>
   </dl>
 <% end %>
 

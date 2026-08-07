@@ -94,10 +94,12 @@ module RailsPulse
       message = @exception.message.to_s.truncate(500)
       conn    = ExceptionGroup.connection
 
+      # Explicitly set status/preserve: SQLite schema dumps omit boolean DEFAULT false,
+      # so omitting those columns makes INSERT fail with NOT NULL on preserve.
       if conn.adapter_name.downcase.include?("mysql")
         conn.execute(<<~SQL)
           INSERT INTO rails_pulse_exception_groups
-            (fingerprint, exception_class, message, first_seen_at, last_seen_at, occurrence_count, created_at, updated_at)
+            (fingerprint, exception_class, message, first_seen_at, last_seen_at, occurrence_count, status, preserve, created_at, updated_at)
           VALUES (
             #{conn.quote(fingerprint)},
             #{conn.quote(@exception.class.name)},
@@ -105,6 +107,8 @@ module RailsPulse
             #{conn.quote(now)},
             #{conn.quote(now)},
             1,
+            #{conn.quote("open")},
+            #{conn.quote(false)},
             #{conn.quote(now)},
             #{conn.quote(now)}
           )
@@ -118,7 +122,7 @@ module RailsPulse
       else
         conn.execute(<<~SQL)
           INSERT INTO rails_pulse_exception_groups
-            (fingerprint, exception_class, message, first_seen_at, last_seen_at, occurrence_count, created_at, updated_at)
+            (fingerprint, exception_class, message, first_seen_at, last_seen_at, occurrence_count, status, preserve, created_at, updated_at)
           VALUES (
             #{conn.quote(fingerprint)},
             #{conn.quote(@exception.class.name)},
@@ -126,6 +130,8 @@ module RailsPulse
             #{conn.quote(now)},
             #{conn.quote(now)},
             1,
+            #{conn.quote("open")},
+            #{conn.quote(false)},
             #{conn.quote(now)},
             #{conn.quote(now)}
           )

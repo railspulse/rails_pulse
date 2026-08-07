@@ -336,5 +336,96 @@ module RailsPulse
         ExceptionCaptureService.capture(make_exception(RuntimeError, "after expiry"))
       end
     end
+
+    # Lifecycle
+
+    test "does not create an occurrence for an ignored group but still updates count and last_seen_at" do
+      exception = make_exception(RuntimeError, "ignored lifecycle")
+      ExceptionCaptureService.capture(exception)
+      group = ExceptionGroup.order(:created_at).last
+      group.update!(status: "ignored")
+      count_before = group.occurrence_count
+      occurrence_count_before = group.occurrences.count
+      last_seen_before = group.last_seen_at
+
+      travel_to(1.minute.from_now) do
+        assert_no_difference -> { ExceptionOccurrence.where(exception_group: group).count } do
+          ExceptionCaptureService.capture(exception)
+        end
+      end
+
+      group.reload
+
+      assert_equal "ignored", group.status
+      assert_equal occurrence_count_before, group.occurrences.count
+      assert_equal count_before + 1, group.occurrence_count
+      assert_operator group.last_seen_at, :>, last_seen_before
+    end
+
+    test "reopens a resolved group when a new occurrence arrives" do
+      exception = make_exception(RuntimeError, "resolved lifecycle")
+      ExceptionCaptureService.capture(exception)
+      group = ExceptionGroup.order(:created_at).last
+      group.update!(status: "resolved", resolved_at: 1.hour.ago)
+
+      assert_difference -> { ExceptionOccurrence.where(exception_group: group).count }, 1 do
+        ExceptionCaptureService.capture(exception)
+      end
+
+      group.reload
+
+      assert_equal "open", group.status
+      assert_nil group.resolved_at
+    end
+
+    # Request params
+
+    test "stores filtered request params when capture_exception_params is enabled" do
+      original = RailsPulse.configuration.capture_exception_params
+      RailsPulse.configuration.capture_exception_params = true
+      exception = make_exception(RuntimeError, "params test")
+
+      ExceptionCaptureService.capture(
+        exception,
+        request_params: { "q" => "search", "password" => "secret", "controller" => "posts" }
+      )
+
+      occurrence = ExceptionOccurrence.order(:created_at).last
+
+      assert_equal "search", occurrence.request_params["q"]
+      assert_equal "[FILTERED]", occurrence.request_params["password"]
+      assert_equal "posts", occurrence.request_params["controller"]
+    ensure
+      RailsPulse.configuration.capture_exception_params = original
+    end
+
+    test "does not store request params when capture_exception_params is false" do
+      original = RailsPulse.configuration.capture_exception_params
+      RailsPulse.configuration.capture_exception_params = false
+      exception = make_exception(RuntimeError, "no params")
+
+      ExceptionCaptureService.capture(exception, request_params: { "q" => "search" })
+
+      occurrence = ExceptionOccurrence.order(:created_at).last
+
+      assert_not occurrence.request_params.present?
+    ensure
+      RailsPulse.configuration.capture_exception_params = original
+    end
+
+    test "drops request params larger than the size limit after filtering" do
+      original = RailsPulse.configuration.capture_exception_params
+      RailsPulse.configuration.capture_exception_params = true
+      exception = make_exception(RuntimeError, "huge params")
+      huge = { "blob" => "x" * (ExceptionCaptureService::PARAMS_SIZE_LIMIT + 100) }
+
+      ExceptionCaptureService.capture(exception, request_params: huge)
+
+      occurrence = ExceptionOccurrence.order(:created_at).last
+
+      assert_not occurrence.request_params.present?
+    ensure
+      RailsPulse.configuration.capture_exception_params = original
+    end
   end
 end

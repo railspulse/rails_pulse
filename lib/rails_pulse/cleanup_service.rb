@@ -201,9 +201,23 @@ module RailsPulse
       cleanup_by_count(RailsPulse::ExceptionOccurrence, :rails_pulse_exception_occurrences, order_column: :occurred_at)
     end
 
+    # Prune oldest non-preserved, non-ignored groups when over the configured cap.
+    # Child occurrences must be deleted first — there is no ON DELETE CASCADE on the FK.
     def cleanup_exception_groups_by_count
+      max_records = @config.max_table_records[:rails_pulse_exception_groups]
+      return 0 unless max_records
+
+      current_count = RailsPulse::ExceptionGroup.count
+      return 0 if current_count <= max_records
+
+      records_to_delete = current_count - max_records
       scope = RailsPulse::ExceptionGroup.where(preserve: false).where.not(status: "ignored")
-      cleanup_by_count(RailsPulse::ExceptionGroup, :rails_pulse_exception_groups, order_column: :last_seen_at, scope: scope)
+      ids_to_delete = scope.order(last_seen_at: :asc).limit(records_to_delete).pluck(:id)
+      return 0 if ids_to_delete.empty?
+
+      RailsPulse::ExceptionOccurrence.where(exception_group_id: ids_to_delete).delete_all
+      RailsPulse::ExceptionGroup.where(id: ids_to_delete).delete_all
+      ids_to_delete.size
     end
 
     # Delete groups whose last occurrence was removed — uses an atomic subquery
