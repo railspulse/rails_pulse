@@ -1,5 +1,5 @@
 [tools]
-ruby = "latest"
+ruby = "3.3.6"
 node = "22.12.0"
 
 [env]

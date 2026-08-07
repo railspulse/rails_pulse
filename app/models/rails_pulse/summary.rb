@@ -74,7 +74,7 @@ module RailsPulse
       %w[
         period_start period_end avg_duration min_duration max_duration p95_duration p99_duration
         count error_count requests_per_minute error_rate_percentage
-        route_path route_controller_action
+        route_path route_controller_action route_methods_sort
         execution_count total_time_consumed normalized_sql
         summarizable_id summarizable_type
       ]
@@ -108,9 +108,9 @@ module RailsPulse
     end
 
     # Placeholder ransacker for method aggregation sorting; actual ORDER BY is
-    # applied by Routes::Tables::Index#named_sort using the DB-appropriate expression.
+    # applied by Routes::Tables::Index#named_sort using http_methods.
     ransacker :route_methods_sort do
-      Arel.sql("rails_pulse_routes.method")
+      Arel.sql("rails_pulse_routes.http_methods")
     end
 
     # Sorting-specific ransackers for GROUP BY compatibility (used only in ORDER BY)

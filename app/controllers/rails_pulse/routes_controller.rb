@@ -58,10 +58,6 @@ module RailsPulse
       { route_id_eq: @route.id }
     end
 
-    def resource_id_scope
-      { summarizable_id: @route.id }
-    end
-
     # Returns the current route for metric cards and chart params
     def current_resource
       @route
@@ -114,10 +110,9 @@ module RailsPulse
       end
     end
 
-    # Route path/action filters reference rails_pulse_routes columns directly.
-    # Chart queries don't join that table, so exclude these from chart params.
+    # Request table filters that chart Summary queries don't support / don't join for.
     def chart_filter_exclusions
-      %w[route_path_cont route_controller_action_cont]
+      %w[route_path_cont route_controller_action_cont controller_action_cont http_method_eq]
     end
 
     def default_time_range_key

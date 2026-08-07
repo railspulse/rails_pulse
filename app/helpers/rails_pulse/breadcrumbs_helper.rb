@@ -54,7 +54,8 @@ module RailsPulse
           resource_class = "RailsPulse::#{class_name}".safe_constantize
           if resource_class
             resource = resource_class.find(segment)
-            breadcrumb_title_for(resource)
+            # Try to_breadcrumb first, fall back to to_s
+            resource.try(:to_breadcrumb) || resource.to_s
           else
             segment
           end
@@ -87,15 +88,6 @@ module RailsPulse
 
       crumbs
     end
-    private
-
-    def breadcrumb_title_for(resource)
-      return resource.to_s unless resource.respond_to?(:to_breadcrumb)
-
-      resource.to_breadcrumb
-    end
-
-    public
 
     def page_title
       crumbs = breadcrumbs

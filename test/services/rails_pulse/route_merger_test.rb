@@ -40,6 +40,23 @@ module RailsPulse
       assert_equal 42, summary.count
     end
 
+    test "combines overlapping period summaries onto the target" do
+      target = create_route("GET", "/posts/1")
+      source = create_route("POST", "/posts/1")
+      period_start = 1.hour.ago.beginning_of_hour
+
+      target_summary = create_summary(target, count: 10, period_start: period_start, avg_duration: 100.0)
+      source_summary = create_summary(source, count: 30, period_start: period_start, avg_duration: 200.0)
+
+      RailsPulse::RouteMerger.call(target: target, source: source)
+
+      assert_not RailsPulse::Summary.exists?(id: source_summary.id)
+      target_summary.reload
+      assert_equal target.id, target_summary.summarizable_id
+      assert_equal 40, target_summary.count
+      assert_in_delta 175.0, target_summary.avg_duration, 0.01
+    end
+
     private
 
     def create_route(http_method, path)
@@ -63,15 +80,14 @@ module RailsPulse
       )
     end
 
-    def create_summary(route, count:)
-      period_start = 1.hour.ago.beginning_of_hour
+    def create_summary(route, count:, period_start: 1.hour.ago.beginning_of_hour, avg_duration: 100.0)
       RailsPulse::Summary.create!(
         summarizable: route,
         period_type: "hour",
         period_start: period_start,
         period_end: period_start.end_of_hour,
         count: count,
-        avg_duration: 100.0
+        avg_duration: avg_duration
       )
     end
   end

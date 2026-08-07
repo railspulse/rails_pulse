@@ -54,3 +54,5 @@ vendor/assets/javascripts/*.map
 
 # Minitest reporters output
 test/reports/
+
+PLAN.md

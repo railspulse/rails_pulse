@@ -136,14 +136,13 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
   end
 
   test "find_or_create_for_request creates a new route when none exists" do
-    initial_count = RailsPulse::Route.count
+    assert_difference -> { RailsPulse::Route.count }, 1 do
+      route = RailsPulse::Route.find_or_create_for_request("GET", "/api/new-endpoint", controller_action: "api/widgets#index")
 
-    route = RailsPulse::Route.find_or_create_for_request("GET", "/api/new-endpoint", controller_action: "api/widgets#index")
-
-    assert_equal initial_count + 1, RailsPulse::Route.count
-    assert_equal '["GET"]', route.http_methods
-    assert_equal "/api/new-endpoint", route.path
-    assert_equal "api/widgets#index", route.controller_action
+      assert_equal '["GET"]', route.http_methods
+      assert_equal "/api/new-endpoint", route.path
+      assert_equal "api/widgets#index", route.controller_action
+    end
   end
 
   test "find_or_create_for_request stores controller_action on new routes" do
@@ -163,22 +162,19 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
   end
 
   test "find_or_create_for_request does not create a duplicate for the same controller_action and path" do
-    initial_count = RailsPulse::Route.count
-
-    RailsPulse::Route.find_or_create_for_request("GET", "/api/users", controller_action: "api/users#index")
-    RailsPulse::Route.find_or_create_for_request("POST", "/api/users", controller_action: "api/users#index")
-
-    assert_equal initial_count, RailsPulse::Route.count
+    assert_no_difference -> { RailsPulse::Route.count } do
+      RailsPulse::Route.find_or_create_for_request("GET", "/api/users", controller_action: "api/users#index")
+      RailsPulse::Route.find_or_create_for_request("POST", "/api/users", controller_action: "api/users#index")
+    end
   end
 
   test "find_or_create_for_request groups by path alone when controller_action is nil" do
-    initial_count = RailsPulse::Route.count
+    assert_difference -> { RailsPulse::Route.count }, 1 do
+      r1 = RailsPulse::Route.find_or_create_for_request("GET", "/health", controller_action: nil)
+      r2 = RailsPulse::Route.find_or_create_for_request("HEAD", "/health", controller_action: nil)
 
-    r1 = RailsPulse::Route.find_or_create_for_request("GET", "/health", controller_action: nil)
-    r2 = RailsPulse::Route.find_or_create_for_request("HEAD", "/health", controller_action: nil)
-
-    assert_equal initial_count + 1, RailsPulse::Route.count
-    assert_equal r1, r2
+      assert_equal r1, r2
+    end
   end
 
   # to_breadcrumb Tests

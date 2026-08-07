@@ -21,7 +21,7 @@ module RailsPulse
     before_validation :set_request_uuid, on: :create
 
     def self.ransackable_attributes(auth_object = nil)
-      %w[id route_id occurred_at duration status status_category status_indicator route_path http_method response_size_bytes]
+      %w[id route_id occurred_at duration status status_category status_indicator route_path http_method controller_action response_size_bytes]
     end
 
     def self.ransackable_associations(auth_object = nil)

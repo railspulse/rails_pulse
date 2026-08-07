@@ -38,6 +38,7 @@ class ChangeRailsPulseRoutesToMultiVerbModel < ActiveRecord::Migration[7.0]
     # Step 5: Merge routes that share the same [controller_action, path] into one record,
     # combining their http_methods arrays. This collapses e.g. separate GET /sign_in and
     # POST /sign_in records (both sessions#new) into a single route with ["GET","POST"].
+    # Also consolidates null-controller_action duplicates that share a path.
     consolidate_route_duplicates
 
     # Step 6: Swap the unique index from [method, path] to [controller_action, path]
@@ -63,6 +64,11 @@ class ChangeRailsPulseRoutesToMultiVerbModel < ActiveRecord::Migration[7.0]
   private
 
   def consolidate_route_duplicates
+    consolidate_non_null_controller_action_groups
+    consolidate_null_controller_action_groups
+  end
+
+  def consolidate_non_null_controller_action_groups
     groups = connection.select_all(<<~SQL).to_a
       SELECT controller_action, path
       FROM rails_pulse_routes
@@ -72,29 +78,127 @@ class ChangeRailsPulseRoutesToMultiVerbModel < ActiveRecord::Migration[7.0]
     SQL
 
     groups.each do |group|
-      ca   = group["controller_action"]
-      path = group["path"]
-
       routes = connection.select_all(
         "SELECT id, http_methods FROM rails_pulse_routes " \
-        "WHERE controller_action = #{connection.quote(ca)} AND path = #{connection.quote(path)} " \
+        "WHERE controller_action = #{connection.quote(group["controller_action"])} " \
+        "AND path = #{connection.quote(group["path"])} " \
         "ORDER BY id"
       ).to_a
-
-      all_methods = routes.flat_map { |r|
-        begin; JSON.parse(r["http_methods"] || "[]"); rescue JSON::ParserError; []; end
-      }.uniq.sort
-
-      winner_id  = routes.first["id"].to_i
-      loser_ids  = routes.drop(1).map { |r| r["id"].to_i }
-      next if loser_ids.empty?
-
-      loser_list = loser_ids.join(",")
-
-      connection.execute("UPDATE rails_pulse_requests SET route_id = #{winner_id} WHERE route_id IN (#{loser_list})")
-      connection.execute("UPDATE rails_pulse_summaries SET summarizable_id = #{winner_id} WHERE summarizable_id IN (#{loser_list}) AND summarizable_type = 'RailsPulse::Route'")
-      connection.execute("UPDATE rails_pulse_routes SET http_methods = #{connection.quote(all_methods.to_json)} WHERE id = #{winner_id}")
-      connection.execute("DELETE FROM rails_pulse_routes WHERE id IN (#{loser_list})")
+      merge_route_rows!(routes)
     end
+  end
+
+  def consolidate_null_controller_action_groups
+    groups = connection.select_all(<<~SQL).to_a
+      SELECT path
+      FROM rails_pulse_routes
+      WHERE controller_action IS NULL
+      GROUP BY path
+      HAVING COUNT(*) > 1
+    SQL
+
+    groups.each do |group|
+      routes = connection.select_all(
+        "SELECT id, http_methods FROM rails_pulse_routes " \
+        "WHERE controller_action IS NULL AND path = #{connection.quote(group["path"])} " \
+        "ORDER BY id"
+      ).to_a
+      merge_route_rows!(routes)
+    end
+  end
+
+  def merge_route_rows!(routes)
+    all_methods = routes.flat_map { |r|
+      begin
+        JSON.parse(r["http_methods"] || "[]")
+      rescue JSON::ParserError
+        []
+      end
+    }.uniq.sort
+
+    winner_id = routes.first["id"].to_i
+    loser_ids = routes.drop(1).map { |r| r["id"].to_i }
+    return if loser_ids.empty?
+
+    loser_list = loser_ids.join(",")
+
+    connection.execute("UPDATE rails_pulse_requests SET route_id = #{winner_id} WHERE route_id IN (#{loser_list})")
+    reassign_or_merge_summaries!(winner_id, loser_ids)
+    connection.execute("UPDATE rails_pulse_routes SET http_methods = #{connection.quote(all_methods.to_json)} WHERE id = #{winner_id}")
+    connection.execute("DELETE FROM rails_pulse_routes WHERE id IN (#{loser_list})")
+  end
+
+  # Reassign loser summaries to the winner. When the same period already exists on the
+  # winner, combine additive/weighted metrics then delete the loser row (unique index
+  # on [summarizable_type, summarizable_id, period_type, period_start]).
+  def reassign_or_merge_summaries!(winner_id, loser_ids)
+    loser_ids.each do |loser_id|
+      source_summaries = connection.select_all(<<~SQL).to_a
+        SELECT *
+        FROM rails_pulse_summaries
+        WHERE summarizable_type = 'RailsPulse::Route'
+          AND summarizable_id = #{loser_id.to_i}
+      SQL
+
+      source_summaries.each do |source|
+        existing = connection.select_one(<<~SQL)
+          SELECT *
+          FROM rails_pulse_summaries
+          WHERE summarizable_type = 'RailsPulse::Route'
+            AND summarizable_id = #{winner_id.to_i}
+            AND period_type = #{connection.quote(source["period_type"])}
+            AND period_start = #{connection.quote(source["period_start"])}
+        SQL
+
+        if existing
+          merge_summary_row!(existing, source)
+          connection.execute("DELETE FROM rails_pulse_summaries WHERE id = #{source["id"].to_i}")
+        else
+          connection.execute(
+            "UPDATE rails_pulse_summaries SET summarizable_id = #{winner_id.to_i} WHERE id = #{source["id"].to_i}"
+          )
+        end
+      end
+    end
+  end
+
+  def merge_summary_row!(target, source)
+    target_count = target["count"].to_i
+    source_count = source["count"].to_i
+    combined_count = target_count + source_count
+
+    sum_columns = %w[count error_count success_count total_duration status_2xx status_3xx status_4xx status_5xx]
+    weighted_columns = %w[avg_duration p50_duration p95_duration p99_duration]
+
+    sets = []
+
+    sum_columns.each do |column|
+      next unless target.key?(column)
+
+      sets << "#{column} = #{target[column].to_f + source[column].to_f}"
+    end
+
+    if combined_count.positive?
+      weighted_columns.each do |column|
+        next unless target.key?(column)
+        next if target[column].nil? && source[column].nil?
+
+        value = ((target[column].to_f * target_count) + (source[column].to_f * source_count)) / combined_count
+        sets << "#{column} = #{value}"
+      end
+    end
+
+    if target.key?("min_duration")
+      mins = [ target["min_duration"], source["min_duration"] ].compact
+      sets << "min_duration = #{mins.min}" if mins.any?
+    end
+
+    if target.key?("max_duration")
+      maxes = [ target["max_duration"], source["max_duration"] ].compact
+      sets << "max_duration = #{maxes.max}" if maxes.any?
+    end
+
+    sets << "updated_at = #{connection.quote(Time.current)}"
+    connection.execute("UPDATE rails_pulse_summaries SET #{sets.join(', ')} WHERE id = #{target["id"].to_i}")
   end
 end

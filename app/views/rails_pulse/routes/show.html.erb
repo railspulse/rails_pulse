@@ -24,18 +24,26 @@
             name="chart_type"
             data-rails-pulse--chart-switcher-target="chartTypeInput"
           >
+          <%= form.search_field :route_path_cont,
+            placeholder: "Filter by path",
+            autocomplete: "off",
+            class: "input"
+          %>
+          <%= form.search_field :controller_action_cont,
+            placeholder: "Filter by action",
+            autocomplete: "off",
+            class: "input"
+          %>
           <%= form.select :avg_duration,
             duration_options(:route),
             { selected: @selected_response_range },
             { class: "input" }
           %>
-          <% if @route.http_methods_list.length > 1 %>
-            <%= form.select :http_method_eq,
-              [ [ "All Methods", "" ] ] + @route.http_methods_list.sort.map { |m| [ m, m ] },
-              { selected: params.dig(:q, :http_method_eq) },
-              { class: "input" }
-            %>
-          <% end %>
+          <%= form.select :http_method_eq,
+            [ [ "All Methods", "" ] ] + @route.http_methods_list.sort.map { |m| [ m, m ] },
+            { selected: params.dig(:q, :http_method_eq) },
+            { class: "input" }
+          %>
           <%= link_to "Reset", route_path(@route), class: "btn btn--plain", style: "text-decoration: none; color: var(--color-text-muted);" if params.has_key?(:q) %>
           <%= form.submit "Search", class: "btn" %>
         <% end %>

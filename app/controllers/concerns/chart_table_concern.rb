@@ -316,8 +316,7 @@ module ChartTableConcern
     nil
   end
 
-  # Ransack scope for scoping chart summaries to the current resource(s) on show pages.
-  # Override when a show page represents multiple underlying records (e.g. sibling routes).
+  # Ransack scope for chart summaries on show pages. Override to customize (e.g. IN queries).
   def resource_id_scope
     { summarizable_id_eq: current_resource.id }
   end

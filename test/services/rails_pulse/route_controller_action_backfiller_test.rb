@@ -117,7 +117,7 @@ module RailsPulse
 
       survivor = RailsPulse::Route.find_by(controller_action: "home#index", path: "/posts/99")
 
-      assert survivor
+      assert_not_nil survivor
       assert_equal 1, RailsPulse::Route.where(path: "/posts/99").count
       assert_equal survivor.id, request.reload.route_id
       assert_includes [ first.id, second.id ], survivor.id
@@ -132,7 +132,7 @@ module RailsPulse
 
       survivor = RailsPulse::Route.find_by(controller_action: "home#index", path: "/sign_in")
 
-      assert survivor
+      assert_not_nil survivor
       assert_equal 1, RailsPulse::Route.where(path: "/sign_in").count
       assert_equal [ "GET", "POST" ], survivor.http_methods_list.sort
       assert_equal survivor.id, request.reload.route_id
@@ -251,10 +251,10 @@ module RailsPulse
     test "results hash has all expected keys" do
       results = call_backfiller
 
-      assert results.key?(:updated)
-      assert results.key?(:skipped)
-      assert results.key?(:already_set)
-      assert results.key?(:merged)
+      assert_includes results.keys, :updated
+      assert_includes results.keys, :skipped
+      assert_includes results.keys, :already_set
+      assert_includes results.keys, :merged
     end
 
     test "result counts sum to routes processed" do

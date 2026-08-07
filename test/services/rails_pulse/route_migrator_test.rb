@@ -17,7 +17,7 @@ module RailsPulse
 
       normalized = RailsPulse::Route.find_by(path: "/posts/:id")
 
-      assert normalized, "normalized route should exist"
+      assert_not_nil normalized, "normalized route should exist"
       assert_equal normalized.id, request.reload.route_id,
         "request should be reassigned to normalized route"
     end
@@ -32,7 +32,7 @@ module RailsPulse
 
       normalized = RailsPulse::Route.find_by(path: "/posts/:id")
 
-      assert normalized
+      assert_not_nil normalized
       assert_equal normalized.id, req1.reload.route_id
       assert_equal normalized.id, req2.reload.route_id
       assert_equal 1, RailsPulse::Route.where(path: "/posts/:id").count
@@ -103,7 +103,7 @@ module RailsPulse
 
       normalized = RailsPulse::Route.find_by(path: "/posts/:id")
 
-      assert normalized
+      assert_not_nil normalized
       assert_equal normalized.id, request.reload.route_id
       assert_equal 2, calls
     end

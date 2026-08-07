@@ -696,10 +696,8 @@ module RailsPulse
           @ransack_query = RailsPulse::Summary.ransack(route_controller_action_cont: "acme_#{unique}")
           results = create_table.to_a
 
-          assert results.any? { |r| r.controller_action == matching_ca },
-                 "expected matching controller_action in results"
-          refute results.any? { |r| r.controller_action == other_ca },
-                 "expected non-matching controller_action to be excluded"
+          assert_includes results.map(&:controller_action), matching_ca
+          refute_includes results.map(&:controller_action), other_ca
         end
       end
     end
