@@ -114,6 +114,10 @@ module RailsPulse
           "SELECT setval(#{connection.quote(sequence)}, #{max_id}, true)"
         )
       when /mysql/
+        # ALTER TABLE implicitly commits on MySQL and destroys SAVEPOINTs used by
+        # transactional tests / nested transactions. Skip while nested.
+        return if connection.open_transactions.positive?
+
         connection.execute(
           "ALTER TABLE #{connection.quote_table_name(table)} AUTO_INCREMENT = #{max_id + 1}"
         )
