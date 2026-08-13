@@ -38,12 +38,22 @@ Then configure `config/database.yml`:
 
 ```yaml
 development:
+  primary:
+    <<: *default
+    database: storage/development.sqlite3
   rails_pulse:
     <<: *default
     database: storage/development_rails_pulse.sqlite3
     migrations_paths: db/rails_pulse_migrate
+    database_tasks: false
 
 production:
+  primary:
+    adapter: postgresql
+    database: myapp_production
+    username: <%= ENV['DB_USERNAME'] %>
+    password: <%= ENV['DB_PASSWORD'] %>
+    host: <%= ENV['DB_HOST'] %>
   rails_pulse:
     adapter: postgresql
     database: myapp_rails_pulse
@@ -51,7 +61,15 @@ production:
     password: <%= ENV['DB_PASSWORD'] %>
     host: <%= ENV['DB_HOST'] %>
     migrations_paths: db/rails_pulse_migrate
+    database_tasks: false
 ```
+
+Also uncomment `config.connects_to` in `config/initializers/rails_pulse.rb` so Rails Pulse
+models use the separate database connection.
+
+Setting `database_tasks: false` prevents Rails from loading `db/rails_pulse_structure.sql`
+during `db:migrate`. Rails Pulse manages the pulse database schema via the idempotent
+`db/rails_pulse_schema.rb` file instead.
 
 Finally, create the database:
 
@@ -169,6 +187,7 @@ rails db:migrate  # Idempotent - safe to run even if tables exist
 git checkout feature-branch
 bundle install
 rails db:prepare  # Schema file will skip existing tables
+rails db:migrate  # Safe — uses idempotent schema load, not structure.sql
 ```
 
 **If you want a clean state:**

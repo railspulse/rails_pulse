@@ -2,33 +2,43 @@ namespace :db do
   namespace :schema do
     desc "Load Rails Pulse schema (for separate database setup only)"
     task load_rails_pulse: :environment do
-      schema_file = Rails.root.join("db/rails_pulse_schema.rb")
-
-      # Only load schema if using separate database setup
-      if separate_database_setup?
-        if schema_file.exist?
-          load schema_file
-          puts "Rails Pulse schema loaded successfully"
-          # Record any copied migrations as already applied so they don't show as
-          # pending after a fresh schema load. The schema file creates all tables and
-          # columns directly, so the incremental migrations are logically already done.
-          record_rails_pulse_migrations_applied
-        else
-          puts "Rails Pulse schema file not found. Run: rails generate rails_pulse:install --database=separate"
-        end
-      else
-        puts "Single database setup detected. Rails Pulse tables managed via regular migrations."
-      end
+      load_rails_pulse_schema
     end
   end
 
-  # Hook into common database tasks only for separate database setup
-  task prepare: :environment do
-    Rake::Task["db:schema:load_rails_pulse"].invoke if separate_database_setup?
+  namespace :migrate do
+    desc "Migrate Rails Pulse database for current environment"
+    task rails_pulse: :load_config do
+      migrate_rails_pulse_database
+    end
   end
+end
 
-  task setup: :environment do
-    Rake::Task["db:schema:load_rails_pulse"].invoke if separate_database_setup?
+# Hook into common database tasks only for separate database setup.
+# Use enhance (not task redefinition) so Rails' built-in actions still run.
+if Rake::Task.task_defined?("db:prepare")
+  Rake::Task["db:prepare"].enhance do
+    next unless separate_database_setup?
+
+    Rake::Task["db:schema:load_rails_pulse"].reenable
+    Rake::Task["db:schema:load_rails_pulse"].invoke
+  end
+end
+
+if Rake::Task.task_defined?("db:setup")
+  Rake::Task["db:setup"].enhance do
+    next unless separate_database_setup?
+
+    Rake::Task["db:schema:load_rails_pulse"].reenable
+    Rake::Task["db:schema:load_rails_pulse"].invoke
+  end
+end
+
+if Rake::Task.task_defined?("db:migrate")
+  Rake::Task["db:migrate"].enhance do
+    next unless separate_database_setup?
+
+    migrate_rails_pulse_database
   end
 end
 
@@ -55,38 +65,106 @@ def separate_database_setup?
   (Rails.application.config.database_configuration.dig(Rails.env, "rails_pulse").present?)
 end
 
+def rails_pulse_db_config
+  ActiveRecord::Base.configurations.configs_for(
+    env_name: Rails.env,
+    name: "rails_pulse",
+    include_hidden: true
+  )
+end
+
+def ensure_rails_pulse_database
+  db_config = rails_pulse_db_config
+  return unless db_config
+
+  ActiveRecord::Tasks::DatabaseTasks.create(db_config)
+rescue ActiveRecord::DatabaseAlreadyExists
+  # Database already exists — nothing to do.
+end
+
+def with_rails_pulse_connection
+  db_config = rails_pulse_db_config
+  return unless db_config
+
+  if defined?(RailsPulse::ApplicationRecord) && RailsPulse.connects_to
+    yield RailsPulse::ApplicationRecord.connection
+  else
+    ActiveRecord::Tasks::DatabaseTasks.with_temporary_connection(db_config) do |connection|
+      yield connection
+    end
+  end
+end
+
+def load_rails_pulse_schema
+  schema_file = Rails.root.join("db/rails_pulse_schema.rb")
+
+  unless separate_database_setup?
+    puts "Single database setup detected. Rails Pulse tables managed via regular migrations."
+    return
+  end
+
+  unless schema_file.exist?
+    puts "Rails Pulse schema file not found. Run: rails generate rails_pulse:install --database=separate"
+    return
+  end
+
+  ensure_rails_pulse_database
+
+  load schema_file unless defined?(RailsPulse::Schema)
+
+  with_rails_pulse_connection do |connection|
+    RailsPulse::Schema.call(connection)
+  end
+
+  puts "Rails Pulse schema loaded successfully"
+
+  # Record any copied migrations as already applied so they don't show as
+  # pending after a fresh schema load. The schema file creates all tables and
+  # columns directly, so the incremental migrations are logically already done.
+  record_rails_pulse_migrations_applied
+end
+
+def migrate_rails_pulse_database
+  load_rails_pulse_schema
+
+  db_config = rails_pulse_db_config
+  return unless db_config
+
+  ActiveRecord::Tasks::DatabaseTasks.with_temporary_connection(db_config) do
+    ActiveRecord::Tasks::DatabaseTasks.migrate
+  end
+end
+
 # After a schema load, insert version numbers for any migration files already in
 # db/rails_pulse_migrate/ into schema_migrations so Rails does not report them as
 # pending. The schema already includes every column those migrations would add, so
 # running them would be a no-op — but Rails still needs the version recorded.
 def record_rails_pulse_migrations_applied
-  return unless defined?(RailsPulse::ApplicationRecord)
-
   migrations_path = Rails.root.join("db/rails_pulse_migrate")
   return unless migrations_path.exist?
 
-  connection = RailsPulse::ApplicationRecord.connection
-
-  # Create schema_migrations if this is a brand-new database that has not yet
-  # had any migrations run against it (e.g. just after db:create).
-  unless connection.table_exists?(:schema_migrations)
-    connection.create_table :schema_migrations, id: false do |t|
-      t.string :version, null: false
+  with_rails_pulse_connection do |connection|
+    # Create schema_migrations if this is a brand-new database that has not yet
+    # had any migrations run against it (e.g. just after db:create).
+    unless connection.table_exists?(:schema_migrations)
+      connection.create_table :schema_migrations, id: false do |t|
+        t.string :version, null: false
+      end
+      connection.add_index :schema_migrations, :version,
+        unique: true, name: "unique_schema_migrations"
     end
-    connection.add_index :schema_migrations, :version,
-      unique: true, name: "unique_schema_migrations"
-  end
 
-  Dir.glob("#{migrations_path}/*.rb").sort.each do |file|
-    version = File.basename(file, ".rb").split("_").first
-    next if connection.select_values(
-      "SELECT version FROM schema_migrations WHERE version = #{connection.quote(version)}"
-    ).any?
+    Dir.glob("#{migrations_path}/*.rb").sort.each do |file|
+      version = File.basename(file, ".rb").split("_").first
+      next if connection.select_values(
+        "SELECT version FROM schema_migrations WHERE version = #{connection.quote(version)}"
+      ).any?
 
-    connection.execute(
-      "INSERT INTO schema_migrations (version) VALUES (#{connection.quote(version)})"
-    )
-    puts "[RailsPulse] Marked migration #{version} as applied (schema already up to date)"
+      connection.execute(
+        "INSERT INTO schema_migrations (version) VALUES (#{connection.quote(version)})"
+      )
+      puts "[RailsPulse] Marked migration #{version} as applied (schema already up to date)"
+    end
   end
 rescue => e
   warn "[RailsPulse] Could not mark migrations as applied: #{e.message}"

@@ -1,5 +1,6 @@
 require "test_helper"
 require "rake"
+require "fileutils"
 
 class RailsPulseRakeTest < ActiveSupport::TestCase
   # Disable parallelization for rake task tests
@@ -193,6 +194,60 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
 
     # Either true or false is valid depending on actual config
     assert_includes [ true, false ], result
+  end
+
+  test "db:migrate hook is defined" do
+    task = Rake::Task["db:migrate"]
+
+    assert_kind_of Rake::Task, task
+  end
+
+  test "db:migrate:rails_pulse task is defined" do
+    task = Rake::Task["db:migrate:rails_pulse"]
+
+    assert_kind_of Rake::Task, task
+  end
+
+  test "rails_pulse database config has database_tasks disabled" do
+    skip "Requires separate database setup" unless separate_database_setup?
+
+    db_config = rails_pulse_db_config
+    skip "Requires rails_pulse database config" unless db_config
+
+    refute db_config.database_tasks?, "rails_pulse database should have database_tasks: false"
+  end
+
+  test "db:migrate succeeds when rails pulse tables already exist on separate database" do
+    skip "Requires separate database setup" unless separate_database_setup?
+
+    db_config = rails_pulse_db_config
+    skip "Requires rails_pulse database config" unless db_config
+
+    structure_sql = Rails.root.join("db/rails_pulse_structure.sql")
+
+    begin
+      # Pre-create pulse tables via the idempotent Ruby schema loader
+      reenable_and_capture("db:schema:load_rails_pulse") do
+        Rake::Task["db:schema:load_rails_pulse"].invoke
+      end
+
+      # Simulate a structure dump that would cause duplicate-relation errors
+      File.write(structure_sql, <<~SQL)
+        CREATE TABLE rails_pulse_deployments (
+          id bigserial PRIMARY KEY
+        );
+      SQL
+
+      output = reenable_and_capture("db:migrate") do
+        Rake::Task["db:migrate"].invoke
+      end
+
+      refute_match(/relation .* already exists/i, output)
+      assert output.include?("already exist") || output.include?("schema loaded successfully") ||
+        output.include?("migrated") || output.empty?
+    ensure
+      FileUtils.rm_f(structure_sql)
+    end
   end
 
   test "db:prepare hook is defined" do

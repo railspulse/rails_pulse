@@ -47,56 +47,74 @@ default: &default
   <% end %>
 
 development:
-  <<: *default
-  <% if adapter == 'sqlite3' %>
-  database: storage/development.sqlite3
-  <% elsif adapter == 'postgresql' %>
-  database: <%= ENV.fetch('POSTGRES_DATABASE', 'rails_pulse_development') %>
-  <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
-  database: <%= ENV.fetch('MYSQL_DATABASE', 'rails_pulse_development') %>
-  <% else %>
-  database: rails_pulse_development
-  <% end %>
+  primary:
+    <<: *default
+    <% if adapter == 'sqlite3' %>
+    database: storage/development.sqlite3
+    <% elsif adapter == 'postgresql' %>
+    database: <%= ENV.fetch('POSTGRES_DATABASE', 'rails_pulse_development') %>
+    <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
+    database: <%= ENV.fetch('MYSQL_DATABASE', 'rails_pulse_development') %>
+    <% else %>
+    database: rails_pulse_development
+    <% end %>
   rails_pulse:
     <<: *default
     database: storage/development_rails_pulse.sqlite3
     migrations_paths: db/rails_pulse_migrate
+    database_tasks: false
 
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
 # Do not set this db to the same as development or production.
 test:
-  <<: *default
-  <% if adapter == 'sqlite3' %>
-  database: storage/test.sqlite3
+  primary:
+    <<: *default
+    <% if adapter == 'sqlite3' %>
+    database: storage/test.sqlite3
+    <% elsif adapter == 'postgresql' %>
+    database: <%= ENV.fetch('POSTGRES_TEST_DATABASE', 'rails_pulse_test') %>
+    <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
+    database: <%= ENV.fetch('MYSQL_TEST_DATABASE', 'rails_pulse_test') %>
+    <% else %>
+    database: rails_pulse_test
+    <% end %>
   rails_pulse:
     <<: *default
+    <% if adapter == 'sqlite3' %>
     database: storage/test_rails_pulse.sqlite3
-    migrations_paths: db/rails_pulse_migrate
-  <% elsif adapter == 'postgresql' %>
-  database: <%= ENV.fetch('POSTGRES_TEST_DATABASE', 'rails_pulse_test') %>
-  rails_pulse:
-    <<: *default
+    <% elsif adapter == 'postgresql' %>
     database: <%= ENV.fetch('POSTGRES_TEST_RAILS_PULSE_DATABASE', 'rails_pulse_test_rails_pulse') %>
-    migrations_paths: db/rails_pulse_migrate
-  <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
-  database: <%= ENV.fetch('MYSQL_TEST_DATABASE', 'rails_pulse_test') %>
-  rails_pulse:
-    <<: *default
+    <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
     database: <%= ENV.fetch('MYSQL_TEST_RAILS_PULSE_DATABASE', 'rails_pulse_test_rails_pulse') %>
+    <% else %>
+    database: rails_pulse_test_rails_pulse
+    <% end %>
     migrations_paths: db/rails_pulse_migrate
-  <% else %>
-  database: rails_pulse_test
-  <% end %>
+    database_tasks: false
 
 production:
-  <<: *default
-  <% if adapter == 'sqlite3' %>
-  database: storage/production.sqlite3
-  <% elsif adapter == 'postgresql' %>
-  database: <%= ENV.fetch('POSTGRES_PRODUCTION_DATABASE', 'rails_pulse_production') %>
-  <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
-  database: <%= ENV.fetch('MYSQL_PRODUCTION_DATABASE', 'rails_pulse_production') %>
-  <% else %>
-  database: rails_pulse_production
-  <% end %>
+  primary:
+    <<: *default
+    <% if adapter == 'sqlite3' %>
+    database: storage/production.sqlite3
+    <% elsif adapter == 'postgresql' %>
+    database: <%= ENV.fetch('POSTGRES_PRODUCTION_DATABASE', 'rails_pulse_production') %>
+    <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
+    database: <%= ENV.fetch('MYSQL_PRODUCTION_DATABASE', 'rails_pulse_production') %>
+    <% else %>
+    database: rails_pulse_production
+    <% end %>
+  rails_pulse:
+    <<: *default
+    <% if adapter == 'sqlite3' %>
+    database: storage/production_rails_pulse.sqlite3
+    <% elsif adapter == 'postgresql' %>
+    database: <%= ENV.fetch('POSTGRES_PRODUCTION_RAILS_PULSE_DATABASE', 'rails_pulse_production_rails_pulse') %>
+    <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
+    database: <%= ENV.fetch('MYSQL_PRODUCTION_RAILS_PULSE_DATABASE', 'rails_pulse_production_rails_pulse') %>
+    <% else %>
+    database: rails_pulse_production_rails_pulse
+    <% end %>
+    migrations_paths: db/rails_pulse_migrate
+    database_tasks: false

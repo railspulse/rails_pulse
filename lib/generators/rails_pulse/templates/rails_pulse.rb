@@ -169,7 +169,8 @@ RailsPulse.configure do |config|
   # Don't forget to add the database configuration to config/database.yml:
   #
   # production:
-  #   # ... your main database config ...
+  #   primary:
+  #     # ... your main database config ...
   #   rails_pulse:
   #     adapter: postgresql  # or mysql2, sqlite3
   #     database: myapp_rails_pulse_production
@@ -177,6 +178,8 @@ RailsPulse.configure do |config|
   #     password: <%= Rails.application.credentials.dig(:rails_pulse, :database_password) %>
   #     host: localhost
   #     pool: 5
+  #     migrations_paths: db/rails_pulse_migrate
+  #     database_tasks: false
 
   # ====================================================================================================
   #                                            AUTHENTICATION

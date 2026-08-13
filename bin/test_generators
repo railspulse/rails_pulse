@@ -203,7 +203,12 @@ class GeneratorTester
       # Run db:prepare
       run_command "bin/rails db:prepare RAILS_ENV=test"
 
-      verify_tables_exist("Tables created successfully")
+      verify_tables_exist("Tables created successfully", separate: true)
+
+      # db:migrate must succeed when pulse tables already exist (issue #189)
+      run_command "bin/rails db:migrate RAILS_ENV=test"
+
+      verify_tables_exist("Tables still exist after db:migrate", separate: true)
     end
   end
 
@@ -275,10 +280,21 @@ class GeneratorTester
     end
   end
 
-  def verify_tables_exist(description)
+  def verify_tables_exist(description, separate: false)
     Dir.chdir(test_dir) do
+      runner_code = if separate
+        <<~RUBY.tr("\n", " ")
+          db_config = ActiveRecord::Base.configurations.configs_for(env_name: 'test', name: 'rails_pulse', include_hidden: true);
+          ActiveRecord::Tasks::DatabaseTasks.with_temporary_connection(db_config) do |conn|
+            puts conn.table_exists?(:rails_pulse_routes) && conn.table_exists?(:rails_pulse_queries) && conn.table_exists?(:rails_pulse_requests)
+          end
+        RUBY
+      else
+        'puts RailsPulse::Route.table_exists? && RailsPulse::Query.table_exists? && RailsPulse::Request.table_exists?'
+      end
+
       result = run_command(
-        "bin/rails runner -e test \"puts RailsPulse::Route.table_exists? && RailsPulse::Query.table_exists? && RailsPulse::Request.table_exists?\"",
+        "bin/rails runner -e test \"#{runner_code}\"",
         capture: true
       )
 

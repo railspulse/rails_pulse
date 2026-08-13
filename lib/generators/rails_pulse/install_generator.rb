@@ -74,13 +74,18 @@ module RailsPulse
           1. Add Rails Pulse database configuration to config/database.yml:
 
              #{Rails.env}:
+               primary:
+                 <<: *default
+                 database: storage/#{Rails.env}.sqlite3
                rails_pulse:
                  <<: *default
                  database: storage/#{Rails.env}_rails_pulse.sqlite3
                  migrations_paths: db/rails_pulse_migrate
+                 database_tasks: false
 
-          2. Run: rails db:prepare (creates database and loads schema)
-          3. Restart your Rails server
+          2. Uncomment config.connects_to in config/initializers/rails_pulse.rb
+          3. Run: rails db:prepare (creates database and loads schema)
+          4. Restart your Rails server
 
           The schema file db/rails_pulse_schema.rb is your single source of truth.
           Future upgrades will automatically copy new migrations to db/rails_pulse_migrate/
