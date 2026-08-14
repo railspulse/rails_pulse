@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Fixed upgrading when using separate database installation
+- Fixed `assets:precompile` failing on memory-constrained hosts by serving dashboard assets exclusively via middleware instead of registering them with the host Sprockets pipeline
 
 ## [0.3.3] - 2026-06-23
 

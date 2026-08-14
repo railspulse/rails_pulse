@@ -64,24 +64,11 @@ module RailsPulse
     end
 
     initializer "rails_pulse.assets" do |app|
-      # Register Rails Pulse assets with Sprockets for production/CDN deployment
-      if app.config.respond_to?(:assets)
-        # Add vendor assets to the asset pipeline
-        app.config.assets.paths << Engine.root.join("vendor", "assets", "stylesheets").to_s
-        app.config.assets.paths << Engine.root.join("vendor", "assets", "javascripts").to_s
-
-        # Register bundled assets for precompilation
-        if defined?(::Sprockets)
-          app.config.assets.precompile += %w[
-            rails-pulse.css
-            rails-pulse.js
-            rails-pulse-icons.js
-          ]
-        end
-      end
-
-      # Fallback: Add middleware for development/non-CDN setups
-      # This serves assets directly when not using precompiled manifest
+      # The dashboard assets are bundled and minified at gem build time and
+      # served by the AssetServer middleware. They are deliberately not
+      # registered with the host's asset pipeline: precompiling them there
+      # runs the host's js_compressor over an already-minified 2 MB bundle,
+      # which is wasted work and can exhaust memory on small servers.
       assets_path = Engine.root.join("public")
       app.middleware.insert_after Rack::Runtime, RailsPulse::Middleware::AssetServer,
         assets_path.to_s,
