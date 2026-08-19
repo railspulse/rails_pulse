@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Fixed upgrading when using separate database installation
+- Separate-database installs set `schema_dump: false` so `db:migrate` no longer dumps or loads `db/rails_pulse_structure.sql` (#189)
 
 ## [0.3.3] - 2026-06-23
 
