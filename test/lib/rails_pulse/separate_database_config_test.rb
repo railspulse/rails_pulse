@@ -21,20 +21,20 @@ module RailsPulse
       assert_nil ActiveRecord::Tasks::DatabaseTasks.schema_dump_path(cfg)
     end
 
-    test "schema_dump omitted dumps rails_pulse_structure.sql" do
+    test "schema_dump omitted dumps rails_pulse_structure.sql for sql format" do
       cfg = ActiveRecord::DatabaseConfigurations::HashConfig.new(
         "production",
         "rails_pulse",
         {
           "adapter" => "postgresql",
           "database" => "rails_pulse_staging",
-          "migrations_paths" => "db/rails_pulse_migrate",
-          "schema_format" => "sql"
+          "migrations_paths" => "db/rails_pulse_migrate"
         }
       )
 
-      assert_equal "rails_pulse_structure.sql", cfg.schema_dump
-      assert_equal "sql", cfg.schema_format.to_s
+      # Pass :sql explicitly: Rails 7.2 ignores per-database schema_format.
+      assert_equal "rails_pulse_structure.sql", cfg.schema_dump(:sql)
+      assert_equal "rails_pulse_schema.rb", cfg.schema_dump(:ruby)
     end
 
     test "dummy database.yml sets schema_dump false on rails_pulse" do
