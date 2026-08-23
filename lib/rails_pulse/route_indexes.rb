@@ -9,31 +9,35 @@ module RailsPulse
   # different-verb REST siblings (GET /users vs POST /users). Call this after
   # RouteControllerActionBackfiller has assigned actions.
   #
-  # Built with SQL rather than `add_index(..., where:)` so MySQL cannot silently
-  # ignore the predicate and unique-index every path.
+  # PostgreSQL and SQLite go through `add_index(..., where:)` so `schema.rb`
+  # round-trips the predicate. Raw multiline `CREATE UNIQUE INDEX ... WHERE`
+  # is stored with a trailing newline that SQLite's schema dumper does not
+  # parse, so `db:schema:load` (and parallel test workers) recreate a unique
+  # index on every path. MySQL still uses SQL: `add_index(..., where:)` is
+  # silently ignored and would unique-index every path.
   module RouteIndexes
     NULL_ACTION_INDEX = "index_rails_pulse_routes_on_path_without_action"
 
     def self.ensure_null_action_uniqueness!(connection)
       return if exists?(connection)
 
-      table = connection.quote_table_name(:rails_pulse_routes)
       adapter = connection.adapter_name.downcase
 
-      sql = if adapter.include?("mysql")
-        <<~SQL
+      if adapter.include?("mysql")
+        table = connection.quote_table_name(:rails_pulse_routes)
+        connection.execute(<<~SQL.strip)
           CREATE UNIQUE INDEX #{NULL_ACTION_INDEX}
           ON #{table} ((CASE WHEN controller_action IS NULL THEN path ELSE NULL END))
         SQL
       else
-        <<~SQL
-          CREATE UNIQUE INDEX #{NULL_ACTION_INDEX}
-          ON #{table} (path)
-          WHERE controller_action IS NULL
-        SQL
+        connection.add_index(
+          :rails_pulse_routes,
+          :path,
+          unique: true,
+          where: "controller_action IS NULL",
+          name: NULL_ACTION_INDEX
+        )
       end
-
-      connection.execute(sql)
     end
 
     def self.remove_null_action_uniqueness!(connection)
