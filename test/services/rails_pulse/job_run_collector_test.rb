@@ -85,6 +85,36 @@ module RailsPulse
       assert_equal "boom", job_run.error_message
     end
 
+    test "track records a failed job as an exception occurrence" do
+      job = FakeJob.new
+
+      assert_difference -> { RailsPulse::ExceptionOccurrence.count }, 1 do
+        assert_raises RuntimeError do
+          RailsPulse::JobRunCollector.track(job) do
+            raise RuntimeError, "boom"
+          end
+        end
+      end
+
+      assert_kind_of RuntimeError, RequestStore.store[:rails_pulse_captured_exception]
+    end
+
+    test "track does not record an exception when track_exceptions is false" do
+      original = RailsPulse.configuration.track_exceptions
+      RailsPulse.configuration.track_exceptions = false
+      job = FakeJob.new
+
+      assert_no_difference -> { RailsPulse::ExceptionOccurrence.count } do
+        assert_raises RuntimeError do
+          RailsPulse::JobRunCollector.track(job) do
+            raise RuntimeError, "boom"
+          end
+        end
+      end
+    ensure
+      RailsPulse.configuration.track_exceptions = original
+    end
+
     test "track handles job retries with same job_id" do
       job_id = SecureRandom.uuid
       first_job = FakeJob.new(job_id: job_id, executions: 1)

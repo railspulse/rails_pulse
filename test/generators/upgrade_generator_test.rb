@@ -165,6 +165,41 @@ test "detects separate database setup from database.yml" do
     end
   end
 
+  test "prints exception tracking notice when exceptions migration is newly copied" do
+    File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
+    create_gem_migration("create_rails_pulse_exceptions", "20260506000001")
+
+    output = mock_tables_exist do
+      run_generator([], {})
+    end
+
+    assert_match(/Exception tracking \(new\)/, output)
+    assert_match(/rails_pulse_exception_groups/, output)
+    assert_match(/rails_pulse_exception_occurrences/, output)
+    assert_match(/config\.track_exceptions = false/, output)
+    assert_match(/delete the copied/, output)
+    assert_file "db/migrate/20260506000001_create_rails_pulse_exceptions.rb"
+  end
+
+  test "does not print exception tracking notice when exceptions migration already present" do
+    File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
+    create_gem_migration("create_rails_pulse_exceptions", "20260506000001")
+    create_gem_migration("add_unrelated_feature", "20260507000001")
+
+    FileUtils.mkdir_p(File.join(destination_root, "db/migrate"))
+    File.write(
+      File.join(destination_root, "db/migrate/20260506000001_create_rails_pulse_exceptions.rb"),
+      "# Already migrated"
+    )
+
+    output = mock_tables_exist do
+      run_generator([], {})
+    end
+
+    assert_match(/Found 1 new migration/, output)
+    assert_no_match(/Exception tracking \(new\)/, output)
+  end
+
 # Separate Database Migration Copying Tests
 
 test "separate database upgrade copies migrations to rails_pulse_migrate" do

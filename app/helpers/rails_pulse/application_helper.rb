@@ -1,5 +1,6 @@
 module RailsPulse
   module ApplicationHelper
+    include BacktraceHelper
     include BreadcrumbsHelper
     include ChartHelper
     include CspHelper

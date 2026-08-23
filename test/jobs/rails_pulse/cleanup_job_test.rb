@@ -300,6 +300,8 @@ module RailsPulse
       RailsPulse::Query.delete_all
       RailsPulse::Route.delete_all
       RailsPulse::Job.delete_all
+      RailsPulse::ExceptionOccurrence.delete_all
+      RailsPulse::ExceptionGroup.delete_all
 
       RailsPulse.configuration.archiving_enabled = true
 

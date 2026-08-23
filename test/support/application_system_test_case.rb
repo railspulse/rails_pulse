@@ -48,6 +48,19 @@ end
 
 Capybara::Selenium::ChromeNode.prepend(CapybaraDetachedNodeFix)
 
+# Mocha 2.7.1 bug: ActionDispatch::SystemTestCase's after_teardown fires mocha_teardown
+# even when mocha_setup never ran. Mockery.teardown calls @instances.pop but @instances
+# is nil when setup was skipped, crashing with NoMethodError. Guard the class-level teardown.
+if defined?(Mocha::Mockery)
+  module MochaNilSafeTeardown
+    def teardown(origin = nil)
+      return unless @instances&.any?
+      super
+    end
+  end
+  Mocha::Mockery.singleton_class.prepend(MochaNilSafeTeardown)
+end
+
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   Capybara.server = :puma, { Silent: true }
 

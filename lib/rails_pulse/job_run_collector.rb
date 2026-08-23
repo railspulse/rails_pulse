@@ -42,6 +42,8 @@ module RailsPulse
             error_message: error.message
           ) if job_run
         end
+        RailsPulse::ExceptionCaptureService.capture(error, environment: Rails.env.to_s)
+        RequestStore.store[:rails_pulse_captured_exception] = error
         raise
       ensure
         begin

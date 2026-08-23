@@ -14,6 +14,9 @@ Rails.application.routes.draw do
   get  "jobs",         to: "jobs#index"
   post "jobs/trigger", to: "jobs#trigger", as: :trigger_job
 
+  get  "exceptions_test",        to: "exceptions_test#index",     as: :exceptions_test
+  post "exceptions_test/raise",  to: "exceptions_test#raise_exception", as: :raise_test_exception
+
   get  "sign_in", to: "home#index"
   post "sign_in", to: "home#index"
 

@@ -13,7 +13,7 @@
 ![License](https://img.shields.io/badge/License-MIT-green)
 ![Ruby Version](https://img.shields.io/badge/Ruby-3.0%2B-red)
 
-Rails Pulse is a Rails engine that monitors your app's performance from the inside. It tracks slow requests, N+1 queries, SQL performance, and background jobs. All data stays in your own database, no third-party cloud, no SaaS subscription, no data leaving your servers.
+Rails Pulse is a Rails engine that monitors your app's performance from the inside. It tracks slow requests, N+1 queries, SQL performance, background jobs, and unhandled exceptions. All data stays in your own database, no third-party cloud, no SaaS subscription, no data leaving your servers.
 
 <table border="0">
   <tr border="0" style="border:0">
@@ -81,6 +81,9 @@ RailsPulse.configure do |config|
   config.track_jobs = true
   config.capture_job_arguments = false  # keep false to protect sensitive data
 
+  config.track_exceptions = true
+  config.capture_exception_params = true  # params are filtered via Rails' filter_parameters
+
   config.full_retention_period = 30.days
 end
 ```
@@ -111,6 +114,7 @@ Authentication guide: [railspulse.com/documentation/authentication](https://rail
 - **Request monitoring** — every request is timed and stored with its route, status, SQL count, and duration. Slow requests are flagged automatically based on thresholds you control.
 - **Query analysis** — captures the queries behind each request, detects N+1 patterns, and tracks normalized SQL across requests so you can see which queries are hurting you in production, not just in development.
 - **Job tracking** — monitors background job duration, queue wait time, and failure rates. Works with any Active Job adapter.
+- **Exception tracking** — captures unhandled exceptions from web requests and background jobs, groups them by class and location, and shows full backtraces with filtered request params. See recurring errors in production without a separate error monitoring service.
 - **System health bar** — at-a-glance dashboard summary showing healthy, slow, and critical counts across your routes, queries, jobs, and storage. Lets you see the overall state of your app before drilling into specifics.
 - **No data leaves your app** — everything is stored in your own database. No third-party cloud, no SaaS subscription, no outbound connections.
 - **Low overhead** — tracking is async and uses a thread-local flag to skip recording Rails Pulse's own internal requests.

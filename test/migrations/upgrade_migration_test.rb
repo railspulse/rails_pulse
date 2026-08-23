@@ -23,12 +23,14 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     AddP95P99DurationToRailsPulseJobs
     ExpandNormalizedQueryColumn
     CreateRailsPulseDeployments
+    CreateRailsPulseExceptions
     AddActualQueryToOperations
     CreateRailsPulseJobRuns
     MakeCacheHitOnOperationsNullable
     AddControllerActionToRailsPulseRoutes
     ChangeRailsPulseRoutesToMultiVerbModel
     AddNullActionUniqueIndexToRoutes
+    AddLocationToExceptionGroups
   ].freeze
 
   def setup
@@ -191,6 +193,19 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert @conn.column_exists?(:rails_pulse_deployments, :started_at), "started_at missing on deployments"
   end
 
+  test "upgrade from v0.2.7 creates exception groups and occurrences tables" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    assert @conn.table_exists?(:rails_pulse_exception_groups), "exception_groups table missing"
+    assert @conn.table_exists?(:rails_pulse_exception_occurrences), "exception_occurrences table missing"
+    assert @conn.column_exists?(:rails_pulse_exception_groups, :fingerprint), "fingerprint missing on exception_groups"
+    assert @conn.column_exists?(:rails_pulse_exception_groups, :status), "status missing on exception_groups"
+    assert @conn.column_exists?(:rails_pulse_exception_groups, :location), "location missing on exception_groups"
+    assert @conn.column_exists?(:rails_pulse_exception_occurrences, :exception_group_id), "exception_group_id missing on occurrences"
+    assert @conn.column_exists?(:rails_pulse_exception_occurrences, :occurred_at), "occurred_at missing on occurrences"
+  end
+
   test "upgrade from v0.2.7 adds actual_sql to operations" do
     load_baseline(RailsPulse::TestSchemas::V027)
     run_all_migrations
@@ -235,6 +250,8 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     run_all_migrations
 
     assert @conn.table_exists?(:rails_pulse_deployments)
+    assert @conn.table_exists?(:rails_pulse_exception_groups)
+    assert @conn.table_exists?(:rails_pulse_exception_occurrences)
     assert @conn.table_exists?(:rails_pulse_job_runs)
     assert @conn.column_exists?(:rails_pulse_operations, :actual_sql)
     assert @conn.column_exists?(:rails_pulse_jobs, :p95_duration)
@@ -248,6 +265,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
 
     assert_can_insert_core_records
     assert_can_insert_deployment
+    assert_can_insert_exception
     assert_can_insert_job_run
   end
 
@@ -257,6 +275,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
 
     assert_can_insert_core_records
     assert_can_insert_deployment
+    assert_can_insert_exception
     assert_can_insert_job_run
   end
 
@@ -365,5 +384,32 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     count = @conn.select_value("SELECT COUNT(*) FROM rails_pulse_deployments WHERE revision = 'abc123'").to_i
 
     assert_equal 1, count, "deployment insert failed"
+  end
+
+  def assert_can_insert_exception
+    now = Time.current.iso8601(6)
+    fingerprint = SecureRandom.hex(16)
+
+    @conn.execute(<<~SQL)
+      INSERT INTO rails_pulse_exception_groups
+        (fingerprint, exception_class, message, first_seen_at, last_seen_at, occurrence_count, status, preserve, created_at, updated_at)
+      VALUES
+        ('#{fingerprint}', 'RuntimeError', 'boom', '#{now}', '#{now}', 1, 'open', #{@conn.quote(false)}, '#{now}', '#{now}')
+    SQL
+
+    group_id = @conn.select_value("SELECT id FROM rails_pulse_exception_groups WHERE fingerprint = '#{fingerprint}'")
+
+    assert group_id, "exception_group insert failed"
+
+    @conn.execute(<<~SQL)
+      INSERT INTO rails_pulse_exception_occurrences
+        (exception_group_id, exception_class, message, occurred_at, created_at, updated_at)
+      VALUES
+        (#{group_id}, 'RuntimeError', 'boom', '#{now}', '#{now}', '#{now}')
+    SQL
+
+    count = @conn.select_value("SELECT COUNT(*) FROM rails_pulse_exception_occurrences WHERE exception_group_id = #{group_id}").to_i
+
+    assert_equal 1, count, "exception_occurrence insert failed"
   end
 end

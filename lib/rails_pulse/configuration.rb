@@ -9,6 +9,8 @@ module RailsPulse
                   :ignored_queues,
                   :track_assets,
                   :track_jobs,
+                  :track_exceptions,
+                  :capture_exception_params,
                   :custom_asset_patterns,
                   :mount_path,
                   :full_retention_period,
@@ -57,6 +59,8 @@ module RailsPulse
       @ignored_queues = []
       @track_assets = false
       @track_jobs = false
+      @track_exceptions = true
+      @capture_exception_params = true
       @custom_asset_patterns = []
       @mount_path = nil
       @full_retention_period = 30.days
@@ -67,7 +71,9 @@ module RailsPulse
         rails_pulse_job_runs: 50_000,
         rails_pulse_queries: 10_000,
         rails_pulse_routes: 1_000,
-        rails_pulse_jobs: 1_000
+        rails_pulse_jobs: 1_000,
+        rails_pulse_exception_occurrences: 50_000,
+        rails_pulse_exception_groups: 10_000
       }
       @connects_to = nil
       @authentication_enabled = Rails.env.production?
@@ -151,6 +157,7 @@ module RailsPulse
       validate_job_settings!
       validate_dashboard_settings!
       validate_tracking_settings!
+      validate_exception_settings!
       validate_service_level_objectives_settings!
       validate_query_service_level_objectives_settings!
     end
@@ -270,6 +277,16 @@ module RailsPulse
     def validate_tracking_settings!
       unless [ true, false ].include?(@async)
         raise ArgumentError, "async must be true or false, got #{@async}"
+      end
+    end
+
+    def validate_exception_settings!
+      unless [ true, false ].include?(@track_exceptions)
+        raise ArgumentError, "track_exceptions must be a boolean"
+      end
+
+      unless [ true, false ].include?(@capture_exception_params)
+        raise ArgumentError, "capture_exception_params must be a boolean"
       end
     end
 

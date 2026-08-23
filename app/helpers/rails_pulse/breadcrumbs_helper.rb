@@ -3,7 +3,9 @@ module RailsPulse
     # Maps singularized path segments to their actual model class names
     # when the default classify convention doesn't match
     SEGMENT_CLASS_OVERRIDES = {
-      "run" => "JobRun"
+      "run" => "JobRun",
+      "exception" => "ExceptionGroup",
+      "occurrence" => "ExceptionOccurrence"
     }.freeze
 
     def breadcrumbs

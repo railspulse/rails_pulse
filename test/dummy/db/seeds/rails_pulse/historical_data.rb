@@ -6,6 +6,7 @@ require_relative "job_summaries"
 require_relative "query_analysis"
 require_relative "additional_users_posts"
 require_relative "deployments"
+require_relative "exceptions"
 
 module RailsPulse
   module Seeds
@@ -19,12 +20,15 @@ module RailsPulse
         clear_existing_data
         routes = Routes.seed!
         queries = Queries.seed!
-        Deployments.seed!(days_ago: SeedConfig.days_ago)
+        deployments = Deployments.seed!(days_ago: SeedConfig.days_ago)
 
         Requests.seed!(routes, queries, request_count: SeedConfig.request_count)
 
         jobs = BackgroundJobs.seed!(queries)
         JobSummaries.seed!(jobs)
+
+        deploy_shas = Array(deployments).map(&:revision).compact
+        Exceptions.seed!(deploy_shas: deploy_shas)
 
         AdditionalUsersAndPosts.seed!
         generate_summaries
@@ -49,6 +53,8 @@ module RailsPulse
         ::RailsPulse::Route.delete_all
         ::RailsPulse::Summary.delete_all
         ::RailsPulse::Deployment.delete_all
+        ::RailsPulse::ExceptionOccurrence.delete_all
+        ::RailsPulse::ExceptionGroup.delete_all
         puts " ✓"
       end
 

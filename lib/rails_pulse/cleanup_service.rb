@@ -41,12 +41,14 @@ module RailsPulse
       RailsPulse.logger.info "Time-based cleanup: removing records older than #{cutoff_time}"
 
       # Clean up in order that respects foreign key constraints
-      @stats[:time_based][:operations] = cleanup_operations_by_time(cutoff_time)
-      @stats[:time_based][:job_runs]   = cleanup_job_runs_by_time(cutoff_time)
-      @stats[:time_based][:requests]   = cleanup_requests_by_time(cutoff_time)
-      @stats[:time_based][:queries]    = cleanup_queries_by_time(cutoff_time)
-      @stats[:time_based][:routes]     = cleanup_routes_by_time(cutoff_time)
-      @stats[:time_based][:jobs]       = cleanup_jobs_by_time(cutoff_time)
+      @stats[:time_based][:operations]            = cleanup_operations_by_time(cutoff_time)
+      @stats[:time_based][:job_runs]              = cleanup_job_runs_by_time(cutoff_time)
+      @stats[:time_based][:requests]              = cleanup_requests_by_time(cutoff_time)
+      @stats[:time_based][:queries]               = cleanup_queries_by_time(cutoff_time)
+      @stats[:time_based][:routes]                = cleanup_routes_by_time(cutoff_time)
+      @stats[:time_based][:jobs]                  = cleanup_jobs_by_time(cutoff_time)
+      @stats[:time_based][:exception_occurrences] = cleanup_exception_occurrences_by_time(cutoff_time)
+      @stats[:time_based][:exception_groups]      = cleanup_orphaned_exception_groups
     end
 
     def perform_count_based_cleanup
@@ -63,12 +65,15 @@ module RailsPulse
       ops_scope = cutoff ? RailsPulse::Operation.where("occurred_at < ?", cutoff) : RailsPulse::Operation.none
 
       # Clean up in order that respects foreign key constraints
-      @stats[:count_based][:operations] = cleanup_by_count(RailsPulse::Operation, :rails_pulse_operations, order_column: :occurred_at, scope: ops_scope)
-      @stats[:count_based][:job_runs]   = cleanup_job_runs_by_count
-      @stats[:count_based][:requests]   = cleanup_requests_by_count
-      @stats[:count_based][:queries]    = cleanup_queries_by_count
-      @stats[:count_based][:routes]     = cleanup_routes_by_count
-      @stats[:count_based][:jobs]       = cleanup_jobs_by_count
+      @stats[:count_based][:operations]            = cleanup_by_count(RailsPulse::Operation, :rails_pulse_operations, order_column: :occurred_at, scope: ops_scope)
+      @stats[:count_based][:job_runs]              = cleanup_job_runs_by_count
+      @stats[:count_based][:requests]              = cleanup_requests_by_count
+      @stats[:count_based][:queries]               = cleanup_queries_by_count
+      @stats[:count_based][:routes]                = cleanup_routes_by_count
+      @stats[:count_based][:jobs]                  = cleanup_jobs_by_count
+      @stats[:count_based][:exception_occurrences] = cleanup_exception_occurrences_by_count
+      @stats[:count_based][:exception_groups]      = cleanup_exception_groups_by_count
+      @stats[:count_based][:orphaned_exception_groups] = cleanup_orphaned_exception_groups
     end
 
     # Shared helper: delete oldest records beyond a configured max count
@@ -186,6 +191,56 @@ module RailsPulse
         "id NOT IN (SELECT job_id FROM rails_pulse_job_runs WHERE job_id IS NOT NULL)"
       )
       cleanup_by_count(RailsPulse::Job, :rails_pulse_jobs, order_column: :created_at, scope: scope)
+    end
+
+    def cleanup_exception_occurrences_by_time(cutoff_time)
+      exception_occurrences_cleanup_scope.where("occurred_at < ?", cutoff_time).delete_all
+    end
+
+    def cleanup_exception_occurrences_by_count
+      cleanup_by_count(
+        RailsPulse::ExceptionOccurrence,
+        :rails_pulse_exception_occurrences,
+        order_column: :occurred_at,
+        scope: exception_occurrences_cleanup_scope
+      )
+    end
+
+    # Preserve exempts a group from all automatic cleanup, including its
+    # occurrence rows — otherwise a preserved group can lose its backtraces.
+    def exception_occurrences_cleanup_scope
+      preserved_ids = RailsPulse::ExceptionGroup.where(preserve: true).select(:id)
+      RailsPulse::ExceptionOccurrence.where.not(exception_group_id: preserved_ids)
+    end
+
+    # Prune oldest non-preserved, non-ignored groups when over the configured cap.
+    # Child occurrences must be deleted first — there is no ON DELETE CASCADE on the FK.
+    def cleanup_exception_groups_by_count
+      max_records = @config.max_table_records[:rails_pulse_exception_groups]
+      return 0 unless max_records
+
+      current_count = RailsPulse::ExceptionGroup.count
+      return 0 if current_count <= max_records
+
+      records_to_delete = current_count - max_records
+      scope = RailsPulse::ExceptionGroup.where(preserve: false).where.not(status: "ignored")
+      ids_to_delete = scope.order(last_seen_at: :asc).limit(records_to_delete).pluck(:id)
+      return 0 if ids_to_delete.empty?
+
+      RailsPulse::ExceptionOccurrence.where(exception_group_id: ids_to_delete).delete_all
+      RailsPulse::ExceptionGroup.where(id: ids_to_delete).delete_all
+      ids_to_delete.size
+    end
+
+    # Delete groups whose last occurrence was removed — uses an atomic subquery
+    # so no orphan can be deleted while a concurrent occurrence is being inserted.
+    # preserve: true and ignored groups are never deleted automatically.
+    def cleanup_orphaned_exception_groups
+      RailsPulse::ExceptionGroup
+        .where(preserve: false)
+        .where.not(status: "ignored")
+        .where("id NOT IN (SELECT DISTINCT exception_group_id FROM rails_pulse_exception_occurrences)")
+        .delete_all
     end
 
     def perform_summary_cleanup

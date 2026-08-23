@@ -4,6 +4,7 @@ require "rails_pulse/route_indexes"
 require "rails_pulse/middleware/request_collector"
 require "rails_pulse/middleware/asset_server"
 require "rails_pulse/subscribers/operation_subscriber"
+require "rails_pulse/subscribers/exception_subscriber"
 require "rails_pulse/job_run_collector"
 require "rails_pulse/active_job_extensions"
 require "rails_pulse/extensions/active_record"
@@ -17,6 +18,7 @@ module RailsPulse
   autoload :SummaryService, File.expand_path("../../app/services/rails_pulse/summary_service", __dir__)
   autoload :QueryAnalysisService, File.expand_path("../../app/services/rails_pulse/query_analysis_service", __dir__)
   autoload :TagFilterService, File.expand_path("../../app/services/rails_pulse/tag_filter_service", __dir__)
+  autoload :ExceptionCaptureService, File.expand_path("../../app/services/rails_pulse/exception_capture_service", __dir__)
   autoload :OperationSuggestions, File.expand_path("../../app/services/rails_pulse/operation_suggestions", __dir__)
   autoload :RoutePathNormalizer,             File.expand_path("../../app/services/rails_pulse/route_path_normalizer", __dir__)
   autoload :RouteRecognizer,                 File.expand_path("../../app/services/rails_pulse/route_recognizer", __dir__)
@@ -89,6 +91,10 @@ module RailsPulse
 
     initializer "rails_pulse.operation_notifications" do
       RailsPulse::Subscribers::OperationSubscriber.subscribe!
+    end
+
+    initializer "rails_pulse.exception_notifications" do
+      RailsPulse::Subscribers::ExceptionSubscriber.subscribe!
     end
 
     initializer "rails_pulse.active_job" do

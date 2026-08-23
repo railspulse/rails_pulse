@@ -10,7 +10,7 @@
   box-shadow: var(--btn-box-shadow, var(--shadow-xs));
   color: var(--btn-color, var(--color-text));
   column-gap: var(--size-2);
-  cursor: default;
+  cursor: pointer;
   display: inline-flex;
   font-size: var(--btn-font-size, var(--text-sm));
   font-weight: var(--btn-font-weight, var(--font-medium));
@@ -43,11 +43,13 @@
   --btn-border-color: transparent;
   --btn-color: var(--color-text-reversed);
   --btn-icon-color: var(--color-filter-text-reversed);
+  --btn-hover-color: color-mix(in oklch, var(--color-primary) 85%, black);
 }
 
 .btn--secondary {
   --btn-background: var(--color-secondary);
   --btn-border-color: transparent;
+  --btn-hover-color: color-mix(in oklch, var(--color-secondary) 85%, black);
 }
 
 .btn--borderless {
@@ -60,6 +62,7 @@
   --btn-border-color: transparent;
   --btn-color: white;
   --btn-icon-color: invert(1);
+  --btn-hover-color: color-mix(in oklch, var(--color-positive) 85%, black);
 }
 
 .btn--negative {
@@ -67,6 +70,7 @@
   --btn-border-color: transparent;
   --btn-color: white;
   --btn-icon-color: invert(1);
+  --btn-hover-color: color-mix(in oklch, var(--color-negative) 85%, black);
 }
 
 .btn--plain {

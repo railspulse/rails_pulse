@@ -63,12 +63,22 @@
                 <%= rails_pulse_icon action[:icon] || 'external-link', height: "20px" %>
               </a>
             <% elsif action[:method] %>
-              <%= button_to action[:url],
-                           method: action[:method],
-                           title: action[:title] || "",
-                           class: action[:class] || "",
-                           data: action[:data] || {} do %>
-                <%= rails_pulse_icon action[:icon] || 'external-link', height: "20px" %>
+              <% if action[:label] %>
+                <%= button_to action[:label], action[:url],
+                             method: action[:method],
+                             title: action[:title] || "",
+                             class: action[:class] || "",
+                             params: action[:params] || {},
+                             disabled: action[:disabled],
+                             data: action[:data] || {} %>
+              <% else %>
+                <%= button_to action[:url],
+                             method: action[:method],
+                             title: action[:title] || "",
+                             class: action[:class] || "",
+                             data: action[:data] || {} do %>
+                  <%= rails_pulse_icon action[:icon] || 'external-link', height: "20px" %>
+                <% end %>
               <% end %>
             <% else %>
               <%= link_to action[:url],

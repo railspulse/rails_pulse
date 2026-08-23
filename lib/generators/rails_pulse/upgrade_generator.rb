@@ -94,6 +94,30 @@ module RailsPulse
         SchemaParser.new(schema_file).extract_table_names
       end
 
+      # Notices printed when a feature's migration is newly copied into the host app.
+      # Key is a substring of the migration filename (without timestamp).
+      FEATURE_NOTICES = {
+        "create_rails_pulse_exceptions" => <<~NOTICE.rstrip
+          Exception tracking (new)
+
+          This upgrade adds exception tracking. After you migrate, Rails Pulse will
+          capture unhandled exceptions from web requests and background jobs and
+          show them in an Exceptions tab. Two new tables will be created:
+            - rails_pulse_exception_groups
+            - rails_pulse_exception_occurrences
+
+          Exception tracking is enabled by default. To disable capture and hide the
+          Exceptions tab, set in config/initializers/rails_pulse.rb:
+
+            config.track_exceptions = false
+
+          If you do not want the tables at all, delete the copied
+          *_create_rails_pulse_exceptions.rb migration before running db:migrate,
+          and set config.track_exceptions = false. (A later upgrade will copy the
+          migration again unless that file is still present in your migrate folder.)
+        NOTICE
+      }.freeze
+
       # Shared upgrade logic for both single and separate database setups
       def upgrade_installation(migration_dir:, next_steps:)
         # Refresh the schema file so fresh databases (test, CI) built from
@@ -112,12 +136,27 @@ module RailsPulse
           end
 
           say "\nMigrations copied successfully!", :green
+          announce_new_features(new_migrations)
           say_route_backfill_warning if requires_route_backfill?(new_migrations)
           say "\nNext steps:", :green
           next_steps.each { |step| say step }
         else
           upgrade_with_missing_columns(migration_dir: migration_dir, next_steps: next_steps)
         end
+      end
+
+      def announce_new_features(new_migrations)
+        notices = FEATURE_NOTICES.filter_map do |migration_key, notice|
+          notice if new_migrations.any? { |filename| filename.include?(migration_key) }
+        end
+        return if notices.empty?
+
+        say "\n" + ("=" * 72), :yellow
+        notices.each_with_index do |notice, index|
+          say "" if index.positive?
+          notice.each_line { |line| say line.chomp, :yellow }
+        end
+        say ("=" * 72) + "\n", :yellow
       end
 
       def upgrade_with_missing_columns(migration_dir:, next_steps:)

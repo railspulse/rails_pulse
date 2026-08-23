@@ -2,7 +2,8 @@ require "test_helper"
 
 class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
   include RailsPulse::BreadcrumbsHelper
-  fixtures :rails_pulse_routes, :rails_pulse_jobs, :rails_pulse_job_runs, :rails_pulse_requests
+  fixtures :rails_pulse_routes, :rails_pulse_jobs, :rails_pulse_job_runs, :rails_pulse_requests,
+           :rails_pulse_exception_groups, :rails_pulse_exception_occurrences
 
   def setup
     ENV["TEST_TYPE"] = "functional"
@@ -166,6 +167,31 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     assert_equal "Runs", runs_breadcrumb[:title]
     # This is NOT a nested collection (no ID after "runs"), so normal path
     assert_equal "#{main_app.rails_pulse_path.chomp('/')}/jobs/#{@job.id}/runs", runs_breadcrumb[:path]
+  end
+
+  test "breadcrumbs converts numeric segments using to_breadcrumb for ExceptionGroup" do
+    group = rails_pulse_exception_groups(:record_not_found)
+    setup_request_path("/rails_pulse/exceptions/#{group.id}")
+
+    crumbs = breadcrumbs
+
+    assert_equal 3, crumbs.length
+    assert_equal "Exceptions", crumbs[1][:title]
+    assert_equal group.to_breadcrumb, crumbs[2][:title]
+  end
+
+  test "breadcrumbs converts nested occurrence using to_breadcrumb" do
+    group = rails_pulse_exception_groups(:record_not_found)
+    occurrence = rails_pulse_exception_occurrences(:occurrence_one)
+    setup_request_path("/rails_pulse/exceptions/#{group.id}/occurrences/#{occurrence.id}")
+
+    crumbs = breadcrumbs
+
+    assert_equal 5, crumbs.length
+    assert_equal group.to_breadcrumb, crumbs[2][:title]
+    assert_equal "Occurrences", crumbs[3][:title]
+    assert_equal occurrence.to_breadcrumb, crumbs[4][:title]
+    assert_equal "#{main_app.rails_pulse_path.chomp('/')}/exceptions/#{group.id}", crumbs[3][:path]
   end
 
   # ============================================================================

@@ -3,7 +3,8 @@ require "test_helper"
 module RailsPulse
   class CleanupServiceTest < ActiveSupport::TestCase
     fixtures :rails_pulse_jobs, :rails_pulse_job_runs, :rails_pulse_routes,
-             :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_queries
+             :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_queries,
+             :rails_pulse_exception_groups, :rails_pulse_exception_occurrences
 
     def setup
       super
@@ -14,6 +15,8 @@ module RailsPulse
       RailsPulse::Route.delete_all
       RailsPulse::Query.delete_all
       RailsPulse::Job.delete_all
+      RailsPulse::ExceptionOccurrence.delete_all
+      RailsPulse::ExceptionGroup.delete_all
 
       @original_archiving = RailsPulse.configuration.archiving_enabled
       @original_retention = RailsPulse.configuration.full_retention_period
@@ -452,6 +455,184 @@ module RailsPulse
       end
     end
 
+    # Exception Cleanup Tests
+
+    test "time-based cleanup deletes exception occurrences older than retention period" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      group = create_exception_group
+      create_exception_occurrence(group, occurred_at: 31.days.ago)
+
+      assert_difference -> { RailsPulse::ExceptionOccurrence.count }, -1 do
+        CleanupService.perform
+      end
+    end
+
+    test "time-based cleanup keeps exception occurrences within retention period" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      group = create_exception_group
+      create_exception_occurrence(group, occurred_at: 5.days.ago)
+
+      assert_no_difference -> { RailsPulse::ExceptionOccurrence.count } do
+        CleanupService.perform
+      end
+    end
+
+    test "time-based cleanup deletes orphaned exception groups after occurrences removed" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      group = create_exception_group
+      create_exception_occurrence(group, occurred_at: 31.days.ago)
+
+      assert_difference -> { RailsPulse::ExceptionGroup.count }, -1 do
+        CleanupService.perform
+      end
+    end
+
+    test "time-based cleanup keeps exception group when it still has recent occurrences" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      group = create_exception_group
+      create_exception_occurrence(group, occurred_at: 31.days.ago)
+      create_exception_occurrence(group, occurred_at: 1.day.ago)
+
+      assert_no_difference -> { RailsPulse::ExceptionGroup.count } do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based cleanup deletes oldest exception occurrences beyond max" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_exception_occurrences: 2
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      group = create_exception_group
+      3.times { |i| create_exception_occurrence(group, occurred_at: (10 - i).days.ago) }
+
+      assert_difference -> { RailsPulse::ExceptionOccurrence.count }, -1 do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based cleanup deletes orphaned exception groups after occurrences removed" do
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_exception_occurrences: 0
+      }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      group = create_exception_group
+      create_exception_occurrence(group, occurred_at: 10.days.ago)
+
+      assert_difference -> { RailsPulse::ExceptionGroup.count }, -1 do
+        CleanupService.perform
+      end
+    end
+
+    test "default configuration includes a max_table_records limit for exception occurrences" do
+      default_config = RailsPulse::Configuration.new
+
+      assert default_config.max_table_records.key?(:rails_pulse_exception_occurrences),
+        "max_table_records must include :rails_pulse_exception_occurrences so count-based cleanup is active by default"
+      assert_operator default_config.max_table_records[:rails_pulse_exception_occurrences], :>, 0
+    end
+
+    test "count-based cleanup enforces exception occurrence limit using the default key" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = @original_max_records.merge(
+        rails_pulse_exception_occurrences: 2
+      )
+
+      group = create_exception_group
+      3.times { |i| create_exception_occurrence(group, occurred_at: (10 - i).days.ago) }
+
+      assert_difference -> { RailsPulse::ExceptionOccurrence.count }, -1 do
+        CleanupService.perform
+      end
+    end
+
+    test "count-based cleanup deletes oldest exception groups and their occurrences without FK errors" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_exception_groups: 1
+      }
+      RailsPulse::ExceptionOccurrence.delete_all
+      RailsPulse::ExceptionGroup.delete_all
+
+      old_group = create_exception_group
+      old_group.update!(last_seen_at: 10.days.ago)
+      create_exception_occurrence(old_group, occurred_at: 10.days.ago)
+
+      new_group = create_exception_group
+      new_group.update!(last_seen_at: 1.day.ago)
+      create_exception_occurrence(new_group, occurred_at: 1.day.ago)
+
+      assert_nothing_raised do
+        CleanupService.perform
+      end
+
+      assert_not RailsPulse::ExceptionGroup.exists?(old_group.id)
+      assert_equal 0, RailsPulse::ExceptionOccurrence.where(exception_group_id: old_group.id).count
+      assert RailsPulse::ExceptionGroup.exists?(new_group.id)
+    end
+
+    test "count-based cleanup skips preserved and ignored exception groups" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      # 4 groups total; max 3 means one deletion. Only open_old is eligible among the oldest.
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_exception_groups: 3
+      }
+      RailsPulse::ExceptionOccurrence.delete_all
+      RailsPulse::ExceptionGroup.delete_all
+
+      preserved = create_exception_group
+      preserved.update!(preserve: true, last_seen_at: 10.days.ago)
+      create_exception_occurrence(preserved, occurred_at: 10.days.ago)
+
+      ignored = create_exception_group
+      ignored.update!(status: "ignored", last_seen_at: 9.days.ago)
+      create_exception_occurrence(ignored, occurred_at: 9.days.ago)
+
+      open_old = create_exception_group
+      open_old.update!(last_seen_at: 8.days.ago)
+      create_exception_occurrence(open_old, occurred_at: 8.days.ago)
+
+      keeper = create_exception_group
+      keeper.update!(last_seen_at: 1.day.ago)
+      create_exception_occurrence(keeper, occurred_at: 1.day.ago)
+
+      CleanupService.perform
+
+      assert RailsPulse::ExceptionGroup.exists?(preserved.id)
+      assert RailsPulse::ExceptionGroup.exists?(ignored.id)
+      assert_not RailsPulse::ExceptionGroup.exists?(open_old.id)
+      assert RailsPulse::ExceptionGroup.exists?(keeper.id)
+    end
+
+    test "time-based cleanup keeps occurrences belonging to a preserved group" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      group = create_exception_group
+      group.update!(preserve: true)
+      create_exception_occurrence(group, occurred_at: 31.days.ago)
+
+      assert_no_difference -> { RailsPulse::ExceptionOccurrence.count } do
+        CleanupService.perform
+      end
+      assert RailsPulse::ExceptionGroup.exists?(group.id)
+    end
+
+    test "count-based cleanup keeps occurrences belonging to a preserved group" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_exception_occurrences: 1
+      }
+      preserved = create_exception_group
+      preserved.update!(preserve: true)
+      create_exception_occurrence(preserved, occurred_at: 10.days.ago)
+      open_group = create_exception_group
+      create_exception_occurrence(open_group, occurred_at: 9.days.ago)
+      create_exception_occurrence(open_group, occurred_at: 8.days.ago)
+
+      CleanupService.perform
+
+      assert_equal 1, RailsPulse::ExceptionOccurrence.where(exception_group_id: preserved.id).count
+    end
+
     # Edge Cases
 
     test "handles empty tables gracefully" do
@@ -499,6 +680,25 @@ module RailsPulse
         duration: 1.0,
         occurred_at: occurred_at,
         start_time: occurred_at.to_f
+      )
+    end
+
+    def create_exception_group
+      RailsPulse::ExceptionGroup.create!(
+        fingerprint:      SecureRandom.hex(16),
+        exception_class:  "RuntimeError",
+        message:          "something went wrong",
+        first_seen_at:    1.day.ago,
+        last_seen_at:     1.day.ago,
+        occurrence_count: 0
+      )
+    end
+
+    def create_exception_occurrence(group, occurred_at: Time.current)
+      RailsPulse::ExceptionOccurrence.create!(
+        exception_group: group,
+        exception_class: group.exception_class,
+        occurred_at:     occurred_at
       )
     end
   end

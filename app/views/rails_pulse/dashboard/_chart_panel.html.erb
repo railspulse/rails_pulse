@@ -1,8 +1,11 @@
 <div class="grid-item" style="<%= flex_style if defined?(flex_style) %>">
   <div class="card b-full flex flex-col">
-    <div class="flex items-center justify-between mbe-2">
-      <h2 class="font-semibold leading-none uppercase text-xs"><%= title %></h2>
-      <div class="flex items-center gap-half">
+    <div class="flex mbe-2">
+      <h2 class="grow font-semibold leading-none uppercase text-xs"><%= title %></h2>
+      <div class="panel-icon-bar flex gap items-center">
+        <% if chart_data %>
+          <%= series_toggles %>
+        <% end %>
         <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-end">
           <a href="#"
             data-rails-pulse--popover-target="button"
@@ -23,11 +26,6 @@
         <% end %>
       </div>
     </div>
-    <% if chart_data %>
-      <div class="panel-icon-bar flex items-center gap-half mbe-2">
-        <%= series_toggles %>
-      </div>
-    <% end %>
     <div class="chart-container chart-container--slim relative pbs-2 grow">
       <% if chart_data %>
         <%= render_stimulus_chart(
