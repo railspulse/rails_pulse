@@ -172,11 +172,18 @@ module ChartTableConcern
     action_name == "show"
   end
 
+  # Hook: override to return param keys that should be excluded from chart queries.
+  # Use this when a filter requires a JOIN that chart queries don't perform
+  # (e.g. route path/action filters that need rails_pulse_routes joined).
+  def chart_filter_exclusions
+    []
+  end
+
   # Builds ransack parameters for chart queries
   # Common pattern: time range + optional duration filter + resource scope
   # Handles "recent" mode where @page_timings.start_time/@end_time may be nil
   def build_chart_ransack_params(ransack_params)
-    base_params = ransack_params.except(:s)
+    base_params = ransack_params.except(:s, *chart_filter_exclusions)
 
     # Add time filters if we have time boundaries (not in "recent" mode)
     if @page_timings&.start_time && @page_timings&.end_time
@@ -196,7 +203,7 @@ module ChartTableConcern
 
     # Scope to specific resource on show pages
     if show_action?
-      base_params.merge(summarizable_id_eq: current_resource.id)
+      base_params.merge(resource_id_scope)
     else
       base_params
     end
@@ -307,5 +314,10 @@ module ChartTableConcern
   # Override in show actions to return the current resource (e.g., @route, @query)
   def current_resource
     nil
+  end
+
+  # Ransack scope for chart summaries on show pages. Override to customize (e.g. IN queries).
+  def resource_id_scope
+    { summarizable_id_eq: current_resource.id }
   end
 end

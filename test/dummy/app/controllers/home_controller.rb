@@ -110,6 +110,10 @@ class HomeController < ApplicationController
     raise StandardError, "Simulated error raised from test app"
   end
 
+  def create
+    head :created
+  end
+
   # Search action - various search patterns
   def search
     query = params[:q] || "sample"

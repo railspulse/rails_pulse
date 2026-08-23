@@ -260,7 +260,7 @@ module ChartTestDataFactory
     private
 
     def create_default_route
-      RailsPulse::Route.find_or_create_by(method: "GET", path: "/api/test")
+      RailsPulse::Route.find_or_create_for_request("GET", "/api/test")
     end
 
     def create_request(route:, occurred_at:, duration:, status: 200, is_error: false)

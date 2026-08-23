@@ -81,9 +81,10 @@ separate-database upgrade path before shipping:
    # Expected: "Detected database setup: separate"
    ```
 
-5. Run the migrations and verify they complete without rollback:
+5. Run the migrations and route data backfill, and verify they complete without rollback:
    ```bash
    bin/rails db:migrate:rails_pulse
+   bin/rails rails_pulse:migrate_routes
    ```
 
 6. Verify new columns exist and the backfill ran correctly:

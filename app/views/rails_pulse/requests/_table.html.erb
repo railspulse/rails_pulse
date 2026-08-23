@@ -23,7 +23,7 @@
       %>
       <tr>
         <td class="truncate-cell">
-          <%= link_to "#{request.route.path} #{request.route.method}", route_path(request.route) %>
+          <%= link_to request.route.path_and_method, route_path(request.route) %>
         </td>
         <td class="whitespace-nowrap">
           <%= link_to human_readable_occurred_at(request.occurred_at), request_path(request) %>

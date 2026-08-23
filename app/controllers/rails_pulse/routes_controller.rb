@@ -54,7 +54,6 @@ module RailsPulse
       show_action? ? { route: @route } : {}
     end
 
-    # Filter to scope table results to a specific route on show pages
     def show_resource_filter
       { route_id_eq: @route.id }
     end
@@ -92,6 +91,8 @@ module RailsPulse
 
         # For PostgreSQL compatibility with DISTINCT + ORDER BY
         # we need to include computed columns in SELECT when ordering by them
+        base_query = base_query.joins(:route).preload(:route)
+
         if ordering_by_computed_column?
           base_query.select("rails_pulse_requests.*, #{status_indicator_sql} as status_indicator_value").distinct
         else
@@ -107,6 +108,11 @@ module RailsPulse
           show_non_tagged: session[:show_non_tagged] != false
         ).to_table
       end
+    end
+
+    # Request/route-name filters that Summary chart queries don't join for.
+    def chart_filter_exclusions
+      %w[route_path_cont route_controller_action_cont controller_action_cont http_method_eq]
     end
 
     def default_time_range_key

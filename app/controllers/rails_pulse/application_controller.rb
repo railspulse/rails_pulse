@@ -134,6 +134,7 @@ module RailsPulse
       last_summary_at = RailsPulse::Summary.maximum(:updated_at)
       @has_summaries = last_summary_at.present?
       @summaries_stale = RailsPulse.configuration.warn_on_stale_summaries && @has_summaries && last_summary_at < 2.hours.ago
+      @route_backfill_pending = RailsPulse::Route.needs_action_backfill?
     end
   end
 end

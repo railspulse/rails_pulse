@@ -29,6 +29,11 @@
             { selected: @selected_response_range },
             { class: "input" }
           %>
+          <%= form.select :http_method_eq,
+            [ [ "All Methods", "" ] ] + @route.http_methods_list.sort.map { |m| [ m, m ] },
+            { selected: params.dig(:q, :http_method_eq) },
+            { class: "input" }
+          %>
           <%= link_to "Reset", route_path(@route), class: "btn btn--plain", style: "text-decoration: none; color: var(--color-text-muted);" if params.has_key?(:q) %>
           <%= form.submit "Search", class: "btn" %>
         <% end %>

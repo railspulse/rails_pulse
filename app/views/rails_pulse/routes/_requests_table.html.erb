@@ -1,5 +1,6 @@
 <% columns = [
   { field: :occurred_at, label: 'Timestamp', class: 'w-auto' },
+  { field: :http_method, label: 'Method', class: 'w-20' },
   { field: :duration, label: 'Response Time', class: 'w-36' },
   { field: :status, label: 'Status', class: 'w-20' },
   { field: nil, label: 'Tags', class: 'w-32' }
@@ -13,6 +14,10 @@
       <tr>
         <td class="whitespace-nowrap">
           <%= link_to human_readable_occurred_at(request.occurred_at), request_path(request) %>
+        </td>
+        <td class="whitespace-nowrap">
+          <% verb = request.method %>
+          <span class="badge badge--<%= verb&.downcase %>"><%= verb %></span>
         </td>
         <td class="whitespace-nowrap">
           <% performance_class = case request.duration

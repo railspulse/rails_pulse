@@ -123,6 +123,57 @@ module RailsPulse
         assert_not_nil request.response_size_bytes
         assert_operator request.response_size_bytes, :>, 0
       end
+
+      test "normalizes parameterized path before storing route" do
+        get "/posts/42"
+
+        route = RailsPulse::Route.find_by(controller_action: "home#index", path: "/posts/:id")
+
+        assert_not_nil route, "route should be stored with normalized path /posts/:id"
+
+        raw_route = RailsPulse::Route.find_by(path: "/posts/42")
+
+        assert_nil raw_route, "raw path /posts/42 should not be stored as a separate route"
+      end
+
+      test "stores controller_action on route in lowercase controller#action format" do
+        get "/posts/42"
+
+        route = RailsPulse::Route.find_by(controller_action: "home#index", path: "/posts/:id")
+
+        assert_not_nil route
+        assert_equal "home#index", route.controller_action
+      end
+
+      test "captures controller_action in tracking data using lowercase format" do
+        captured_data = nil
+        original_method = RailsPulse::Tracker.method(:track_request)
+
+        RailsPulse::Tracker.define_singleton_method(:track_request) do |data|
+          captured_data = data
+          original_method.call(data)
+        end
+
+        begin
+          get "/"
+
+          assert_not_nil captured_data
+          assert_equal "home#index", captured_data[:controller_action],
+            "controller_action should be lowercase controller#action format"
+        ensure
+          RailsPulse::Tracker.define_singleton_method(:track_request, original_method)
+        end
+      end
+
+      test "repeated requests to different ids share the same normalized route" do
+        get "/posts/1"
+        get "/posts/2"
+        get "/posts/3"
+
+        assert_equal 1, RailsPulse::Route.where("path LIKE '/posts/%'").count,
+          "all /posts/:id requests should share one route record"
+        assert RailsPulse::Route.exists?(controller_action: "home#index", path: "/posts/:id")
+      end
     end
   end
 end

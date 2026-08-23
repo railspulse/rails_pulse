@@ -72,6 +72,7 @@ When you upgrade to a new version of Rails Pulse that includes new features, run
 ```bash
 rails generate rails_pulse:upgrade
 rails db:migrate
+rails rails_pulse:migrate_routes
 ```
 
 ### For Separate Database
@@ -79,17 +80,32 @@ rails db:migrate
 ```bash
 rails generate rails_pulse:upgrade --database=separate
 rails db:migrate
+rails rails_pulse:migrate_routes
 ```
 
 ### What the Upgrade Generator Does
 
 1. **Copies new migrations** from the gem to your app
 2. **Detects missing columns** by comparing your database to the schema file (safety net)
-3. **Provides clear instructions** for next steps
+3. **Provides clear instructions** for next steps, including `rails rails_pulse:migrate_routes` when a release needs a data backfill
 
 The generator automatically handles both upgrade paths:
 - If new migrations exist in the gem → copies them to your app
 - If no new migrations but missing columns → generates a migration for you
+
+### Route identity backfill
+
+Route identity is `[controller_action, path]`. Schema migrations add the new columns and move the HTTP verb onto each request; they do **not** collapse GET `/users` and POST `/users` into one row.
+
+After migrating, run:
+
+```bash
+rails rails_pulse:migrate_routes
+```
+
+This backfills `controller_action` from the host router, normalizes historical `/posts/42` paths to `/posts/:id`, merges routes that share the same action, and adds a unique index for unrecognized (404) paths.
+
+If you skip this step, the Action column on the routes page stays empty. The dashboard shows a banner with the same command until a live route still has a blank action.
 
 ## Troubleshooting
 
@@ -332,6 +348,7 @@ rails generate rails_pulse:upgrade
 
 # Apply changes
 rails db:migrate
+rails rails_pulse:migrate_routes
 
 # Restart server
 rails restart

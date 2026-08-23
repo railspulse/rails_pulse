@@ -38,7 +38,7 @@ module FactoryHelpers
   # Realistic test data generators using Faker
   def create_realistic_route_set(count: 10)
     count.times.map do
-      create(:route, :realistic, method: %w[GET POST PUT DELETE].sample)
+      create(:route, :realistic)
     end
   end
 

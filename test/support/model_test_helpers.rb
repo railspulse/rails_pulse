@@ -8,7 +8,7 @@ module ModelTestHelpers
   end
 
   def create_test_route(method: "GET", path: "/test", **attributes)
-    create(:route, method: method, path: path, **attributes)
+    create(:route, http_methods: [ method ].to_json, path: path, **attributes)
   end
 
   def create_test_request(duration: 100.5, status: 200, route: nil, **attributes)
