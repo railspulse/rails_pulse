@@ -34,6 +34,7 @@ const REQUIRED_ICONS = [
   'refresh-cw',
   'clock',
   'database',
+  'hard-drive',
   'server',
   'activity',
   'layout-dashboard',

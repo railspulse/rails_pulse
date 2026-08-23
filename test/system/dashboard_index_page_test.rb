@@ -25,5 +25,9 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
 
     # Needs Attention Panel
     assert_text "NEEDS ATTENTION"
+
+    # Storage Panel
+    assert_selector ".storage-panel-stats"
+    assert_text "HIGHEST FILL"
   end
 end

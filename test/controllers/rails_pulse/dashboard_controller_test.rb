@@ -111,8 +111,15 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.root_path
 
     assert_response :success
-    # Panel should be present
-    assert_not_nil response.body
+    assert_includes response.body, "Needs Attention"
+  end
+
+  test "response includes storage panel" do
+    get rails_pulse.root_path
+
+    assert_response :success
+    assert_includes response.body, "storage-panel-stats"
+    assert_includes response.body, rails_pulse.storage_path
   end
 
   test "response includes health summary" do

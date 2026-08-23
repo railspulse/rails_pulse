@@ -1,0 +1,67 @@
+<div class="card">
+  <div class="flex mbe-3">
+    <h2 class="grow font-semibold leading-none uppercase text-xs">Storage</h2>
+    <div class="panel-icon-bar flex gap items-center">
+      <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-end">
+        <a href="#"
+          data-rails-pulse--popover-target="button"
+          data-action="rails-pulse--popover#toggle"
+          data-popovertarget="popover"
+          class="block leading-none">
+          <%= rails_pulse_icon "message-circle-question", height: "16px", width: "16px" %>
+        </a>
+        <div popover class="popover card max-w-lg" data-rails-pulse--popover-target="menu">
+          <div class="flex flex-col">
+            <h3 class="font-semibold leading-none mbe-2 uppercase text-sm">Storage</h3>
+            <p class="text-sm text-subtle">How full Rails Pulse tables are relative to <code>max_table_records</code>, plus cleanup health. Open the full page for every table, retention details, and database size.</p>
+          </div>
+        </div>
+      </div>
+      <%= link_to storage_path, class: "block leading-none", title: "View storage details" do %>
+        <%= rails_pulse_icon "external-link", height: "16px", width: "16px" %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="storage-panel-stats">
+    <div>
+      <p class="font-semibold uppercase text-xs text-subtle mbe-1">Highest fill</p>
+      <p class="text-lg font-bold"><% if @storage_status.overview[:hottest_percent] %><%= @storage_status.overview[:hottest_percent].round %>%<% else %>--<% end %></p>
+      <p class="text-xs text-subtle"><%= @storage_status.overview[:hottest_label] %></p>
+    </div>
+    <div>
+      <p class="font-semibold uppercase text-xs text-subtle mbe-1">Pulse records</p>
+      <p class="text-lg font-bold"><%= number_with_delimiter(@storage_status.overview[:total_records]) %></p>
+      <p class="text-xs text-subtle">Across <%= @storage_status.tables.size %> tables</p>
+    </div>
+    <div>
+      <p class="font-semibold uppercase text-xs text-subtle mbe-1">Disk used</p>
+      <p class="text-lg font-bold"><%= @storage_status.overview[:display_bytes] ? human_readable_bytes(@storage_status.overview[:display_bytes]) : "—" %></p>
+      <p class="text-xs text-subtle"><%= @storage_status.database[:adapter] %></p>
+    </div>
+    <div>
+      <p class="font-semibold uppercase text-xs text-subtle mbe-1">Cleanup</p>
+      <p class="text-lg font-bold storage-health storage-health--<%= @storage_status.overview[:cleanup_health] %>"><%= @storage_status.overview[:cleanup_label] %></p>
+      <p class="text-xs text-subtle">Retain <%= @storage_status.cleanup[:retention_label] %></p>
+    </div>
+  </div>
+
+  <div class="storage-panel-tables">
+    <% @storage_status.dashboard_tables.each do |table| %>
+      <div class="storage-panel-row">
+        <span class="storage-panel-row__label font-semibold text-sm"><%= table[:label] %></span>
+        <div class="storage-fill storage-fill--compact" aria-hidden="true">
+          <div class="storage-fill__bar storage-fill__bar--<%= table[:severity] %>" style="width: <%= table[:bar_width] %>%"></div>
+        </div>
+        <span class="storage-panel-row__count text-xs text-subtle">
+          <% if table[:limit] %>
+            <%= number_with_delimiter(table[:count]) %> / <%= number_with_delimiter(table[:limit]) %>
+            · <%= table[:percent_label] %>
+          <% else %>
+            <%= number_with_delimiter(table[:count]) %>
+          <% end %>
+        </span>
+      </div>
+    <% end %>
+  </div>
+</div>

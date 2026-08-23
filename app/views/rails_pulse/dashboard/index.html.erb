@@ -18,7 +18,8 @@
       <%= render "rails_pulse/dashboard/health_badge",
       name: "Storage",
       health: @health_summary[:storage],
-      critical_label: "critical" %>
+      critical_label: "critical",
+      link_url: storage_path %>
     </div>
   </div>
 </div>
@@ -186,3 +187,5 @@
       </div>
     <% end %>
   </div>
+
+  <%= render "rails_pulse/dashboard/storage_panel" %>
