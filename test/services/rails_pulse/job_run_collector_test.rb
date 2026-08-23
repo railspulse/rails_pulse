@@ -96,7 +96,7 @@ module RailsPulse
         end
       end
 
-      assert RequestStore.store[:rails_pulse_captured_exception].is_a?(RuntimeError)
+      assert_kind_of RuntimeError, RequestStore.store[:rails_pulse_captured_exception]
     end
 
     test "track does not record an exception when track_exceptions is false" do
