@@ -18,27 +18,32 @@ module RailsPulse
     # For requests without a controller_action (404s, middleware short-circuits),
     # falls back to grouping by path alone.
     def self.find_or_create_for_request(http_method, path, controller_action: nil)
-      if controller_action.present?
-        route = find_by(controller_action: controller_action, path: path)
-        if route
-          route.add_http_method(http_method)
-          return route
-        end
+      route = if controller_action.present?
+        find_or_insert_by_action(http_method, path, controller_action)
+      else
+        find_or_insert_by_path(http_method, path)
+      end
 
-        # Use INSERT ... ON CONFLICT DO NOTHING rather than create_or_find_by so that
-        # concurrent inserts for the same route are silently skipped at the database level.
+      # Always append — concurrent first inserts of different verbs can skip the
+      # INSERT via ON CONFLICT DO NOTHING and would otherwise drop the losing verb.
+      route.add_http_method(http_method)
+      route
+    end
+
+    def self.find_or_insert_by_action(http_method, path, controller_action)
+      find_by(controller_action: controller_action, path: path) || begin
+        # INSERT ... ON CONFLICT DO NOTHING so concurrent inserts are skipped at the DB.
         insert(
           { http_methods: [ http_method ].to_json, path: path, controller_action: controller_action,
             tags: "[]", created_at: Time.current, updated_at: Time.current }
         )
         find_by!(controller_action: controller_action, path: path)
-      else
-        route = find_by(controller_action: nil, path: path)
-        if route
-          route.add_http_method(http_method)
-          return route
-        end
+      end
+    end
+    private_class_method :find_or_insert_by_action
 
+    def self.find_or_insert_by_path(http_method, path)
+      find_by(controller_action: nil, path: path) || begin
         insert(
           { http_methods: [ http_method ].to_json, path: path, controller_action: nil,
             tags: "[]", created_at: Time.current, updated_at: Time.current }
@@ -46,6 +51,7 @@ module RailsPulse
         where(controller_action: nil, path: path).order(:id).first!
       end
     end
+    private_class_method :find_or_insert_by_path
 
     def http_methods_list
       return [] if http_methods.blank?
@@ -59,6 +65,21 @@ module RailsPulse
       current = http_methods_list
       return if current.include?(http_method)
       update_column(:http_methods, (current + [ http_method ]).sort.to_json)
+    end
+
+    # True when at least one stored route still has no action but the live
+    # host router would assign one — the usual sign that schema migrated
+    # without `rails rails_pulse:migrate_routes`.
+    def self.needs_action_backfill?
+      return false unless column_names.include?("controller_action")
+      return false unless column_names.include?("http_methods")
+
+      where(controller_action: [ nil, "" ]).limit(25).any? do |route|
+        method = route.http_methods_list.first
+        next false if method.blank?
+
+        RailsPulse::RouteRecognizer.call(route.path, method: method).present?
+      end
     end
 
     def self.ransackable_attributes(auth_object = nil)

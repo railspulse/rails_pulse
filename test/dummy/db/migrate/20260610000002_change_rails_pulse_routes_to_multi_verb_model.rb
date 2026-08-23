@@ -35,11 +35,10 @@ class ChangeRailsPulseRoutesToMultiVerbModel < ActiveRecord::Migration[7.0]
       SQL
     end
 
-    # Step 5: Merge routes that share the same [controller_action, path] into one record,
-    # combining their http_methods arrays. This collapses e.g. separate GET /sign_in and
-    # POST /sign_in records (both sessions#new) into a single route with ["GET","POST"].
-    # Also consolidates null-controller_action duplicates that share a path.
-    consolidate_route_duplicates
+    # Step 5: Merge rows that already share [controller_action, path]. Do not merge
+    # null-action rows by path — GET /users (users#index) and POST /users (users#create)
+    # must stay distinct until `rails_pulse:migrate_routes` backfills controller_action.
+    consolidate_non_null_controller_action_groups
 
     # Step 6: Swap the unique index from [method, path] to [controller_action, path]
     if index_exists?(:rails_pulse_routes, [ :method, :path ], name: "index_rails_pulse_routes_on_method_and_path")
@@ -55,6 +54,8 @@ class ChangeRailsPulseRoutesToMultiVerbModel < ActiveRecord::Migration[7.0]
     if column_exists?(:rails_pulse_routes, :method)
       remove_column :rails_pulse_routes, :method
     end
+
+    say "Action will stay empty until you run: rails rails_pulse:migrate_routes"
   end
 
   def down
@@ -62,11 +63,6 @@ class ChangeRailsPulseRoutesToMultiVerbModel < ActiveRecord::Migration[7.0]
   end
 
   private
-
-  def consolidate_route_duplicates
-    consolidate_non_null_controller_action_groups
-    consolidate_null_controller_action_groups
-  end
 
   def consolidate_non_null_controller_action_groups
     groups = connection.select_all(<<~SQL).to_a
@@ -82,25 +78,6 @@ class ChangeRailsPulseRoutesToMultiVerbModel < ActiveRecord::Migration[7.0]
         "SELECT id, http_methods FROM rails_pulse_routes " \
         "WHERE controller_action = #{connection.quote(group["controller_action"])} " \
         "AND path = #{connection.quote(group["path"])} " \
-        "ORDER BY id"
-      ).to_a
-      merge_route_rows!(routes)
-    end
-  end
-
-  def consolidate_null_controller_action_groups
-    groups = connection.select_all(<<~SQL).to_a
-      SELECT path
-      FROM rails_pulse_routes
-      WHERE controller_action IS NULL
-      GROUP BY path
-      HAVING COUNT(*) > 1
-    SQL
-
-    groups.each do |group|
-      routes = connection.select_all(
-        "SELECT id, http_methods FROM rails_pulse_routes " \
-        "WHERE controller_action IS NULL AND path = #{connection.quote(group["path"])} " \
         "ORDER BY id"
       ).to_a
       merge_route_rows!(routes)

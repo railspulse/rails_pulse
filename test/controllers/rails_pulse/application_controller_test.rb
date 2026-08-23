@@ -578,6 +578,53 @@ class RailsPulse::ApplicationControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "shows migrate_routes banner when a live route has no controller_action" do
+    RailsPulse::Summary.create!(
+      summarizable_type: "RailsPulse::Route",
+      summarizable_id: 1,
+      period_start: 1.hour.ago,
+      period_end: Time.current,
+      period_type: "hour",
+      count: 10,
+      updated_at: 30.minutes.ago
+    )
+    RailsPulse::Route.create!(
+      http_methods: '["GET"]',
+      path: "/slow",
+      controller_action: nil,
+      tags: "[]"
+    )
+
+    get rails_pulse.root_path
+
+    assert_response :success
+    assert_match(/Route actions have not been backfilled/, response.body)
+    assert_match(/rails_pulse:migrate_routes/, response.body)
+  end
+
+  test "does not show migrate_routes banner when blank-action routes are unrecognized" do
+    RailsPulse::Summary.create!(
+      summarizable_type: "RailsPulse::Route",
+      summarizable_id: 1,
+      period_start: 1.hour.ago,
+      period_end: Time.current,
+      period_type: "hour",
+      count: 10,
+      updated_at: 30.minutes.ago
+    )
+    RailsPulse::Route.create!(
+      http_methods: '["GET"]',
+      path: "/ghost-banner-#{SecureRandom.hex(4)}",
+      controller_action: nil,
+      tags: "[]"
+    )
+
+    get rails_pulse.root_path
+
+    assert_response :success
+    assert_no_match(/Route actions have not been backfilled/, response.body)
+  end
+
   # Edge Cases
 
   test "set_global_filters handles empty time params" do

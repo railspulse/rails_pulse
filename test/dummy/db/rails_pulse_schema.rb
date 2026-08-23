@@ -2,6 +2,8 @@
 # This file contains the complete schema for Rails Pulse tables
 # Load with: rails db:schema:load_rails_pulse or db:prepare
 
+require "rails_pulse/route_indexes" unless defined?(RailsPulse::RouteIndexes)
+
 RailsPulse::Schema = lambda do |connection|
   adapter = connection.adapter_name.downcase
   # Skip if all tables already exist to prevent conflicts
@@ -37,6 +39,8 @@ RailsPulse::Schema = lambda do |connection|
 
     connection.add_index :rails_pulse_routes, [ :controller_action, :path ], unique: true, name: "index_rails_pulse_routes_on_controller_action_and_path"
     connection.add_index :rails_pulse_routes, :path, name: "index_rails_pulse_routes_on_path"
+    # Groups 404s / unrecognized paths by path. Partial (PG/SQLite) or functional (MySQL).
+    RailsPulse::RouteIndexes.ensure_null_action_uniqueness!(connection)
   end
 
   unless connection.table_exists?(:rails_pulse_queries)

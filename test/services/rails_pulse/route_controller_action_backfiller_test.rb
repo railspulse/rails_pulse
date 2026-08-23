@@ -110,6 +110,7 @@ module RailsPulse
 
     test "merges sibling null-controller_action routes that resolve to the same action" do
       first = create_route("GET", "/posts/99")
+      call_backfiller
       second = create_route("GET", "/posts/99")
       request = create_request(second)
 
@@ -125,6 +126,7 @@ module RailsPulse
 
     test "merges different-verb siblings for the same path into one multi-verb route" do
       get_route = create_route("GET", "/sign_in")
+      call_backfiller
       post_route = create_route("POST", "/sign_in")
       request = create_request(post_route)
 
@@ -137,6 +139,22 @@ module RailsPulse
       assert_equal [ "GET", "POST" ], survivor.http_methods_list.sort
       assert_equal survivor.id, request.reload.route_id
       assert_includes [ get_route.id, post_route.id ], survivor.id
+    end
+
+    test "keeps GET and POST on the same path as separate routes when actions differ" do
+      get_route = create_route("GET", "/users")
+      call_backfiller
+      post_route = create_route("POST", "/users")
+      get_request = create_request(get_route)
+      post_request = create_request(post_route)
+
+      call_backfiller
+
+      assert_equal "home#index", get_route.reload.controller_action
+      assert_equal "home#create", post_route.reload.controller_action
+      assert_equal 2, RailsPulse::Route.where(path: "/users").count
+      assert_equal get_route.id, get_request.reload.route_id
+      assert_equal post_route.id, post_request.reload.route_id
     end
 
     test "backfills blank controller_action string" do
@@ -162,6 +180,43 @@ module RailsPulse
 
       assert_nil route.reload.controller_action
       assert_equal @baseline[:skipped] + 1, results[:skipped]
+    end
+
+    test "backfills unrecognized path from request controller_action" do
+      route = create_route("GET", "/error_prone")
+      create_request(route, controller_action: "ErrorProneController#index")
+
+      call_backfiller
+
+      assert_equal "error_prone#index", route.reload.controller_action
+    end
+
+    test "normalizes namespaced request controller_action to controller#action" do
+      route = create_route("GET", "/api/v1/users")
+      create_request(route, controller_action: "Api::V1::UsersController#index")
+
+      call_backfiller
+
+      assert_equal "api/v1/users#index", route.reload.controller_action
+    end
+
+    test "prefers live router over historical request controller_action" do
+      route = create_route("GET", "/posts/99")
+      create_request(route, controller_action: "PostsController#show")
+
+      call_backfiller
+
+      assert_equal "home#index", route.reload.controller_action
+    end
+
+    test "uses most common request controller_action when router does not recognize" do
+      route = create_route("GET", "/legacy/endpoint")
+      2.times { create_request(route, controller_action: "LegacyController#show") }
+      create_request(route, controller_action: "OtherController#index")
+
+      call_backfiller
+
+      assert_equal "legacy#show", route.reload.controller_action
     end
 
     # HTTP Method Edge Cases
@@ -343,7 +398,7 @@ module RailsPulse
       )
     end
 
-    def create_request(route)
+    def create_request(route, controller_action: "PostsController#show")
       RailsPulse::Request.create!(
         route: route,
         method: route.http_methods_list.first || "GET",
@@ -351,7 +406,7 @@ module RailsPulse
         status: 200,
         is_error: false,
         request_uuid: SecureRandom.uuid,
-        controller_action: "PostsController#show",
+        controller_action: controller_action,
         occurred_at: Time.current
       )
     end

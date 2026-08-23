@@ -1,3 +1,11 @@
+<% if @route_backfill_pending %>
+  <div class="setup-banner setup-banner--negative">
+    <p class="setup-banner__title">Route actions have not been backfilled</p>
+    <p class="setup-banner__body">Schema migrate adds the Action column but leaves it empty. Run this once to fill controller actions, normalize historical paths, and merge routes that share the same action:</p>
+    <code class="setup-banner__command"><span class="setup-banner__command-prefix">$</span> bin/rails rails_pulse:migrate_routes</code>
+  </div>
+<% end %>
+
 <% if @summaries_stale %>
   <div class="setup-banner setup-banner--negative">
     <p class="setup-banner__title">Summary jobs don't appear to be running</p>

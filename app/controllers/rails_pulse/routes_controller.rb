@@ -110,7 +110,7 @@ module RailsPulse
       end
     end
 
-    # Request table filters that chart Summary queries don't support / don't join for.
+    # Request/route-name filters that Summary chart queries don't join for.
     def chart_filter_exclusions
       %w[route_path_cont route_controller_action_cont controller_action_cont http_method_eq]
     end

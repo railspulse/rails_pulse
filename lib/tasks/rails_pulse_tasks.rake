@@ -30,5 +30,8 @@ namespace :rails_pulse do
 
     path_results = RailsPulse::RouteMigrator.call
     puts "Path normalization: #{path_results[:merged]} merged, #{path_results[:skipped]} skipped, #{path_results[:unchanged]} unchanged"
+
+    RailsPulse::RouteIndexes.ensure_null_action_uniqueness!(RailsPulse::Route.connection)
+    puts "Ensured unique index on unrecognized (null controller_action) paths."
   end
 end

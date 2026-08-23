@@ -28,6 +28,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     MakeCacheHitOnOperationsNullable
     AddControllerActionToRailsPulseRoutes
     ChangeRailsPulseRoutesToMultiVerbModel
+    AddNullActionUniqueIndexToRoutes
   ].freeze
 
   def setup
@@ -63,6 +64,99 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert @conn.index_exists?(:rails_pulse_routes, [ :controller_action, :path ],
       name: "index_rails_pulse_routes_on_controller_action_and_path"),
       "new unique index missing on routes"
+    assert RailsPulse::RouteIndexes.exists?(@conn),
+      "null-action unique index should be added when no duplicate paths exist"
+  end
+
+  test "upgrade from v0.2.7 keeps GET and POST on the same path as separate routes" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+
+    now = Time.current.iso8601(6)
+    @conn.execute(<<~SQL)
+      INSERT INTO rails_pulse_routes (method, path, created_at, updated_at)
+      VALUES ('GET', '/users', '#{now}', '#{now}')
+    SQL
+    get_id = @conn.select_value("SELECT id FROM rails_pulse_routes WHERE method = 'GET' AND path = '/users'")
+
+    @conn.execute(<<~SQL)
+      INSERT INTO rails_pulse_routes (method, path, created_at, updated_at)
+      VALUES ('POST', '/users', '#{now}', '#{now}')
+    SQL
+    post_id = @conn.select_value("SELECT id FROM rails_pulse_routes WHERE method = 'POST' AND path = '/users'")
+
+    is_error_value = @conn.adapter_name.downcase == "postgresql" ? "false" : "0"
+    get_uuid = "upgrade-get-#{SecureRandom.hex(4)}"
+    post_uuid = "upgrade-post-#{SecureRandom.hex(4)}"
+
+    @conn.execute(<<~SQL)
+      INSERT INTO rails_pulse_requests (route_id, duration, status, is_error, request_uuid, occurred_at, created_at, updated_at)
+      VALUES (#{get_id}, 10, 200, #{is_error_value}, '#{get_uuid}', '#{now}', '#{now}', '#{now}')
+    SQL
+    @conn.execute(<<~SQL)
+      INSERT INTO rails_pulse_requests (route_id, duration, status, is_error, request_uuid, occurred_at, created_at, updated_at)
+      VALUES (#{post_id}, 20, 201, #{is_error_value}, '#{post_uuid}', '#{now}', '#{now}', '#{now}')
+    SQL
+
+    run_all_migrations
+
+    rows = @conn.select_all("SELECT id, http_methods, controller_action FROM rails_pulse_routes WHERE path = '/users' ORDER BY id").to_a
+
+    assert_equal 2, rows.size, "GET /users and POST /users must remain two routes until migrate_routes backfills actions"
+    assert rows.all? { |row| row["controller_action"].nil? }
+
+    methods = rows.map { |row| JSON.parse(row["http_methods"]) }.sort
+
+    assert_equal [ [ "GET" ], [ "POST" ] ], methods
+
+    assert_equal "GET", @conn.select_value("SELECT method FROM rails_pulse_requests WHERE request_uuid = '#{get_uuid}'")
+    assert_equal "POST", @conn.select_value("SELECT method FROM rails_pulse_requests WHERE request_uuid = '#{post_uuid}'")
+    assert_equal get_id.to_i, @conn.select_value("SELECT route_id FROM rails_pulse_requests WHERE request_uuid = '#{get_uuid}'").to_i
+    assert_equal post_id.to_i, @conn.select_value("SELECT route_id FROM rails_pulse_requests WHERE request_uuid = '#{post_uuid}'").to_i
+    assert_not RailsPulse::RouteIndexes.exists?(@conn),
+      "null-action unique index must wait until migrate_routes when REST siblings still have null controller_action"
+  end
+
+  test "migrate_routes after upgrade preserves distinct REST actions and merges same-action paths" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    now = Time.current.iso8601(6)
+
+    [
+      [ "GET", "/users" ],
+      [ "POST", "/users" ],
+      [ "GET", "/sign_in" ],
+      [ "POST", "/sign_in" ],
+      [ "GET", "/ghost/upgrade" ],
+      [ "POST", "/ghost/upgrade" ]
+    ].each do |method, path|
+      @conn.execute(<<~SQL)
+        INSERT INTO rails_pulse_routes (method, path, created_at, updated_at)
+        VALUES ('#{method}', '#{path}', '#{now}', '#{now}')
+      SQL
+    end
+
+    run_all_migrations
+
+    RailsPulse::RouteControllerActionBackfiller.call
+    RailsPulse::RouteIndexes.ensure_null_action_uniqueness!(@conn)
+
+    users = @conn.select_all("SELECT controller_action, http_methods FROM rails_pulse_routes WHERE path = '/users' ORDER BY controller_action").to_a
+
+    assert_equal 2, users.size
+    assert_equal [ "home#create", "home#index" ], users.map { |row| row["controller_action"] }.sort
+
+    sign_in = @conn.select_all("SELECT controller_action, http_methods FROM rails_pulse_routes WHERE path = '/sign_in'").to_a
+
+    assert_equal 1, sign_in.size
+    assert_equal "home#index", sign_in.first["controller_action"]
+    assert_equal [ "GET", "POST" ], JSON.parse(sign_in.first["http_methods"]).sort
+
+    ghost = @conn.select_all("SELECT controller_action, http_methods FROM rails_pulse_routes WHERE path = '/ghost/upgrade'").to_a
+
+    assert_equal 1, ghost.size
+    assert_nil ghost.first["controller_action"]
+    assert_equal [ "GET", "POST" ], JSON.parse(ghost.first["http_methods"]).sort
+
+    assert RailsPulse::RouteIndexes.exists?(@conn)
   end
 
   test "upgrade from v0.2.7 adds diagnostic columns to operations and requests" do

@@ -60,6 +60,27 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
     assert_equal route, summary.summarizable
   end
 
+  test "uniqueness enforced at database level on path when controller_action is null" do
+    path = "/health-uniq-#{SecureRandom.hex(4)}"
+    RailsPulse::Route.create!(
+      http_methods: '["GET"]',
+      path: path,
+      controller_action: nil,
+      tags: "[]"
+    )
+
+    duplicate = RailsPulse::Route.new(
+      http_methods: '["HEAD"]',
+      path: path,
+      controller_action: nil,
+      tags: "[]"
+    )
+
+    assert_raises ActiveRecord::RecordNotUnique do
+      duplicate.save!(validate: false)
+    end
+  end
+
   test "uniqueness enforced at database level on [controller_action, path]" do
     existing = rails_pulse_routes(:api_users)
     duplicate = RailsPulse::Route.new(
@@ -175,6 +196,41 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
 
       assert_equal r1, r2
     end
+  end
+
+  test "find_or_create_for_request keeps different actions on the same path separate" do
+    path = "/identity-#{SecureRandom.hex(4)}"
+
+    get_route = RailsPulse::Route.find_or_create_for_request("GET", path, controller_action: "home#index")
+    post_route = RailsPulse::Route.find_or_create_for_request("POST", path, controller_action: "home#create")
+
+    assert_not_equal get_route.id, post_route.id
+    assert_equal "home#index", get_route.controller_action
+    assert_equal "home#create", post_route.controller_action
+    assert_equal [ "GET" ], get_route.http_methods_list
+    assert_equal [ "POST" ], post_route.http_methods_list
+  end
+
+  test "needs_action_backfill? is true when a live route has no controller_action" do
+    RailsPulse::Route.create!(
+      http_methods: '["GET"]',
+      path: "/slow",
+      controller_action: nil,
+      tags: "[]"
+    )
+
+    assert_predicate RailsPulse::Route, :needs_action_backfill?
+  end
+
+  test "needs_action_backfill? is false when blank-action routes are unrecognized" do
+    RailsPulse::Route.create!(
+      http_methods: '["GET"]',
+      path: "/ghost-backfill-#{SecureRandom.hex(4)}",
+      controller_action: nil,
+      tags: "[]"
+    )
+
+    assert_not RailsPulse::Route.needs_action_backfill?
   end
 
   # to_breadcrumb Tests

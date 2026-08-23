@@ -17,6 +17,9 @@ Rails.application.routes.draw do
   get  "sign_in", to: "home#index"
   post "sign_in", to: "home#index"
 
+  get  "users", to: "home#index"
+  post "users", to: "home#create"
+
   # Simulate Devise/Warden constraints that touch request env (used by RouteRecognizer tests).
   constraints(->(req) { req.env["warden"].authenticated? }) do
     get "warden_protected", to: "home#index"

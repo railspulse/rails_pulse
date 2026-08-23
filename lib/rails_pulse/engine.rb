@@ -1,5 +1,6 @@
 require "rails_pulse/version"
 require "rails_pulse/statistics"
+require "rails_pulse/route_indexes"
 require "rails_pulse/middleware/request_collector"
 require "rails_pulse/middleware/asset_server"
 require "rails_pulse/subscribers/operation_subscriber"

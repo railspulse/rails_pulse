@@ -112,6 +112,7 @@ module RailsPulse
           end
 
           say "\nMigrations copied successfully!", :green
+          say_route_backfill_warning if requires_route_backfill?(new_migrations)
           say "\nNext steps:", :green
           next_steps.each { |step| say step }
         else
@@ -139,22 +140,37 @@ module RailsPulse
           "#{migration_dir}/upgrade_rails_pulse_tables.rb"
         )
 
-        say <<~MESSAGE
+        say "\nUpgrade migration created successfully!", :green
+        missing_names = missing_columns.keys.map(&:to_s)
+        say_route_backfill_warning if missing_names.intersect?(%w[controller_action http_methods])
+        say "\nNext steps:", :green
+        next_steps.each { |step| say step }
+        say "\nThis migration will add: #{missing_columns.keys.join(', ')}\n"
+      end
 
-          Upgrade migration created successfully!
+      ROUTE_BACKFILL_MIGRATIONS = %w[
+        change_rails_pulse_routes_to_multi_verb_model
+        add_null_action_unique_index_to_routes
+      ].freeze
 
-          Next steps:
-          #{next_steps.map { |s| "  #{s}" }.join("\n")}
+      def requires_route_backfill?(migrations)
+        migrations.any? do |name|
+          ROUTE_BACKFILL_MIGRATIONS.any? { |fragment| name.include?(fragment) }
+        end
+      end
 
-          This migration will add: #{missing_columns.keys.join(', ')}
-
-        MESSAGE
+      def say_route_backfill_warning
+        say "\nIMPORTANT: This upgrade changes how routes are identified.", :yellow
+        say "Schema migrate alone leaves the Action column empty. After migrating, run:", :yellow
+        say "  rails rails_pulse:migrate_routes", :yellow
+        say "Skipping this leaves GET/POST on the same path unmerged in the dashboard.", :yellow
       end
 
       def single_db_next_steps
         [
           "1. Run: rails db:migrate",
-          "2. Restart your Rails server"
+          "2. Run: rails rails_pulse:migrate_routes",
+          "3. Restart your Rails server"
         ]
       end
 
@@ -162,7 +178,8 @@ module RailsPulse
         [
           "1. Run migrations for the rails_pulse database:",
           "   rails db:migrate:rails_pulse",
-          "2. Restart your Rails server"
+          "2. Run: rails rails_pulse:migrate_routes",
+          "3. Restart your Rails server"
         ]
       end
 

@@ -5,7 +5,7 @@ module RailsPulse
     fixtures :rails_pulse_routes, :rails_pulse_requests
 
     test "moves requests from source to target and destroys source" do
-      target = create_route("GET", "/posts/1")
+      target = create_route("GET", "/posts/1", controller_action: "home#index")
       source = create_route("POST", "/posts/1")
       request = create_request(source)
 
@@ -27,7 +27,7 @@ module RailsPulse
     end
 
     test "reassigns source summaries to target instead of destroying them" do
-      target = create_route("GET", "/posts/1")
+      target = create_route("GET", "/posts/1", controller_action: "home#index")
       source = create_route("POST", "/posts/1")
       summary = create_summary(source, count: 42)
 
@@ -41,7 +41,7 @@ module RailsPulse
     end
 
     test "combines overlapping period summaries onto the target" do
-      target = create_route("GET", "/posts/1")
+      target = create_route("GET", "/posts/1", controller_action: "home#index")
       source = create_route("POST", "/posts/1")
       period_start = 1.hour.ago.beginning_of_hour
 
@@ -60,11 +60,12 @@ module RailsPulse
 
     private
 
-    def create_route(http_method, path)
+    def create_route(http_method, path, controller_action: nil)
       RailsPulse::Route.create!(
         http_methods: [ http_method ].to_json,
         path: path,
-        tags: "[]"
+        tags: "[]",
+        controller_action: controller_action
       )
     end
 
