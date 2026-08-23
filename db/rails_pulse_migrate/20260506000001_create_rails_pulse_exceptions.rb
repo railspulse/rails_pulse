@@ -2,15 +2,16 @@ class CreateRailsPulseExceptions < ActiveRecord::Migration[7.0]
   def up
     unless table_exists?(:rails_pulse_exception_groups)
       create_table :rails_pulse_exception_groups do |t|
-        t.string   :fingerprint,      null: false, comment: "SHA256 of exception_class + first app-code method name"
+        t.string   :fingerprint,      null: false, comment: "SHA256 of exception_class + relative first app-code location"
         t.string   :exception_class,  null: false, comment: "e.g. ActiveRecord::RecordNotFound"
+        t.string   :location,                      comment: "Relative first app-code frame, e.g. app/models/user.rb#save"
         t.text     :message,                       comment: "Message from the most recent occurrence"
         t.datetime :first_seen_at,    null: false
         t.datetime :last_seen_at,     null: false
         t.integer  :occurrence_count, null: false, default: 0
         t.string   :status,           null: false, default: "open", comment: "open, resolved, ignored"
         t.datetime :resolved_at,                   comment: "When the group was last resolved"
-        t.boolean  :preserve,         null: false, default: false, comment: "Exempt from count-based and orphan cleanup"
+        t.boolean  :preserve,         null: false, default: false, comment: "Exempt from all automatic cleanup including occurrence rows"
         t.timestamps
       end
 
@@ -27,7 +28,7 @@ class CreateRailsPulseExceptions < ActiveRecord::Migration[7.0]
                      comment: "FK to the group this occurrence belongs to"
         t.string   :exception_class, null: false
         t.text     :message
-        t.text     :backtrace,       comment: "JSON array of {file, line, method} frames"
+        t.text     :backtrace,       comment: "JSON array of {file, line, method} frames (first 50)"
         t.string   :request_url,     comment: "Nullable — web requests only"
         t.string   :request_method,  comment: "GET, POST, etc."
         t.string   :environment,     comment: "production, staging, etc."

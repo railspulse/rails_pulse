@@ -15,6 +15,16 @@ class ExceptionsIndexPageTest < ApplicationSystemTestCase
     assert_text "ZeroDivisionError"
   end
 
+  test "status filter shows resolved groups" do
+    assert_page_loads "/exceptions"
+
+    select "Resolved", from: "q_status_eq"
+    click_button "Search"
+
+    assert_text "ArgumentError"
+    assert_no_text "ActiveRecord::RecordNotFound"
+  end
+
   test "filter by exception class shows matching results" do
     assert_page_loads "/exceptions"
 

@@ -101,8 +101,8 @@ module RailsPulse
           Exception tracking (new)
 
           This upgrade adds exception tracking. After you migrate, Rails Pulse will
-          capture unhandled exceptions from web requests and show them in an
-          Exceptions tab. Two new tables will be created:
+          capture unhandled exceptions from web requests and background jobs and
+          show them in an Exceptions tab. Two new tables will be created:
             - rails_pulse_exception_groups
             - rails_pulse_exception_occurrences
 

@@ -180,6 +180,36 @@ module RailsPulse
       end
     end
 
+    test "validate_configuration! raises for non-boolean track_exceptions" do
+      config = Configuration.new
+      config.instance_variable_set(:@track_exceptions, "yes")
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "validate_configuration! raises for non-boolean capture_exception_params" do
+      config = Configuration.new
+      config.instance_variable_set(:@capture_exception_params, "yes")
+
+      assert_raises ArgumentError do
+        config.validate_configuration!
+      end
+    end
+
+    test "track_exceptions defaults to true" do
+      config = Configuration.new
+
+      assert config.track_exceptions
+    end
+
+    test "capture_exception_params defaults to true" do
+      config = Configuration.new
+
+      assert config.capture_exception_params
+    end
+
     test "validate_configuration! raises for non-array tags" do
       config = Configuration.new
       config.instance_variable_set(:@tags, "invalid")

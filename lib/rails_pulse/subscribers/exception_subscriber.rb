@@ -19,6 +19,7 @@ module RailsPulse
 
         exception = @event.payload[:exception_object]
         return unless exception
+        return if RequestStore.store[:rails_pulse_captured_exception].equal?(exception)
 
         RailsPulse::ExceptionCaptureService.capture(
           exception,

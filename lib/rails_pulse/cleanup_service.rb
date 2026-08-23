@@ -194,11 +194,23 @@ module RailsPulse
     end
 
     def cleanup_exception_occurrences_by_time(cutoff_time)
-      RailsPulse::ExceptionOccurrence.where("occurred_at < ?", cutoff_time).delete_all
+      exception_occurrences_cleanup_scope.where("occurred_at < ?", cutoff_time).delete_all
     end
 
     def cleanup_exception_occurrences_by_count
-      cleanup_by_count(RailsPulse::ExceptionOccurrence, :rails_pulse_exception_occurrences, order_column: :occurred_at)
+      cleanup_by_count(
+        RailsPulse::ExceptionOccurrence,
+        :rails_pulse_exception_occurrences,
+        order_column: :occurred_at,
+        scope: exception_occurrences_cleanup_scope
+      )
+    end
+
+    # Preserve exempts a group from all automatic cleanup, including its
+    # occurrence rows — otherwise a preserved group can lose its backtraces.
+    def exception_occurrences_cleanup_scope
+      preserved_ids = RailsPulse::ExceptionGroup.where(preserve: true).select(:id)
+      RailsPulse::ExceptionOccurrence.where.not(exception_group_id: preserved_ids)
     end
 
     # Prune oldest non-preserved, non-ignored groups when over the configured cap.

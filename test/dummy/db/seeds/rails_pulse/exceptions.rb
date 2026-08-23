@@ -159,6 +159,7 @@ module RailsPulse
           group = ::RailsPulse::ExceptionGroup.create!(
             fingerprint: fingerprint,
             exception_class: defn[:exception_class],
+            location: fingerprint_location(defn[:app_frame]),
             message: defn[:messages].last,
             first_seen_at: first_seen,
             last_seen_at: first_seen,
@@ -185,10 +186,13 @@ module RailsPulse
       private
 
       def self.compute_fingerprint(exception_class, frame)
+        Digest::SHA256.hexdigest("#{exception_class}:#{fingerprint_location(frame)}")
+      end
+
+      def self.fingerprint_location(frame)
         method_name = frame[:method].to_s
         anonymous = method_name.include?("block") || method_name.start_with?("<")
-        location = anonymous ? "#{frame[:file]}:#{frame[:line]}" : "#{frame[:file]}##{method_name}"
-        Digest::SHA256.hexdigest("#{exception_class}:#{location}")
+        anonymous ? "#{frame[:file]}:#{frame[:line]}" : "#{frame[:file]}##{method_name}"
       end
 
       def self.create_occurrences(group, defn, first_seen, deploy_shas)

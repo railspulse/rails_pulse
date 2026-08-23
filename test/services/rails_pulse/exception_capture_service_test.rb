@@ -284,7 +284,7 @@ module RailsPulse
     test "concurrent captures of the same exception produce exactly one group" do
       exception = make_exception(RuntimeError, "concurrent")
       exception.stubs(:backtrace).returns([ "/app/models/post.rb:77:in 'save'" ])
-      fingerprint = Digest::SHA256.hexdigest("RuntimeError:/app/models/post.rb#save")
+      fingerprint = Digest::SHA256.hexdigest("RuntimeError:app/models/post.rb#save")
 
       threads = 5.times.map do
         Thread.new { ExceptionCaptureService.capture(exception) }
@@ -298,7 +298,7 @@ module RailsPulse
     test "concurrent captures accumulate occurrence_count correctly" do
       exception = make_exception(RuntimeError, "counter race")
       exception.stubs(:backtrace).returns([ "/app/models/order.rb:12:in 'save'" ])
-      fingerprint = Digest::SHA256.hexdigest("RuntimeError:/app/models/order.rb#save")
+      fingerprint = Digest::SHA256.hexdigest("RuntimeError:app/models/order.rb#save")
 
       n = 4
       threads = n.times.map do
@@ -426,6 +426,54 @@ module RailsPulse
       assert_not occurrence.request_params.present?
     ensure
       RailsPulse.configuration.capture_exception_params = original
+    end
+
+    # Location / fingerprint path normalization
+
+    test "stores a Rails.root-relative location on the group" do
+      exception = make_exception(RuntimeError, "location")
+      exception.stubs(:backtrace).returns([ "#{Rails.root}/app/models/post.rb:77:in 'save'" ])
+
+      ExceptionCaptureService.capture(exception)
+      group = ExceptionGroup.order(:created_at).last
+
+      assert_equal "app/models/post.rb#save", group.location
+      assert_equal Digest::SHA256.hexdigest("RuntimeError:app/models/post.rb#save"), group.fingerprint
+    end
+
+    test "fingerprints two release prefixes as the same group" do
+      exception_a = make_exception(RuntimeError, "deploy a")
+      exception_b = make_exception(RuntimeError, "deploy b")
+      exception_a.stubs(:backtrace).returns([ "/var/www/app/releases/20260101120000/app/models/post.rb:77:in 'save'" ])
+      exception_b.stubs(:backtrace).returns([ "/var/www/app/releases/20260102120000/app/models/post.rb:10:in 'save'" ])
+
+      ExceptionCaptureService.capture(exception_a)
+      assert_no_difference -> { ExceptionGroup.count } do
+        ExceptionCaptureService.capture(exception_b)
+      end
+    end
+
+    test "does not treat a project path containing ruby as a gem frame" do
+      exception = make_exception(RuntimeError, "ruby app")
+      exception.stubs(:backtrace).returns([ "/Users/dev/ruby_app/app/models/user.rb:3:in 'call'" ])
+
+      ExceptionCaptureService.capture(exception)
+      group = ExceptionGroup.order(:created_at).last
+
+      assert_equal "app/models/user.rb#call", group.location
+      refute_equal Digest::SHA256.hexdigest("RuntimeError:unknown"), group.fingerprint
+    end
+
+    test "is a no-op when track_exceptions is disabled" do
+      original = RailsPulse.configuration.track_exceptions
+      RailsPulse.configuration.track_exceptions = false
+      exception = make_exception(RuntimeError, "disabled")
+
+      assert_no_difference -> { ExceptionGroup.count } do
+        ExceptionCaptureService.capture(exception)
+      end
+    ensure
+      RailsPulse.configuration.track_exceptions = original
     end
   end
 end

@@ -28,8 +28,12 @@ class RailsPulse::BacktraceHelperTest < ActionView::TestCase
     refute app_frame?("file" => "/usr/local/lib/ruby/gems/3.2.0/gems/rack-3.0.0/lib/rack.rb")
   end
 
-  test "app_frame? returns false for stdlib path" do
+    test "app_frame? returns false for stdlib path" do
     refute app_frame?("file" => "/usr/local/lib/ruby/3.2.0/json.rb")
+  end
+
+  test "app_frame? returns true for a project path that contains ruby" do
+    assert app_frame?("file" => "/Users/dev/ruby_app/app/models/user.rb")
   end
 
   test "app_frame? returns false for blank file" do

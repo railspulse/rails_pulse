@@ -23,11 +23,15 @@ module RailsPulse
     scope :preservable,  -> { where(preserve: false) }
 
     def self.ransackable_attributes(auth_object = nil)
-      %w[id exception_class fingerprint first_seen_at last_seen_at occurrence_count status resolved_at preserve]
+      %w[id exception_class fingerprint location first_seen_at last_seen_at occurrence_count status resolved_at preserve]
     end
 
     def self.ransackable_associations(auth_object = nil)
       %w[occurrences]
+    end
+
+    def to_breadcrumb
+      exception_class
     end
   end
 end

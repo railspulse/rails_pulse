@@ -66,6 +66,35 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
     refute_includes exception_classes, "ActiveRecord::RecordNotFound"
   end
 
+  test "index defaults to open groups" do
+    get rails_pulse.exceptions_path
+
+    exception_classes = assigns(:table_data).map(&:exception_class)
+
+    assert_includes exception_classes, "ActiveRecord::RecordNotFound"
+    refute_includes exception_classes, "ArgumentError"
+    refute_includes exception_classes, "Net::ReadTimeout"
+  end
+
+  test "index shows all statuses when status filter is blank" do
+    get rails_pulse.exceptions_path, params: { q: { status_eq: "" } }
+
+    exception_classes = assigns(:table_data).map(&:exception_class)
+
+    assert_includes exception_classes, "ActiveRecord::RecordNotFound"
+    assert_includes exception_classes, "ArgumentError"
+    assert_includes exception_classes, "Net::ReadTimeout"
+  end
+
+  test "index filters by resolved status" do
+    get rails_pulse.exceptions_path, params: { q: { status_eq: "resolved" } }
+
+    exception_classes = assigns(:table_data).map(&:exception_class)
+
+    assert_includes exception_classes, "ArgumentError"
+    refute_includes exception_classes, "ActiveRecord::RecordNotFound"
+  end
+
   test "index respects pagination limit" do
     get rails_pulse.exceptions_path, params: { limit: 5 }
 

@@ -1,7 +1,7 @@
 module RailsPulse
   module BacktraceHelper
     APP_FRAME_PATTERN = %r{/app/|/config/|/lib/}
-    GEM_FRAME_PATTERN = %r{/gems/|/rubygems/|/bundler/|/ruby/}
+    GEM_FRAME_PATTERN = %r{/gems/|/rubygems/|/bundler/|/lib/ruby/}
 
     def app_frame?(frame)
       file = frame["file"].to_s

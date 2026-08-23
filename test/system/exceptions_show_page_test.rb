@@ -15,6 +15,8 @@ class ExceptionsShowPageTest < ApplicationSystemTestCase
     assert_text /exception details/i
     assert_text @group.exception_class
     assert_text @group.message
+    assert_text @group.location
+    assert_text /total seen/i
   end
 
   test "occurrences table lists occurrences" do

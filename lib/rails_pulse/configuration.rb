@@ -157,6 +157,7 @@ module RailsPulse
       validate_job_settings!
       validate_dashboard_settings!
       validate_tracking_settings!
+      validate_exception_settings!
       validate_service_level_objectives_settings!
       validate_query_service_level_objectives_settings!
     end
@@ -276,6 +277,16 @@ module RailsPulse
     def validate_tracking_settings!
       unless [ true, false ].include?(@async)
         raise ArgumentError, "async must be true or false, got #{@async}"
+      end
+    end
+
+    def validate_exception_settings!
+      unless [ true, false ].include?(@track_exceptions)
+        raise ArgumentError, "track_exceptions must be a boolean"
+      end
+
+      unless [ true, false ].include?(@capture_exception_params)
+        raise ArgumentError, "capture_exception_params must be a boolean"
       end
     end
 

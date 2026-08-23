@@ -30,6 +30,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     AddControllerActionToRailsPulseRoutes
     ChangeRailsPulseRoutesToMultiVerbModel
     AddNullActionUniqueIndexToRoutes
+    AddLocationToExceptionGroups
   ].freeze
 
   def setup
@@ -200,6 +201,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert @conn.table_exists?(:rails_pulse_exception_occurrences), "exception_occurrences table missing"
     assert @conn.column_exists?(:rails_pulse_exception_groups, :fingerprint), "fingerprint missing on exception_groups"
     assert @conn.column_exists?(:rails_pulse_exception_groups, :status), "status missing on exception_groups"
+    assert @conn.column_exists?(:rails_pulse_exception_groups, :location), "location missing on exception_groups"
     assert @conn.column_exists?(:rails_pulse_exception_occurrences, :exception_group_id), "exception_group_id missing on occurrences"
     assert @conn.column_exists?(:rails_pulse_exception_occurrences, :occurred_at), "occurred_at missing on occurrences"
   end

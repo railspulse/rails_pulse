@@ -12,6 +12,8 @@
   <dl class="descriptive-list mbs-4">
     <dt>Class</dt>
     <dd><code><%= @exception_group.exception_class %></code></dd>
+    <dt>Location</dt>
+    <dd><code><%= @exception_group.location.presence || "—" %></code></dd>
     <dt>Message</dt>
     <dd><%= @exception_group.message.presence || "—" %></dd>
     <dt>Status</dt>
@@ -20,8 +22,10 @@
     <dd><%= human_readable_occurred_at(@exception_group.first_seen_at) %></dd>
     <dt>Last Seen</dt>
     <dd><%= human_readable_occurred_at(@exception_group.last_seen_at) %></dd>
-    <dt>Total Occurrences</dt>
+    <dt>Total Seen</dt>
     <dd><%= number_with_delimiter(@exception_group.occurrence_count) %></dd>
+    <dt>Stored Occurrences</dt>
+    <dd><%= number_with_delimiter(@exception_group.occurrences.count) %></dd>
     <dt>Preserve</dt>
     <dd><%= @exception_group.preserve? ? "Yes — exempt from cleanup" : "No" %></dd>
   </dl>

@@ -1,6 +1,7 @@
 record_not_found:
   fingerprint: "abc1234567890abcdef1234567890abcdef1234567890abcdef1234567890ab"
   exception_class: "ActiveRecord::RecordNotFound"
+  location: "app/models/post.rb#find"
   message: "Couldn't find Post with 'id'=999"
   status: open
   preserve: false
@@ -13,6 +14,7 @@ record_not_found:
 zero_division:
   fingerprint: "def4567890abcdef1234567890abcdef1234567890abcdef1234567890abcd"
   exception_class: "ZeroDivisionError"
+  location: "app/services/calculator.rb#divide"
   message: "divided by 0"
   status: open
   preserve: false
@@ -25,6 +27,7 @@ zero_division:
 resolved_group:
   fingerprint: "aaa1111111111111111111111111111111111111111111111111111111111aa"
   exception_class: "ArgumentError"
+  location: "app/models/order.rb#save"
   message: "bad argument"
   status: resolved
   preserve: false
@@ -38,6 +41,7 @@ resolved_group:
 ignored_group:
   fingerprint: "bbb2222222222222222222222222222222222222222222222222222222222bb"
   exception_class: "Net::ReadTimeout"
+  location: "app/clients/http_client.rb#get"
   message: "execution expired"
   status: ignored
   preserve: false

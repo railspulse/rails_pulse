@@ -8,6 +8,14 @@
         autocomplete: "off",
         class: "input"
       %>
+      <%= form.select :status_eq,
+        options_for_select(
+          [["All", ""]] + RailsPulse::ExceptionGroup::STATUSES.map { |s| [s.capitalize, s] },
+          @ransack_query.status_eq
+        ),
+        {},
+        { class: "input" }
+      %>
       <%= link_to "Reset", exceptions_path, class: "btn btn--plain" if params.has_key?(:q) %>
       <%= form.submit "Search", class: "btn" %>
     </div>

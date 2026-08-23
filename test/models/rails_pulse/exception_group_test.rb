@@ -88,6 +88,13 @@ module RailsPulse
       assert_includes attrs, "occurrence_count"
       assert_includes attrs, "first_seen_at"
       assert_includes attrs, "last_seen_at"
+      assert_includes attrs, "location"
+    end
+
+    test "to_breadcrumb returns the exception class" do
+      group = rails_pulse_exception_groups(:record_not_found)
+
+      assert_equal "ActiveRecord::RecordNotFound", group.to_breadcrumb
     end
   end
 end

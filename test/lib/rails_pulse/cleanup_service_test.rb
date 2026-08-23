@@ -604,6 +604,35 @@ module RailsPulse
       assert RailsPulse::ExceptionGroup.exists?(keeper.id)
     end
 
+    test "time-based cleanup keeps occurrences belonging to a preserved group" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      group = create_exception_group
+      group.update!(preserve: true)
+      create_exception_occurrence(group, occurred_at: 31.days.ago)
+
+      assert_no_difference -> { RailsPulse::ExceptionOccurrence.count } do
+        CleanupService.perform
+      end
+      assert RailsPulse::ExceptionGroup.exists?(group.id)
+    end
+
+    test "count-based cleanup keeps occurrences belonging to a preserved group" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = {
+        rails_pulse_exception_occurrences: 1
+      }
+      preserved = create_exception_group
+      preserved.update!(preserve: true)
+      create_exception_occurrence(preserved, occurred_at: 10.days.ago)
+      open_group = create_exception_group
+      create_exception_occurrence(open_group, occurred_at: 9.days.ago)
+      create_exception_occurrence(open_group, occurred_at: 8.days.ago)
+
+      CleanupService.perform
+
+      assert_equal 1, RailsPulse::ExceptionOccurrence.where(exception_group_id: preserved.id).count
+    end
+
     # Edge Cases
 
     test "handles empty tables gracefully" do

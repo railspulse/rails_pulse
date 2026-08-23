@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Separate-database installs set `schema_dump: false` so `db:migrate` no longer dumps or loads `db/rails_pulse_structure.sql` (#189)
 - Fixed `assets:precompile` failing on memory-constrained hosts by not registering dashboard assets with the host Sprockets pipeline. Precompile copies the pre-built files into `public/assets` (digested, no compressor) so `config.asset_host` and CDN-only CSP work; development and hosts without a pipeline still use `/rails-pulse-assets/<gem-version>/...`.
 - SQLite `schema.rb` now keeps the partial unique index on unrecognised routes (`WHERE controller_action IS NULL`). A raw `CREATE INDEX` was dumped without the predicate, so `db:schema:load` and parallel tests unique-constrained every path.
-- **Exception tracking** — Captures unhandled exceptions from web requests, groups them by class and location, and displays full backtraces with filtered request params in a new Exceptions tab. Background job capture is not included in v1.
+- **Exception tracking** — Captures unhandled exceptions from web requests and background jobs, groups them by class and location, and displays full backtraces (first 50 frames) with filtered request params in a new Exceptions tab. Exception messages are stored unfiltered.
 - **`track_exceptions` config option** — Enable or disable exception tracking (default: `true`)
 - **`capture_exception_params` config option** — Capture request params alongside each exception occurrence. Params are filtered via Rails' `filter_parameters` config; occurrences with params larger than 10KB after filtering are stored without params. Set to `false` for strict data-minimisation requirements (default: `true`)
 

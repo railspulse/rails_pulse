@@ -1,16 +1,10 @@
 module RailsPulse
   class ExceptionsController < ApplicationController
-    include TimeRangeConcern
-
     before_action :set_exception_group, only: %i[show update]
 
     def index
-      @start_time, @end_time, @selected_time_range = setup_time_range
-
       ransack_params = (params[:q] || {}).dup
-      ransack_params[:last_seen_at_gteq] = Time.zone.at(@start_time)
-      ransack_params[:last_seen_at_lteq] = Time.zone.at(@end_time)
-      ransack_params[:status_eq] ||= "open"
+      apply_default_status_filter!(ransack_params)
 
       @ransack_query = ExceptionGroup.ransack(ransack_params)
       @ransack_query.sorts = "last_seen_at desc" if @ransack_query.sorts.empty?
@@ -35,6 +29,17 @@ module RailsPulse
 
     def set_exception_group
       @exception_group = ExceptionGroup.find(params[:id])
+    end
+
+    # Default the list to open groups. An explicit blank status ("All")
+    # clears the filter; any other value is passed through to ransack.
+    def apply_default_status_filter!(ransack_params)
+      if !ransack_params.key?(:status_eq) && !ransack_params.key?("status_eq")
+        ransack_params[:status_eq] = "open"
+      elsif ransack_params[:status_eq].blank? && ransack_params["status_eq"].blank?
+        ransack_params.delete(:status_eq)
+        ransack_params.delete("status_eq")
+      end
     end
 
     def update_preserve
