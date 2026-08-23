@@ -108,7 +108,9 @@ Naming conventions:
 
 ## Frontend / Assets
 
-CSS is plain CSS (not Sass). JS uses Stimulus controllers. Pre-built assets live in `/public/rails-pulse-assets/` and are served by custom middleware (`RailsPulse::Middleware::AssetServer`), not the Rails asset pipeline.
+CSS is plain CSS (not Sass). JS uses Stimulus controllers. Pre-built files live in `/public/rails-pulse-assets/`.
+
+They are **not** registered with Sprockets (`config.assets.precompile`) — re-minifying the ~2 MB bundle OOMs small hosts. After `assets:precompile`, `rails_pulse:install_assets` copies them into the host's `public/assets` with a SHA256 digest so `config.asset_host` and CDN-only CSP work. Development and hosts with no pipeline fall back to `RailsPulse::Middleware::AssetServer` at `/rails-pulse-assets/<gem-version>/...`. Layouts must use `tag.link` / `tag.script` (not `stylesheet_link_tag`) so middleware paths are not rewritten onto the CDN.
 
 To rebuild assets: `npm run build` (or `npm run build:dev` for source maps).
 
