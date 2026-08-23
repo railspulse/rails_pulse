@@ -47,6 +47,20 @@ module GeneratorTestHelpers
     YAML
   end
 
+  def separate_database_yml_without_schema_dump
+    <<~YAML
+      development:
+        adapter: sqlite3
+        database: db/development.sqlite3
+
+      test:
+        rails_pulse:
+          adapter: sqlite3
+          database: db/test_rails_pulse.sqlite3
+          migrations_paths: db/rails_pulse_migrate
+    YAML
+  end
+
   def separate_database_yml
     <<~YAML
       development:

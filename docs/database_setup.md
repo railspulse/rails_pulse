@@ -79,7 +79,7 @@ rails rails_pulse:migrate_routes
 
 ```bash
 rails generate rails_pulse:upgrade --database=separate
-rails db:migrate
+rails db:migrate:rails_pulse
 rails rails_pulse:migrate_routes
 ```
 
@@ -106,6 +106,20 @@ rails rails_pulse:migrate_routes
 This backfills `controller_action` from the host router, normalizes historical `/posts/42` paths to `/posts/:id`, merges routes that share the same action, and adds a unique index for unrecognized (404) paths.
 
 If you skip this step, the Action column on the routes page stays empty. The dashboard shows a banner with the same command until a live route still has a blank action.
+
+### Deploy order
+
+This release drops `rails_pulse_routes.method`. Do not run mixed 0.3.3 and new processes against the migrated schema. Typical flow:
+
+1. `bundle update` / deploy the new gem
+2. `rails generate rails_pulse:upgrade`
+3. `rails db:migrate` (or `db:migrate:rails_pulse`)
+4. `rails rails_pulse:migrate_routes`
+5. Restart **all** processes before serving traffic
+
+Release-phase migrate (Heroku, Kamal) is fine if no old processes remain after the release. A rolling restart that leaves 0.3.3 processes running against the new schema will 500 the routes dashboard and silently drop request tracking.
+
+Exception tracking stays **off** for existing installs. After migrating, set `config.track_exceptions = true` to opt in.
 
 ## Troubleshooting
 

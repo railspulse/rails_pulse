@@ -1,5 +1,6 @@
 require_relative "base_methods"
 require_relative "schema_parser"
+require_relative "../../rails_pulse/installers/config_updater"
 
 module RailsPulse
   module Generators
@@ -21,9 +22,10 @@ module RailsPulse
 
         case @database_type
         when :single
-          upgrade_installation(migration_dir: "db/migrate", next_steps: single_db_next_steps)
+          upgrade_installation(migration_dir: "db/migrate", migrate_command: "rails db:migrate")
         when :separate
-          upgrade_installation(migration_dir: "db/rails_pulse_migrate", next_steps: separate_db_next_steps)
+          warn_if_missing_schema_dump_false
+          upgrade_installation(migration_dir: "db/rails_pulse_migrate", migrate_command: "rails db:migrate:rails_pulse")
         when :schema_only
           offer_conversion_to_migrations
         when :not_installed
@@ -98,31 +100,35 @@ module RailsPulse
       # Key is a substring of the migration filename (without timestamp).
       FEATURE_NOTICES = {
         "create_rails_pulse_exceptions" => <<~NOTICE.rstrip
-          Exception tracking (new)
+          Exception tracking (opt-in)
 
-          This upgrade adds exception tracking. After you migrate, Rails Pulse will
-          capture unhandled exceptions from web requests and background jobs and
-          show them in an Exceptions tab. Two new tables will be created:
+          This upgrade adds exception tables. Capture stays off for existing
+          installs until you opt in. After migrating, set the following in
+          config/initializers/rails_pulse.rb (the upgrade generator inserts
+          it as false — review with git diff) and restart:
+
+            config.track_exceptions = true
+
+          New installs enable this in the generated initializer. Messages are
+          stored unfiltered; request params use Rails filter_parameters.
+
+          Two new tables will be created:
             - rails_pulse_exception_groups
             - rails_pulse_exception_occurrences
 
-          Exception tracking is enabled by default. To disable capture and hide the
-          Exceptions tab, set in config/initializers/rails_pulse.rb:
-
-            config.track_exceptions = false
-
-          If you do not want the tables at all, delete the copied
-          *_create_rails_pulse_exceptions.rb migration before running db:migrate,
-          and set config.track_exceptions = false. (A later upgrade will copy the
-          migration again unless that file is still present in your migrate folder.)
+          To skip the tables entirely, delete the copied
+          *_create_rails_pulse_exceptions.rb migration before db:migrate.
+          (A later upgrade will copy it again unless that file remains in
+          your migrate folder.)
         NOTICE
       }.freeze
 
       # Shared upgrade logic for both single and separate database setups
-      def upgrade_installation(migration_dir:, next_steps:)
+      def upgrade_installation(migration_dir:, migrate_command:)
         # Refresh the schema file so fresh databases (test, CI) built from
         # db/rails_pulse_schema.rb include all current columns and tables.
         copy_file "db/rails_pulse_schema.rb", "db/rails_pulse_schema.rb"
+        sync_initializer
 
         gem_migrations = get_gem_migrations
         existing_migrations = get_user_migrations(migration_dir)
@@ -137,11 +143,11 @@ module RailsPulse
 
           say "\nMigrations copied successfully!", :green
           announce_new_features(new_migrations)
-          say_route_backfill_warning if requires_route_backfill?(new_migrations)
-          say "\nNext steps:", :green
-          next_steps.each { |step| say step }
+          include_route_backfill = requires_route_backfill?(new_migrations)
+          say_route_backfill_warning if include_route_backfill
+          say_next_steps(migrate_command, include_route_backfill: include_route_backfill)
         else
-          upgrade_with_missing_columns(migration_dir: migration_dir, next_steps: next_steps)
+          upgrade_with_missing_columns(migration_dir: migration_dir, migrate_command: migrate_command)
         end
       end
 
@@ -159,11 +165,15 @@ module RailsPulse
         say ("=" * 72) + "\n", :yellow
       end
 
-      def upgrade_with_missing_columns(migration_dir:, next_steps:)
+      def upgrade_with_missing_columns(migration_dir:, migrate_command:)
         missing_columns = detect_missing_columns
 
         if missing_columns.empty?
-          say "Rails Pulse is up to date! No migration needed.", :green
+          if @initializer_updated
+            say "Schema is up to date. Review initializer changes with git diff.", :green
+          else
+            say "Rails Pulse is up to date! No migration needed.", :green
+          end
           return
         end
 
@@ -181,9 +191,9 @@ module RailsPulse
 
         say "\nUpgrade migration created successfully!", :green
         missing_names = missing_columns.keys.map(&:to_s)
-        say_route_backfill_warning if missing_names.intersect?(%w[controller_action http_methods])
-        say "\nNext steps:", :green
-        next_steps.each { |step| say step }
+        include_route_backfill = missing_names.intersect?(%w[controller_action http_methods])
+        say_route_backfill_warning if include_route_backfill
+        say_next_steps(migrate_command, include_route_backfill: include_route_backfill)
         say "\nThis migration will add: #{missing_columns.keys.join(', ')}\n"
       end
 
@@ -205,21 +215,62 @@ module RailsPulse
         say "Skipping this leaves GET/POST on the same path unmerged in the dashboard.", :yellow
       end
 
-      def single_db_next_steps
-        [
-          "1. Run: rails db:migrate",
-          "2. Run: rails rails_pulse:migrate_routes",
-          "3. Restart your Rails server"
-        ]
+      def say_next_steps(migrate_command, include_route_backfill:)
+        n = 1
+        say "\nNext steps:", :green
+        say "#{n}. Run: #{migrate_command}"
+        n += 1
+        if include_route_backfill
+          say "#{n}. Run: rails rails_pulse:migrate_routes"
+          n += 1
+        end
+        if @initializer_updated
+          say "#{n}. Review config/initializers/rails_pulse.rb with git diff"
+          n += 1
+        end
+        say "#{n}. Restart your Rails server"
       end
 
-      def separate_db_next_steps
-        [
-          "1. Run migrations for the rails_pulse database:",
-          "   rails db:migrate:rails_pulse",
-          "2. Run: rails rails_pulse:migrate_routes",
-          "3. Restart your Rails server"
-        ]
+      def sync_initializer
+        path = File.join(root_path, "config/initializers/rails_pulse.rb")
+        result = RailsPulse::Installers::ConfigUpdater.update(
+          destination: path,
+          source: File.join(self.class.source_root, "rails_pulse.rb")
+        )
+        @initializer_updated = result[:status] == :updated
+        return unless @initializer_updated
+
+        say "\nUpdated config/initializers/rails_pulse.rb with new settings:", :blue
+        result[:keys].each { |key| say "  - config.#{key}", :blue }
+        result[:hash_keys].each { |key| say "  - #{key}", :blue }
+        say "Review with git diff and keep or discard hunks.", :green
+      end
+
+      def warn_if_missing_schema_dump_false
+        return unless separate_database_missing_schema_dump_false?
+
+        say "\nIMPORTANT: Add schema_dump: false to the rails_pulse entry in", :yellow
+        say "config/database.yml. Without it, Rails may dump or load", :yellow
+        say "db/rails_pulse_structure.sql and db:migrate can fail with", :yellow
+        say "\"relation already exists\". Delete that structure file if present.", :yellow
+      end
+
+      def separate_database_missing_schema_dump_false?
+        config_path = File.join(root_path, "config/database.yml")
+        return false unless File.exist?(config_path)
+
+        require "yaml"
+        require "erb"
+        yaml_content = ERB.new(File.read(config_path)).result
+        db_config = YAML.safe_load(yaml_content, aliases: true)
+        pulse_entries = db_config.values.filter_map do |env|
+          env["rails_pulse"] if env.is_a?(Hash)
+        end
+        return false if pulse_entries.empty?
+
+        pulse_entries.any? { |entry| !entry.is_a?(Hash) || entry["schema_dump"] != false }
+      rescue
+        false
       end
 
       def offer_conversion_to_migrations

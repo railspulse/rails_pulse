@@ -60,6 +60,32 @@ RailsPulse::CleanupJob.perform_later  # cron: 0 1 * * *
 
 Your dashboard is now at `http://localhost:3000/rails_pulse`.
 
+## Upgrading
+
+From 0.3.3:
+
+```bash
+bundle update rails_pulse
+rails generate rails_pulse:upgrade
+rails db:migrate                  # or: rails db:migrate:rails_pulse
+rails rails_pulse:migrate_routes  # required — fills Action and merges same-action paths
+```
+
+Restart all processes after migrate. This release changes how routes are stored (`method` moves off the route onto each request), so mixed old/new processes are not supported.
+
+The upgrade generator appends new settings to `config/initializers/rails_pulse.rb` without rewriting what you already set. Review with `git diff` and keep or discard hunks.
+
+Exception tracking is **off** for existing installs. The generator inserts `config.track_exceptions = false`; set it to `true` after migrating to opt in:
+
+```ruby
+config.track_exceptions = true
+config.capture_exception_params = true  # params are filtered via Rails' filter_parameters
+```
+
+Separate-database hosts: set `schema_dump: false` on the `rails_pulse` entry in `config/database.yml` and delete `db/rails_pulse_structure.sql` if that file exists.
+
+If you previously added `rails-pulse.js` / `rails-pulse.css` to `config.assets.precompile`, remove those entries — the gem no longer registers dashboard assets with Sprockets (that re-minify OOMs small hosts). Production deploys that use `config.asset_host` or a CDN-only CSP should run `assets:precompile` so `rails_pulse:install_assets` copies digested files into `public/assets`.
+
 Full install guide: [railspulse.com/documentation/installation](https://railspulse.com/documentation/installation)
 
 Separate database setup: [railspulse.com/documentation/database](https://railspulse.com/documentation/database)

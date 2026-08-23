@@ -47,8 +47,10 @@ module RailsPulse
       @stats[:time_based][:queries]               = cleanup_queries_by_time(cutoff_time)
       @stats[:time_based][:routes]                = cleanup_routes_by_time(cutoff_time)
       @stats[:time_based][:jobs]                  = cleanup_jobs_by_time(cutoff_time)
-      @stats[:time_based][:exception_occurrences] = cleanup_exception_occurrences_by_time(cutoff_time)
-      @stats[:time_based][:exception_groups]      = cleanup_orphaned_exception_groups
+      if exception_tables_exist?
+        @stats[:time_based][:exception_occurrences] = cleanup_exception_occurrences_by_time(cutoff_time)
+        @stats[:time_based][:exception_groups]      = cleanup_orphaned_exception_groups
+      end
     end
 
     def perform_count_based_cleanup
@@ -71,9 +73,11 @@ module RailsPulse
       @stats[:count_based][:queries]               = cleanup_queries_by_count
       @stats[:count_based][:routes]                = cleanup_routes_by_count
       @stats[:count_based][:jobs]                  = cleanup_jobs_by_count
-      @stats[:count_based][:exception_occurrences] = cleanup_exception_occurrences_by_count
-      @stats[:count_based][:exception_groups]      = cleanup_exception_groups_by_count
-      @stats[:count_based][:orphaned_exception_groups] = cleanup_orphaned_exception_groups
+      if exception_tables_exist?
+        @stats[:count_based][:exception_occurrences] = cleanup_exception_occurrences_by_count
+        @stats[:count_based][:exception_groups]      = cleanup_exception_groups_by_count
+        @stats[:count_based][:orphaned_exception_groups] = cleanup_orphaned_exception_groups
+      end
     end
 
     # Shared helper: delete oldest records beyond a configured max count
@@ -191,6 +195,12 @@ module RailsPulse
         "id NOT IN (SELECT job_id FROM rails_pulse_job_runs WHERE job_id IS NOT NULL)"
       )
       cleanup_by_count(RailsPulse::Job, :rails_pulse_jobs, order_column: :created_at, scope: scope)
+    end
+
+    def exception_tables_exist?
+      connection = RailsPulse::ApplicationRecord.connection
+      connection.table_exists?(:rails_pulse_exception_groups) &&
+        connection.table_exists?(:rails_pulse_exception_occurrences)
     end
 
     def cleanup_exception_occurrences_by_time(cutoff_time)

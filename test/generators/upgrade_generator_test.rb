@@ -112,7 +112,7 @@ test "detects separate database setup from database.yml" do
 
     assert_match(/Found 1 new migration/, output)
     assert_file "db/migrate/20251019000000_add_new_feature.rb"
-    assert_match(/rails rails_pulse:migrate_routes/, output)
+    assert_no_match(/rails rails_pulse:migrate_routes/, output)
     assert_no_match(/IMPORTANT: This upgrade changes how routes are identified/, output)
   end
 
@@ -173,12 +173,46 @@ test "detects separate database setup from database.yml" do
       run_generator([], {})
     end
 
-    assert_match(/Exception tracking \(new\)/, output)
+    assert_match(/Exception tracking \(opt-in\)/, output)
     assert_match(/rails_pulse_exception_groups/, output)
     assert_match(/rails_pulse_exception_occurrences/, output)
-    assert_match(/config\.track_exceptions = false/, output)
+    assert_match(/config\.track_exceptions = true/, output)
     assert_match(/delete the copied/, output)
     assert_file "db/migrate/20260506000001_create_rails_pulse_exceptions.rb"
+  end
+
+  test "appends missing initializer settings and preserves existing values" do
+    File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
+    FileUtils.mkdir_p(File.join(destination_root, "config/initializers"))
+    File.write(
+      File.join(destination_root, "config/initializers/rails_pulse.rb"),
+      <<~RUBY
+        RailsPulse.configure do |config|
+          config.enabled = true
+          config.tags = [ "keep-me" ]
+          config.max_table_records = {
+            rails_pulse_requests: 42,
+            rails_pulse_queries: 500
+          }
+        end
+      RUBY
+    )
+    create_gem_migration("add_new_feature", "20251019000000")
+
+    output = mock_tables_exist do
+      run_generator([], {})
+    end
+
+    assert_match(/Updated config\/initializers\/rails_pulse\.rb/, output)
+    assert_match(/config\.track_exceptions/, output)
+    assert_match(/git diff/, output)
+    assert_file "config/initializers/rails_pulse.rb" do |content|
+      assert_match(/config\.tags = \[ "keep-me" \]/, content)
+      assert_match(/rails_pulse_requests: 42/, content)
+      assert_match(/config\.track_exceptions = false/, content)
+      assert_match(/config\.capture_exception_params = true/, content)
+      assert_match(/rails_pulse_exception_occurrences/, content)
+    end
   end
 
   test "does not print exception tracking notice when exceptions migration already present" do
@@ -213,7 +247,30 @@ test "separate database upgrade copies migrations to rails_pulse_migrate" do
     assert_match(/Found 1 new migration/, output)
     assert_file "db/rails_pulse_migrate/20251019000000_add_new_feature.rb"
     assert_match(/rails db:migrate:rails_pulse/, output)
-    assert_match(/rails rails_pulse:migrate_routes/, output)
+    assert_no_match(/rails rails_pulse:migrate_routes/, output)
+  end
+
+  test "separate database upgrade warns when schema_dump is not false" do
+    File.write(File.join(destination_root, "config/database.yml"), separate_database_yml_without_schema_dump)
+    create_gem_migration("add_new_feature", "20251019000000")
+
+    output = mock_tables_exist do
+      run_generator([], { database: "separate" })
+    end
+
+    assert_match(/Add schema_dump: false/, output)
+    assert_match(/rails_pulse_structure\.sql/, output)
+  end
+
+  test "separate database upgrade does not warn when schema_dump is false" do
+    File.write(File.join(destination_root, "config/database.yml"), separate_database_yml)
+    create_gem_migration("add_new_feature", "20251019000000")
+
+    output = mock_tables_exist do
+      run_generator([], { database: "separate" })
+    end
+
+    assert_no_match(/Add schema_dump: false/, output)
   end
 
   # Missing Column Detection Tests

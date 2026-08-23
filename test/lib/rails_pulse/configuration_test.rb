@@ -73,6 +73,7 @@ module RailsPulse
       expected_tables = %i[
         rails_pulse_operations rails_pulse_requests rails_pulse_job_runs
         rails_pulse_queries rails_pulse_routes rails_pulse_jobs
+        rails_pulse_exception_occurrences rails_pulse_exception_groups
       ]
 
       expected_tables.each do |key|
@@ -198,10 +199,10 @@ module RailsPulse
       end
     end
 
-    test "track_exceptions defaults to true" do
+    test "track_exceptions defaults to false" do
       config = Configuration.new
 
-      assert config.track_exceptions
+      refute config.track_exceptions
     end
 
     test "capture_exception_params defaults to true" do

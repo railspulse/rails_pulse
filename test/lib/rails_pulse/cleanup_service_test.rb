@@ -57,6 +57,12 @@ module RailsPulse
       assert_nil result
     end
 
+    test "perform succeeds when exception tables are missing" do
+      CleanupService.any_instance.stubs(:exception_tables_exist?).returns(false)
+
+      assert_nothing_raised { CleanupService.perform }
+    end
+
     # Time-based Cleanup Tests
 
     test "time-based cleanup deletes operations older than retention period" do

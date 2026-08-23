@@ -29,8 +29,10 @@ Gem::Specification.new do |spec|
   spec.executables = [ "rails_pulse_server" ]
 
   spec.post_install_message = <<~MSG
-    Rails Pulse #{RailsPulse::VERSION} installed. If upgrading, run:
-      rails generate rails_pulse:upgrade && rails db:migrate
+    Rails Pulse #{RailsPulse::VERSION} installed. If upgrading from 0.3.3, run:
+      rails generate rails_pulse:upgrade
+      rails db:migrate                  # or rails db:migrate:rails_pulse
+      rails rails_pulse:migrate_routes  # required for this release
   MSG
 
   spec.add_dependency "rails", ">= 7.1.0", "< 9.0.0"

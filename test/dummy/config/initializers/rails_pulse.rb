@@ -140,6 +140,11 @@ RailsPulse.configure do |config|
   # Enable or disable background job tracking
   config.track_jobs = true
 
+  # Enable exception tracking in the dummy app (gem default is false so existing
+  # host apps do not start capturing on upgrade without an explicit opt-in).
+  config.track_exceptions = true
+  config.capture_exception_params = true
+
   # Thresholds for job execution times (in milliseconds)
   config.job_thresholds = {
     slow:      5_000,   # 5 seconds
