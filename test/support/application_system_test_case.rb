@@ -8,18 +8,41 @@ require_relative "factory_helpers"
 require_relative "smoke_test_helpers"
 
 # Chrome throws UnknownError (CDP -32000, "Node with given id does not belong to the
-# document") when a DOM node is detached mid-query — e.g. Turbo navigating while Capybara
-# is checking element visibility. Capybara only auto-retries on StaleElementReferenceError,
-# so without this patch the suite crashes. Returning false from visible? causes Capybara to
-# exclude the detached node and retry the full query within the wait: timeout.
+# document") when a DOM node is detached mid-query — e.g. a form submit replacing the page
+# while Capybara is reading a dialog it already matched. Capybara only auto-retries on
+# StaleElementReferenceError, so without this patch the suite crashes.
+#
+# visible? returning false excludes the detached node from selector results.
+# visible_text/all_text returning "" lets assert_no_selector finish building its
+# ExpectationNotMet message (which maps .text over matches) so synchronize can retry.
 module CapybaraDetachedNodeFix
   DETACHED_NODE_MSG = "Node with given id does not belong to the document"
 
   def visible?
     super
   rescue Selenium::WebDriver::Error::UnknownError => e
-    raise unless e.message.include?(DETACHED_NODE_MSG)
+    raise unless detached_node_error?(e)
     false
+  end
+
+  def visible_text
+    super
+  rescue Selenium::WebDriver::Error::UnknownError => e
+    raise unless detached_node_error?(e)
+    ""
+  end
+
+  def all_text
+    super
+  rescue Selenium::WebDriver::Error::UnknownError => e
+    raise unless detached_node_error?(e)
+    ""
+  end
+
+  private
+
+  def detached_node_error?(error)
+    error.message.include?(DETACHED_NODE_MSG)
   end
 end
 
