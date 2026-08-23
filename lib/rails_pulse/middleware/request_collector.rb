@@ -40,10 +40,11 @@ module RailsPulse
         # Deep copy operations array to prevent race condition in async mode
         operations = RequestStore.store[:rails_pulse_operations] || []
         detect_n_plus_one(operations)
-        controller_action = operations.find { |op| op[:operation_type] == "controller" }&.[](:label)
+        path_params = env["action_dispatch.request.path_parameters"] || {}
+        controller_action = [ path_params[:controller], path_params[:action] ].compact.join("#").presence
         tracking_data = {
           method: req.request_method,
-          path: req.path,
+          path: RailsPulse::RoutePathNormalizer.normalize(req.path, path_params),
           duration: duration,
           status: status,
           is_error: status.to_i >= 500,

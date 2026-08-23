@@ -5,7 +5,7 @@ module RailsPulse
     module Tables
       class IndexTest < ActiveSupport::TestCase
         def setup
-          @start_time = 1.day.ago
+          @start_time = 2.days.ago
           @end_time = Time.current
           @ransack_query = RailsPulse::Summary.ransack({
             period_start_gteq: @start_time,
@@ -27,6 +27,13 @@ module RailsPulse
           ).to_table
         end
 
+        def first_table_row(**options)
+          row = create_table(**options).first
+
+          assert row, "Expected route summary fixtures to be within the test time range"
+          row
+        end
+
         # Structure Tests
 
         test "returns ActiveRecord relation" do
@@ -36,143 +43,98 @@ module RailsPulse
         end
 
         test "result has required route attributes" do
-          results = create_table
+          first_result = first_table_row
 
-          if results.any?
-            first_result = results.first
-
-            assert_includes first_result.attributes.keys, "route_id"
-            assert_includes first_result.attributes.keys, "path"
-            assert_includes first_result.attributes.keys, "route_method"
-          end
+          assert_includes first_result.attributes.keys, "route_id"
+          assert_includes first_result.attributes.keys, "path"
+          assert_includes first_result.attributes.keys, "route_methods"
+          assert_includes first_result.attributes.keys, "controller_action"
         end
 
         test "result has metric attributes" do
-          results = create_table
+          first_result = first_table_row
 
-          if results.any?
-            first_result = results.first
-
-            assert_includes first_result.attributes.keys, "avg_duration"
-            assert_includes first_result.attributes.keys, "p95_duration"
-            assert_includes first_result.attributes.keys, "p99_duration"
-            assert_includes first_result.attributes.keys, "max_duration"
-          end
+          assert_includes first_result.attributes.keys, "avg_duration"
+          assert_includes first_result.attributes.keys, "p95_duration"
+          assert_includes first_result.attributes.keys, "p99_duration"
+          assert_includes first_result.attributes.keys, "max_duration"
         end
 
         test "result has count attributes" do
-          results = create_table
+          first_result = first_table_row
 
-          if results.any?
-            first_result = results.first
-
-            assert_includes first_result.attributes.keys, "count"
-            assert_includes first_result.attributes.keys, "error_count"
-            assert_includes first_result.attributes.keys, "success_count"
-          end
+          assert_includes first_result.attributes.keys, "count"
+          assert_includes first_result.attributes.keys, "error_count"
+          assert_includes first_result.attributes.keys, "success_count"
         end
 
-        test "groups by route" do
+        test "groups by controller_action and path" do
           results = create_table
 
-          # Each route should appear only once
-          route_ids = results.map(&:route_id)
+          # Each (controller_action, path) combination should appear only once
+          groups = results.map { |r| [ r.controller_action, r.path ] }
 
-          assert_equal route_ids.uniq.length, route_ids.length
+          assert_equal groups.uniq.length, groups.length
         end
 
         test "joins with rails_pulse_routes table" do
-          results = create_table
+          first_result = first_table_row
 
-          if results.any?
-            # Should have route path and method from routes table
-            assert_kind_of String, results.first.path
-            assert_kind_of String, results.first.route_method
-          end
+          assert_kind_of String, first_result.path
+          assert_kind_of String, first_result.route_methods
         end
 
         test "result attributes have correct types" do
-          results = create_table
+          first_result = first_table_row
 
-          if results.any?
-            first_result = results.first
-            assert_kind_of Numeric, first_result.route_id if first_result.route_id
-            assert_kind_of String, first_result.path if first_result.path
-            assert_kind_of String, first_result.route_method if first_result.route_method
-          end
+          assert_kind_of Numeric, first_result.route_id
+          assert_kind_of String, first_result.path
+          assert_kind_of String, first_result.route_methods
         end
 
         # Aggregation Tests
 
         test "avg_duration is AVG of avg_duration across periods" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Should be a numeric average
-            assert result.avg_duration.nil? || result.avg_duration.is_a?(Numeric)
-          end
+          assert result.avg_duration.nil? || result.avg_duration.is_a?(Numeric)
         end
 
         test "max_duration is MAX of max_duration across periods" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Should be a numeric maximum
-            assert result.max_duration.nil? || result.max_duration.is_a?(Numeric)
-          end
+          assert result.max_duration.nil? || result.max_duration.is_a?(Numeric)
         end
 
         test "p95_duration is weighted average" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Should be calculated as SUM(p95 * count) / SUM(count)
-            assert result.p95_duration.nil? || result.p95_duration.is_a?(Numeric)
-          end
+          assert result.p95_duration.nil? || result.p95_duration.is_a?(Numeric)
         end
 
         test "p99_duration is weighted average" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Should be calculated as SUM(p99 * count) / SUM(count)
-            assert result.p99_duration.nil? || result.p99_duration.is_a?(Numeric)
-          end
+          assert result.p99_duration.nil? || result.p99_duration.is_a?(Numeric)
         end
 
         test "count is SUM of count across periods" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Should be a summed count
-            assert_kind_of Numeric, result.count
-            assert_operator result.count, :>=, 0
-          end
+          assert_kind_of Numeric, result.count
+          assert_operator result.count, :>=, 0
         end
 
         test "error_count is SUM of error_count across periods" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-
-            assert result.error_count.nil? || result.error_count.is_a?(Numeric)
-          end
+          assert result.error_count.nil? || result.error_count.is_a?(Numeric)
         end
 
         test "success_count is SUM of success_count across periods" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-
-            assert result.success_count.nil? || result.success_count.is_a?(Numeric)
-          end
+          assert result.success_count.nil? || result.success_count.is_a?(Numeric)
         end
 
         test "uses NULLIF to prevent division by zero" do
@@ -191,13 +153,9 @@ module RailsPulse
         end
 
         test "single summary returns correct values" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Values should be present and valid
-            assert result.count.nil? || result.count >= 0
-          end
+          assert result.count.nil? || result.count >= 0
         end
 
         # Filtering Tests
@@ -239,25 +197,20 @@ module RailsPulse
         test "disabled_tags with non_tagged excludes non-tagged routes" do
           results = create_table(disabled_tags: [ "non_tagged" ])
 
-          # Should exclude routes without tags
-          if results.any?
-            results.each do |result|
-              # All results should have tags
-              assert result.tags
-              refute_equal "[]", result.tags
-            end
+          assert_kind_of ActiveRecord::Relation, results
+          results.each do |result|
+            assert result.tags
+            refute_equal "[]", result.tags
           end
         end
 
         test "show_non_tagged false excludes routes without tags" do
           results = create_table(show_non_tagged: false)
 
-          # Should only include routes with tags
-          if results.any?
-            results.each do |result|
-              assert result.tags
-              refute_equal "[]", result.tags
-            end
+          assert_kind_of ActiveRecord::Relation, results
+          results.each do |result|
+            assert result.tags
+            refute_equal "[]", result.tags
           end
         end
 
@@ -580,28 +533,66 @@ module RailsPulse
           assert_operator results.to_a.length, :>=, 0
         end
 
-        test "multiple routes in same period aggregated separately" do
+        test "multiple routes in same period aggregated by controller_action and path" do
           results = create_table
           results_array = results.to_a
 
-          # Each route should have its own aggregated row
-          route_ids = results_array.map(&:route_id).uniq
+          # Each (controller_action, path) group should appear exactly once
+          groups = results_array.map { |r| [ r.controller_action, r.path ] }
 
-          assert_equal results_array.length, route_ids.length
+          assert_equal groups.uniq.length, groups.length
         end
 
         test "single route across multiple periods aggregated together" do
           results = create_table
           results_array = results.to_a
 
-          # Single route across multiple time periods should be one row
+          # Single (controller_action, path) group across multiple periods → one row
           if results_array.any?
-            route_ids = results_array.map(&:route_id)
+            groups = results_array.map { |r| [ r.controller_action, r.path ] }
 
-            assert_equal route_ids.uniq.length, route_ids.length
+            assert_equal groups.uniq.length, groups.length
           else
             assert_kind_of ActiveRecord::Relation, results
           end
+        end
+
+        test "multi-verb route shows all accepted methods in route_methods" do
+          now = Time.current
+          shared_path = "/multi-verb-test-#{SecureRandom.hex(4)}"
+
+          route = RailsPulse::Route.create!(
+            http_methods: '["GET","POST"]',
+            path: shared_path,
+            controller_action: "home#index",
+            tags: "[]"
+          )
+          RailsPulse::Summary.create!(
+            summarizable: route,
+            period_type: :day,
+            period_start: now.beginning_of_day,
+            period_end: now.end_of_day,
+            count: 20,
+            avg_duration: 50.0,
+            min_duration: 10.0,
+            max_duration: 100.0,
+            total_duration: 1000.0,
+            p50_duration: 50.0,
+            p95_duration: 90.0,
+            p99_duration: 95.0,
+            stddev_duration: 20.0,
+            error_count: 0,
+            success_count: 20
+          )
+
+          results = create_table.to_a
+          matching = results.select { |r| r.path == shared_path }
+
+          assert_equal 1, matching.length, "multi-verb route should produce exactly one row"
+          methods = JSON.parse(matching.first.route_methods || "[]")
+
+          assert_includes methods, "GET"
+          assert_includes methods, "POST"
         end
 
         test "combines with controller parameters correctly" do
@@ -609,6 +600,56 @@ module RailsPulse
           results = create_table
 
           assert_kind_of ActiveRecord::Relation, results
+        end
+
+        # Path / action filter Tests
+
+        test "filters by route_path_cont via ransack" do
+          now = Time.current
+          unique = SecureRandom.hex(4)
+          matching_path = "/path-filter-match-#{unique}"
+          other_path    = "/path-filter-other-#{unique}"
+
+          [ matching_path, other_path ].each_with_index do |path, i|
+            route = RailsPulse::Route.create!(http_methods: '["GET"]', path: path, controller_action: "home#index", tags: "[]")
+            RailsPulse::Summary.create!(
+              summarizable: route, period_type: :day,
+              period_start: now.beginning_of_day, period_end: now.end_of_day,
+              count: 10, avg_duration: 50.0, min_duration: 10.0, max_duration: 100.0,
+              total_duration: 500.0, p50_duration: 50.0, p95_duration: 90.0,
+              p99_duration: 95.0, stddev_duration: 20.0, error_count: 0, success_count: 10
+            )
+          end
+
+          @ransack_query = RailsPulse::Summary.ransack(route_path_cont: "path-filter-match-#{unique}")
+          results = create_table.to_a
+
+          assert_includes results.map(&:path), matching_path
+          refute_includes results.map(&:path), other_path
+        end
+
+        test "filters by route_controller_action_cont via ransack" do
+          now = Time.current
+          unique = SecureRandom.hex(4)
+          matching_ca = "acme_#{unique}#show"
+          other_ca    = "other_#{unique}#index"
+
+          [ matching_ca, other_ca ].each_with_index do |ca, i|
+            route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/ca-filter-#{i}-#{unique}", controller_action: ca, tags: "[]")
+            RailsPulse::Summary.create!(
+              summarizable: route, period_type: :day,
+              period_start: now.beginning_of_day, period_end: now.end_of_day,
+              count: 10, avg_duration: 50.0, min_duration: 10.0, max_duration: 100.0,
+              total_duration: 500.0, p50_duration: 50.0, p95_duration: 90.0,
+              p99_duration: 95.0, stddev_duration: 20.0, error_count: 0, success_count: 10
+            )
+          end
+
+          @ransack_query = RailsPulse::Summary.ransack(route_controller_action_cont: "acme_#{unique}")
+          results = create_table.to_a
+
+          assert_includes results.map(&:controller_action), matching_ca
+          refute_includes results.map(&:controller_action), other_ca
         end
       end
     end

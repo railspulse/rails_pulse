@@ -1,5 +1,6 @@
 require "rails_pulse/version"
 require "rails_pulse/statistics"
+require "rails_pulse/route_indexes"
 require "rails_pulse/middleware/request_collector"
 require "rails_pulse/middleware/asset_server"
 require "rails_pulse/subscribers/operation_subscriber"
@@ -19,6 +20,11 @@ module RailsPulse
   autoload :TagFilterService, File.expand_path("../../app/services/rails_pulse/tag_filter_service", __dir__)
   autoload :ExceptionCaptureService, File.expand_path("../../app/services/rails_pulse/exception_capture_service", __dir__)
   autoload :OperationSuggestions, File.expand_path("../../app/services/rails_pulse/operation_suggestions", __dir__)
+  autoload :RoutePathNormalizer,             File.expand_path("../../app/services/rails_pulse/route_path_normalizer", __dir__)
+  autoload :RouteRecognizer,                 File.expand_path("../../app/services/rails_pulse/route_recognizer", __dir__)
+  autoload :RouteMerger,                     File.expand_path("../../app/services/rails_pulse/route_merger", __dir__)
+  autoload :RouteMigrator,                   File.expand_path("../../app/services/rails_pulse/route_migrator", __dir__)
+  autoload :RouteControllerActionBackfiller, File.expand_path("../../app/services/rails_pulse/route_controller_action_backfiller", __dir__)
 
   # Analysis services
   module Analysis
@@ -66,24 +72,10 @@ module RailsPulse
     end
 
     initializer "rails_pulse.assets" do |app|
-      # Register Rails Pulse assets with Sprockets for production/CDN deployment
-      if app.config.respond_to?(:assets)
-        # Add vendor assets to the asset pipeline
-        app.config.assets.paths << Engine.root.join("vendor", "assets", "stylesheets").to_s
-        app.config.assets.paths << Engine.root.join("vendor", "assets", "javascripts").to_s
-
-        # Register bundled assets for precompilation
-        if defined?(::Sprockets)
-          app.config.assets.precompile += %w[
-            rails-pulse.css
-            rails-pulse.js
-            rails-pulse-icons.js
-          ]
-        end
-      end
-
-      # Fallback: Add middleware for development/non-CDN setups
-      # This serves assets directly when not using precompiled manifest
+      # Dashboard assets are bundled at gem build time. They are not registered
+      # with Sprockets (re-minifying the 2 MB bundle OOMs small hosts — #190).
+      # assets:precompile copies them into public/assets for CDN/CSP; the
+      # middleware is the development / no-pipeline fallback.
       assets_path = Engine.root.join("public")
       app.middleware.insert_after Rack::Runtime, RailsPulse::Middleware::AssetServer,
         assets_path.to_s,

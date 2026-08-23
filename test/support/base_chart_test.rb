@@ -27,7 +27,7 @@ class BaseChartTest < ActiveSupport::TestCase
 
   # Create a route for test requests
   def create_test_route(method: "GET", path: "/api/test")
-    RailsPulse::Route.find_or_create_by(method: method, path: path)
+    RailsPulse::Route.find_or_create_for_request(method, path)
   end
 
   # Create a request with specified attributes

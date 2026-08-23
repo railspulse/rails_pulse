@@ -233,8 +233,9 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
   test "show action handles route with no requests" do
     # Create route with no requests
     empty_route = RailsPulse::Route.create!(
-      method: "GET",
-      path: "/empty/route"
+      http_methods: '["GET"]',
+      path: "/empty/route",
+      tags: "[]"
     )
 
     get rails_pulse.route_path(empty_route)

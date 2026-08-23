@@ -1,5 +1,6 @@
 users_request_1:
   route: api_users
+  method: "GET"
   duration: 150.5
   status: 200
   is_error: false
@@ -12,6 +13,7 @@ users_request_1:
 
 users_request_2:
   route: api_users
+  method: "GET"
   duration: 250.0
   status: 200
   is_error: false
@@ -24,6 +26,7 @@ users_request_2:
 
 posts_request:
   route: api_posts
+  method: "POST"
   duration: 180.0
   status: 201
   is_error: false
@@ -36,6 +39,7 @@ posts_request:
 
 error_request:
   route: api_other
+  method: "POST"
   duration: 300.0
   status: 500
   is_error: true
@@ -48,6 +52,7 @@ error_request:
 
 slow_request_1:
   route: api_users
+  method: "GET"
   duration: 800.0
   status: 200
   is_error: false
@@ -59,6 +64,7 @@ slow_request_1:
 
 slow_request_2:
   route: api_users
+  method: "GET"
   duration: 900.0
   status: 200
   is_error: false
@@ -71,6 +77,7 @@ slow_request_2:
 
 critical_request:
   route: api_users
+  method: "GET"
   duration: 4500.0
   status: 500
   is_error: true
@@ -83,6 +90,7 @@ critical_request:
 
 recent_request_1:
   route: api_posts
+  method: "POST"
   duration: 200.0
   status: 200
   is_error: false
@@ -94,6 +102,7 @@ recent_request_1:
 
 recent_request_2:
   route: api_posts
+  method: "POST"
   duration: 250.0
   status: 200
   is_error: false
@@ -106,6 +115,7 @@ recent_request_2:
 
 recent_request_3:
   route: api_posts
+  method: "POST"
   duration: 300.0
   status: 200
   is_error: false
@@ -116,9 +126,9 @@ recent_request_3:
   created_at: <%= Time.current - 20.minutes %>
   updated_at: <%= Time.current - 20.minutes %>
 
-# Data for custom date range tests
 custom_range_recent:
   route: api_test
+  method: "GET"
   duration: 200.0
   status: 200
   is_error: false
@@ -130,6 +140,7 @@ custom_range_recent:
 
 custom_range_mid:
   route: api_test
+  method: "GET"
   duration: 300.0
   status: 200
   is_error: false
@@ -141,6 +152,7 @@ custom_range_mid:
 
 custom_range_old:
   route: api_test
+  method: "GET"
   duration: 400.0
   status: 200
   is_error: false

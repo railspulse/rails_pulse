@@ -50,7 +50,7 @@ class RequestsShowPageTest < ApplicationSystemTestCase
   end
 
   def test_empty_state_displays_when_no_operations_exist
-    route_without_ops = RailsPulse::Route.create!(path: "/test/no-ops", method: "GET")
+    route_without_ops = RailsPulse::Route.create!(path: "/test/no-ops", http_methods: '["GET"]', tags: "[]")
     request_without_operations = RailsPulse::Request.create!(
       route: route_without_ops,
       duration: 100,

@@ -61,6 +61,22 @@ module RailsPulse
         assert_kind_of Hash, headers
       end
 
+      test "versioned asset path serves the same file as the unversioned path" do
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/#{RailsPulse::VERSION}/rails-pulse.css")
+
+        status, _headers, _body = @middleware.call(env)
+
+        assert_equal 200, status
+      end
+
+      test "unversioned asset path still serves files" do
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/rails-pulse.css")
+
+        status, _headers, _body = @middleware.call(env)
+
+        assert_equal 200, status
+      end
+
       # Cache Header Tests
 
       test "cache_headers returns immutable headers in non-development mode" do

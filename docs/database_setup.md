@@ -42,6 +42,7 @@ development:
     <<: *default
     database: storage/development_rails_pulse.sqlite3
     migrations_paths: db/rails_pulse_migrate
+    schema_dump: false
 
 production:
   rails_pulse:
@@ -51,7 +52,10 @@ production:
     password: <%= ENV['DB_PASSWORD'] %>
     host: <%= ENV['DB_HOST'] %>
     migrations_paths: db/rails_pulse_migrate
+    schema_dump: false
 ```
+
+`schema_dump: false` is required. Rails Pulse loads schema from `db/rails_pulse_schema.rb` during `db:prepare`. Without that key, Rails dumps `db/rails_pulse_structure.sql` (or overwrites `db/rails_pulse_schema.rb`) and `db:migrate` can fail with `relation already exists`. Leave `database_tasks` enabled so `rails db:migrate:rails_pulse` still applies upgrades.
 
 Finally, create the database:
 
@@ -68,6 +72,7 @@ When you upgrade to a new version of Rails Pulse that includes new features, run
 ```bash
 rails generate rails_pulse:upgrade
 rails db:migrate
+rails rails_pulse:migrate_routes
 ```
 
 ### For Separate Database
@@ -75,17 +80,32 @@ rails db:migrate
 ```bash
 rails generate rails_pulse:upgrade --database=separate
 rails db:migrate
+rails rails_pulse:migrate_routes
 ```
 
 ### What the Upgrade Generator Does
 
 1. **Copies new migrations** from the gem to your app
 2. **Detects missing columns** by comparing your database to the schema file (safety net)
-3. **Provides clear instructions** for next steps
+3. **Provides clear instructions** for next steps, including `rails rails_pulse:migrate_routes` when a release needs a data backfill
 
 The generator automatically handles both upgrade paths:
 - If new migrations exist in the gem → copies them to your app
 - If no new migrations but missing columns → generates a migration for you
+
+### Route identity backfill
+
+Route identity is `[controller_action, path]`. Schema migrations add the new columns and move the HTTP verb onto each request; they do **not** collapse GET `/users` and POST `/users` into one row.
+
+After migrating, run:
+
+```bash
+rails rails_pulse:migrate_routes
+```
+
+This backfills `controller_action` from the host router, normalizes historical `/posts/42` paths to `/posts/:id`, merges routes that share the same action, and adds a unique index for unrecognized (404) paths.
+
+If you skip this step, the Action column on the routes page stays empty. The dashboard shows a banner with the same command until a live route still has a blank action.
 
 ## Troubleshooting
 
@@ -124,6 +144,12 @@ rails db:migrate:status:rails_pulse
 ### Schema file should not be deleted
 
 The file `db/rails_pulse_schema.rb` is your single source of truth for the database structure. Keep this file even after running migrations - it's used by the upgrade generator to detect missing columns.
+
+### `db:migrate` fails on `rails_pulse_structure.sql`
+
+If `db:migrate` errors with `relation "rails_pulse_deployments" already exists` while loading `db/rails_pulse_structure.sql`, Rails is dump/loading the Pulse database as a second schema.
+
+Add `schema_dump: false` to the `rails_pulse` entry in `config/database.yml` and delete `db/rails_pulse_structure.sql` if that file exists. Do not set `database_tasks: false`; that skips `db:migrate:rails_pulse`.
 
 ### Tables already exist error
 
@@ -322,6 +348,7 @@ rails generate rails_pulse:upgrade
 
 # Apply changes
 rails db:migrate
+rails rails_pulse:migrate_routes
 
 # Restart server
 rails restart

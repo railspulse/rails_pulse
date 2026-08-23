@@ -4,28 +4,18 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
   include Shoulda::Matchers::ActiveModel
   include Shoulda::Matchers::ActiveRecord
 
-  # Test associations
+  # Structure Tests
+
   test "should have correct associations" do
     assert have_many(:requests).dependent(:restrict_with_exception).matches?(RailsPulse::Route.new)
     assert have_many(:summaries).dependent(:destroy).matches?(RailsPulse::Route.new)
   end
 
-  # Test validations
   test "should have correct validations" do
     route = RailsPulse::Route.new
 
-    # Presence validations
-    assert validate_presence_of(:method).matches?(route)
     assert validate_presence_of(:path).matches?(route)
-
-    # Uniqueness enforced at database level (unique index on [method, path])
-    existing_route = rails_pulse_routes(:api_users)
-    duplicate_route = RailsPulse::Route.new(method: existing_route.method, path: existing_route.path)
-
-    assert_predicate duplicate_route, :valid?
-    assert_raises ActiveRecord::RecordNotUnique do
-      duplicate_route.save!(validate: false)
-    end
+    assert validate_presence_of(:http_methods).matches?(route)
   end
 
   test "should be valid with required attributes" do
@@ -43,205 +33,283 @@ class RailsPulse::RouteTest < ActiveSupport::TestCase
   end
 
   test "should include ransackable attributes" do
-    expected_attributes = %w[path average_response_time_ms max_response_time_ms request_count requests_per_minute occurred_at requests_occurred_at error_count error_rate_percentage status_indicator]
+    expected = %w[path average_response_time_ms max_response_time_ms request_count requests_per_minute occurred_at requests_occurred_at error_count error_rate_percentage status_indicator]
 
-    assert_equal expected_attributes.sort, RailsPulse::Route.ransackable_attributes.sort
+    assert_equal expected.sort, RailsPulse::Route.ransackable_attributes.sort
   end
 
   test "should include ransackable associations" do
-    expected_associations = %w[requests]
-
-    assert_equal expected_associations.sort, RailsPulse::Route.ransackable_associations.sort
+    assert_equal %w[requests], RailsPulse::Route.ransackable_associations
   end
 
-  test "should return method and path as breadcrumb" do
-    route = rails_pulse_routes(:api_users)
-
-    assert_equal "GET /api/users", route.to_breadcrumb
-  end
-
-  test "should return path and method" do
-    route = rails_pulse_routes(:api_posts)
-
-    assert_equal "/api/posts POST", route.path_and_method
-  end
-
-  test "requests association should return correct requests" do
+  test "requests association returns correct requests" do
     route1 = rails_pulse_routes(:api_users)
     route2 = rails_pulse_routes(:api_posts)
 
-    # Get requests from fixtures
-    request1 = rails_pulse_requests(:users_request_1)
-    request2 = rails_pulse_requests(:posts_request)
-
-    # Test that each route returns only its own requests
-    assert_includes route1.requests, request1
-    assert_not_includes route1.requests, request2
-
-    assert_includes route2.requests, request2
-    assert_not_includes route2.requests, request1
+    assert_includes route1.requests, rails_pulse_requests(:users_request_1)
+    assert_not_includes route1.requests, rails_pulse_requests(:posts_request)
+    assert_includes route2.requests, rails_pulse_requests(:posts_request)
+    assert_not_includes route2.requests, rails_pulse_requests(:users_request_1)
   end
 
   test "should have polymorphic summaries association" do
-    route = rails_pulse_routes(:api_users)
+    route   = rails_pulse_routes(:api_users)
     summary = rails_pulse_summaries(:route_summary_1)
 
     assert_includes route.summaries, summary
     assert_equal route, summary.summarizable
   end
 
-  test "should calculate average response time" do
-    # Use fixture data to test average response time calculation
-    average = RailsPulse::Route.average_response_time
+  test "uniqueness enforced at database level on path when controller_action is null" do
+    path = "/health-uniq-#{SecureRandom.hex(4)}"
+    RailsPulse::Route.create!(
+      http_methods: '["GET"]',
+      path: path,
+      controller_action: nil,
+      tags: "[]"
+    )
 
-    assert_not_nil average
-    assert_operator average, :>, 0
-  end
+    duplicate = RailsPulse::Route.new(
+      http_methods: '["HEAD"]',
+      path: path,
+      controller_action: nil,
+      tags: "[]"
+    )
 
-  test "should handle restrict_with_exception on dependent destroy" do
-    route = rails_pulse_routes(:api_users)
-
-    # Should raise an exception when trying to delete a route with requests
-    assert_raises(ActiveRecord::DeleteRestrictionError) do
-      route.destroy!
+    assert_raises ActiveRecord::RecordNotUnique do
+      duplicate.save!(validate: false)
     end
   end
 
-  # ============================================================================
-  # Scope Tests
-  # ============================================================================
+  test "uniqueness enforced at database level on [controller_action, path]" do
+    existing = rails_pulse_routes(:api_users)
+    duplicate = RailsPulse::Route.new(
+      http_methods: '["GET"]',
+      path: existing.path,
+      controller_action: existing.controller_action
+    )
 
-  test "by_method_and_path scope should find existing route" do
-    existing_route = rails_pulse_routes(:api_users)
-
-    found_route = RailsPulse::Route.by_method_and_path("GET", "/api/users")
-
-    assert_equal existing_route, found_route
+    assert_predicate duplicate, :valid?
+    assert_raises ActiveRecord::RecordNotUnique do
+      duplicate.save!(validate: false)
+    end
   end
 
-  test "by_method_and_path scope should create new route when not found" do
-    initial_count = RailsPulse::Route.count
+  # http_methods_list Tests
 
-    new_route = RailsPulse::Route.by_method_and_path("PUT", "/api/new_endpoint")
+  test "http_methods_list parses JSON array" do
+    route = rails_pulse_routes(:api_users)
 
-    assert_equal initial_count + 1, RailsPulse::Route.count
-    assert_equal "PUT", new_route.method
-    assert_equal "/api/new_endpoint", new_route.path
+    assert_equal [ "GET" ], route.http_methods_list
   end
 
-  test "by_method_and_path scope should match both method and path" do
-    # Create routes with same path but different methods
-    route1 = RailsPulse::Route.by_method_and_path("GET", "/api/test")
-    route2 = RailsPulse::Route.by_method_and_path("POST", "/api/test")
+  test "http_methods_list returns empty array when http_methods is blank" do
+    route = RailsPulse::Route.new
 
-    refute_equal route1, route2
-    assert_equal "GET", route1.method
-    assert_equal "POST", route2.method
-    assert_equal route1.path, route2.path
+    assert_empty route.http_methods_list
   end
 
-  # ============================================================================
+  test "http_methods_list returns empty array on malformed JSON" do
+    route = RailsPulse::Route.new(http_methods: "not-json")
+
+    assert_empty route.http_methods_list
+  end
+
+  # add_http_method Tests
+
+  test "add_http_method appends a new method to the array" do
+    route = rails_pulse_routes(:api_users)
+
+    assert_equal [ "GET" ], route.http_methods_list
+
+    route.add_http_method("POST")
+
+    assert_equal [ "GET", "POST" ], route.reload.http_methods_list
+  end
+
+  test "add_http_method is a no-op when the method already exists" do
+    route = rails_pulse_routes(:api_users)
+    original = route.http_methods
+
+    route.add_http_method("GET")
+
+    assert_equal original, route.reload.http_methods
+  end
+
+  test "add_http_method is a no-op for blank input" do
+    route = rails_pulse_routes(:api_users)
+    original = route.http_methods
+
+    route.add_http_method(nil)
+    route.add_http_method("")
+
+    assert_equal original, route.reload.http_methods
+  end
+
+  # find_or_create_for_request Tests
+
+  test "find_or_create_for_request finds existing route by controller_action and path" do
+    existing = rails_pulse_routes(:api_users)
+
+    found = RailsPulse::Route.find_or_create_for_request("GET", "/api/users", controller_action: "api/users#index")
+
+    assert_equal existing, found
+  end
+
+  test "find_or_create_for_request creates a new route when none exists" do
+    assert_difference -> { RailsPulse::Route.count }, 1 do
+      route = RailsPulse::Route.find_or_create_for_request("GET", "/api/new-endpoint", controller_action: "api/widgets#index")
+
+      assert_equal '["GET"]', route.http_methods
+      assert_equal "/api/new-endpoint", route.path
+      assert_equal "api/widgets#index", route.controller_action
+    end
+  end
+
+  test "find_or_create_for_request stores controller_action on new routes" do
+    route = RailsPulse::Route.find_or_create_for_request("POST", "/api/ca-test-#{SecureRandom.hex(4)}", controller_action: "home#create")
+
+    assert_equal "home#create", route.controller_action
+  end
+
+  test "find_or_create_for_request appends a new http method to an existing route" do
+    existing = rails_pulse_routes(:api_users)
+
+    assert_equal [ "GET" ], existing.http_methods_list
+
+    RailsPulse::Route.find_or_create_for_request("POST", existing.path, controller_action: existing.controller_action)
+
+    assert_equal [ "GET", "POST" ], existing.reload.http_methods_list
+  end
+
+  test "find_or_create_for_request does not create a duplicate for the same controller_action and path" do
+    assert_no_difference -> { RailsPulse::Route.count } do
+      RailsPulse::Route.find_or_create_for_request("GET", "/api/users", controller_action: "api/users#index")
+      RailsPulse::Route.find_or_create_for_request("POST", "/api/users", controller_action: "api/users#index")
+    end
+  end
+
+  test "find_or_create_for_request groups by path alone when controller_action is nil" do
+    assert_difference -> { RailsPulse::Route.count }, 1 do
+      r1 = RailsPulse::Route.find_or_create_for_request("GET", "/health", controller_action: nil)
+      r2 = RailsPulse::Route.find_or_create_for_request("HEAD", "/health", controller_action: nil)
+
+      assert_equal r1, r2
+    end
+  end
+
+  test "find_or_create_for_request keeps different actions on the same path separate" do
+    path = "/identity-#{SecureRandom.hex(4)}"
+
+    get_route = RailsPulse::Route.find_or_create_for_request("GET", path, controller_action: "home#index")
+    post_route = RailsPulse::Route.find_or_create_for_request("POST", path, controller_action: "home#create")
+
+    assert_not_equal get_route.id, post_route.id
+    assert_equal "home#index", get_route.controller_action
+    assert_equal "home#create", post_route.controller_action
+    assert_equal [ "GET" ], get_route.http_methods_list
+    assert_equal [ "POST" ], post_route.http_methods_list
+  end
+
+  test "needs_action_backfill? is true when a live route has no controller_action" do
+    RailsPulse::Route.create!(
+      http_methods: '["GET"]',
+      path: "/slow",
+      controller_action: nil,
+      tags: "[]"
+    )
+
+    assert_predicate RailsPulse::Route, :needs_action_backfill?
+  end
+
+  test "needs_action_backfill? is false when blank-action routes are unrecognized" do
+    RailsPulse::Route.create!(
+      http_methods: '["GET"]',
+      path: "/ghost-backfill-#{SecureRandom.hex(4)}",
+      controller_action: nil,
+      tags: "[]"
+    )
+
+    assert_not RailsPulse::Route.needs_action_backfill?
+  end
+
+  # to_breadcrumb Tests
+
+  test "to_breadcrumb returns method and path" do
+    route = rails_pulse_routes(:api_users)
+
+    assert_equal "GET /api/users", route.to_breadcrumb
+  end
+
+  test "to_breadcrumb joins multiple methods with pipe" do
+    route = RailsPulse::Route.new(http_methods: '["GET","POST"]', path: "/sign_in")
+
+    assert_equal "GET|POST /sign_in", route.to_breadcrumb
+  end
+
+  test "to_breadcrumb truncates long paths" do
+    route = RailsPulse::Route.new(http_methods: '["GET"]', path: "/very/long/path/#{'x' * 100}")
+
+    assert_operator route.to_breadcrumb.length, :<=, 60
+  end
+
+  # path_and_method Tests
+
+  test "path_and_method returns path and method" do
+    route = rails_pulse_routes(:api_posts)
+
+    assert_equal "/api/posts POST", route.path_and_method
+  end
+
+  test "path_and_method joins multiple methods" do
+    route = RailsPulse::Route.new(http_methods: '["PATCH","PUT"]', path: "/articles/:id")
+
+    assert_equal "/articles/:id PATCH|PUT", route.path_and_method
+  end
+
   # Ransacker Tests
-  # ============================================================================
 
-  test "average_response_time_ms ransacker should work with Ransack queries" do
-    # Use Ransack to order by average response time
+  test "average_response_time_ms ransacker works with Ransack queries" do
     search = RailsPulse::Route.ransack(s: "average_response_time_ms desc")
-    results = search.result
 
-    # Should return results without error
-    assert_kind_of ActiveRecord::Relation, results
-    assert_operator results.count, :>, 0
+    assert_kind_of ActiveRecord::Relation, search.result
+    assert_operator search.result.count, :>, 0
   end
 
-  test "request_count ransacker should work with Ransack queries" do
-    # Use Ransack to filter by request count
+  test "request_count ransacker works with Ransack queries" do
     search = RailsPulse::Route.ransack(s: "request_count desc")
-    results = search.result
 
-    # Should return results without error
-    assert_kind_of ActiveRecord::Relation, results
-    assert_operator results.count, :>, 0
+    assert_kind_of ActiveRecord::Relation, search.result
+    assert_operator search.result.count, :>, 0
   end
 
-  test "error_rate_percentage ransacker should work with Ransack queries" do
-    # Use Ransack to order by error rate
+  test "error_rate_percentage ransacker works with Ransack queries" do
     search = RailsPulse::Route.ransack(s: "error_rate_percentage desc")
-    results = search.result
 
-    # Should return results without error
-    assert_kind_of ActiveRecord::Relation, results
+    assert_kind_of ActiveRecord::Relation, search.result
   end
 
-  test "ransackers should calculate correct values from request data" do
-    route = rails_pulse_routes(:api_users)
+  # Class Method Tests
 
-    # Use Ransack to get the route with calculated values
-    search = RailsPulse::Route.ransack(path_eq: route.path)
-    result = search.result.first
-
-    assert_not_nil result
-    assert_equal route, result
-  end
-
-  # ============================================================================
-  # Instance Method Edge Cases
-  # ============================================================================
-
-  test "path_and_method should handle different HTTP methods" do
-    methods = %w[GET POST PUT PATCH DELETE HEAD OPTIONS]
-
-    methods.each do |http_method|
-      route = RailsPulse::Route.create!(method: http_method, path: "/test/#{http_method.downcase}")
-      expected = "/test/#{http_method.downcase} #{http_method}"
-
-      assert_equal expected, route.path_and_method
-    end
-  end
-
-  test "path_and_method should handle paths with special characters" do
-    route = RailsPulse::Route.create!(method: "GET", path: "/api/users/:id/posts")
-
-    assert_equal "/api/users/:id/posts GET", route.path_and_method
-  end
-
-  test "to_breadcrumb should return method and path for different path formats" do
-    paths = [
-      "/api/users/:id",
-      "/api/v1/posts/:post_id/comments",
-      "/root/path"
-    ]
-
-    paths.each do |path_value|
-      route = RailsPulse::Route.create!(method: "GET", path: path_value)
-
-      assert_equal "GET #{path_value}", route.to_breadcrumb
-    end
-  end
-
-  # ============================================================================
-  # Class Method Edge Cases
-  # ============================================================================
-
-  test "average_response_time should return 0 when no routes exist" do
-    # Delete in correct order to avoid foreign key constraints
+  test "average_response_time returns 0 when no routes exist" do
     RailsPulse::Operation.delete_all
     RailsPulse::Request.delete_all
     RailsPulse::Summary.delete_all
     RailsPulse::Route.delete_all
 
-    average = RailsPulse::Route.average_response_time
-
-    assert_equal 0, average
+    assert_equal 0, RailsPulse::Route.average_response_time
   end
 
-  test "average_response_time should calculate correct average from fixtures" do
-    # Get all requests from fixtures and calculate expected average
-    requests = RailsPulse::Request.all
+  test "average_response_time calculates correct average from fixtures" do
+    requests     = RailsPulse::Request.all
     expected_avg = requests.sum(:duration) / requests.count.to_f
 
-    actual_avg = RailsPulse::Route.average_response_time
+    assert_in_delta expected_avg, RailsPulse::Route.average_response_time, 0.1
+  end
 
-    assert_in_delta expected_avg, actual_avg, 0.1
+  test "should raise on dependent destroy when requests exist" do
+    route = rails_pulse_routes(:api_users)
+
+    assert_raises(ActiveRecord::DeleteRestrictionError) { route.destroy! }
   end
 end

@@ -112,6 +112,8 @@ test "detects separate database setup from database.yml" do
 
     assert_match(/Found 1 new migration/, output)
     assert_file "db/migrate/20251019000000_add_new_feature.rb"
+    assert_match(/rails rails_pulse:migrate_routes/, output)
+    assert_no_match(/IMPORTANT: This upgrade changes how routes are identified/, output)
   end
 
   test "single database upgrade copies multiple new migrations" do
@@ -126,6 +128,19 @@ test "detects separate database setup from database.yml" do
     assert_match(/Found 2 new migration/, output)
     assert_file "db/migrate/20251019000000_add_feature_one.rb"
     assert_file "db/migrate/20251019000001_add_feature_two.rb"
+  end
+
+  test "single database upgrade warns when copying route identity migrations" do
+    File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
+    create_gem_migration("change_rails_pulse_routes_to_multi_verb_model", "20260610000002")
+
+    output = mock_tables_exist do
+      run_generator([], {})
+    end
+
+    assert_match(/IMPORTANT: This upgrade changes how routes are identified/, output)
+    assert_match(/Action column empty/, output)
+    assert_match(/rails rails_pulse:migrate_routes/, output)
   end
 
   test "single database upgrade doesn't copy existing migrations" do
@@ -198,6 +213,7 @@ test "separate database upgrade copies migrations to rails_pulse_migrate" do
     assert_match(/Found 1 new migration/, output)
     assert_file "db/rails_pulse_migrate/20251019000000_add_new_feature.rb"
     assert_match(/rails db:migrate:rails_pulse/, output)
+    assert_match(/rails rails_pulse:migrate_routes/, output)
   end
 
   # Missing Column Detection Tests

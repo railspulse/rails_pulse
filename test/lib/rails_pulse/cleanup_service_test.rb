@@ -157,7 +157,7 @@ module RailsPulse
       }
       RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
 
-      route = RailsPulse::Route.create!(method: "GET", path: "/guard-test")
+      route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/guard-test", tags: "[]")
       3.times do
         RailsPulse::Request.create!(
           route: route, duration: 100.0, status: 200, is_error: false,
@@ -185,7 +185,7 @@ module RailsPulse
       period_end = 2.hours.ago
       create_overall_hourly_summary(period_end: period_end)
 
-      route = RailsPulse::Route.create!(method: "GET", path: "/guard-test-2")
+      route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/guard-test-2", tags: "[]")
       3.times do
         RailsPulse::Request.create!(
           route: route, duration: 100.0, status: 200, is_error: false,
@@ -213,7 +213,7 @@ module RailsPulse
       # Summary only covers up to 3 hours ago
       create_overall_hourly_summary(period_end: 3.hours.ago)
 
-      route = RailsPulse::Route.create!(method: "GET", path: "/guard-test-3")
+      route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/guard-test-3", tags: "[]")
       3.times do
         # Requests are from 30 minutes ago — newer than the summarization cutoff
         RailsPulse::Request.create!(
@@ -256,7 +256,7 @@ module RailsPulse
       # The fix uses an atomic subquery so the existence check and delete happen together.
       RailsPulse.configuration.full_retention_period = 1.hour
 
-      old_route = RailsPulse::Route.create!(method: "GET", path: "/api/stale", created_at: 2.hours.ago)
+      old_route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/api/stale", tags: "[]", created_at: 2.hours.ago)
       RailsPulse::Request.create!(
         route: old_route,
         duration: 100.0, status: 200, is_error: false,
@@ -288,8 +288,8 @@ module RailsPulse
       RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
 
       # Two routes so count (2) exceeds max (1) — oldest is a deletion candidate
-      old_route = RailsPulse::Route.create!(method: "GET", path: "/api/old", created_at: 3.hours.ago)
-      RailsPulse::Route.create!(method: "GET", path: "/api/new", created_at: 1.hour.ago)
+      old_route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/api/old", tags: "[]", created_at: 3.hours.ago)
+      RailsPulse::Route.create!(http_methods: '["GET"]', path: "/api/new", tags: "[]", created_at: 1.hour.ago)
 
       # old_route has a request — it must not be deleted even though it's the oldest
       RailsPulse::Request.create!(

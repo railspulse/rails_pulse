@@ -26,6 +26,7 @@ module RailsPulse
 
           request = ::RailsPulse::Request.create!(
             route: route,
+            method: route.http_methods_list.first,
             duration: duration,
             status: status,
             is_error: is_error,
@@ -66,6 +67,8 @@ module RailsPulse
         when "/search"     then rand(50..160)
         when "/api_simple" then rand(8..28)
         when "/api_complex" then rand(90..220)
+        when "/sign_in"    then rand(30..80)
+        when "/up", "/health", "/robots.txt" then rand(1..5)
         else
                  if route.path.include?("/rails/active_storage/")
                    rand(70..180)
@@ -102,6 +105,8 @@ module RailsPulse
         when "/search"      then rand(15_000..60_000)   # Search results page
         when "/api_simple"  then rand(200..2_000)       # Small JSON
         when "/api_complex" then rand(10_000..80_000)   # Large JSON payload
+        when "/sign_in"     then rand(3_000..12_000)    # Login form / redirect
+        when "/up", "/health", "/robots.txt" then rand(20..200) # Tiny health/static response
         else
           if route.path.include?("/rails/active_storage/")
             rand(20_000..5_000_000)   # File downloads vary widely

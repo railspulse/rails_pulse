@@ -29,7 +29,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
   test "creates request records" do
     RailsPulse::Tracker.track_request(@tracking_data)
 
-    route = RailsPulse::Route.find_by(method: @tracking_data[:method], path: @tracking_data[:path])
+    route = RailsPulse::Route.find_by(path: @tracking_data[:path])
 
     assert_not_nil route, "Route should be created"
 
@@ -240,7 +240,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
       RailsPulse::Tracker.track_request(data2)
     end
 
-    route = RailsPulse::Route.find_by(method: "GET", path: path)
+    route = RailsPulse::Route.find_by(path: path)
 
     assert_equal 2, RailsPulse::Request.where(route: route).count
   end

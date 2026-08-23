@@ -13,23 +13,21 @@ module RailsPulse
 
         def group_columns
           %w[
-            rails_pulse_summaries.summarizable_id
-            rails_pulse_summaries.summarizable_type
             rails_pulse_routes.id
             rails_pulse_routes.path
-            rails_pulse_routes.method
+            rails_pulse_routes.controller_action
             rails_pulse_routes.tags
+            rails_pulse_routes.http_methods
           ]
         end
 
         def select_columns
           [
-            "rails_pulse_summaries.summarizable_id",
-            "rails_pulse_summaries.summarizable_type",
             "rails_pulse_routes.id as route_id",
             "rails_pulse_routes.path",
-            "rails_pulse_routes.method as route_method",
+            "rails_pulse_routes.controller_action",
             "rails_pulse_routes.tags",
+            "rails_pulse_routes.http_methods as route_methods",
             "AVG(rails_pulse_summaries.avg_duration) as avg_duration",
             "MAX(rails_pulse_summaries.max_duration) as max_duration",
             "#{WEIGHTED_P95} as p95_duration",
@@ -58,6 +56,10 @@ module RailsPulse
             grouped_query.order(Arel.sql("(SUM(rails_pulse_summaries.error_count) * 100.0) / SUM(rails_pulse_summaries.count)").send(direction))
           when "route_path"
             grouped_query.order(Arel.sql("rails_pulse_routes.path").send(direction))
+          when "route_controller_action"
+            grouped_query.order(Arel.sql("rails_pulse_routes.controller_action").send(direction))
+          when "route_methods_sort"
+            grouped_query.order(Arel.sql("rails_pulse_routes.http_methods").send(direction))
           end
         end
 

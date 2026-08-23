@@ -41,7 +41,7 @@ module RailsPulse
 
         routes_columns = schema["rails_pulse_routes"]
 
-        assert_includes routes_columns.keys, "method"
+        assert_includes routes_columns.keys, "http_methods"
         assert_includes routes_columns.keys, "path"
         assert_includes routes_columns.keys, "tags"
       end
@@ -50,7 +50,7 @@ module RailsPulse
         schema = @parser.extract_expected_schema
         routes = schema["rails_pulse_routes"]
 
-        assert_equal :string, routes["method"][:type]
+        assert_equal :text, routes["http_methods"][:type]
         assert_equal :text, routes["tags"][:type]
       end
 
@@ -59,8 +59,8 @@ module RailsPulse
         routes = schema["rails_pulse_routes"]
 
         # Check that comment exists for columns that have them
-        assert_predicate routes["method"][:comment], :present?
-        assert_match(/HTTP method/, routes["method"][:comment])
+        assert_predicate routes["http_methods"][:comment], :present?
+        assert_match(/HTTP methods/, routes["http_methods"][:comment])
       end
 
       test "skips timestamps columns" do

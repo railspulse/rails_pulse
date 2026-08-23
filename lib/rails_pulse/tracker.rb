@@ -34,10 +34,11 @@ module RailsPulse
           clear_aborted_transaction(conn)
           RequestStore.store[:skip_recording_rails_pulse_activity] = true
 
-          route = RailsPulse::Route.by_method_and_path(data[:method], data[:path])
+          route = RailsPulse::Route.find_or_create_for_request(data[:method], data[:path], controller_action: data[:controller_action])
 
           request = RailsPulse::Request.create!(
             route: route,
+            method: data[:method],
             duration: data[:duration],
             status: data[:status],
             is_error: data[:is_error],

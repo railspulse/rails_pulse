@@ -88,6 +88,7 @@ module RailsPulse
 
       crumbs
     end
+
     def page_title
       crumbs = breadcrumbs
       return "Rails Pulse" if crumbs.empty?
