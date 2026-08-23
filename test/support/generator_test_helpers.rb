@@ -43,6 +43,7 @@ module GeneratorTestHelpers
           adapter: sqlite3
           database: db/test_rails_pulse.sqlite3
           migrations_paths: db/rails_pulse_migrate
+          schema_dump: false
     YAML
   end
 
@@ -57,6 +58,7 @@ module GeneratorTestHelpers
           adapter: sqlite3
           database: db/test_rails_pulse.sqlite3
           migrations_paths: db/rails_pulse_migrate
+          schema_dump: false
     YAML
   end
 

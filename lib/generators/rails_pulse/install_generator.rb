@@ -78,6 +78,11 @@ module RailsPulse
                  <<: *default
                  database: storage/#{Rails.env}_rails_pulse.sqlite3
                  migrations_paths: db/rails_pulse_migrate
+                 schema_dump: false
+
+          schema_dump: false is required so Rails does not dump or load
+          db/rails_pulse_structure.sql. Keep database_tasks enabled so
+          rails db:migrate:rails_pulse still runs upgrades.
 
           2. Run: rails db:prepare (creates database and loads schema)
           3. Restart your Rails server

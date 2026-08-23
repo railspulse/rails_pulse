@@ -38,6 +38,8 @@ class InstallGeneratorTest < Rails::Generators::TestCase
 
     assert_file "config/initializers/rails_pulse.rb" do |content|
       assert_match(/RailsPulse.configure/, content)
+      assert_match(/schema_dump: false/, content)
+      assert_match(/migrations_paths: db\/rails_pulse_migrate/, content)
     end
   end
 
@@ -75,6 +77,14 @@ class InstallGeneratorTest < Rails::Generators::TestCase
 
     # Should not create migration in db/migrate for separate database
     assert_no_file "db/migrate/install_rails_pulse_tables.rb"
+  end
+
+  test "separate database install message includes schema_dump false" do
+    output = run_generator [ "--database=separate" ]
+
+    assert_match(/schema_dump: false/, output)
+    assert_match(/migrations_paths: db\/rails_pulse_migrate/, output)
+    refute_match(/database_tasks:\s*false/, output)
   end
 
   # Note: Output message tests are difficult to capture in generator tests
