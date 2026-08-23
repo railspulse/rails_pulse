@@ -22,8 +22,10 @@ module RailsPulse
 
       dump = schema_dump
 
+      # SQLite dumps `where: "controller_action IS NULL"`; PostgreSQL wraps it
+      # in parentheses: `where: "(controller_action IS NULL)"`.
       assert_match(
-        /#{Regexp.escape(RouteIndexes::NULL_ACTION_INDEX)}.*where: ["']controller_action IS NULL["']/m,
+        /#{Regexp.escape(RouteIndexes::NULL_ACTION_INDEX)}.*, where: ["']\(?controller_action IS NULL\)?["']/,
         dump
       )
     end
