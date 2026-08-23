@@ -9,11 +9,11 @@ const ROOT_DIR = path.dirname(__dirname);
 const ENABLE_SOURCE_MAPS = process.env.RAILS_PULSE_SOURCE_MAPS === 'true';
 
 // Output directories:
-// 1. vendor/assets/ - For Sprockets-based apps (gets precompiled into host app)
-// 2. public/rails-pulse-assets/ - For middleware fallback (non-Sprockets apps, dev mode)
+// 1. vendor/assets/ - Legacy copy kept for reference during build
+// 2. public/rails-pulse-assets/ - Served by AssetServer middleware in all environments
 const OUTPUT_DIRS = [
   {
-    name: 'vendor/assets (Sprockets)',
+    name: 'vendor/assets (legacy)',
     css: path.join(ROOT_DIR, 'vendor', 'assets', 'stylesheets'),
     js: path.join(ROOT_DIR, 'vendor', 'assets', 'javascripts')
   },

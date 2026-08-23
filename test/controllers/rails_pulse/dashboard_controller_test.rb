@@ -147,6 +147,29 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil response.body
   end
 
+  test "dashboard assets stay on origin when asset_host is set" do
+    previous_app = Rails.application.config.asset_host
+    previous_ac = ActionController::Base.config.asset_host
+    Rails.application.config.asset_host = "https://cdn.example.com"
+    Rails.application.config.action_controller.asset_host = "https://cdn.example.com"
+    ActionController::Base.config.asset_host = "https://cdn.example.com"
+
+    get rails_pulse.root_path
+
+    assert_response :success
+
+    versioned = "/rails-pulse-assets/#{RailsPulse::VERSION}"
+
+    assert_select "link[rel='stylesheet'][href='#{versioned}/rails-pulse.css']"
+    assert_select "script[src='#{versioned}/rails-pulse.js']"
+    assert_select "script[src='#{versioned}/rails-pulse-icons.js']"
+    refute_includes response.body, "cdn.example.com"
+  ensure
+    Rails.application.config.asset_host = previous_app
+    Rails.application.config.action_controller.asset_host = previous_app
+    ActionController::Base.config.asset_host = previous_ac
+  end
+
   private
 
   def rails_pulse

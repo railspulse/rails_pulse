@@ -42,6 +42,7 @@ development:
     <<: *default
     database: storage/development_rails_pulse.sqlite3
     migrations_paths: db/rails_pulse_migrate
+    schema_dump: false
 
 production:
   rails_pulse:
@@ -51,7 +52,10 @@ production:
     password: <%= ENV['DB_PASSWORD'] %>
     host: <%= ENV['DB_HOST'] %>
     migrations_paths: db/rails_pulse_migrate
+    schema_dump: false
 ```
+
+`schema_dump: false` is required. Rails Pulse loads schema from `db/rails_pulse_schema.rb` during `db:prepare`. Without that key, Rails dumps `db/rails_pulse_structure.sql` (or overwrites `db/rails_pulse_schema.rb`) and `db:migrate` can fail with `relation already exists`. Leave `database_tasks` enabled so `rails db:migrate:rails_pulse` still applies upgrades.
 
 Finally, create the database:
 
@@ -140,6 +144,12 @@ rails db:migrate:status:rails_pulse
 ### Schema file should not be deleted
 
 The file `db/rails_pulse_schema.rb` is your single source of truth for the database structure. Keep this file even after running migrations - it's used by the upgrade generator to detect missing columns.
+
+### `db:migrate` fails on `rails_pulse_structure.sql`
+
+If `db:migrate` errors with `relation "rails_pulse_deployments" already exists` while loading `db/rails_pulse_structure.sql`, Rails is dump/loading the Pulse database as a second schema.
+
+Add `schema_dump: false` to the `rails_pulse` entry in `config/database.yml` and delete `db/rails_pulse_structure.sql` if that file exists. Do not set `database_tasks: false`; that skips `db:migrate:rails_pulse`.
 
 ### Tables already exist error
 

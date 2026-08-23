@@ -177,6 +177,8 @@ RailsPulse.configure do |config|
   #     password: <%= Rails.application.credentials.dig(:rails_pulse, :database_password) %>
   #     host: localhost
   #     pool: 5
+  #     migrations_paths: db/rails_pulse_migrate
+  #     schema_dump: false
 
   # ====================================================================================================
   #                                            AUTHENTICATION

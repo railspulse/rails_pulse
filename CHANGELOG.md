@@ -10,6 +10,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Route identity is `[controller_action, path]`** — GET `/users` (`users#index`) and POST `/users` (`users#create`) are distinct routes. Each route stores an `http_methods` array; each request records its own HTTP verb. Dynamic paths are normalized at capture time (`/posts/42` → `/posts/:id`).
 - After upgrading, run `rails rails_pulse:migrate_routes` to backfill `controller_action` (from the live router, then from request history), collapse historical literal paths, and merge routes that share the same action (for example GET+POST `/sign_in` → `sessions#new`). The upgrade generator and dashboard warn if this step is skipped.
 - Fixed upgrading when using separate database installation
+- Separate-database installs set `schema_dump: false` so `db:migrate` no longer dumps or loads `db/rails_pulse_structure.sql` (#189)
+- Fixed `assets:precompile` failing on memory-constrained hosts by not registering dashboard assets with the host Sprockets pipeline. Precompile copies the pre-built files into `public/assets` (digested, no compressor) so `config.asset_host` and CDN-only CSP work; development and hosts without a pipeline still use `/rails-pulse-assets/<gem-version>/...`.
 
 ## [0.3.3] - 2026-06-23
 

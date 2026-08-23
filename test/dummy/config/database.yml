@@ -61,6 +61,7 @@ development:
     <<: *default
     database: storage/development_rails_pulse.sqlite3
     migrations_paths: db/rails_pulse_migrate
+    schema_dump: false
 
 # Warning: The database defined as "test" will be erased and
 # re-generated from your development database when you run "rake".
@@ -73,18 +74,21 @@ test:
     <<: *default
     database: storage/test_rails_pulse.sqlite3
     migrations_paths: db/rails_pulse_migrate
+    schema_dump: false
   <% elsif adapter == 'postgresql' %>
   database: <%= ENV.fetch('POSTGRES_TEST_DATABASE', 'rails_pulse_test') %>
   rails_pulse:
     <<: *default
     database: <%= ENV.fetch('POSTGRES_TEST_RAILS_PULSE_DATABASE', 'rails_pulse_test_rails_pulse') %>
     migrations_paths: db/rails_pulse_migrate
+    schema_dump: false
   <% elsif adapter == 'mysql' || adapter == 'mysql2' %>
   database: <%= ENV.fetch('MYSQL_TEST_DATABASE', 'rails_pulse_test') %>
   rails_pulse:
     <<: *default
     database: <%= ENV.fetch('MYSQL_TEST_RAILS_PULSE_DATABASE', 'rails_pulse_test_rails_pulse') %>
     migrations_paths: db/rails_pulse_migrate
+    schema_dump: false
   <% else %>
   database: rails_pulse_test
   <% end %>
