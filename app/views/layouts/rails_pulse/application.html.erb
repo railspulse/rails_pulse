@@ -33,10 +33,10 @@
       })();
     </script>
 
-    <!-- Rails Pulse Pre-compiled Assets (CSP-safe) -->
-    <%= stylesheet_link_tag rails_pulse.asset_path('rails-pulse.css') %>
-    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse-icons.js'), defer: true, nonce: rails_pulse_csp_nonce %>
-    <%= javascript_include_tag rails_pulse.asset_path('rails-pulse.js'), defer: true, nonce: rails_pulse_csp_nonce %>
+    <%# tag.link/script (not stylesheet_link_tag): middleware fallback paths must stay off asset_host. %>
+    <%= tag.link rel: "stylesheet", href: rails_pulse.asset_path("rails-pulse.css") %>
+    <%= tag.script "", src: rails_pulse.asset_path("rails-pulse-icons.js"), defer: true, nonce: rails_pulse_csp_nonce %>
+    <%= tag.script "", src: rails_pulse.asset_path("rails-pulse.js"), defer: true, nonce: rails_pulse_csp_nonce %>
   </head>
 
   <body class="header-layout">

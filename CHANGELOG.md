@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 - Fixed upgrading when using separate database installation
-- Fixed `assets:precompile` failing on memory-constrained hosts by serving dashboard assets exclusively via middleware instead of registering them with the host Sprockets pipeline
+- Fixed `assets:precompile` failing on memory-constrained hosts by not registering dashboard assets with the host Sprockets pipeline. Precompile copies the pre-built files into `public/assets` (digested, no compressor) so `config.asset_host` and CDN-only CSP work; development and hosts without a pipeline still use `/rails-pulse-assets/<gem-version>/...`.
 
 ## [0.3.3] - 2026-06-23
 

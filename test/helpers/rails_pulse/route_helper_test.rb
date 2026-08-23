@@ -62,11 +62,11 @@ class RailsPulse::RouteHelperTest < ActionView::TestCase
   # Asset Path Tests
   # ============================================================================
 
-  test "rails_pulse asset_path returns middleware asset path" do
+  test "rails_pulse asset_path returns a versioned middleware asset path" do
     helper = rails_pulse
     path = helper.asset_path("style.css")
 
-    assert_equal "/rails-pulse-assets/style.css", path
+    assert_equal "/rails-pulse-assets/#{RailsPulse::VERSION}/style.css", path
   end
 
   test "rails_pulse asset_path handles different asset types" do
@@ -76,9 +76,9 @@ class RailsPulse::RouteHelperTest < ActionView::TestCase
     js_path = helper.asset_path("application.js")
     image_path = helper.asset_path("logo.png")
 
-    assert_equal "/rails-pulse-assets/application.css", css_path
-    assert_equal "/rails-pulse-assets/application.js", js_path
-    assert_equal "/rails-pulse-assets/logo.png", image_path
+    assert_equal "/rails-pulse-assets/#{RailsPulse::VERSION}/application.css", css_path
+    assert_equal "/rails-pulse-assets/#{RailsPulse::VERSION}/application.js", js_path
+    assert_equal "/rails-pulse-assets/#{RailsPulse::VERSION}/logo.png", image_path
   end
 
   # ============================================================================
@@ -89,7 +89,7 @@ class RailsPulse::RouteHelperTest < ActionView::TestCase
     helper = rails_pulse
     path = helper.asset_path("")
 
-    assert_equal "/rails-pulse-assets/", path
+    assert_equal "/rails-pulse-assets/#{RailsPulse::VERSION}/", path
   end
 
   test "rails_pulse asset_path handles paths with subdirectories" do
@@ -97,6 +97,26 @@ class RailsPulse::RouteHelperTest < ActionView::TestCase
     path = helper.asset_path("icons/alert.svg")
 
     assert_includes path, "icons/alert.svg"
+    assert_includes path, RailsPulse::VERSION
+  end
+
+  test "rails_pulse asset_path uses packaged assets on the CDN host" do
+    RailsPulse::PackagedAssets.stubs(:url_path).returns("/assets/rails-pulse-abc.css")
+    previous_app = Rails.application.config.asset_host
+    previous_ac = ActionController::Base.config.asset_host
+    Rails.application.config.asset_host = "https://cdn.example.com"
+    Rails.application.config.action_controller.asset_host = "https://cdn.example.com"
+    ActionController::Base.config.asset_host = "https://cdn.example.com"
+
+    path = rails_pulse.asset_path("rails-pulse.css")
+
+    assert_includes path, "cdn.example.com"
+    assert_includes path, "/assets/rails-pulse-abc.css"
+  ensure
+    RailsPulse::PackagedAssets.unstub(:url_path)
+    Rails.application.config.asset_host = previous_app
+    Rails.application.config.action_controller.asset_host = previous_app
+    ActionController::Base.config.asset_host = previous_ac
   end
 
   test "rails_pulse method_missing passes through block" do

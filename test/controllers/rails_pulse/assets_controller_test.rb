@@ -168,6 +168,20 @@ class RailsPulse::AssetsControllerTest < ActionDispatch::IntegrationTest
     assert_response :not_found
   end
 
+  test "middleware serves versioned assets from the origin path" do
+    get "/rails-pulse-assets/#{RailsPulse::VERSION}/rails-pulse.css"
+
+    assert_response :success
+    assert_equal "text/css", response.content_type
+  end
+
+  test "middleware still serves unversioned assets" do
+    get "/rails-pulse-assets/rails-pulse.css"
+
+    assert_response :success
+    assert_equal "text/css", response.content_type
+  end
+
   private
 
   def rails_pulse

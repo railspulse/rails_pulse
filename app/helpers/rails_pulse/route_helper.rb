@@ -25,10 +25,17 @@ module RailsPulse
         RailsPulse::Engine.routes.url_helpers.respond_to?(method, include_private) || super
       end
 
-      # Assets are pre-built into the gem's public directory and served by
-      # the AssetServer middleware, so no host asset pipeline is involved.
+      # After `assets:precompile`, files live in public/assets with a digest
+      # so config.asset_host / CDN-only CSP work. Until then (development,
+      # or hosts with no pipeline) serve from the gem via AssetServer.
+      # Always pass the result to tag.link / tag.script, not stylesheet_link_tag:
+      # a middleware path must not be rewritten onto the CDN.
       def asset_path(asset_name)
-        "/rails-pulse-assets/#{asset_name}"
+        if (packaged = RailsPulse::PackagedAssets.url_path(asset_name))
+          ActionController::Base.helpers.asset_path(packaged)
+        else
+          "/rails-pulse-assets/#{RailsPulse::VERSION}/#{asset_name}"
+        end
       end
     end
   end

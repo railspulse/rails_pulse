@@ -64,11 +64,10 @@ module RailsPulse
     end
 
     initializer "rails_pulse.assets" do |app|
-      # The dashboard assets are bundled and minified at gem build time and
-      # served by the AssetServer middleware. They are deliberately not
-      # registered with the host's asset pipeline: precompiling them there
-      # runs the host's js_compressor over an already-minified 2 MB bundle,
-      # which is wasted work and can exhaust memory on small servers.
+      # Dashboard assets are bundled at gem build time. They are not registered
+      # with Sprockets (re-minifying the 2 MB bundle OOMs small hosts — #190).
+      # assets:precompile copies them into public/assets for CDN/CSP; the
+      # middleware is the development / no-pipeline fallback.
       assets_path = Engine.root.join("public")
       app.middleware.insert_after Rack::Runtime, RailsPulse::Middleware::AssetServer,
         assets_path.to_s,
