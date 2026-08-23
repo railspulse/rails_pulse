@@ -59,7 +59,10 @@ module RailsPulse
       @ignored_queues = []
       @track_assets = false
       @track_jobs = false
-      @track_exceptions = true
+      # Off unless the host initializer opts in. The install template sets true
+      # for new apps; existing 0.3.3 initializers omit this key, so a true
+      # default would start capturing exception messages (unfiltered) on upgrade.
+      @track_exceptions = false
       @capture_exception_params = true
       @custom_asset_patterns = []
       @mount_path = nil

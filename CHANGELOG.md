@@ -7,15 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+Upgrading from 0.3.3 requires the upgrade generator, a schema migrate, and a one-time route backfill. Exception tracking is **off** for existing installs until you opt in.
+
+### Upgrade from 0.3.3
+
+```bash
+bundle update rails_pulse
+rails generate rails_pulse:upgrade
+rails db:migrate                  # or rails db:migrate:rails_pulse for a separate Pulse database
+rails rails_pulse:migrate_routes  # required — schema migrate alone leaves Action empty
+```
+
+Separate-database hosts: add `schema_dump: false` to the `rails_pulse` entry in `config/database.yml` and delete `db/rails_pulse_structure.sql` if it exists. Then restart all processes together — this release drops `rails_pulse_routes.method`, so mixed old/new code against the new schema will fail tracking and the routes dashboard.
+
+The upgrade generator appends new initializer settings (without rewriting existing values) so you can review them with `git diff`. Exception tracking stays off: it inserts `config.track_exceptions = false`. Set that to `true` after migrating to opt in. New installs get `true` from the generated template. Messages are stored unfiltered; request params use Rails `filter_parameters`.
+
+### Added
+
 - **Route identity is `[controller_action, path]`** — GET `/users` (`users#index`) and POST `/users` (`users#create`) are distinct routes. Each route stores an `http_methods` array; each request records its own HTTP verb. Dynamic paths are normalized at capture time (`/posts/42` → `/posts/:id`).
 - After upgrading, run `rails rails_pulse:migrate_routes` to backfill `controller_action` (from the live router, then from request history), collapse historical literal paths, and merge routes that share the same action (for example GET+POST `/sign_in` → `sessions#new`). The upgrade generator and dashboard warn if this step is skipped.
+- **Exception tracking** — Captures unhandled exceptions from web requests and background jobs, groups them by class and location, and displays full backtraces (first 50 frames) with filtered request params in a new Exceptions tab. Exception messages are stored unfiltered.
+- **`track_exceptions` config option** — Enable or disable exception tracking. Gem default is `false` so existing installs do not start capturing on upgrade. The install template sets `true` for new apps.
+- **`capture_exception_params` config option** — Capture request params alongside each exception occurrence. Params are filtered via Rails' `filter_parameters` config; occurrences with params larger than 10KB after filtering are stored without params. Set to `false` for strict data-minimisation requirements (default: `true`, only used when tracking is on)
+- **Upgrade generator syncs new initializer settings** — Appends keys (and `max_table_records` entries) that the host file does not already mention, without rewriting existing values. Review with `git diff`. `track_exceptions` is inserted as `false`.
+
+### Fixed
+
 - Fixed upgrading when using separate database installation
 - Separate-database installs set `schema_dump: false` so `db:migrate` no longer dumps or loads `db/rails_pulse_structure.sql` (#189)
 - Fixed `assets:precompile` failing on memory-constrained hosts by not registering dashboard assets with the host Sprockets pipeline. Precompile copies the pre-built files into `public/assets` (digested, no compressor) so `config.asset_host` and CDN-only CSP work; development and hosts without a pipeline still use `/rails-pulse-assets/<gem-version>/...`.
 - SQLite `schema.rb` now keeps the partial unique index on unrecognised routes (`WHERE controller_action IS NULL`). A raw `CREATE INDEX` was dumped without the predicate, so `db:schema:load` and parallel tests unique-constrained every path.
-- **Exception tracking** — Captures unhandled exceptions from web requests and background jobs, groups them by class and location, and displays full backtraces (first 50 frames) with filtered request params in a new Exceptions tab. Exception messages are stored unfiltered.
-- **`track_exceptions` config option** — Enable or disable exception tracking (default: `true`)
-- **`capture_exception_params` config option** — Capture request params alongside each exception occurrence. Params are filtered via Rails' `filter_parameters` config; occurrences with params larger than 10KB after filtering are stored without params. Set to `false` for strict data-minimisation requirements (default: `true`)
 
 ## [0.3.3] - 2026-06-23
 
@@ -100,7 +121,8 @@ No changelog entry — see git history.
 
 No changelog entry — see git history.
 
-[Unreleased]: https://github.com/railspulse/rails_pulse/compare/v0.3.0.pre.1...HEAD
+[Unreleased]: https://github.com/railspulse/rails_pulse/compare/v0.3.3...HEAD
+[0.3.3]: https://github.com/railspulse/rails_pulse/compare/v0.3.2...v0.3.3
 [0.3.0.pre.1]: https://github.com/railspulse/rails_pulse/compare/v0.2.7...v0.3.0.pre.1
 [0.2.7]: https://github.com/railspulse/rails_pulse/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/railspulse/rails_pulse/compare/v0.2.5...v0.2.6

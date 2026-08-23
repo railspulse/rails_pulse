@@ -96,6 +96,12 @@ separate-database upgrade path before shipping:
 7. Restore the initializer: comment `connects_to` back out and delete the temporary
    SQLite file.
 
+Also for this release: bump `RailsPulse::VERSION` (0.3.3 is already on RubyGems). Route
+identity is a breaking schema change — prefer a minor bump (0.4.0). After
+`assets:precompile`, confirm logs include `[RailsPulse] Installed N dashboard assets`.
+If any CDN caches `/rails-pulse-assets/<version>/...` as immutable, the version bump
+is what busts that cache.
+
 ### 2. Update Version
 
 ```bash

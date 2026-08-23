@@ -55,7 +55,85 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert col.null, "controller_action should be nullable"
   end
 
-  test "upgrade from v0.2.7 converts routes to multi-verb model" do
+    test "upgrade from v0.3.3 converts routes to multi-verb model" do
+      load_baseline(RailsPulse::TestSchemas::V033)
+      run_all_migrations
+
+      assert @conn.column_exists?(:rails_pulse_routes, :http_methods), "http_methods missing on routes"
+      assert_not @conn.column_exists?(:rails_pulse_routes, :method), "old method column should be removed"
+      assert @conn.column_exists?(:rails_pulse_requests, :method), "method column missing on requests"
+      assert @conn.column_exists?(:rails_pulse_routes, :controller_action)
+
+      http_methods_col = @conn.columns(:rails_pulse_routes).find { |c| c.name == "http_methods" }
+
+      assert_not http_methods_col.null, "http_methods should be NOT NULL after upgrade"
+    end
+
+    test "upgrade from v0.3.3 creates exception tables and keeps existing 0.3.3 columns" do
+      load_baseline(RailsPulse::TestSchemas::V033)
+      run_all_migrations
+
+      assert @conn.table_exists?(:rails_pulse_exception_groups)
+      assert @conn.table_exists?(:rails_pulse_exception_occurrences)
+      assert @conn.column_exists?(:rails_pulse_exception_groups, :location)
+      assert @conn.table_exists?(:rails_pulse_deployments)
+      assert @conn.column_exists?(:rails_pulse_operations, :actual_sql)
+    end
+
+    test "upgrade from v0.3.3 keeps GET and POST on the same path as separate routes" do
+      load_baseline(RailsPulse::TestSchemas::V033)
+
+      now = Time.current.iso8601(6)
+      @conn.execute(<<~SQL)
+        INSERT INTO rails_pulse_routes (method, path, created_at, updated_at)
+        VALUES ('GET', '/users', '#{now}', '#{now}')
+      SQL
+      get_id = @conn.select_value("SELECT id FROM rails_pulse_routes WHERE method = 'GET' AND path = '/users'")
+
+      @conn.execute(<<~SQL)
+        INSERT INTO rails_pulse_routes (method, path, created_at, updated_at)
+        VALUES ('POST', '/users', '#{now}', '#{now}')
+      SQL
+      post_id = @conn.select_value("SELECT id FROM rails_pulse_routes WHERE method = 'POST' AND path = '/users'")
+
+      is_error_value = @conn.adapter_name.downcase == "postgresql" ? "false" : "0"
+      get_uuid = "upgrade-033-get-#{SecureRandom.hex(4)}"
+      post_uuid = "upgrade-033-post-#{SecureRandom.hex(4)}"
+
+      @conn.execute(<<~SQL)
+        INSERT INTO rails_pulse_requests (route_id, duration, status, is_error, request_uuid, occurred_at, created_at, updated_at)
+        VALUES (#{get_id}, 10, 200, #{is_error_value}, '#{get_uuid}', '#{now}', '#{now}', '#{now}')
+      SQL
+      @conn.execute(<<~SQL)
+        INSERT INTO rails_pulse_requests (route_id, duration, status, is_error, request_uuid, occurred_at, created_at, updated_at)
+        VALUES (#{post_id}, 20, 201, #{is_error_value}, '#{post_uuid}', '#{now}', '#{now}', '#{now}')
+      SQL
+
+      run_all_migrations
+
+      rows = @conn.select_all("SELECT id, http_methods, controller_action FROM rails_pulse_routes WHERE path = '/users' ORDER BY id").to_a
+
+      assert_equal 2, rows.size, "GET /users and POST /users must remain two routes until migrate_routes backfills actions"
+      assert rows.all? { |row| row["controller_action"].nil? }
+
+      methods = rows.map { |row| JSON.parse(row["http_methods"]) }.sort
+
+      assert_equal [ [ "GET" ], [ "POST" ] ], methods
+      assert_equal "GET", @conn.select_value("SELECT method FROM rails_pulse_requests WHERE request_uuid = '#{get_uuid}'")
+      assert_equal "POST", @conn.select_value("SELECT method FROM rails_pulse_requests WHERE request_uuid = '#{post_uuid}'")
+    end
+
+    test "can insert records after upgrading from v0.3.3" do
+      load_baseline(RailsPulse::TestSchemas::V033)
+      run_all_migrations
+
+      assert_can_insert_core_records
+      assert_can_insert_deployment
+      assert_can_insert_exception
+      assert_can_insert_job_run
+    end
+
+    test "upgrade from v0.2.7 converts routes to multi-verb model" do
     load_baseline(RailsPulse::TestSchemas::V027)
     run_all_migrations
 
@@ -161,7 +239,16 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert RailsPulse::RouteIndexes.exists?(@conn)
   end
 
-  test "upgrade from v0.2.7 adds diagnostic columns to operations and requests" do
+    test "http_methods is NOT NULL after upgrading from v0.2.7" do
+      load_baseline(RailsPulse::TestSchemas::V027)
+      run_all_migrations
+
+      col = @conn.columns(:rails_pulse_routes).find { |c| c.name == "http_methods" }
+
+      assert_not col.null, "http_methods should be NOT NULL after upgrade"
+    end
+
+    test "upgrade from v0.2.7 adds diagnostic columns to operations and requests" do
     load_baseline(RailsPulse::TestSchemas::V027)
     run_all_migrations
 

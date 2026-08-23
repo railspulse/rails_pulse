@@ -41,6 +41,7 @@ module RailsPulse
   module Installers
     autoload :MigrationInstaller, File.expand_path("installers/migration_installer", __dir__)
     autoload :ConfigInstaller, File.expand_path("installers/config_installer", __dir__)
+    autoload :ConfigUpdater, File.expand_path("installers/config_updater", __dir__)
   end
 
   # Stats reporting services

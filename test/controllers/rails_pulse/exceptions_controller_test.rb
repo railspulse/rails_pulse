@@ -176,9 +176,9 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
     assert_nil assigns(:latest_occurrence)
   end
 
-  test "exceptions routes are accessible when track_exceptions is true (default)" do
+  test "exceptions routes are accessible when track_exceptions is enabled" do
     assert RailsPulse.configuration.track_exceptions,
-      "track_exceptions must be true for this test to be meaningful"
+      "dummy initializer must enable track_exceptions for this test to be meaningful"
 
     get rails_pulse.exceptions_path
 

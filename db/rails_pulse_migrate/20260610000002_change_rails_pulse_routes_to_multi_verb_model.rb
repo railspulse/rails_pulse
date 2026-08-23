@@ -15,6 +15,10 @@ class ChangeRailsPulseRoutesToMultiVerbModel < ActiveRecord::Migration[7.0]
         execute("UPDATE rails_pulse_routes SET http_methods = '[\"' || method || '\"]' WHERE http_methods IS NULL AND method IS NOT NULL")
       end
       execute("UPDATE rails_pulse_routes SET http_methods = '[]' WHERE http_methods IS NULL")
+
+      connection.schema_cache.clear! if connection.respond_to?(:schema_cache)
+      http_methods_col = connection.columns(:rails_pulse_routes).find { |c| c.name == "http_methods" }
+      change_column_null :rails_pulse_routes, :http_methods, false if http_methods_col&.null
     end
 
     # Step 3: Add method column to requests so each request records the specific verb used

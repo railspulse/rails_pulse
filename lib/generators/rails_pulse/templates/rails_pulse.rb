@@ -126,8 +126,11 @@ RailsPulse.configure do |config|
   #
   # Capture runs synchronously on the calling thread (upsert + insert). That keeps
   # the implementation simple for v1; under an error storm it adds DB latency to
-  # failing requests and jobs. Disable with track_exceptions = false if that cost
-  # is unacceptable.
+  # failing requests and jobs. Set track_exceptions = false to disable.
+  #
+  # The gem default is false so existing installs do not start capturing on
+  # upgrade. New apps get true from this template; the upgrade generator
+  # inserts false into existing initializers.
   #
   # Backtraces store the first 50 frames. Exception messages are stored as raised
   # (not filtered); request params are filtered via Rails' filter_parameters.
