@@ -1,5 +1,6 @@
 require "rails_pulse/version"
 require "rails_pulse/engine"
+require "rails_pulse/packaged_assets"
 require "rails_pulse/configuration"
 require "rails_pulse/paginator"
 require "rails_pulse/cleanup_service"

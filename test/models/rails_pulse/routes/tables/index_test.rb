@@ -5,7 +5,7 @@ module RailsPulse
     module Tables
       class IndexTest < ActiveSupport::TestCase
         def setup
-          @start_time = 1.day.ago
+          @start_time = 2.days.ago
           @end_time = Time.current
           @ransack_query = RailsPulse::Summary.ransack({
             period_start_gteq: @start_time,
@@ -27,6 +27,13 @@ module RailsPulse
           ).to_table
         end
 
+        def first_table_row(**options)
+          row = create_table(**options).first
+
+          assert row, "Expected route summary fixtures to be within the test time range"
+          row
+        end
+
         # Structure Tests
 
         test "returns ActiveRecord relation" do
@@ -36,40 +43,28 @@ module RailsPulse
         end
 
         test "result has required route attributes" do
-          results = create_table
+          first_result = first_table_row
 
-          if results.any?
-            first_result = results.first
-
-            assert_includes first_result.attributes.keys, "route_id"
-            assert_includes first_result.attributes.keys, "path"
-            assert_includes first_result.attributes.keys, "route_method"
-          end
+          assert_includes first_result.attributes.keys, "route_id"
+          assert_includes first_result.attributes.keys, "path"
+          assert_includes first_result.attributes.keys, "route_method"
         end
 
         test "result has metric attributes" do
-          results = create_table
+          first_result = first_table_row
 
-          if results.any?
-            first_result = results.first
-
-            assert_includes first_result.attributes.keys, "avg_duration"
-            assert_includes first_result.attributes.keys, "p95_duration"
-            assert_includes first_result.attributes.keys, "p99_duration"
-            assert_includes first_result.attributes.keys, "max_duration"
-          end
+          assert_includes first_result.attributes.keys, "avg_duration"
+          assert_includes first_result.attributes.keys, "p95_duration"
+          assert_includes first_result.attributes.keys, "p99_duration"
+          assert_includes first_result.attributes.keys, "max_duration"
         end
 
         test "result has count attributes" do
-          results = create_table
+          first_result = first_table_row
 
-          if results.any?
-            first_result = results.first
-
-            assert_includes first_result.attributes.keys, "count"
-            assert_includes first_result.attributes.keys, "error_count"
-            assert_includes first_result.attributes.keys, "success_count"
-          end
+          assert_includes first_result.attributes.keys, "count"
+          assert_includes first_result.attributes.keys, "error_count"
+          assert_includes first_result.attributes.keys, "success_count"
         end
 
         test "groups by route" do
@@ -82,97 +77,63 @@ module RailsPulse
         end
 
         test "joins with rails_pulse_routes table" do
-          results = create_table
+          first_result = first_table_row
 
-          if results.any?
-            # Should have route path and method from routes table
-            assert_kind_of String, results.first.path
-            assert_kind_of String, results.first.route_method
-          end
+          assert_kind_of String, first_result.path
+          assert_kind_of String, first_result.route_method
         end
 
         test "result attributes have correct types" do
-          results = create_table
+          first_result = first_table_row
 
-          if results.any?
-            first_result = results.first
-            assert_kind_of Numeric, first_result.route_id if first_result.route_id
-            assert_kind_of String, first_result.path if first_result.path
-            assert_kind_of String, first_result.route_method if first_result.route_method
-          end
+          assert_kind_of Numeric, first_result.route_id
+          assert_kind_of String, first_result.path
+          assert_kind_of String, first_result.route_method
         end
 
         # Aggregation Tests
 
         test "avg_duration is AVG of avg_duration across periods" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Should be a numeric average
-            assert result.avg_duration.nil? || result.avg_duration.is_a?(Numeric)
-          end
+          assert result.avg_duration.nil? || result.avg_duration.is_a?(Numeric)
         end
 
         test "max_duration is MAX of max_duration across periods" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Should be a numeric maximum
-            assert result.max_duration.nil? || result.max_duration.is_a?(Numeric)
-          end
+          assert result.max_duration.nil? || result.max_duration.is_a?(Numeric)
         end
 
         test "p95_duration is weighted average" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Should be calculated as SUM(p95 * count) / SUM(count)
-            assert result.p95_duration.nil? || result.p95_duration.is_a?(Numeric)
-          end
+          assert result.p95_duration.nil? || result.p95_duration.is_a?(Numeric)
         end
 
         test "p99_duration is weighted average" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Should be calculated as SUM(p99 * count) / SUM(count)
-            assert result.p99_duration.nil? || result.p99_duration.is_a?(Numeric)
-          end
+          assert result.p99_duration.nil? || result.p99_duration.is_a?(Numeric)
         end
 
         test "count is SUM of count across periods" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Should be a summed count
-            assert_kind_of Numeric, result.count
-            assert_operator result.count, :>=, 0
-          end
+          assert_kind_of Numeric, result.count
+          assert_operator result.count, :>=, 0
         end
 
         test "error_count is SUM of error_count across periods" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-
-            assert result.error_count.nil? || result.error_count.is_a?(Numeric)
-          end
+          assert result.error_count.nil? || result.error_count.is_a?(Numeric)
         end
 
         test "success_count is SUM of success_count across periods" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-
-            assert result.success_count.nil? || result.success_count.is_a?(Numeric)
-          end
+          assert result.success_count.nil? || result.success_count.is_a?(Numeric)
         end
 
         test "uses NULLIF to prevent division by zero" do
@@ -191,13 +152,9 @@ module RailsPulse
         end
 
         test "single summary returns correct values" do
-          results = create_table
+          result = first_table_row
 
-          if results.any?
-            result = results.first
-            # Values should be present and valid
-            assert result.count.nil? || result.count >= 0
-          end
+          assert result.count.nil? || result.count >= 0
         end
 
         # Filtering Tests
@@ -239,25 +196,20 @@ module RailsPulse
         test "disabled_tags with non_tagged excludes non-tagged routes" do
           results = create_table(disabled_tags: [ "non_tagged" ])
 
-          # Should exclude routes without tags
-          if results.any?
-            results.each do |result|
-              # All results should have tags
-              assert result.tags
-              refute_equal "[]", result.tags
-            end
+          assert_kind_of ActiveRecord::Relation, results
+          results.each do |result|
+            assert result.tags
+            refute_equal "[]", result.tags
           end
         end
 
         test "show_non_tagged false excludes routes without tags" do
           results = create_table(show_non_tagged: false)
 
-          # Should only include routes with tags
-          if results.any?
-            results.each do |result|
-              assert result.tags
-              refute_equal "[]", result.tags
-            end
+          assert_kind_of ActiveRecord::Relation, results
+          results.each do |result|
+            assert result.tags
+            refute_equal "[]", result.tags
           end
         end
 
