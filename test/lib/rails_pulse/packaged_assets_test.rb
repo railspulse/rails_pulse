@@ -40,6 +40,10 @@ class RailsPulse::PackagedAssetsTest < ActiveSupport::TestCase
   end
 
   test "install copies source maps next to the JS and CSS" do
+    js_map = RailsPulse::Engine.root.join("public/rails-pulse-assets/rails-pulse.js.map")
+    css_map = RailsPulse::Engine.root.join("public/rails-pulse-assets/rails-pulse.css.map")
+    skip "Source maps not built (run npm run build:dev)" unless js_map.exist? && css_map.exist?
+
     RailsPulse::PackagedAssets.install!(destination: @destination)
 
     assert_predicate @destination.join("rails-pulse.js.map"), :exist?
