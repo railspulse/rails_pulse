@@ -121,6 +121,7 @@ module RailsPulse
 
       def table_named(name)
         table = StorageStatus.new.tables.find { |entry| entry[:name] == name }
+
         assert table, "Expected a table named #{name}"
         table
       end
