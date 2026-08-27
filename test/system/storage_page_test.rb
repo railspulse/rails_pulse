@@ -9,7 +9,7 @@ class StoragePageTest < ApplicationSystemTestCase
 
     assert_selector ".storage-panel-stats"
     assert_text "HIGHEST FILL"
-    assert_text "PULSE RECORDS"
+    assert_text "RECORDS"
     assert_text "CLEANUP"
 
     find("a[href='/rails_pulse/storage']", match: :first).click

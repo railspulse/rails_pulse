@@ -7,7 +7,7 @@
     <p class="text-xs text-subtle"><%= @status.overview[:hottest_label] %></p>
   </div>
   <div class="card storage-overview-card">
-    <p class="font-semibold uppercase text-xs text-subtle mbe-1">Pulse records</p>
+    <p class="font-semibold uppercase text-xs text-subtle mbe-1">Records</p>
     <p class="text-xl font-bold"><%= number_with_delimiter(@status.overview[:total_records]) %></p>
     <p class="text-xs text-subtle">Across <%= @status.tables.size %> tables</p>
   </div>
