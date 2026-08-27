@@ -33,6 +33,8 @@ module RailsPulse
 
       # System Health bar
       @health_summary = RailsPulse::Dashboard::HealthSummary.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: @period).to_health_data
+
+      @storage_status = RailsPulse::Dashboard::StorageStatus.new
     end
   end
 end

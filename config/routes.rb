@@ -20,6 +20,7 @@ RailsPulse::Engine.routes.draw do
       resources :runs, only: %i[index show], controller: "job_runs"
     end
   end
+  resource :storage, only: :show, controller: "storage"
   patch "pagination/limit", to: "application#set_pagination_limit", as: :pagination_limit
   patch "settings/global_filters", to: "application#set_global_filters", as: :settings_global_filters
   patch "settings/time_range", to: "application#set_time_range", as: :settings_time_range

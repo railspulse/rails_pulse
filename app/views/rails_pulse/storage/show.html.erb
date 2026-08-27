@@ -1,0 +1,123 @@
+<%= render "rails_pulse/components/page_header" %>
+
+<div class="row">
+  <div class="card storage-overview-card">
+    <p class="font-semibold uppercase text-xs text-subtle mbe-1">Highest fill</p>
+    <p class="text-xl font-bold"><% if @status.overview[:hottest_percent] %><%= @status.overview[:hottest_percent].round %>%<% else %>--<% end %></p>
+    <p class="text-xs text-subtle"><%= @status.overview[:hottest_label] %></p>
+  </div>
+  <div class="card storage-overview-card">
+    <p class="font-semibold uppercase text-xs text-subtle mbe-1">Records</p>
+    <p class="text-xl font-bold"><%= number_with_delimiter(@status.overview[:total_records]) %></p>
+    <p class="text-xs text-subtle">Across <%= @status.tables.size %> tables</p>
+  </div>
+  <div class="card storage-overview-card">
+    <p class="font-semibold uppercase text-xs text-subtle mbe-1">Disk used</p>
+    <p class="text-xl font-bold"><%= @status.overview[:display_bytes] ? human_readable_bytes(@status.overview[:display_bytes]) : "—" %></p>
+    <p class="text-xs text-subtle"><%= @status.database[:adapter] %> · <%= @status.database[:setup_label] %></p>
+  </div>
+  <div class="card storage-overview-card">
+    <p class="font-semibold uppercase text-xs text-subtle mbe-1">Cleanup</p>
+    <p class="text-xl font-bold storage-health storage-health--<%= @status.overview[:cleanup_health] %>"><%= @status.overview[:cleanup_label] %></p>
+    <p class="text-xs text-subtle">Retain <%= @status.cleanup[:retention_label] %></p>
+  </div>
+</div>
+
+<% if @status.pressure_items.any? %>
+  <div class="card">
+    <div class="flex items-center mbe-3">
+      <h2 class="font-semibold leading-none uppercase text-xs">Needs attention</h2>
+      <span class="badge badge--negative mis-2 text-xs"><%= @status.pressure_items.size %></span>
+    </div>
+    <% @status.pressure_items.each do |item| %>
+      <%= render "rails_pulse/dashboard/attention_item", item: item, severity: item[:severity].to_s %>
+    <% end %>
+  </div>
+<% end %>
+
+<%= render "rails_pulse/components/panel",
+    title: "Tables",
+    help_heading: "Count caps",
+    help_text: "Fill is measured against max_table_records. Cleanup deletes oldest rows after the retention window, then trims down to these caps. Tables with no cap grow until time-based cleanup (if any) removes them." do %>
+  <div class="storage-tables mbs-4">
+    <% @status.tables.each do |table| %>
+      <div class="storage-table">
+        <div class="storage-table__header">
+          <div>
+            <h3 class="font-semibold text-sm"><%= table[:label] %></h3>
+            <p class="text-xs text-subtle"><%= table[:description] %></p>
+          </div>
+          <div class="storage-table__counts">
+            <span class="font-semibold text-sm"><%= number_with_delimiter(table[:count]) %></span>
+            <% if table[:limit] %>
+              <span class="text-xs text-subtle"> / <%= number_with_delimiter(table[:limit]) %></span>
+              <span class="badge storage-table__percent storage-table__percent--<%= table[:severity] %>"><%= table[:percent_label] %></span>
+            <% else %>
+              <span class="badge storage-table__percent storage-table__percent--uncapped">No cap</span>
+            <% end %>
+          </div>
+        </div>
+        <div class="storage-fill" aria-hidden="true">
+          <div class="storage-fill__bar storage-fill__bar--<%= table[:severity] %>" style="width: <%= table[:bar_width] %>%"></div>
+        </div>
+        <div class="storage-table__meta text-xs text-subtle">
+          <span><%= table[:history_label] %></span>
+          <span><%= number_with_delimiter(table[:recent_count]) %> in last 24h</span>
+          <span><%= table[:runway_label] %></span>
+          <span><%= table[:bytes] ? human_readable_bytes(table[:bytes]) : "Size unknown" %></span>
+        </div>
+      </div>
+    <% end %>
+  </div>
+<% end %>
+
+<div class="row">
+  <%= render "rails_pulse/components/panel",
+      title: "Cleanup",
+      help_heading: "How cleanup works",
+      help_text: "Time-based cleanup deletes records older than full_retention_period, but only after that period has been summarised. Count-based cleanup then trims each table down to max_table_records. Schedule RailsPulse::CleanupJob daily." do %>
+    <dl class="descriptive-list mbs-4">
+      <dt>Automatic cleanup</dt>
+      <dd><%= @status.cleanup[:enabled] ? "Enabled" : "Disabled (archiving_enabled = false)" %></dd>
+      <dt>Retention period</dt>
+      <dd><%= @status.cleanup[:retention_label] %></dd>
+      <dt>Last hourly summary</dt>
+      <dd>
+        <% if @status.cleanup[:last_summary_at] %>
+          <%= human_readable_occurred_at(@status.cleanup[:last_summary_at]) %>
+          <span class="text-subtle">(<%= time_ago_in_words(@status.cleanup[:last_summary_at]) %>)</span>
+        <% else %>
+          Never — cleanup will not delete unsummarised requests
+        <% end %>
+      </dd>
+      <dt>Count caps</dt>
+      <dd>Configured in <code>max_table_records</code>. Tables without a key have no count limit.</dd>
+    </dl>
+  <% end %>
+
+  <%= render "rails_pulse/components/panel",
+      title: "Database",
+      help_heading: "What size means",
+      help_text: "On PostgreSQL and MySQL this is Pulse table size including indexes. On a dedicated SQLite database this is the file size. Shared SQLite cannot report a Pulse-only file size." do %>
+    <dl class="descriptive-list mbs-4">
+      <dt>Adapter</dt>
+      <dd><%= @status.database[:adapter] %></dd>
+      <dt>Setup</dt>
+      <dd><%= @status.database[:setup_label] %></dd>
+      <dt>Database</dt>
+      <dd><code><%= @status.database[:database_name].presence || "—" %></code></dd>
+      <dt>Size</dt>
+      <dd>
+        <% if @status.overview[:display_bytes] %>
+          <%= human_readable_bytes(@status.overview[:display_bytes]) %>
+        <% else %>
+          Not available
+        <% end %>
+      </dd>
+      <% if @status.database[:size_note] %>
+        <dt>Note</dt>
+        <dd class="text-subtle"><%= @status.database[:size_note] %></dd>
+      <% end %>
+    </dl>
+  <% end %>
+</div>
