@@ -10,8 +10,11 @@ Gem::Specification.new do |spec|
   spec.description = "Self-hosted performance monitoring engine for Rails apps. Tracks slow requests, N+1 queries, and SQL performance. All data stays in your own database — no third-party cloud required."
   spec.license     = "MIT"
 
-  # Specify minimum Ruby version
-  spec.required_ruby_version = ">= 3.0.0"
+  # Minimum Ruby version. Floor is 3.1.0, not 3.0.0: `async ~> 2.0` has no release
+  # installable on Ruby 3.0 (async 2.0.0 already requires >= 3.1.0), and
+  # lib/generators/rails_pulse/upgrade_generator.rb uses Array#intersect? (Ruby 3.1+).
+  # NOTE: CI only exercises 3.2 and 3.4 — see the pre-release report.
+  spec.required_ruby_version = ">= 3.1.0"
 
   # Allow pushing to RubyGems.org
   spec.metadata["allowed_push_host"] = "https://rubygems.org"
@@ -20,19 +23,41 @@ Gem::Specification.new do |spec|
   spec.metadata["source_code_uri"] = "https://github.com/railspulse/rails_pulse"
   spec.metadata["changelog_uri"] = "https://github.com/railspulse/rails_pulse/blob/main/CHANGELOG.md"
   spec.metadata["documentation_uri"] = "https://railspulse.com/documentation/installation"
+  spec.metadata["bug_tracker_uri"] = "https://github.com/railspulse/rails_pulse/issues"
+  spec.metadata["rubygems_mfa_required"] = "true"
 
+  # Keep this manifest exclusive as well as inclusive. The globs read the working
+  # tree, not git, so build artifacts that are gitignored locally (notably *.map,
+  # ~24 MB of source maps) would otherwise be published. Directories are rejected
+  # so the entry count reflects real files.
   spec.files = Dir.chdir(File.expand_path(__dir__)) do
-    Dir["{app,config,db,exe,lib,public,vendor}/**/*", "MIT-LICENSE", "Rakefile", "README.md"]
+    Dir["{app,config,db,exe,lib,public,vendor}/**/*", "MIT-LICENSE", "CHANGELOG.md", "README.md"]
+      .reject { |f| File.directory?(f) }
+      .reject { |f| f.end_with?(".map") }
+      .reject { |f| f.start_with?("vendor/assets/") }
+      .reject { |f| f.start_with?("config/brakeman") }
   end
 
   spec.bindir = "exe"
   spec.executables = [ "rails_pulse_server" ]
 
   spec.post_install_message = <<~MSG
-    Rails Pulse #{RailsPulse::VERSION} installed. If upgrading from 0.3.3, run:
+    Rails Pulse #{spec.version} installed.
+
+    UPGRADING from any 0.3.x? This release changes route identity and DROPS
+    rails_pulse_routes.method. Back up your database first, then run:
+
       rails generate rails_pulse:upgrade
-      rails db:migrate                  # or rails db:migrate:rails_pulse
-      rails rails_pulse:migrate_routes  # required for this release
+      rails db:migrate                  # separate Pulse DB: rails db:migrate:rails_pulse
+      rails rails_pulse:migrate_routes  # REQUIRED - migrate alone leaves Action empty
+
+    Then restart ALL processes together. A rolling restart that leaves old
+    processes against the new schema breaks tracking and the routes dashboard.
+    Separate database: set schema_dump: false and delete db/rails_pulse_structure.sql.
+    Exception tracking is inserted as disabled; set track_exceptions = true to opt in.
+
+    New install? Run: rails generate rails_pulse:install
+    Changelog: https://github.com/railspulse/rails_pulse/blob/main/CHANGELOG.md
   MSG
 
   spec.add_dependency "rails", ">= 7.1.0", "< 9.0.0"

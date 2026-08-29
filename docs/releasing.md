@@ -96,38 +96,46 @@ separate-database upgrade path before shipping:
 7. Restore the initializer: comment `connects_to` back out and delete the temporary
    SQLite file.
 
-Also for this release: bump `RailsPulse::VERSION` (0.3.3 is already on RubyGems). Route
-identity is a breaking schema change — prefer a minor bump (0.4.0). After
-`assets:precompile`, confirm logs include `[RailsPulse] Installed N dashboard assets`.
-If any CDN caches `/rails-pulse-assets/<version>/...` as immutable, the version bump
-is what busts that cache.
+#### Verify assets and version-scoped caching
+
+Dashboard assets are served from `/rails-pulse-assets/<gem-version>/...`, so the
+version bump is what busts any CDN cache holding those paths as immutable. After
+`assets:precompile`, confirm the logs include `[RailsPulse] Installed N dashboard
+assets`.
+
+`npm run build` is a manual step whose output is committed, so confirm the built
+files under `public/rails-pulse-assets/` match their sources before tagging.
+
+> Release-specific notes belong in the CHANGELOG's `[Unreleased]` section, not in
+> this file.
 
 ### 2. Update Version
 
 ```bash
-bin/bump_version 0.3.0
+bin/bump_version X.Y.Z
 ```
 
 Updates:
 - `lib/rails_pulse/version.rb`
 - `Gemfile.lock`
-- `gemfiles/rails_7_2.gemfile.lock`
-- `gemfiles/rails_8_0.gemfile.lock`
+- every `gemfiles/rails_*.gemfile.lock` (discovered from the directory, so a newly
+  added Rails version is picked up automatically)
+- `test/dummy/Gemfile.lock`
 
-**Pre-release versions:** use dots, not hyphens — `0.3.0.pre.1`, `0.3.0.beta.1`, `0.3.0.rc.1`.
+**Pre-release versions:** use dots, not hyphens — `X.Y.Z.pre.1`, `X.Y.Z.beta.1`, `X.Y.Z.rc.1`.
 
 ### 3. Commit Changes
 
 ```bash
-bin/commit_release 0.3.0
+bin/commit_release X.Y.Z
 ```
 
-Creates commit: `Bump version to v0.3.0`
+Creates commit: `Bump version to vX.Y.Z`
 
 ### 4. Create Git Tag
 
 ```bash
-bin/tag_release 0.3.0
+bin/tag_release X.Y.Z
 ```
 
 Opens your editor for release notes. Optionally generates a draft from git history.
@@ -135,7 +143,7 @@ Opens your editor for release notes. Optionally generates a draft from git histo
 Or provide notes inline:
 
 ```bash
-bin/tag_release 0.3.0 --notes "Bug fixes and improvements"
+bin/tag_release X.Y.Z --notes "Bug fixes and improvements"
 ```
 
 ### 5. Push to GitHub
@@ -192,18 +200,18 @@ bin/release
 **Manual step-by-step:**
 ```bash
 rake test_release
-bin/bump_version 0.3.0
-bin/commit_release 0.3.0
-bin/tag_release 0.3.0
+bin/bump_version X.Y.Z
+bin/commit_release X.Y.Z
+bin/tag_release X.Y.Z
 bin/push_release --wait-ci
 bin/publish_gem
 ```
 
 **Quick patch (skip tests):**
 ```bash
-bin/bump_version 0.2.1
-bin/commit_release 0.2.1
-bin/tag_release 0.2.1 --notes "Critical bug fix"
+bin/bump_version X.Y.Z
+bin/commit_release X.Y.Z
+bin/tag_release X.Y.Z --notes "Critical bug fix"
 bin/push_release
 bin/publish_gem
 ```
@@ -228,7 +236,7 @@ Fix issues, commit fixes, and re-run from step 5.
 
 **Rollback (emergency only):**
 ```bash
-gem yank rails_pulse -v 0.3.0  # Use sparingly!
+gem yank rails_pulse -v X.Y.Z  # Use sparingly!
 ```
 
 ## Version Guidelines
@@ -239,4 +247,4 @@ Rails Pulse follows [Semantic Versioning](https://semver.org/):
 - **MINOR** (0.1.0): New features, backwards-compatible
 - **PATCH** (0.0.1): Bug fixes, security patches
 
-Pre-release suffixes use dots: `0.3.0.pre.1`, `0.3.0.beta.1`, `0.3.0.rc.1`
+Pre-release suffixes use dots: `X.Y.Z.pre.1`, `X.Y.Z.beta.1`, `X.Y.Z.rc.1`
