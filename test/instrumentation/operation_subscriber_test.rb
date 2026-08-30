@@ -478,7 +478,7 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     RailsPulse.configuration.capture_actual_sql = original
   end
 
-  test "actual_sql is nil when capture_actual_sql is disabled" do
+  test "actual_sql is captured in memory even when capture_actual_sql is disabled" do
     original = RailsPulse.configuration.capture_actual_sql
     RailsPulse.configuration.capture_actual_sql = false
 
@@ -489,7 +489,10 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     operation = RequestStore.store[:rails_pulse_operations].first
 
     assert_equal "sql", operation[:operation_type]
-    assert_nil operation[:actual_sql]
+    # actual_sql is always captured in memory (needed for query normalization
+    # in Operation.persist_bulk). It is cleared at persistence time when
+    # capture_actual_sql is false.
+    assert_equal "SELECT * FROM users", operation[:actual_sql]
   ensure
     RailsPulse.configuration.capture_actual_sql = original
   end

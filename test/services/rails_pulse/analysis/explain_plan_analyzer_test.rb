@@ -74,7 +74,7 @@ module RailsPulse
       end
 
       test "refuses to EXPLAIN non-SELECT statements" do
-        query = rails_pulse_queries(:users_query)
+        query = rails_pulse_queries(:simple_query)
         op = create_operation(actual_sql: "DELETE FROM users WHERE id = 1")
         analyzer = ExplainPlanAnalyzer.new(query, [ op ])
 
