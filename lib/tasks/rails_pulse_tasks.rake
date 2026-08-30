@@ -50,4 +50,5 @@ namespace :rails_pulse do
         puts "Manually resolve these duplicates, then re-run this task."
       end
     end
+  end
 end
