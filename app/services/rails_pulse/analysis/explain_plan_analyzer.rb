@@ -30,17 +30,23 @@ module RailsPulse
 
         begin
           sanitized_sql = sanitize_sql_for_explain(sql)
+          conn = RailsPulse::ApplicationRecord.connection
 
-          Timeout.timeout(EXPLAIN_TIMEOUT) do
-            case database_adapter
-            when "postgresql"
-              execute_postgres_explain(sanitized_sql)
-            when "mysql", "mysql2"
-              execute_mysql_explain(sanitized_sql)
-            when "sqlite"
-              execute_sqlite_explain(sanitized_sql)
-            else
-              nil
+          # Wrap in a savepoint so that a failed EXPLAIN on PostgreSQL does not
+          # abort the surrounding transaction (e.g. during tests or inside a
+          # host app's transaction block).
+          conn.transaction(requires_new: true) do
+            Timeout.timeout(EXPLAIN_TIMEOUT) do
+              case database_adapter
+              when "postgresql"
+                execute_postgres_explain(sanitized_sql)
+              when "mysql", "mysql2"
+                execute_mysql_explain(sanitized_sql)
+              when "sqlite"
+                execute_sqlite_explain(sanitized_sql)
+              else
+                nil
+              end
             end
           end
         rescue => e
