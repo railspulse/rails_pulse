@@ -47,7 +47,6 @@ jobs:
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
-      COVERAGE: ${{ matrix.coverage && 'true' || '' }}
 
     steps:
     - uses: actions/checkout@v7
@@ -79,6 +78,11 @@ jobs:
           "test_setup_for_version[${{ matrix.database }},${{ steps.gemfile.outputs.appraisal }}]"
 
     - name: Run tests
+      env:
+        # Only the coverage cell measures coverage; scoped to this step so
+        # db:create/db:migrate never boot under SimpleCov (its minimum-coverage
+        # at_exit gate would kill setup at ~5% coverage).
+        COVERAGE: ${{ matrix.coverage && 'true' || '' }}
       run: |
         DB=${{ matrix.database }} BUNDLE_GEMFILE=${{ steps.gemfile.outputs.path }} \
           bundle exec appraisal ${{ steps.gemfile.outputs.appraisal }} rake test

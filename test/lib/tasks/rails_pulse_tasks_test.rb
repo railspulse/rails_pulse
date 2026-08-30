@@ -379,4 +379,55 @@ class RailsPulseTasksTest < ActiveSupport::TestCase
   ensure
     RailsPulse.configuration.archiving_enabled = original
   end
+  # rails_pulse:migrate_routes tests
+
+  test "migrate_routes reports backfill and normalization results" do
+    RailsPulse::RouteControllerActionBackfiller.stubs(:call).returns(
+      updated: 2, merged: 1, skipped: 0, already_set: 5
+    )
+    RailsPulse::RouteMigrator.stubs(:call).returns(merged: 3, skipped: 0, unchanged: 4)
+    RailsPulse::RouteIndexes.stubs(:ensure_null_action_uniqueness!)
+
+    output = reenable_and_capture("rails_pulse:migrate_routes") do
+      Rake::Task["rails_pulse:migrate_routes"].invoke
+    end
+
+    assert_includes output, "Controller action backfill: 2 updated, 1 merged"
+    assert_includes output, "Path normalization: 3 merged"
+    assert_includes output, "Ensured unique index on unrecognized"
+  end
+
+  test "migrate_routes retries the unique index after a duplicate path race" do
+    RailsPulse::RouteControllerActionBackfiller.stubs(:call).returns(
+      updated: 0, merged: 0, skipped: 0, already_set: 0
+    )
+    RailsPulse::RouteMigrator.stubs(:call).returns(merged: 0, skipped: 0, unchanged: 0)
+    RailsPulse::RouteIndexes.stubs(:ensure_null_action_uniqueness!)
+      .raises(ActiveRecord::RecordNotUnique.new("dup"))
+      .then.returns(nil)
+
+    output = reenable_and_capture("rails_pulse:migrate_routes") do
+      Rake::Task["rails_pulse:migrate_routes"].invoke
+    end
+
+    assert_includes output, "Duplicate null-action paths detected after consolidation"
+    assert_includes output, "Unique index created on retry."
+  end
+
+  test "migrate_routes reports unresolvable duplicate paths" do
+    RailsPulse::RouteControllerActionBackfiller.stubs(:call).returns(
+      updated: 0, merged: 0, skipped: 0, already_set: 0
+    )
+    RailsPulse::RouteMigrator.stubs(:call).returns(merged: 0, skipped: 0, unchanged: 0)
+    RailsPulse::RouteIndexes.stubs(:ensure_null_action_uniqueness!)
+      .raises(ActiveRecord::RecordNotUnique.new("dup"))
+    RailsPulse::Route.stubs(:where).returns(stub(group: stub(having: stub(pluck: [ "/dup/1", "/dup/2" ]))))
+
+    output = reenable_and_capture("rails_pulse:migrate_routes") do
+      Rake::Task["rails_pulse:migrate_routes"].invoke
+    end
+
+    assert_includes output, "ERROR: Could not create unique index. Duplicate paths remain:"
+    assert_includes output, "/dup/1"
+  end
 end

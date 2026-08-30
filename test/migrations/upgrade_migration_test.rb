@@ -83,7 +83,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     test "upgrade from v0.3.3 keeps GET and POST on the same path as separate routes" do
       load_baseline(RailsPulse::TestSchemas::V033)
 
-      now = Time.current.iso8601(6)
+      now = Time.current.strftime("%Y-%m-%d %H:%M:%S")
       @conn.execute(<<~SQL)
         INSERT INTO rails_pulse_routes (method, path, created_at, updated_at)
         VALUES ('GET', '/users', '#{now}', '#{now}')
@@ -151,7 +151,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
   test "upgrade from v0.2.7 keeps GET and POST on the same path as separate routes" do
     load_baseline(RailsPulse::TestSchemas::V027)
 
-    now = Time.current.iso8601(6)
+    now = Time.current.strftime("%Y-%m-%d %H:%M:%S")
     @conn.execute(<<~SQL)
       INSERT INTO rails_pulse_routes (method, path, created_at, updated_at)
       VALUES ('GET', '/users', '#{now}', '#{now}')
@@ -198,7 +198,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
 
   test "migrate_routes after upgrade preserves distinct REST actions and merges same-action paths" do
     load_baseline(RailsPulse::TestSchemas::V027)
-    now = Time.current.iso8601(6)
+    now = Time.current.strftime("%Y-%m-%d %H:%M:%S")
 
     [
       [ "GET", "/users" ],
@@ -411,7 +411,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
   end
 
   def assert_can_insert_core_records
-    now = Time.current.iso8601(6)
+    now = Time.current.strftime("%Y-%m-%d %H:%M:%S")
     uuid = SecureRandom.uuid
     path = "/migration-test-#{SecureRandom.hex(4)}"
 
@@ -437,7 +437,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
   end
 
   def assert_can_insert_job_run
-    now = Time.current.iso8601(6)
+    now = Time.current.strftime("%Y-%m-%d %H:%M:%S")
     job_name = "MigrationTestJob-#{SecureRandom.hex(4)}"
     run_id = SecureRandom.uuid
 
@@ -461,7 +461,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
   end
 
   def assert_can_insert_deployment
-    now = Time.current.iso8601(6)
+    now = Time.current.strftime("%Y-%m-%d %H:%M:%S")
 
     @conn.execute(<<~SQL)
       INSERT INTO rails_pulse_deployments (revision, started_at, created_at, updated_at)
@@ -474,7 +474,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
   end
 
   def assert_can_insert_exception
-    now = Time.current.iso8601(6)
+    now = Time.current.strftime("%Y-%m-%d %H:%M:%S")
     fingerprint = SecureRandom.hex(16)
 
     @conn.execute(<<~SQL)

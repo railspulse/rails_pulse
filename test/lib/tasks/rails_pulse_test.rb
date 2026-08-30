@@ -222,4 +222,168 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
     assert_includes output, "Creating hourly and daily summaries"
     assert_includes output, "15"
   end
+  # rails_pulse:record_deployment tests
+
+  test "record_deployment requires a revision" do
+    output = capture_stderr do
+      reenable_and_capture("rails_pulse:record_deployment") do
+        Rake::Task["rails_pulse:record_deployment"].invoke
+      end
+    end
+
+    assert_includes output, "ERROR: revision is required"
+  end
+
+  test "record_deployment records the revision" do
+    deployment = stub(revision: "abc1234", started_at: Time.current)
+    RailsPulse::Deployment.stubs(:create!).with(revision: "abc1234", started_at: instance_of(ActiveSupport::TimeWithZone)).returns(deployment)
+
+    output = reenable_and_capture("rails_pulse:record_deployment") do
+      Rake::Task["rails_pulse:record_deployment"].invoke("abc1234")
+    end
+
+    assert_includes output, "Deployment recorded: abc1234"
+  end
+
+  test "record_deployment aborts on invalid record" do
+    RailsPulse::Deployment.stubs(:create!).raises(ActiveRecord::RecordInvalid)
+
+    output = capture_stderr do
+      reenable_and_capture("rails_pulse:record_deployment") do
+        Rake::Task["rails_pulse:record_deployment"].invoke("abc1234")
+      end
+    end
+
+    assert_includes output, "ERROR:"
+  end
+
+  # record_rails_pulse_migrations_applied tests
+
+  test "migration recording skips when schema load created no tables" do
+    with_temporary_migrations_dir("20260101000000_test_feature.rb" => "") do
+      conn = mock("connection")
+      conn.stubs(:table_exists?).with(:rails_pulse_routes).returns(false)
+      RailsPulse::ApplicationRecord.stubs(:connection).returns(conn)
+
+      output = capture_stdout { record_rails_pulse_migrations_applied }
+
+      assert_includes output, "skipping migration recording"
+    end
+  end
+
+  test "migration recording marks plain migrations applied" do
+    with_temporary_migrations_dir("20260101000000_test_feature.rb" => "") do
+      conn = mock("connection")
+      conn.stubs(:table_exists?).with(:rails_pulse_routes).returns(true)
+      conn.stubs(:table_exists?).with(:schema_migrations).returns(true)
+      conn.stubs(:select_values).returns([])
+      conn.stubs(:quote).returns("'20260101000000'")
+      conn.expects(:execute).with("INSERT INTO schema_migrations (version) VALUES ('20260101000000')")
+      RailsPulse::ApplicationRecord.stubs(:connection).returns(conn)
+
+      output = capture_stdout { record_rails_pulse_migrations_applied }
+
+      assert_includes output, "Marked migration 20260101000000 as applied"
+    end
+  end
+
+  test "migration recording creates the schema_migrations table when missing" do
+    with_temporary_migrations_dir("20260101000000_test_feature.rb" => "") do
+      conn = mock("connection")
+      conn.stubs(:table_exists?).with(:rails_pulse_routes).returns(true)
+      conn.stubs(:table_exists?).with(:schema_migrations).returns(false)
+      table = mock("table")
+      table.stubs(:string).with(:version, null: false)
+      conn.stubs(:create_table).with(:schema_migrations, id: false).yields(table)
+      conn.stubs(:add_index).with(:schema_migrations, :version, unique: true, name: "unique_schema_migrations")
+      conn.stubs(:select_values).returns([])
+      conn.stubs(:quote).returns("'20260101000000'")
+      conn.stubs(:execute)
+      RailsPulse::ApplicationRecord.stubs(:connection).returns(conn)
+
+      record_rails_pulse_migrations_applied
+    end
+  end
+
+  test "migration recording skips route migrations whose columns are absent" do
+    with_temporary_migrations_dir(
+      "20260610000002_change_rails_pulse_routes_to_multi_verb_model.rb" => ""
+    ) do
+      conn = mock("connection")
+      conn.stubs(:table_exists?).with(:rails_pulse_routes).returns(true)
+      conn.stubs(:table_exists?).with(:schema_migrations).returns(true)
+      conn.stubs(:column_exists?).with(:rails_pulse_routes, :controller_action).returns(false)
+      conn.stubs(:execute).never
+      RailsPulse::ApplicationRecord.stubs(:connection).returns(conn)
+
+      output = capture_stdout { record_rails_pulse_migrations_applied }
+
+      assert_includes output, "Skipping 20260610000002"
+    end
+  end
+
+  test "migration recording warns when recording fails" do
+    with_temporary_migrations_dir("20260101000000_test_feature.rb" => "") do
+      conn = mock("connection")
+      conn.stubs(:table_exists?).with(:rails_pulse_routes).returns(true)
+      conn.stubs(:table_exists?).with(:schema_migrations).returns(true)
+      conn.stubs(:select_values).raises(StandardError, "boom")
+      conn.stubs(:quote).returns("'20260101000000'")
+      RailsPulse::ApplicationRecord.stubs(:connection).returns(conn)
+
+      err = capture_stderr { record_rails_pulse_migrations_applied }
+
+      assert_includes err, "Could not mark migrations as applied"
+    end
+  end
+
+  test "load_rails_pulse reports a missing schema file" do
+    Object.any_instance.stubs(:separate_database_setup?).returns(true)
+    schema_file = Rails.root.join("db/rails_pulse_schema.rb")
+    schema_file.stubs(:exist?).returns(false)
+    Rails.root.stubs(:join).with("db/rails_pulse_schema.rb").returns(schema_file)
+
+    output = reenable_and_capture("db:schema:load_rails_pulse") do
+      Rake::Task["db:schema:load_rails_pulse"].invoke
+    end
+
+    assert_includes output, "schema file not found"
+  end
+
+  private
+
+  def capture_stdout
+    output = StringIO.new
+    old_stdout = $stdout
+    $stdout = output
+    begin
+      yield
+    ensure
+      $stdout = old_stdout
+    end
+    output.string
+  end
+
+  def capture_stderr
+    output = StringIO.new
+    old_stderr = $stderr
+    $stderr = output
+    begin
+      yield
+    ensure
+      $stderr = old_stderr
+    end
+    output.string
+  end
+
+  def with_temporary_migrations_dir(files)
+    dir = Dir.mktmpdir
+    files.each { |name, body| File.write(File.join(dir, name), body) }
+    path = Pathname.new(dir)
+    path.stubs(:exist?).returns(true)
+    Rails.root.stubs(:join).with("db/rails_pulse_migrate").returns(path)
+    yield
+  ensure
+    FileUtils.remove_entry(dir) if dir
+  end
 end

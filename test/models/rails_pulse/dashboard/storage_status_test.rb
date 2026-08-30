@@ -109,12 +109,53 @@ module RailsPulse
         assert_equal "14 days", cleanup[:retention_label]
       end
 
+      test "retention label renders hours and minutes" do
+        RailsPulse.configuration.archiving_enabled = true
+        RailsPulse.configuration.full_retention_period = 3.hours
+
+        assert_equal "3 hours", StorageStatus.new.cleanup[:retention_label]
+
+        RailsPulse.configuration.full_retention_period = 45.minutes
+
+        assert_equal "45 minutes", StorageStatus.new.cleanup[:retention_label]
+      end
+
+      test "cleanup reports disabled when archiving is off" do
+        RailsPulse.configuration.archiving_enabled = false
+        RailsPulse::Dashboard::StoragePressure.any_instance.stubs(:pressure_items).returns([])
+
+        cleanup = StorageStatus.new.cleanup
+
+        assert_equal :disabled, cleanup[:health]
+        assert_equal "Cleanup off", cleanup[:health_label]
+      end
+
+      test "cleanup warns when a pressure item is at warning severity" do
+        RailsPulse.configuration.archiving_enabled = true
+        RailsPulse::Dashboard::StoragePressure.any_instance.stubs(:pressure_items).returns([ { severity: :warning } ])
+
+        cleanup = StorageStatus.new.cleanup
+
+        assert_equal :warning, cleanup[:health]
+        assert_equal "Needs attention", cleanup[:health_label]
+      end
+
       test "database reports the adapter" do
         database = StorageStatus.new.database
 
         assert_kind_of String, database[:adapter]
         refute_predicate database[:adapter], :blank?
         assert_includes [ true, false ], database[:separate]
+      end
+
+      test "database adapter label names the adapter" do
+        adapter = StorageStatus.new.database[:adapter]
+
+        if RailsPulse::ApplicationRecord.connection.adapter_name.downcase.include?("sqlite")
+          assert_equal "SQLite", adapter
+        else
+          refute_includes [ "PostgreSQL", "MySQL", "SQLite" ], adapter
+        end
       end
 
       private

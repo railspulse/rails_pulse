@@ -1,5 +1,6 @@
 class MakeCacheHitOnOperationsNullable < ActiveRecord::Migration[7.0]
   def change
+    return unless table_exists?(:rails_pulse_operations)
     return unless column_exists?(:rails_pulse_operations, :cache_hit)
 
     change_column_null :rails_pulse_operations, :cache_hit, true
