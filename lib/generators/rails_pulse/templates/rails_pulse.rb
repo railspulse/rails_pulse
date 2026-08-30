@@ -144,6 +144,13 @@ RailsPulse.configure do |config|
   # Set to false to disable entirely, e.g. for strict data-minimization requirements.
   config.capture_exception_params = true
 
+  # Capture the raw (unparameterized) SQL for each operation.
+  # WARNING: mysql2 defaults to prepared_statements: false, so every literal
+  # value (emails, passwords, tokens) is inlined and stored in plaintext.
+  # Same applies to PostgreSQL behind PgBouncer in transaction-pool mode.
+  # Default: false (upgrade-safe). New installs may opt in after review.
+  # config.capture_actual_sql = true
+
   # ====================================================================================================
   #                                            BACKGROUND JOBS
   # ====================================================================================================
@@ -263,7 +270,8 @@ RailsPulse.configure do |config|
   # Example 4: Basic HTTP authentication
   # config.authentication_method = proc {
   #   authenticate_or_request_with_http_basic do |username, password|
-  #     username == ENV['RAILS_PULSE_USERNAME'] && password == ENV['RAILS_PULSE_PASSWORD']
+  #     ActiveSupport::SecurityUtils.secure_compare(username, ENV['RAILS_PULSE_USERNAME']) &&
+  #       ActiveSupport::SecurityUtils.secure_compare(password, ENV['RAILS_PULSE_PASSWORD'])
   #   end
   # }
 

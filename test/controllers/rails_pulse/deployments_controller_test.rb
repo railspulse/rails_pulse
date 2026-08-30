@@ -3,9 +3,28 @@ require "test_helper"
 class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
   fixtures :rails_pulse_deployments
 
+  DEPLOY_TOKEN = "test-deploy-token"
+
   def setup
     ENV["TEST_TYPE"] = "functional"
+    @original_token = RailsPulse.configuration.deployment_api_token
+    RailsPulse.configuration.deployment_api_token = DEPLOY_TOKEN
     super
+  end
+
+  def teardown
+    RailsPulse.configuration.deployment_api_token = @original_token
+    super
+  end
+
+  # Inject the deployment token into every request so the fail-closed
+  # guard doesn't reject them. Tests that exercise auth explicitly
+  # override the token or headers as needed.
+  %i[post put].each do |verb|
+    define_method(verb) do |path, **opts|
+      opts[:headers] = (opts[:headers] || {}).reverse_merge("X-Rails-Pulse-Token" => DEPLOY_TOKEN)
+      super(path, **opts)
+    end
   end
 
   # POST /deployments
@@ -137,7 +156,7 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :created
   ensure
-    RailsPulse.configuration.deployment_api_token = nil
+    RailsPulse.configuration.deployment_api_token = DEPLOY_TOKEN
   end
 
   test "create returns 401 with wrong token" do
@@ -150,7 +169,7 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unauthorized
   ensure
-    RailsPulse.configuration.deployment_api_token = nil
+    RailsPulse.configuration.deployment_api_token = DEPLOY_TOKEN
   end
 
   test "create returns 401 when token configured but none provided" do
@@ -158,22 +177,25 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
 
     post rails_pulse.deployments_path,
          params: { deployment: { revision: "tokensha3" } },
+         headers: { "X-Rails-Pulse-Token" => "" },
          as: :json
 
     assert_response :unauthorized
   ensure
-    RailsPulse.configuration.deployment_api_token = nil
+    RailsPulse.configuration.deployment_api_token = DEPLOY_TOKEN
   end
 
-  test "create falls through to UI auth when no token configured" do
-    assert_nil RailsPulse.configuration.deployment_api_token
+  test "create returns 401 when no token configured and auth disabled" do
+    RailsPulse.configuration.deployment_api_token = nil
 
-    # With authentication disabled (test default), the request should succeed
+    # Fail closed: no token configured means no way to verify the caller,
+    # even when dashboard auth is disabled.
     post rails_pulse.deployments_path,
          params: { deployment: { revision: "tokensha4" } },
+         headers: {},
          as: :json
 
-    assert_response :created
+    assert_response :unauthorized
   end
 
   # PUT /deployments/finish
@@ -282,7 +304,7 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :unauthorized
   ensure
-    RailsPulse.configuration.deployment_api_token = nil
+    RailsPulse.configuration.deployment_api_token = DEPLOY_TOKEN
   end
 
   test "finish succeeds with correct token" do
@@ -295,6 +317,6 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :ok
   ensure
-    RailsPulse.configuration.deployment_api_token = nil
+    RailsPulse.configuration.deployment_api_token = DEPLOY_TOKEN
   end
 end

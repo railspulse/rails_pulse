@@ -61,15 +61,28 @@ module RailsPulse
       # Test Environment Behavior
       # ============================================================================
 
-      test "returns nil explain_plan in test environment" do
+      test "does not crash when EXPLAIN runs in test environment" do
         operations = [ create_operation ]
         analyzer = ExplainPlanAnalyzer.new(@query, operations)
 
         result = analyzer.analyze
 
-        # Due to Rails.env.test? guard, EXPLAIN is skipped
+        # The Rails.env.test? guard was removed so EXPLAIN attempts to run.
+        # The result may be nil if the table in the fixture query doesn't exist
+        # (PG/MySQL), or a plan string (SQLite). Either way, no crash.
+        assert_kind_of Hash, result
+        assert result.key?(:explain_plan)
+        assert result.key?(:issues)
+      end
+
+      test "refuses to EXPLAIN non-SELECT statements" do
+        query = rails_pulse_queries(:simple_query)
+        op = create_operation(actual_sql: "DELETE FROM users WHERE id = 1")
+        analyzer = ExplainPlanAnalyzer.new(query, [ op ])
+
+        result = analyzer.analyze
+
         assert_nil result[:explain_plan]
-        assert_empty result[:issues]
       end
 
       # ============================================================================
