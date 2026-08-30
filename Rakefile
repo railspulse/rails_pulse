@@ -146,7 +146,8 @@ task :test do
   puts "=" * 50
   puts
 
-  sh "rails test test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/migrations test/models test/services test/rails_pulse_test.rb test/tracker_test.rb"
+  sh "rails test test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb"
+  Rake::Task[:test_migrations].invoke
 end
 
 desc "Run test suite with code coverage"
@@ -206,7 +207,7 @@ task :test_matrix do
   failed_combinations = []
   total_combinations = databases.size * rails_versions.size
   current = 0
-  base_test_paths = "test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/migrations test/models test/services test/rails_pulse_test.rb test/tracker_test.rb test/system"
+  base_test_paths = "test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb test/system"
 
   puts "\n" + "=" * 60
   puts "🚀 Rails Pulse Full Test Matrix"
@@ -229,6 +230,7 @@ task :test_matrix do
 
         # Then run the tests
         sh "DB=#{database} MYSQL_PASSWORD=#{ENV.fetch('MYSQL_PASSWORD', '')} bundle exec appraisal #{rails_version} rails test #{test_paths}"
+        sh "DB=#{database} MYSQL_PASSWORD=#{ENV.fetch('MYSQL_PASSWORD', '')} bundle exec appraisal #{rails_version} rails test test/migrations"
 
         puts "✅ PASSED: #{database} + #{rails_version}"
 
