@@ -61,15 +61,26 @@ module RailsPulse
       # Test Environment Behavior
       # ============================================================================
 
-      test "returns nil explain_plan in test environment" do
+      test "returns explain plan for SELECT queries in test environment" do
         operations = [ create_operation ]
         analyzer = ExplainPlanAnalyzer.new(@query, operations)
 
         result = analyzer.analyze
 
-        # Due to Rails.env.test? guard, EXPLAIN is skipped
+        # The Rails.env.test? guard was removed so EXPLAIN runs on SELECT.
+        # On SQLite this returns EXPLAIN QUERY PLAN output; on PG/MySQL
+        # it returns the planner's plan. Either way it should not be nil.
+        assert_not_nil result[:explain_plan]
+      end
+
+      test "refuses to EXPLAIN non-SELECT statements" do
+        query = rails_pulse_queries(:users_query)
+        op = create_operation(actual_sql: "DELETE FROM users WHERE id = 1")
+        analyzer = ExplainPlanAnalyzer.new(query, [ op ])
+
+        result = analyzer.analyze
+
         assert_nil result[:explain_plan]
-        assert_empty result[:issues]
       end
 
       # ============================================================================

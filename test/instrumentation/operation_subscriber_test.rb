@@ -10,13 +10,18 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     RequestStore.store[:rails_pulse_job_run_id] = nil
     RequestStore.store[:rails_pulse_operations] = []
 
+    @original_capture_actual_sql = RailsPulse.configuration.capture_actual_sql
+    RailsPulse.configuration.capture_actual_sql = true
+
     super
   end
 
   def teardown
+    RailsPulse.configuration.capture_actual_sql = @original_capture_actual_sql
     RequestStore.clear!
     super
   end
+
 
   test "subscriber module should exist" do
     assert defined?(RailsPulse::Subscribers::OperationSubscriber)
