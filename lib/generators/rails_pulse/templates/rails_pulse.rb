@@ -257,7 +257,8 @@ RailsPulse.configure do |config|
   # Example 4: Basic HTTP authentication
   # config.authentication_method = proc {
   #   authenticate_or_request_with_http_basic do |username, password|
-  #     username == ENV['RAILS_PULSE_USERNAME'] && password == ENV['RAILS_PULSE_PASSWORD']
+  #     ActiveSupport::SecurityUtils.secure_compare(username, ENV['RAILS_PULSE_USERNAME']) &&
+  #       ActiveSupport::SecurityUtils.secure_compare(password, ENV['RAILS_PULSE_PASSWORD'])
   #   end
   # }
 

@@ -1,6 +1,7 @@
 module RailsPulse
   class DeploymentsController < ApplicationController
     skip_before_action :authenticate_rails_pulse_user!
+    skip_before_action :verify_authenticity_token, only: %i[create finish]
     before_action :authenticate_deployment_request!
 
     def create
@@ -44,10 +45,16 @@ module RailsPulse
     def authenticate_deployment_request!
       token = RailsPulse.configuration.deployment_api_token
       if token.present?
-        provided = request.headers["X-Rails-Pulse-Token"]
-        render json: { error: "Unauthorized" }, status: :unauthorized unless provided == token
-      else
+        provided = request.headers["X-Rails-Pulse-Token"].to_s
+        unless ActiveSupport::SecurityUtils.secure_compare(provided, token)
+          render json: { error: "Unauthorized" }, status: :unauthorized
+        end
+      elsif RailsPulse.configuration.authentication_enabled
         authenticate_rails_pulse_user!
+      else
+        # No token configured and authentication disabled — fail closed.
+        # Without a token there is no way to verify the caller.
+        render json: { error: "Unauthorized — set deployment_api_token or enable authentication" }, status: :unauthorized
       end
     end
 
