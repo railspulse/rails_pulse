@@ -17,34 +17,57 @@ module RailsPulse
         job = nil
         job_run = nil
 
-        with_recording_suppressed do
-          job = find_or_create_job(active_job)
-          job_run = create_job_run(job, active_job, adapter, occurred_at)
+        # Pulse DB writes before yield must not prevent the job from running.
+        begin
+          with_recording_suppressed do
+            job = find_or_create_job(active_job)
+            job_run = create_job_run(job, active_job, adapter, occurred_at)
+          end
+        rescue => e
+          RailsPulse.logger.error "Failed to initialize job tracking: #{e.class} - #{e.message}"
+          job_run = nil
         end
 
         RequestStore.store[:rails_pulse_request_id] = nil
-        RequestStore.store[:rails_pulse_job_run_id] = job_run.id
+        RequestStore.store[:rails_pulse_job_run_id] = job_run&.id
         RequestStore.store[:rails_pulse_operations] = []
 
         yield
 
-        duration = elapsed_time_ms(start_time)
-        with_recording_suppressed do
-          job_run.update!(status: "success", duration: duration)
+        # Record success — must not re-raise if the job already completed.
+        begin
+          if job_run
+            duration = elapsed_time_ms(start_time)
+            with_recording_suppressed do
+              job_run.update!(status: "success", duration: duration)
+            end
+          end
+        rescue => e
+          RailsPulse.logger.error "Failed to record job success: #{e.class} - #{e.message}"
         end
       rescue => error
-        duration = elapsed_time_ms(start_time)
-        with_recording_suppressed do
-          job_run.update!(
-            status: failure_status_for(error),
-            duration: duration,
-            error_class: error.class.name,
-            error_message: error.message
-          ) if job_run
+        # Record failure — must always re-raise the ORIGINAL error.
+        begin
+          if job_run
+            duration = elapsed_time_ms(start_time)
+            with_recording_suppressed do
+              job_run.update!(
+                status: failure_status_for(error),
+                duration: duration,
+                error_class: error.class.name,
+                error_message: error.message
+              )
+            end
+          end
+          # Capture outside with_recording_suppressed — the capture service
+          # checks skip_recording_rails_pulse_activity and would bail out.
+          # The service's own SQL is already filtered by the rails_pulse_ prefix.
+          RailsPulse::ExceptionCaptureService.capture(error, environment: Rails.env.to_s)
+          RequestStore.store[:rails_pulse_captured_exception] = error
+        rescue => e
+          RailsPulse.logger.error "Failed to record job failure: #{e.class} - #{e.message}"
         end
-        RailsPulse::ExceptionCaptureService.capture(error, environment: Rails.env.to_s)
-        RequestStore.store[:rails_pulse_captured_exception] = error
-        raise
+        raise error
       ensure
         begin
           save_operations(job_run)
