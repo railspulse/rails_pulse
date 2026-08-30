@@ -6,7 +6,7 @@ const { glob } = require('glob');
 const { ROOT_DIR, ENABLE_SOURCE_MAPS, OUTPUT_DIRS } = require('./build-config');
 
 // Configuration
-const VIEWS_DIR = path.join(ROOT_DIR, 'app', 'views');
+const APP_DIR = path.join(ROOT_DIR, 'app');
 
 // Icons used by Rails Pulse (from analysis of views)
 const REQUIRED_ICONS = [
@@ -47,7 +47,9 @@ const REQUIRED_ICONS = [
   'eye',
   'zap',
   'shield-check',
-  'bell'
+  'bell',
+  'triangle-alert',
+  'help-circle'
 ];
 
 // Icon name mappings for different naming conventions
@@ -150,16 +152,16 @@ async function buildIcons() {
 
   try {
     // Scan views to find used icons (for verification)
-    const viewFiles = glob.sync(path.join(VIEWS_DIR, '**/*.html.erb'));
+    const viewFiles = glob.sync(path.join(APP_DIR, '**/*.{erb,rb}'));
     const usedIcons = new Set();
 
     for (const viewFile of viewFiles) {
       const content = fs.readFileSync(viewFile, 'utf8');
-      const iconMatches = content.match(/lucide_icon\s+['"]([^'"]+)['"]/g);
+      const iconMatches = content.match(/(?:lucide_icon|rails_pulse_icon)\s+['"]([^'"]+)['"]/g);
 
       if (iconMatches) {
         iconMatches.forEach(match => {
-          const iconName = match.match(/lucide_icon\s+['"]([^'"]+)['"]/)[1];
+          const iconName = match.match(/(?:lucide_icon|rails_pulse_icon)\s+['"]([^'"]+)['"]/)[1];
           usedIcons.add(iconName);
         });
       }

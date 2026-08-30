@@ -50,7 +50,7 @@ module RailsPulse
       end
 
       # Redirect back to the referring page or root
-      redirect_back(fallback_location: root_path)
+      redirect_back(fallback_location: root_path, allow_other_host: false)
     end
 
     def set_time_range
@@ -67,7 +67,7 @@ module RailsPulse
       end
 
       # Redirect back to the referring page or root
-      redirect_back(fallback_location: root_path)
+      redirect_back(fallback_location: root_path, allow_other_host: false)
     end
 
     private

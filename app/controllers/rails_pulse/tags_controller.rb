@@ -19,7 +19,7 @@ module RailsPulse
         flash[:alert] = "Failed to add tag"
       end
 
-      redirect_back(fallback_location: root_path)
+      redirect_back(fallback_location: root_path, allow_other_host: false)
     end
 
     def destroy
@@ -30,7 +30,7 @@ module RailsPulse
         flash[:alert] = "Failed to remove tag"
       end
 
-      redirect_back(fallback_location: root_path)
+      redirect_back(fallback_location: root_path, allow_other_host: false)
     end
 
     private

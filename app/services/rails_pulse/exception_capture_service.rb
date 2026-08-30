@@ -67,7 +67,44 @@ module RailsPulse
       nil
     end
 
+
     private
+
+    def sanitize_exception_message(exception)
+      message = exception.message.to_s
+
+      # Strip the appended SQL statement from ActiveRecord::StatementInvalid
+      # which embeds the offending query including literal PII values.
+      if exception.is_a?(ActiveRecord::StatementInvalid)
+        message = message.split("\n").first.to_s
+        message = message.sub(/\s*:\s*(?:INSERT|UPDATE|DELETE|SELECT)\b.*/i, "")
+        # Redact DETAIL: Key (col)=(value) clauses from PG unique violations
+        message = message.gsub(/DETAIL:\s*Key\s*\([^)]*\)=\([^)]*\)/, "DETAIL: Key (…)=(…)")
+      end
+
+      # Apply Rails' parameter filter in key=value mode
+      if defined?(ActiveSupport::ParameterFilter) && (patterns = filter_parameters).any?
+        filter = ActiveSupport::ParameterFilter.new(patterns)
+        message = filter.filter_param("message", message)
+      end
+
+      message.truncate(500)
+    end
+
+    def filter_parameters
+      Rails.application.config.filter_parameters
+    rescue
+      []
+    end
+
+    # Reusable aborted-transaction recovery shared with Tracker.
+    def clear_aborted_transaction(conn)
+      raw = conn.raw_connection
+      return unless raw.respond_to?(:transaction_status) && raw.transaction_status == 3 # PG_TRANSACTION_INERROR
+      conn.rollback_db_transaction
+    rescue ActiveRecord::StatementInvalid
+      nil
+    end
 
     def parse_backtrace(raw_backtrace)
       raw_backtrace.first(BACKTRACE_FRAME_LIMIT).filter_map do |line|
@@ -112,8 +149,9 @@ module RailsPulse
     # occurrence_count is incremented atomically in the same statement, so no
     # separate update_counters call is needed and no race window exists.
     def upsert_group(fingerprint, location, now)
-      message = @exception.message.to_s.truncate(500)
+      message = sanitize_exception_message(@exception)
       conn    = ExceptionGroup.connection
+      clear_aborted_transaction(conn)
 
       # Explicitly set status/preserve: SQLite schema dumps omit boolean DEFAULT false,
       # so omitting those columns makes INSERT fail with NOT NULL on preserve.

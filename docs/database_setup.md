@@ -55,6 +55,17 @@ production:
     schema_dump: false
 ```
 
+Then uncomment `config.connects_to` in `config/initializers/rails_pulse.rb`:
+
+```ruby
+config.connects_to = {
+  database: { writing: :rails_pulse, reading: :rails_pulse }
+}
+```
+
+Without this setting, all Pulse models write to the primary connection
+even when the separate database exists.
+
 `schema_dump: false` is required. Rails Pulse loads schema from `db/rails_pulse_schema.rb` during `db:prepare`. Without that key, Rails dumps `db/rails_pulse_structure.sql` (or overwrites `db/rails_pulse_schema.rb`) and `db:migrate` can fail with `relation already exists`. Leave `database_tasks` enabled so `rails db:migrate:rails_pulse` still applies upgrades.
 
 Finally, create the database:

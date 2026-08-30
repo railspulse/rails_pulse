@@ -36,8 +36,10 @@ RailsPulse::Engine.routes.draw do
     end
   end
 
-  # CSP compliance testing
-  get "csp_test", to: "csp_test#show", as: :csp_test
+  # CSP compliance testing (development/test only)
+  if Rails.env.local?
+    get "csp_test", to: "csp_test#show", as: :csp_test
+  end
 
   # Asset serving fallback
   get "rails-pulse-assets/:asset_name", to: "assets#show", as: :asset, constraints: { asset_name: /.*/ }
