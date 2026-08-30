@@ -81,6 +81,23 @@ module RailsPulse
       end
     end
 
+    test "max_table_records merges configured limits with defaults" do
+      config = Configuration.new
+
+      config.max_table_records = { rails_pulse_requests: 1_000 }
+
+      assert_equal 1_000, config.max_table_records[:rails_pulse_requests]
+      assert_equal 100_000, config.max_table_records[:rails_pulse_operations]
+    end
+
+    test "max_table_records accepts nil to disable count-based cleanup" do
+      config = Configuration.new
+
+      config.max_table_records = nil
+
+      assert_nil config.max_table_records
+    end
+
     test "full_retention_period defaults to 30 days" do
       config = Configuration.new
 
