@@ -15,7 +15,6 @@ module RailsPulse
                   :mount_path,
                   :full_retention_period,
                   :archiving_enabled,
-                  :max_table_records,
                   :connects_to,
                   :authentication_enabled,
                   :authentication_method,
@@ -135,6 +134,12 @@ module RailsPulse
     def job_thresholds=(value)
       validate_threshold_hash!(value, "job_thresholds")
       @job_thresholds = value
+    end
+
+    # Merge user-supplied caps into the defaults so tables added in newer
+    # versions still have a cap when the user carries an older explicit hash.
+    def max_table_records=(value)
+      @max_table_records = @max_table_records.merge(value)
     end
 
     # Get all routes to ignore, including asset patterns if track_assets is false
