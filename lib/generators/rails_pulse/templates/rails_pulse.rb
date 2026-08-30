@@ -144,6 +144,13 @@ RailsPulse.configure do |config|
   # Set to false to disable entirely, e.g. for strict data-minimization requirements.
   config.capture_exception_params = true
 
+  # Capture the raw (unparameterized) SQL for each operation.
+  # WARNING: mysql2 defaults to prepared_statements: false, so every literal
+  # value (emails, passwords, tokens) is inlined and stored in plaintext.
+  # Same applies to PostgreSQL behind PgBouncer in transaction-pool mode.
+  # Default: false (upgrade-safe). New installs may opt in after review.
+  # config.capture_actual_sql = true
+
   # ====================================================================================================
   #                                            BACKGROUND JOBS
   # ====================================================================================================

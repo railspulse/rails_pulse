@@ -7,36 +7,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-Upgrading from 0.3.3 requires the upgrade generator, a schema migrate, and a one-time route backfill. Exception tracking is **off** for existing installs until you opt in.
+_Nothing yet._
 
-### Upgrade from 0.3.3
+## [0.4.0.pre.1] - 2026-08-29
+
+This release contains a **breaking schema change** and requires a one-time data
+migration. Read "Upgrading from 0.3.x" below before deploying. Take a database
+backup first: the route migration is irreversible.
+
+### Removed
+
+- **BREAKING — `rails_pulse_routes.method` is dropped.** The HTTP verb now lives on
+  each request (`rails_pulse_requests.method`); a route carries an `http_methods`
+  array instead. All application, worker, and dashboard processes must be restarted
+  together against the migrated schema. A rolling restart that leaves 0.3.x
+  processes running will silently drop request tracking and 500 the routes dashboard.
+- **BREAKING — the route migration is irreversible.** `db:rollback` raises
+  `ActiveRecord::IrreversibleMigration` on
+  `ChangeRailsPulseRoutesToMultiVerbModel`, and routes merged by
+  `rails_pulse:migrate_routes` are deleted with no audit trail. Recovery from a bad
+  upgrade is restore-from-backup only.
+
+### Changed
+
+- **BREAKING — route identity is now `[controller_action, path]`.** GET `/users`
+  (`users#index`) and POST `/users` (`users#create`) are distinct routes. Dynamic
+  paths are normalized at capture time (`/posts/42` → `/posts/:id`).
+- **A one-time backfill is mandatory.** `rails rails_pulse:migrate_routes` backfills
+  `controller_action` (from the live router, then from request history), collapses
+  historical literal paths, and merges routes sharing an action (GET+POST `/sign_in`
+  → `sessions#new`). A schema migrate alone leaves the Action column empty. The
+  upgrade generator and the dashboard both warn when the step is outstanding.
+
+### Added
+
+- **Exception tracking** — Captures unhandled exceptions from web requests and
+  background jobs, groups them by class and location, and displays backtraces (first
+  50 frames) with filtered request params in a new Exceptions tab. **Exception
+  messages are stored unfiltered** and can contain literal data — a
+  `PG::UniqueViolation` message, for example, embeds the conflicting value.
+- **`track_exceptions` config option** — Gem default is `false`, so existing installs
+  do not begin capturing on upgrade; the upgrade generator inserts `false`
+  explicitly. The install template sets `true` for new apps.
+- **`capture_exception_params` config option** — Captures request params alongside
+  each occurrence, filtered via Rails' `filter_parameters`. Occurrences whose params
+  exceed 10 KB after filtering are stored without params. Default `true`, and only
+  consulted while `track_exceptions` is on.
+- **Upgrade generator syncs new initializer settings** — Appends keys (and
+  `max_table_records` entries) the host file does not already mention, without
+  rewriting existing values. Review with `git diff`.
+
+### Fixed
+
+- Fixed upgrading when using a separate database installation.
+- Separate-database installs set `schema_dump: false`, so `db:migrate` no longer
+  dumps or loads `db/rails_pulse_structure.sql` (#189).
+- Fixed `assets:precompile` failing on memory-constrained hosts by not registering
+  dashboard assets with the host Sprockets pipeline. Precompile copies the pre-built
+  files into `public/assets` (digested, no compressor) so `config.asset_host` and
+  CDN-only CSP work; development and hosts without a pipeline still use
+  `/rails-pulse-assets/<gem-version>/...`.
+- SQLite `schema.rb` now keeps the partial unique index on unrecognised routes
+  (`WHERE controller_action IS NULL`). A raw `CREATE INDEX` was dumped without the
+  predicate, so `db:schema:load` and parallel tests unique-constrained every path.
+
+### Upgrading from 0.3.x
+
+Applies to every 0.3.x release (0.3.0 through 0.3.3). **Back up your database first.**
 
 ```bash
 bundle update rails_pulse
 rails generate rails_pulse:upgrade
-rails db:migrate                  # or rails db:migrate:rails_pulse for a separate Pulse database
+rails db:migrate                  # separate Pulse database: rails db:migrate:rails_pulse
 rails rails_pulse:migrate_routes  # required — schema migrate alone leaves Action empty
 ```
 
-Separate-database hosts: add `schema_dump: false` to the `rails_pulse` entry in `config/database.yml` and delete `db/rails_pulse_structure.sql` if it exists. Then restart all processes together — this release drops `rails_pulse_routes.method`, so mixed old/new code against the new schema will fail tracking and the routes dashboard.
+Then restart **all** processes together, not as a rolling deploy.
 
-The upgrade generator appends new initializer settings (without rewriting existing values) so you can review them with `git diff`. Exception tracking stays off: it inserts `config.track_exceptions = false`. Set that to `true` after migrating to opt in. New installs get `true` from the generated template. Messages are stored unfiltered; request params use Rails `filter_parameters`.
+Separate-database hosts: add `schema_dump: false` to the `rails_pulse` entry in
+`config/database.yml` and delete `db/rails_pulse_structure.sql` if it exists. Do not
+run `db:setup` / `db:prepare` as a substitute for `db:migrate:rails_pulse`.
 
-### Added
-
-- **Route identity is `[controller_action, path]`** — GET `/users` (`users#index`) and POST `/users` (`users#create`) are distinct routes. Each route stores an `http_methods` array; each request records its own HTTP verb. Dynamic paths are normalized at capture time (`/posts/42` → `/posts/:id`).
-- After upgrading, run `rails rails_pulse:migrate_routes` to backfill `controller_action` (from the live router, then from request history), collapse historical literal paths, and merge routes that share the same action (for example GET+POST `/sign_in` → `sessions#new`). The upgrade generator and dashboard warn if this step is skipped.
-- **Exception tracking** — Captures unhandled exceptions from web requests and background jobs, groups them by class and location, and displays full backtraces (first 50 frames) with filtered request params in a new Exceptions tab. Exception messages are stored unfiltered.
-- **`track_exceptions` config option** — Enable or disable exception tracking. Gem default is `false` so existing installs do not start capturing on upgrade. The install template sets `true` for new apps.
-- **`capture_exception_params` config option** — Capture request params alongside each exception occurrence. Params are filtered via Rails' `filter_parameters` config; occurrences with params larger than 10KB after filtering are stored without params. Set to `false` for strict data-minimisation requirements (default: `true`, only used when tracking is on)
-- **Upgrade generator syncs new initializer settings** — Appends keys (and `max_table_records` entries) that the host file does not already mention, without rewriting existing values. Review with `git diff`. `track_exceptions` is inserted as `false`.
-
-### Fixed
-
-- Fixed upgrading when using separate database installation
-- Separate-database installs set `schema_dump: false` so `db:migrate` no longer dumps or loads `db/rails_pulse_structure.sql` (#189)
-- Fixed `assets:precompile` failing on memory-constrained hosts by not registering dashboard assets with the host Sprockets pipeline. Precompile copies the pre-built files into `public/assets` (digested, no compressor) so `config.asset_host` and CDN-only CSP work; development and hosts without a pipeline still use `/rails-pulse-assets/<gem-version>/...`.
-- SQLite `schema.rb` now keeps the partial unique index on unrecognised routes (`WHERE controller_action IS NULL`). A raw `CREATE INDEX` was dumped without the predicate, so `db:schema:load` and parallel tests unique-constrained every path.
+Exception tracking stays off after upgrading. Set `config.track_exceptions = true`
+once you have reviewed what is captured.
 
 ## [0.3.3] - 2026-06-23
 
@@ -44,7 +97,7 @@ The upgrade generator appends new initializer settings (without rewriting existi
 - **`deployment_api_token` config option** — Secures the deployments endpoint with a token header for CI/CD use
 - All multi-series charts now use a native ECharts time axis (`[timestamp_ms, value]` pairs) instead of a separate labels array, enabling deployment markers and better zoom behaviour
 
-## [0.3.0] - 2026-04-19
+## [0.3.0] - 2026-04-30
 
 This is the largest release to date — a full UI overhaul across every section of
 the dashboard. Charts are now switchable, the dashboard surfaces health status
@@ -109,21 +162,22 @@ releases will be smaller and more incremental than this one.
 - Timezone controller removed
 - Application mailer stub removed
 
-## [0.2.7] - 2026-04-19
+## [0.2.7] - 2026-04-17
 
 No changelog entry — see git history.
 
-## [0.2.6] - 2026-04-18
+## [0.2.6] - 2026-04-15
 
 No changelog entry — see git history.
 
-## [0.2.5] - 2026-03-xx
+## [0.2.5] - 2026-04-14
 
 No changelog entry — see git history.
 
-[Unreleased]: https://github.com/railspulse/rails_pulse/compare/v0.3.3...HEAD
+[Unreleased]: https://github.com/railspulse/rails_pulse/compare/v0.4.0.pre.1...HEAD
+[0.4.0.pre.1]: https://github.com/railspulse/rails_pulse/compare/v0.3.3...v0.4.0.pre.1
 [0.3.3]: https://github.com/railspulse/rails_pulse/compare/v0.3.2...v0.3.3
-[0.3.0.pre.1]: https://github.com/railspulse/rails_pulse/compare/v0.2.7...v0.3.0.pre.1
+[0.3.0]: https://github.com/railspulse/rails_pulse/compare/v0.2.7...v0.3.0
 [0.2.7]: https://github.com/railspulse/rails_pulse/compare/v0.2.6...v0.2.7
 [0.2.6]: https://github.com/railspulse/rails_pulse/compare/v0.2.5...v0.2.6
 [0.2.5]: https://github.com/railspulse/rails_pulse/releases/tag/v0.2.5

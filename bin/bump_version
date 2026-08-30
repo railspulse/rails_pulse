@@ -23,8 +23,8 @@ if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
   echo "Updates version number in:"
   echo "  - lib/rails_pulse/version.rb"
   echo "  - Gemfile.lock"
-  echo "  - gemfiles/rails_7_2.gemfile.lock"
-  echo "  - gemfiles/rails_8_0.gemfile.lock"
+  echo "  - every gemfiles/rails_*.gemfile.lock (discovered, not hardcoded)"
+  echo "  - test/dummy/Gemfile.lock (if present)"
   echo ""
   echo "Example:"
   echo "  bin/bump_version 0.3.0"
@@ -77,13 +77,24 @@ echo -e "${BLUE}⚙️  Updating Gemfile.lock...${NC}"
 bundle install --quiet
 echo -e "  ${GREEN}✓${NC} Updated Gemfile.lock"
 
-# Update Rails-specific Gemfile.locks
-RAILS_VERSIONS=("7.2" "8.0")
+# Update Rails-specific Gemfile.locks.
+# Derived from the gemfiles/ directory rather than hardcoded: a hardcoded list
+# previously omitted rails_8_1, shipping a lockfile still pinned to the old version.
+RAILS_VERSIONS=()
+for gemfile in gemfiles/rails_*.gemfile; do
+  [ -f "$gemfile" ] || continue
+  base="${gemfile##*/rails_}"
+  RAILS_VERSIONS+=("${base%.gemfile}")
+done
+
+if [ ${#RAILS_VERSIONS[@]} -eq 0 ]; then
+  echo -e "  ${YELLOW}⚠${NC}  No gemfiles/rails_*.gemfile found"
+fi
 
 for rails_ver in "${RAILS_VERSIONS[@]}"; do
-  GEMFILE="gemfiles/rails_${rails_ver//./_}.gemfile"
+  GEMFILE="gemfiles/rails_${rails_ver}.gemfile"
 
-  echo -e "${BLUE}⚙️  Updating gemfiles/rails_${rails_ver//./_}.gemfile.lock...${NC}"
+  echo -e "${BLUE}⚙️  Updating gemfiles/rails_${rails_ver}.gemfile.lock...${NC}"
 
   if [ ! -f "$GEMFILE" ]; then
     echo -e "  ${YELLOW}⚠${NC}  Gemfile not found: $GEMFILE (skipping)"
@@ -91,8 +102,16 @@ for rails_ver in "${RAILS_VERSIONS[@]}"; do
   fi
 
   BUNDLE_GEMFILE="$GEMFILE" bundle install --quiet
-  echo -e "  ${GREEN}✓${NC} Updated gemfiles/rails_${rails_ver//./_}.gemfile.lock"
+  echo -e "  ${GREEN}✓${NC} Updated gemfiles/rails_${rails_ver}.gemfile.lock"
 done
+
+# Update the dummy app's lockfile so the tagged tree is internally consistent
+if [ -f "test/dummy/Gemfile" ]; then
+  echo -e "${BLUE}⚙️  Updating test/dummy/Gemfile.lock...${NC}"
+  BUNDLE_GEMFILE="test/dummy/Gemfile" bundle install --quiet \
+    && echo -e "  ${GREEN}✓${NC} Updated test/dummy/Gemfile.lock" \
+    || echo -e "  ${YELLOW}⚠${NC}  Could not update test/dummy/Gemfile.lock"
+fi
 
 echo ""
 echo -e "${GREEN}✅ Version bump complete!${NC}"
@@ -101,5 +120,6 @@ echo "Files updated:"
 echo "  • lib/rails_pulse/version.rb"
 echo "  • Gemfile.lock"
 for rails_ver in "${RAILS_VERSIONS[@]}"; do
-  echo "  • gemfiles/rails_${rails_ver//./_}.gemfile.lock"
+  echo "  • gemfiles/rails_${rails_ver}.gemfile.lock"
 done
+[ -f "test/dummy/Gemfile.lock" ] && echo "  • test/dummy/Gemfile.lock"
