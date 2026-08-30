@@ -19,6 +19,11 @@ jobs:
         ruby: ["3.2", "3.4"]
         rails: ["7.2", "8.0", "8.1"]
         database: ["sqlite3", "postgresql"]
+        include:
+          - ruby: "3.4"
+            rails: "8.1"
+            database: "sqlite3"
+            coverage: true
 
     services:
       postgres:
@@ -42,6 +47,7 @@ jobs:
       POSTGRES_PASSWORD: postgres
       POSTGRES_HOST: localhost
       POSTGRES_PORT: 5432
+      COVERAGE: ${{ matrix.coverage && 'true' || '' }}
 
     steps:
     - uses: actions/checkout@v7
@@ -184,6 +190,9 @@ jobs:
 
     - name: Run ESLint
       run: npm run lint:js
+
+    - name: Run generator tests
+      run: bin/test_generators
 
   js-test:
     runs-on: ubuntu-latest

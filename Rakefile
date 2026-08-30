@@ -146,7 +146,7 @@ task :test do
   puts "=" * 50
   puts
 
-  sh "rails test test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb"
+  sh "rails test test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/migrations test/models test/services test/rails_pulse_test.rb test/tracker_test.rb"
 end
 
 desc "Run test suite with code coverage"
@@ -206,7 +206,7 @@ task :test_matrix do
   failed_combinations = []
   total_combinations = databases.size * rails_versions.size
   current = 0
-  base_test_paths = "test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb test/system"
+  base_test_paths = "test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/migrations test/models test/services test/rails_pulse_test.rb test/tracker_test.rb test/system"
 
   puts "\n" + "=" * 60
   puts "🚀 Rails Pulse Full Test Matrix"
@@ -265,44 +265,7 @@ task :test_release do
   current_step = 0
   total_steps = 14
 
-  # Step 1: Update appraisal gemfiles
-  current_step += 1
-  begin
-    puts "\n[#{current_step}/#{total_steps}] Updating appraisal gemfiles..."
-    puts "-" * 70
-    sh "bundle exec appraisal install"
-    puts "✅ Appraisal gemfiles updated!"
-  rescue => e
-    puts "❌ Appraisal update failed!"
-    puts "   Error: #{e.message}"
-    failed_tasks << "appraisal_install"
-  end
-
-  # Step 2: Sync test schema
-  current_step += 1
-  begin
-    puts "\n[#{current_step}/#{total_steps}] Syncing test schema..."
-    puts "-" * 70
-    Rake::Task[:sync_test_schema].invoke
-  rescue => e
-    puts "❌ Schema sync failed!"
-    puts "   Error: #{e.message}"
-    failed_tasks << "sync_test_schema"
-  end
-
-  # Step 3: Verify dummy migrations
-  current_step += 1
-  begin
-    puts "\n[#{current_step}/#{total_steps}] Verifying dummy app migrations..."
-    puts "-" * 70
-    Rake::Task[:verify_dummy_migrations].invoke
-  rescue => e
-    puts "❌ Dummy app migration verification failed!"
-    puts "   Error: #{e.message}"
-    failed_tasks << "verify_dummy_migrations"
-  end
-
-  # Step 4: Git status check
+  # Step 1: Git status check (before anything mutates the tree)
   current_step += 1
   begin
     puts "\n[#{current_step}/#{total_steps}] Checking git status..."
@@ -320,6 +283,43 @@ task :test_release do
     end
   rescue => e
     puts "⚠️  Warning: Could not check git status (#{e.message})"
+  end
+
+  # Step 2: Update appraisal gemfiles
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Updating appraisal gemfiles..."
+    puts "-" * 70
+    sh "bundle exec appraisal install"
+    puts "✅ Appraisal gemfiles updated!"
+  rescue => e
+    puts "❌ Appraisal update failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "appraisal_install"
+  end
+
+  # Step 3: Sync test schema
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Syncing test schema..."
+    puts "-" * 70
+    Rake::Task[:sync_test_schema].invoke
+  rescue => e
+    puts "❌ Schema sync failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "sync_test_schema"
+  end
+
+  # Step 4: Verify dummy migrations
+  current_step += 1
+  begin
+    puts "\n[#{current_step}/#{total_steps}] Verifying dummy app migrations..."
+    puts "-" * 70
+    Rake::Task[:verify_dummy_migrations].invoke
+  rescue => e
+    puts "❌ Dummy app migration verification failed!"
+    puts "   Error: #{e.message}"
+    failed_tasks << "verify_dummy_migrations"
   end
 
   # Step 5: RuboCop linting
