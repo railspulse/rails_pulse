@@ -6,7 +6,14 @@ module RailsPulse
 
     def call
       results = { updated: 0, skipped: 0, already_set: 0, merged: 0 }
-      RailsPulse::Route.find_each { |route| process_route(route, results) }
+      total = RailsPulse::Route.count
+      processed = 0
+      RailsPulse::Route.find_each do |route|
+        process_route(route, results)
+        processed += 1
+        print "\r  Backfilling routes: #{processed}/#{total}" if processed % 100 == 0 || processed == total
+      end
+      puts "" if total > 0
       consolidate_unrecognized_duplicates(results)
       results
     end
