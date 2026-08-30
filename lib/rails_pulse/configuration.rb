@@ -84,7 +84,7 @@ module RailsPulse
         rails_pulse_exception_groups: 10_000
       }
       @connects_to = nil
-      @authentication_enabled = Rails.env.production?
+      @authentication_enabled = !(Rails.env.development? || Rails.env.test?)
       @authentication_enabled_explicitly_set = false
       @authentication_method = nil
       @authentication_redirect_path = "/"
