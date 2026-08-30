@@ -2,7 +2,12 @@ require "rails_pulse/route_indexes"
 
 class AddNullActionUniqueIndexToRoutes < ActiveRecord::Migration[7.0]
   def up
-    return if duplicate_null_action_paths?
+    if duplicate_null_action_paths?
+      say "Deferring null-action unique index — duplicate paths exist."
+      say "Run `rails rails_pulse:migrate_routes` to consolidate duplicates, then"
+      say "the index will be created automatically."
+      return
+    end
 
     RailsPulse::RouteIndexes.ensure_null_action_uniqueness!(connection)
   end
