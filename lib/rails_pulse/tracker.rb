@@ -1,5 +1,3 @@
-require "async"
-
 module RailsPulse
   module Tracker
     # PG::Connection::PQTRANS_INERROR (libpq enum value 3) — the connection's transaction
@@ -14,7 +12,11 @@ module RailsPulse
         return if RequestStore.store[:skip_recording_rails_pulse_activity]
 
         if RailsPulse.configuration.async
-          Async { perform_tracking(data) }
+          Thread.new do
+            perform_tracking(data)
+          rescue => e
+            log_error(e)
+          end
         else
           perform_tracking(data)
         end
@@ -52,12 +54,12 @@ module RailsPulse
           RailsPulse::Operation.persist_bulk(ops, request_id: request.id)
 
           request
-        rescue => e
-          log_error(e)
-          nil
-        ensure
-          RequestStore.store[:skip_recording_rails_pulse_activity] = false
         end
+      rescue => e
+        log_error(e)
+        nil
+      ensure
+        RequestStore.store[:skip_recording_rails_pulse_activity] = false
       end
 
       def clear_aborted_transaction(conn)

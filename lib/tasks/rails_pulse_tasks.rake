@@ -31,7 +31,24 @@ namespace :rails_pulse do
     path_results = RailsPulse::RouteMigrator.call
     puts "Path normalization: #{path_results[:merged]} merged, #{path_results[:skipped]} skipped, #{path_results[:unchanged]} unchanged"
 
-    RailsPulse::RouteIndexes.ensure_null_action_uniqueness!(RailsPulse::Route.connection)
-    puts "Ensured unique index on unrecognized (null controller_action) paths."
+    begin
+      RailsPulse::RouteIndexes.ensure_null_action_uniqueness!(RailsPulse::Route.connection)
+      puts "Ensured unique index on unrecognized (null controller_action) paths."
+    rescue ActiveRecord::RecordNotUnique => e
+      puts "Duplicate null-action paths detected after consolidation — retrying..."
+      # A request between consolidation and index creation may have inserted a duplicate.
+      # Re-run the backfiller to merge it, then retry the index once.
+      RailsPulse::RouteControllerActionBackfiller.call
+      begin
+        RailsPulse::RouteIndexes.ensure_null_action_uniqueness!(RailsPulse::Route.connection)
+        puts "Unique index created on retry."
+      rescue ActiveRecord::RecordNotUnique
+        duplicates = RailsPulse::Route.where(controller_action: nil)
+          .group(:path).having("COUNT(*) > 1").pluck(:path)
+        puts "ERROR: Could not create unique index. Duplicate paths remain:"
+        duplicates.each { |p| puts "  - #{p}" }
+        puts "Manually resolve these duplicates, then re-run this task."
+      end
+    end
   end
 end

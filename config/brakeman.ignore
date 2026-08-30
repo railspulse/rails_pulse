@@ -67,7 +67,7 @@
       "cwe_id": [
         89
       ],
-      "note": "Reviewed: SQL comes from Rails' ActiveRecord instrumentation (payload[:sql]), not user input. This is internally-generated SQL that Rails has already executed safely. EXPLAIN is read-only."
+      "note": "Reviewed: EXPLAIN (without ANALYZE) is planner-only on all adapters. Only SELECT/WITH statements are passed — non-SELECT verbs are rejected by SAFE_VERB check."
     },
     {
       "warning_type": "SQL Injection",
@@ -90,7 +90,7 @@
       "cwe_id": [
         89
       ],
-      "note": "Reviewed: SQL comes from Rails' ActiveRecord instrumentation (payload[:sql]), not user input. This is internally-generated SQL that Rails has already executed safely. EXPLAIN is read-only."
+      "note": "Reviewed: EXPLAIN is planner-only on all adapters. Only SELECT/WITH statements are passed — non-SELECT verbs are rejected by SAFE_VERB check."
     },
     {
       "warning_type": "SQL Injection",
@@ -113,7 +113,7 @@
       "cwe_id": [
         89
       ],
-      "note": "Reviewed: SQL comes from Rails' ActiveRecord instrumentation (payload[:sql]), not user input. This is internally-generated SQL that Rails has already executed safely. EXPLAIN is read-only."
+      "note": "Reviewed: EXPLAIN QUERY PLAN is planner-only on SQLite. Only SELECT/WITH statements are passed — non-SELECT verbs are rejected by SAFE_VERB check."
     },
     {
       "warning_type": "SQL Injection",

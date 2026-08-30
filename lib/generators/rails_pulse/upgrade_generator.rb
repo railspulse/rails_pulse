@@ -127,7 +127,7 @@ module RailsPulse
       def upgrade_installation(migration_dir:, migrate_command:)
         # Refresh the schema file so fresh databases (test, CI) built from
         # db/rails_pulse_schema.rb include all current columns and tables.
-        copy_file "db/rails_pulse_schema.rb", "db/rails_pulse_schema.rb"
+        copy_file "db/rails_pulse_schema.rb", "db/rails_pulse_schema.rb", force: true
         sync_initializer
 
         gem_migrations = get_gem_migrations
@@ -213,6 +213,8 @@ module RailsPulse
         say "Schema migrate alone leaves the Action column empty. After migrating, run:", :yellow
         say "  rails rails_pulse:migrate_routes", :yellow
         say "Skipping this leaves GET/POST on the same path unmerged in the dashboard.", :yellow
+        say "\nWARNING: Migration 20260610000002 is irreversible (drops routes.method).", :red
+        say "db:rollback past this point requires a database restore.", :red
       end
 
       def say_next_steps(migrate_command, include_route_backfill:)
@@ -228,7 +230,8 @@ module RailsPulse
           say "#{n}. Review config/initializers/rails_pulse.rb with git diff"
           n += 1
         end
-        say "#{n}. Restart your Rails server"
+        say "#{n}. Restart ALL processes (web + workers) together — a rolling restart"
+        say "   that leaves old processes against the new schema breaks tracking."
       end
 
       def sync_initializer

@@ -49,10 +49,12 @@ end if Rake::Task.task_defined?("db:test:prepare")
 
 # Helper function to detect database setup type
 def separate_database_setup?
-  # Check if there's a rails_pulse_migrate directory (indicates separate database)
-  Rails.root.join("db/rails_pulse_migrate").exist? ||
-  # Check if database.yml has rails_pulse configuration
-  (Rails.application.config.database_configuration.dig(Rails.env, "rails_pulse").present?)
+  # A .keep file alone (created by install_generator for all modes) does not
+  # indicate separate-DB. Require actual migration files or a database.yml entry.
+  migrate_dir = Rails.root.join("db/rails_pulse_migrate")
+  has_migration_files = migrate_dir.exist? && Dir.glob("#{migrate_dir}/*.rb").any?
+  has_db_config = Rails.application.config.database_configuration.dig(Rails.env, "rails_pulse").present?
+  has_migration_files || has_db_config
 end
 
 # After a schema load, insert version numbers for any migration files already in
@@ -67,6 +69,14 @@ def record_rails_pulse_migrations_applied
 
   connection = RailsPulse::ApplicationRecord.connection
 
+  # Only record versions if the schema load actually created/updated tables.
+  # On an existing database, the schema file is a no-op, so marking migrations
+  # as applied would hide genuinely pending migrations.
+  unless connection.table_exists?(:rails_pulse_routes)
+    puts "[RailsPulse] Schema load did not create tables — skipping migration recording"
+    return
+  end
+
   # Create schema_migrations if this is a brand-new database that has not yet
   # had any migrations run against it (e.g. just after db:create).
   unless connection.table_exists?(:schema_migrations)
@@ -79,6 +89,19 @@ def record_rails_pulse_migrations_applied
 
   Dir.glob("#{migrations_path}/*.rb").sort.each do |file|
     version = File.basename(file, ".rb").split("_").first
+    migration_name = File.basename(file, ".rb").sub(/\A\d+_/, "")
+
+    # For the 0.4.0 route-identity migrations, only record them as applied if
+    # the schema actually has the columns they would add. This prevents marking
+    # them applied on an existing DB where the schema load was a no-op.
+    if migration_name.include?("change_rails_pulse_routes") || migration_name.include?("null_action_unique_index")
+      unless connection.column_exists?(:rails_pulse_routes, :controller_action) &&
+             connection.column_exists?(:rails_pulse_routes, :http_methods)
+        puts "[RailsPulse] Skipping #{version} — route columns not present yet"
+        next
+      end
+    end
+
     next if connection.select_values(
       "SELECT version FROM schema_migrations WHERE version = #{connection.quote(version)}"
     ).any?
