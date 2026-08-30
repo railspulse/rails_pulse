@@ -59,9 +59,10 @@ module RailsPulse
               )
             end
           end
-          with_recording_suppressed do
-            RailsPulse::ExceptionCaptureService.capture(error, environment: Rails.env.to_s)
-          end
+          # Capture outside with_recording_suppressed — the capture service
+          # checks skip_recording_rails_pulse_activity and would bail out.
+          # The service's own SQL is already filtered by the rails_pulse_ prefix.
+          RailsPulse::ExceptionCaptureService.capture(error, environment: Rails.env.to_s)
           RequestStore.store[:rails_pulse_captured_exception] = error
         rescue => e
           RailsPulse.logger.error "Failed to record job failure: #{e.class} - #{e.message}"
