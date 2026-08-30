@@ -876,7 +876,7 @@ different files.
 
 | PR | Area | Sections | Key files | Status |
 |---|---|---|---|---|
-| 1 | **Security: EXPLAIN + actual_sql** | §1, §11 | `explain_plan_analyzer.rb`, `brakeman.ignore`, `configuration.rb`, `operation_subscriber.rb` | Not started |
+| 1 | **Security: EXPLAIN + actual_sql** | §1, §11 | `explain_plan_analyzer.rb`, `brakeman.ignore`, `configuration.rb`, `operation_subscriber.rb` | [PR #199](https://github.com/railspulse-org/rails_pulse/pull/199) |
 | 2 | **Security: Deployments + auth** | §7, §19, §20 | `deployments_controller.rb`, `application_controller.rb`, `configuration.rb` | Not started |
 | 3 | **Failure isolation** ("Pulse never breaks the host") | §5, §6, §8 | `job_run_collector.rb`, `tracker.rb`, `request_collector.rb` | Not started |
 | 4 | **Shipped initializer + config drift** | §2, §23, §24, §25 | delete `config/initializers/rails_pulse.rb`, `configuration.rb`, `templates/rails_pulse.rb`, `config_updater.rb` | Not started |
