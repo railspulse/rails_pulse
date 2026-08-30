@@ -44,7 +44,8 @@ module RailsPulse
     attr_reader :route_thresholds,
                 :request_thresholds,
                 :query_thresholds,
-                :job_thresholds
+                :job_thresholds,
+                :max_table_records
 
     def initialize
       @enabled = true
@@ -143,8 +144,11 @@ module RailsPulse
 
     # Merge user-supplied caps into the defaults so tables added in newer
     # versions still have a cap when the user carries an older explicit hash.
+    # A nil value explicitly disables count-based cleanup.
     def max_table_records=(value)
-      @max_table_records = @max_table_records.merge(value)
+      return @max_table_records = nil if value.nil?
+
+      @max_table_records = (@max_table_records || {}).merge(value)
     end
 
     # Get all routes to ignore, including asset patterns if track_assets is false
