@@ -5,6 +5,11 @@ module RailsPulse
     class ExplainPlanAnalyzer < BaseAnalyzer
       EXPLAIN_TIMEOUT = 5.seconds
 
+      # Only EXPLAIN SELECT/WITH statements — executing EXPLAIN on a
+      # DELETE/UPDATE/INSERT would re-run the statement on PostgreSQL
+      # when ANALYZE is used, and is never useful for the dashboard.
+      SAFE_VERB = /\A\s*(SELECT|WITH)\b/i
+
       def analyze
         return { explain_plan: nil, issues: [] } if recent_operations.empty?
 
@@ -21,9 +26,7 @@ module RailsPulse
 
       def generate_explain_plan(sql)
         return nil unless sql.present?
-
-        # Skip EXPLAIN queries in test environment to avoid transaction issues
-        return nil if Rails.env.test?
+        return nil unless sql.match?(SAFE_VERB)
 
         begin
           sanitized_sql = sanitize_sql_for_explain(sql)
@@ -188,7 +191,7 @@ module RailsPulse
       end
 
       def execute_postgres_explain(sql)
-        result = RailsPulse::ApplicationRecord.connection.execute("EXPLAIN (ANALYZE, BUFFERS) #{sql}")
+        result = RailsPulse::ApplicationRecord.connection.execute("EXPLAIN #{sql}")
         result.values.flatten.join("\n")
       end
 

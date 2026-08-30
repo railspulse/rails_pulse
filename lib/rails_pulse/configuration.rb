@@ -11,6 +11,7 @@ module RailsPulse
                   :track_jobs,
                   :track_exceptions,
                   :capture_exception_params,
+                  :capture_actual_sql,
                   :custom_asset_patterns,
                   :mount_path,
                   :full_retention_period,
@@ -64,6 +65,10 @@ module RailsPulse
       # default would start capturing exception messages (unfiltered) on upgrade.
       @track_exceptions = false
       @capture_exception_params = true
+      # Off by default — actual_sql contains unparameterized SQL on mysql2
+      # (prepared_statements: false) and PG behind PgBouncer transaction mode.
+      # Inline literals (emails, passwords) would be stored in plaintext.
+      @capture_actual_sql = false
       @custom_asset_patterns = []
       @mount_path = nil
       @full_retention_period = 30.days

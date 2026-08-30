@@ -93,7 +93,7 @@ module RailsPulse
           actual_sql = nil
           label = case label_key
           when :sql
-            actual_sql = clean_sql_label(payload[:sql])
+            actual_sql = clean_sql_label(payload[:sql]) if RailsPulse.configuration.capture_actual_sql
             nil  # associate_query sets label from normalized SQL
           when :template then relative_path(payload[:identifier] || payload[:template])
           when :partial then relative_path(payload[:identifier] || payload[:partial])
