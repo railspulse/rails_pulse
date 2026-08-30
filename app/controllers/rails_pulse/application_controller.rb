@@ -119,7 +119,8 @@ module RailsPulse
           logger.error "RailsPulse: No authentication method configured and RAILS_PULSE_PASSWORD not set. Access denied."
           false
         else
-          username == expected_username && password == expected_password
+          ActiveSupport::SecurityUtils.secure_compare(username.to_s, expected_username) &&
+            ActiveSupport::SecurityUtils.secure_compare(password.to_s, expected_password)
         end
       end
     end

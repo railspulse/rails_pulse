@@ -144,6 +144,13 @@ RailsPulse.configure do |config|
   # Set to false to disable entirely, e.g. for strict data-minimization requirements.
   config.capture_exception_params = true
 
+  # Capture the raw (unparameterized) SQL for each operation.
+  # WARNING: mysql2 defaults to prepared_statements: false, so every literal
+  # value (emails, passwords, tokens) is inlined and stored in plaintext.
+  # Same applies to PostgreSQL behind PgBouncer in transaction-pool mode.
+  # Default: false (upgrade-safe). New installs may opt in after review.
+  # config.capture_actual_sql = true
+
   # ====================================================================================================
   #                                            BACKGROUND JOBS
   # ====================================================================================================
@@ -172,8 +179,21 @@ RailsPulse.configure do |config|
   config.ignored_queues = []
 
   # Capture job arguments for debugging (may contain sensitive data)
-  # Set to false in production to avoid storing potentially sensitive information
-  config.capture_job_arguments = true
+  # WARNING: job arguments may contain user credentials, PII, or API keys.
+  # Default: false. Set to true only after reviewing your job argument contents.
+  config.capture_job_arguments = false
+
+  # Job tracking mode: :universal (all jobs) or :opt_in (only explicitly tracked jobs)
+  # config.job_tracking_mode = :universal
+
+  # Per-adapter settings. Disable adapters or opt into queue-depth tracking:
+  # config.job_adapters = {
+  #   sidekiq: { enabled: true, track_queue_depth: false },
+  #   solid_queue: { enabled: true, track_recurring: false },
+  #   good_job: { enabled: true, track_cron: false },
+  #   delayed_job: { enabled: true },
+  #   resque: { enabled: true }
+  # }
 
   # ====================================================================================================
   #                                            DATABASE CONFIGURATION
@@ -250,7 +270,8 @@ RailsPulse.configure do |config|
   # Example 4: Basic HTTP authentication
   # config.authentication_method = proc {
   #   authenticate_or_request_with_http_basic do |username, password|
-  #     username == ENV['RAILS_PULSE_USERNAME'] && password == ENV['RAILS_PULSE_PASSWORD']
+  #     ActiveSupport::SecurityUtils.secure_compare(username, ENV['RAILS_PULSE_USERNAME']) &&
+  #       ActiveSupport::SecurityUtils.secure_compare(password, ENV['RAILS_PULSE_PASSWORD'])
   #   end
   # }
 
@@ -303,17 +324,37 @@ RailsPulse.configure do |config|
   config.archiving_enabled = true
 
   # Time-based retention - delete records older than this period
-  config.full_retention_period = 2.weeks
+  config.full_retention_period = 30.days
 
   # Count-based retention - maximum records to keep per table
   # After time-based cleanup, if tables still exceed these limits,
   # the oldest remaining records will be deleted to stay under the limit
   config.max_table_records = {
-    rails_pulse_requests: 10000,                  # HTTP requests (moderate volume)
-    rails_pulse_operations: 50000,                # Operations within requests (high volume)
-    rails_pulse_routes: 1000,                     # Unique routes (low volume)
-    rails_pulse_queries: 500,                     # Normalized SQL queries (low volume)
-    rails_pulse_exception_occurrences: 50000,     # Individual exception raises (high volume)
-    rails_pulse_exception_groups: 10000           # Distinct exception sites (moderate volume)
+    rails_pulse_requests: 50_000,                 # HTTP requests (moderate volume)
+    rails_pulse_operations: 100_000,              # Operations within requests (high volume)
+    rails_pulse_routes: 1_000,                    # Unique routes (low volume)
+    rails_pulse_queries: 10_000,                  # Normalized SQL queries (low volume)
+    rails_pulse_job_runs: 50_000,                 # Individual job executions (high volume)
+    rails_pulse_jobs: 1_000,                      # Unique job classes (low volume)
+    rails_pulse_exception_occurrences: 50_000,    # Individual exception raises (high volume)
+    rails_pulse_exception_groups: 10_000          # Distinct exception sites (moderate volume)
   }
+
+  # ====================================================================================================
+  #                                               ADVANCED
+  # ====================================================================================================
+
+  # Use a custom logger (default: Rails.logger)
+  # config.logger = Logger.new("log/rails_pulse.log")
+
+  # Perform tracking writes in a background thread (default: true).
+  # When false, writes happen inline before the response is sent.
+  # config.async = true
+
+  # Show a dashboard banner when summary data is stale (default: true)
+  # config.warn_on_stale_summaries = true
+
+  # Set to false to skip dashboard middleware and asset serving entirely.
+  # Useful for standalone/API-only deployments that use a separate dashboard app.
+  # config.mount_dashboard = true
 end

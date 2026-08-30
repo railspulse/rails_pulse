@@ -55,8 +55,12 @@ module RailsPulse
           operations: operations.map(&:dup)
         }
 
-        # Send to tracker (non-blocking if async mode enabled)
-        RailsPulse::Tracker.track_request(tracking_data)
+        # Send to tracker — rescue ensures Pulse never 500s a host request.
+        begin
+          RailsPulse::Tracker.track_request(tracking_data)
+        rescue => e
+          RailsPulse.logger.error("RailsPulse tracking failed: #{e.class} - #{e.message}")
+        end
 
         [ status, headers, response ]
       ensure
