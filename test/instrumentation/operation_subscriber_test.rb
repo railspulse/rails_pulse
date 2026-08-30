@@ -456,6 +456,9 @@ class OperationSubscriberTest < ActiveSupport::TestCase
   end
 
   test "extra data does not overwrite core operation fields" do
+    original = RailsPulse.configuration.capture_actual_sql
+    RailsPulse.configuration.capture_actual_sql = true
+
     payload = { sql: "SELECT * FROM users", name: "User Load", row_count: 10 }
 
     ActiveSupport::Notifications.instrument("sql.active_record", payload) { sleep(0.001) }
@@ -466,5 +469,23 @@ class OperationSubscriberTest < ActiveSupport::TestCase
     assert_equal "SELECT * FROM users", operation[:actual_sql]
     assert_nil operation[:label]
     assert_equal @request.id, operation[:request_id]
+  ensure
+    RailsPulse.configuration.capture_actual_sql = original
+  end
+
+  test "actual_sql is nil when capture_actual_sql is disabled" do
+    original = RailsPulse.configuration.capture_actual_sql
+    RailsPulse.configuration.capture_actual_sql = false
+
+    payload = { sql: "SELECT * FROM users", name: "User Load" }
+
+    ActiveSupport::Notifications.instrument("sql.active_record", payload) { sleep(0.001) }
+
+    operation = RequestStore.store[:rails_pulse_operations].first
+
+    assert_equal "sql", operation[:operation_type]
+    assert_nil operation[:actual_sql]
+  ensure
+    RailsPulse.configuration.capture_actual_sql = original
   end
 end
