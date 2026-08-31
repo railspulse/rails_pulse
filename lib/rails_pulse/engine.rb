@@ -19,6 +19,7 @@ module RailsPulse
   autoload :QueryAnalysisService, File.expand_path("../../app/services/rails_pulse/query_analysis_service", __dir__)
   autoload :TagFilterService, File.expand_path("../../app/services/rails_pulse/tag_filter_service", __dir__)
   autoload :ExceptionCaptureService, File.expand_path("../../app/services/rails_pulse/exception_capture_service", __dir__)
+  autoload :ExceptionMessageSanitizer, File.expand_path("../../app/services/rails_pulse/exception_message_sanitizer", __dir__)
   autoload :OperationSuggestions, File.expand_path("../../app/services/rails_pulse/operation_suggestions", __dir__)
   autoload :RoutePathNormalizer,             File.expand_path("../../app/services/rails_pulse/route_path_normalizer", __dir__)
   autoload :RouteRecognizer,                 File.expand_path("../../app/services/rails_pulse/route_recognizer", __dir__)

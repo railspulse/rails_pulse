@@ -70,31 +70,10 @@ module RailsPulse
 
     private
 
+    # Memoized: both upsert_group and create_occurrence need the sanitized
+    # message, and this runs on the host's error path.
     def sanitize_exception_message(exception)
-      message = exception.message.to_s
-
-      # Strip the appended SQL statement from ActiveRecord::StatementInvalid
-      # which embeds the offending query including literal PII values.
-      if exception.is_a?(ActiveRecord::StatementInvalid)
-        message = message.split("\n").first.to_s
-        message = message.sub(/\s*:\s*(?:INSERT|UPDATE|DELETE|SELECT)\b.*/i, "")
-        # Redact DETAIL: Key (col)=(value) clauses from PG unique violations
-        message = message.gsub(/DETAIL:\s*Key\s*\([^)]*\)=\([^)]*\)/, "DETAIL: Key (…)=(…)")
-      end
-
-      # Apply Rails' parameter filter in key=value mode
-      if defined?(ActiveSupport::ParameterFilter) && (patterns = filter_parameters).any?
-        filter = ActiveSupport::ParameterFilter.new(patterns)
-        message = filter.filter_param("message", message)
-      end
-
-      message.truncate(500)
-    end
-
-    def filter_parameters
-      Rails.application.config.filter_parameters
-    rescue
-      []
+      @sanitize_exception_message ||= ExceptionMessageSanitizer.for_exception(exception)
     end
 
     # Reusable aborted-transaction recovery shared with Tracker.
@@ -235,7 +214,7 @@ module RailsPulse
       ExceptionOccurrence.create!(
         exception_group: group,
         exception_class: @exception.class.name,
-        message:         @exception.message.to_s.truncate(500),
+        message:         sanitize_exception_message(@exception),
         backtrace:       frames,
         request_url:     @request_url,
         request_method:  @request_method,
