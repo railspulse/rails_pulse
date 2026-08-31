@@ -86,8 +86,8 @@ module RailsPulse
         Result.new(
           at:           after.first.period_start,
           granularity:  series.period_type,
-          before_value: Metric.combine(before.map { |p| [ p.value, p.count ] }),
-          after_value:  Metric.combine(after.map { |p| [ p.value, p.count ] }),
+          before_value: Metric.combine(before.map { |p| [ p.value, p.count ] }, metric),
+          after_value:  Metric.combine(after.map { |p| [ p.value, p.count ] }, metric),
           before_count: before.sum(&:count),
           after_count:  after.sum(&:count)
         )
@@ -126,8 +126,8 @@ module RailsPulse
         best_gap   = 0.0
 
         (MIN_PERIODS_PER_SIDE..(points.size - MIN_PERIODS_PER_SIDE)).each do |index|
-          before = Metric.combine(points[0...index].map { |p| [ p.value, p.count ] })
-          after  = Metric.combine(points[index..].map  { |p| [ p.value, p.count ] })
+          before = Metric.combine(points[0...index].map { |p| [ p.value, p.count ] }, series.metric)
+          after  = Metric.combine(points[index..].map  { |p| [ p.value, p.count ] }, series.metric)
           next if before.nil? || after.nil?
 
           gap = (after - before).abs

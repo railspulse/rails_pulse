@@ -48,6 +48,7 @@ module RailsPulse
                 :request_thresholds,
                 :query_thresholds,
                 :job_thresholds,
+                :exception_thresholds,
                 :max_table_records,
                 :regression_thresholds
 
@@ -57,6 +58,9 @@ module RailsPulse
       @request_thresholds = { slow: 700, very_slow: 2000, critical: 4000 }
       @query_thresholds = { slow: 100, very_slow: 500, critical: 1000 }
       @job_thresholds = { slow: 5_000, very_slow: 30_000, critical: 60_000 }
+      # Exception thresholds are occurrence counts over the dashboard period,
+      # not durations — an exception has no duration.
+      @exception_thresholds = { warning: 10, critical: 100 }
       @ignored_routes = []
       @ignored_requests = []
       @ignored_queries = []
@@ -137,6 +141,7 @@ module RailsPulse
         ratio:                1.5,
         min_delta_ms:         50.0,
         min_delta_rate:       1.0,
+        min_delta_count:      5.0,
         min_samples:          100,
         min_baseline_periods: 3
       }
@@ -227,6 +232,7 @@ module RailsPulse
       validate_threshold_hash!(@request_thresholds, "request_thresholds")
       validate_threshold_hash!(@query_thresholds, "query_thresholds")
       validate_threshold_hash!(@job_thresholds, "job_thresholds")
+      validate_threshold_hash!(@exception_thresholds, "exception_thresholds")
     end
 
     def validate_retention_settings!
@@ -262,7 +268,7 @@ module RailsPulse
         raise ArgumentError, "regression_thresholds must be a hash, got #{@regression_thresholds.class}"
       end
 
-      %i[ratio min_delta_ms min_delta_rate min_samples min_baseline_periods].each do |key|
+      %i[ratio min_delta_ms min_delta_rate min_delta_count min_samples min_baseline_periods].each do |key|
         value = @regression_thresholds[key]
         unless value.is_a?(Numeric) && value > 0
           raise ArgumentError, "regression_thresholds[:#{key}] must be a positive number, got #{value.inspect}"

@@ -18,6 +18,12 @@ module RailsPulse
       error_rate: "error_rate_regression"
     }.freeze
 
+    # Exception groups have no duration, so they are compared on how often they
+    # fire rather than how long they take.
+    EXCEPTION_METRICS = {
+      volume: "exception_frequency_regression"
+    }.freeze
+
     Result = Struct.new(:detected, :opened, :reopened, :resolved, keyword_init: true)
 
     def self.call(as_of: Time.current)
@@ -34,12 +40,13 @@ module RailsPulse
 
       subject_scopes.each do |scope|
         METRICS.each do |metric, kind|
-          Operations::Compare.scan(scope, metric: metric, as_of: as_of).each do |comparison|
-            next unless comparison.regression?
+          seen.concat(detect(scope, metric: metric, kind: kind))
+        end
+      end
 
-            seen << record(comparison, kind: kind)
-            @result.detected += 1
-          end
+      if exceptions_trackable?
+        EXCEPTION_METRICS.each do |metric, kind|
+          seen.concat(detect(exception_scope, metric: metric, kind: kind))
         end
       end
 
@@ -50,6 +57,31 @@ module RailsPulse
     private
 
     attr_reader :as_of
+
+    def detect(scope, metric:, kind:)
+      return [] if scope.nil?
+
+      Operations::Compare.scan(scope, metric: metric, as_of: as_of).filter_map do |comparison|
+        next unless comparison.regression?
+
+        @result.detected += 1
+        record(comparison, kind: kind)
+      end
+    end
+
+    # Only groups the user still cares about. A resolved or ignored group that
+    # starts firing again is handled by the capture service reopening it, so
+    # scanning ignored groups here would reintroduce exactly the noise the
+    # ignore was meant to remove.
+    def exception_scope
+      RailsPulse::ExceptionGroup.where(status: "open")
+    end
+
+    def exceptions_trackable?
+      RailsPulse.configuration.track_exceptions && RailsPulse::ExceptionGroup.table_exists?
+    rescue ActiveRecord::ActiveRecordError
+      false
+    end
 
     # Only scan what the host is actually tracking. Scanning jobs when job
     # tracking is off would produce findings for a table that stopped being
@@ -115,6 +147,10 @@ module RailsPulse
     def severity_for(comparison)
       return "critical" if comparison.metric == :error_rate &&
         comparison.current_value >= Dashboard::Concerns::ThresholdConstants::CRITICAL_ERROR_RATE
+
+      if comparison.metric == :volume
+        return comparison.current_value >= RailsPulse.configuration.exception_thresholds[:critical] ? "critical" : "warning"
+      end
 
       threshold = critical_threshold_for(comparison.subject.type)
       return "critical" if threshold && comparison.current_value >= threshold

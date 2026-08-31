@@ -16,7 +16,15 @@ module RailsPulse
         avg: "avg_duration"
       }.freeze
 
-      SUPPORTED = (DURATION_COLUMNS.keys + [ :error_rate ]).freeze
+      SUPPORTED = (DURATION_COLUMNS.keys + [ :error_rate, :volume ]).freeze
+
+      # Duration and rate metrics are traffic-weighted; volume is not. Weighting
+      # a count by itself would square it — the right comparison for "how often
+      # did this happen?" is the mean per period, so a one-day window and a
+      # 28-day baseline are measured on the same scale.
+      def self.weighted?(metric)
+        metric.to_sym != :volume
+      end
 
       # Higher is worse for every metric currently supported, but stating it
       # explicitly keeps the comparison code from assuming it forever.
@@ -31,14 +39,20 @@ module RailsPulse
       end
 
       def self.unit(metric)
-        metric.to_sym == :error_rate ? "%" : "ms"
+        case metric.to_sym
+        when :error_rate then "%"
+        when :volume     then ""
+        else "ms"
+        end
       end
 
       # SQL that reduces a set of summary rows to a single value for this metric.
       # NULLIF guards the zero-count case rather than letting the database raise
       # or return a division artifact.
       def self.aggregate_sql(metric)
-        if metric.to_sym == :error_rate
+        if metric.to_sym == :volume
+          "AVG(rails_pulse_summaries.count)"
+        elsif metric.to_sym == :error_rate
           "SUM(rails_pulse_summaries.error_count) * 100.0 / " \
             "NULLIF(SUM(rails_pulse_summaries.count), 0)"
         else
@@ -51,7 +65,13 @@ module RailsPulse
       # Reduces an already-loaded set of [value, count] pairs the same way
       # aggregate_sql would. Used by change-point detection, which needs the
       # per-period series in memory anyway and should not round-trip per split.
-      def self.combine(pairs)
+      def self.combine(pairs, metric = :p95)
+        return nil if pairs.empty?
+
+        unless weighted?(metric)
+          return pairs.sum { |(value, _count)| value.to_f } / pairs.size
+        end
+
         total_count = pairs.sum { |(_value, count)| count.to_i }
         return nil if total_count.zero?
 

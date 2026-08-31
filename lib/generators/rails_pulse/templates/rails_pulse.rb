@@ -369,6 +369,7 @@ RailsPulse.configure do |config|
   #   ratio:                1.5,   # 50% worse than baseline
   #   min_delta_ms:         50.0,  # ...and at least 50ms worse
   #   min_delta_rate:       1.0,   # ...or 1 percentage point, for error rates
+  #   min_delta_count:      5.0,   # ...or 5 more occurrences a day, for exception volume
   #   min_samples:          100,   # minimum observations on each side
   #   min_baseline_periods: 3      # minimum days of history before comparing
   # }

@@ -2,7 +2,11 @@ module RailsPulse
   class Finding < RailsPulse::ApplicationRecord
     self.table_name = "rails_pulse_findings"
 
-    KINDS = %w[performance_regression error_rate_regression].freeze
+    KINDS = %w[
+      performance_regression
+      error_rate_regression
+      exception_frequency_regression
+    ].freeze
     SEVERITIES = %w[warning critical].freeze
     STATUSES = %w[open acknowledged resolved].freeze
 
@@ -63,11 +67,16 @@ module RailsPulse
       when "RailsPulse::Route" then record.path
       when "RailsPulse::Query" then record.normalized_sql
       when "RailsPulse::Job"   then record.name
+      when "RailsPulse::ExceptionGroup" then record.exception_class
       end.presence || "#{subject_type.demodulize} ##{subject_id}"
     end
 
     def unit
-      metric == "error_rate" ? "%" : "ms"
+      case metric
+      when "error_rate" then "%"
+      when "volume"     then ""
+      else "ms"
+      end
     end
 
     def percent_change
@@ -99,7 +108,11 @@ module RailsPulse
     def format_value(value)
       return "—" if value.nil?
 
-      metric == "error_rate" ? "#{value.round(2)}%" : "#{value.round(0).to_i}ms"
+      case metric
+      when "error_rate" then "#{value.round(2)}%"
+      when "volume"     then "#{value.round(1)} per day"
+      else "#{value.round(0).to_i}ms"
+      end
     end
   end
 end

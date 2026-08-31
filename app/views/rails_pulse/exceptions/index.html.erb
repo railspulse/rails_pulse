@@ -1,5 +1,29 @@
 <%= render 'rails_pulse/components/page_header' %>
 
+<%= render 'rails_pulse/exceptions/metric_cards' %>
+
+<%= render 'rails_pulse/components/panel', {
+  title: 'Exception Frequency',
+  card_classes: 'b-full',
+  help_heading: 'Exception Frequency',
+  help_text: 'How often exceptions were raised over the selected period, across every group. Read from retained summaries rather than individual occurrence records, so the history stays accurate after cleanup has pruned old occurrences.'
+} do %>
+  <% if @occurrence_volume_chart %>
+    <div class="chart-container">
+      <%= render_stimulus_chart(
+        @occurrence_volume_chart,
+        type: "bar",
+        id: "exception_occurrence_volume_chart",
+        height: "220px"
+      ) %>
+    </div>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No exception activity in this period.',
+        description: 'Frequency appears here once exceptions have been recorded and summarized.' %>
+  <% end %>
+<% end %>
+
 <%= render 'rails_pulse/components/panel', title: 'Exceptions' do %>
   <%= search_form_for @ransack_query, url: exceptions_path, class: "filter-bar" do |form| %>
     <div class="filter-bar__form">

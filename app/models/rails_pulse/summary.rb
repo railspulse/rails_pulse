@@ -30,6 +30,14 @@ module RailsPulse
     scope :for_routes, -> { where(summarizable_type: "RailsPulse::Route") }
     scope :for_queries, -> { where(summarizable_type: "RailsPulse::Query") }
     scope :for_jobs, -> { where(summarizable_type: "RailsPulse::Job") }
+    scope :for_exceptions, -> { where(summarizable_type: "RailsPulse::ExceptionGroup") }
+
+    # Frequency across every exception group, written alongside the per-group
+    # rows so a chart of total exception volume is one query rather than one
+    # per group.
+    scope :overall_exceptions, -> {
+      where(summarizable_type: "RailsPulse::ExceptionGroup", summarizable_id: 0)
+    }
     scope :by_job_name, ->(job_name) { for_jobs.joins(:job).where(rails_pulse_jobs: { name: job_name }) }
     scope :recent, -> { order(period_start: :desc) }
 
@@ -61,7 +69,8 @@ module RailsPulse
         "  (summarizable_type = 'RailsPulse::Route' AND summarizable_id IN (?)) OR " \
         "  (summarizable_type = 'RailsPulse::Query' AND summarizable_id IN (?)) OR " \
         "  (summarizable_type = 'RailsPulse::Job' AND summarizable_id IN (?)) OR " \
-        "  (summarizable_type = 'RailsPulse::Request')" \
+        "  (summarizable_type = 'RailsPulse::Request') OR " \
+        "  (summarizable_type = 'RailsPulse::ExceptionGroup')" \
         ")",
         route_ids,
         query_ids,

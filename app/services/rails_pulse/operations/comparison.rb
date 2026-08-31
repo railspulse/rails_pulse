@@ -80,7 +80,11 @@ module RailsPulse
         return false unless Metric.higher_is_worse?(metric)
 
         thresholds = RailsPulse.configuration.regression_thresholds
-        floor      = metric == :error_rate ? thresholds[:min_delta_rate] : thresholds[:min_delta_ms]
+        floor      = case metric
+        when :error_rate then thresholds[:min_delta_rate]
+        when :volume     then thresholds[:min_delta_count]
+        else thresholds[:min_delta_ms]
+        end
 
         ratio >= thresholds[:ratio] && delta >= floor
       end
@@ -119,7 +123,11 @@ module RailsPulse
       private
 
       def format_value(value)
-        metric == :error_rate ? "#{value.round(2)}%" : "#{value.round(0).to_i}ms"
+        case metric
+        when :error_rate then "#{value.round(2)}%"
+        when :volume     then value.round(1).to_s
+        else "#{value.round(0).to_i}ms"
+        end
       end
     end
   end

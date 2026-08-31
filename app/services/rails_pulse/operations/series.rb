@@ -39,6 +39,7 @@ module RailsPulse
         when :p95 then p95
         when :p99 then p99
         when :avg then avg
+        when :volume then count
         when :error_rate
           count.to_i.zero? ? nil : (error_count.to_i * 100.0 / count.to_i)
         end
@@ -69,7 +70,7 @@ module RailsPulse
 
       # The traffic-weighted value across every period in the series.
       def value
-        @value ||= Metric.combine(points.map { |point| [ point.value, point.count ] })
+        @value ||= Metric.combine(points.map { |point| [ point.value, point.count ] }, metric)
       end
 
       def first_period_start
