@@ -79,4 +79,13 @@ class ExceptionsShowPageTest < ApplicationSystemTestCase
     assert_no_text /request params/i
     assert_no_selector ".exception-params"
   end
+
+  test "raw data panel renders a copyable llm context block" do
+    assert_page_loads "/exceptions/#{@group.id}"
+
+    assert_text /raw data/i
+    assert_selector "[data-controller~='rails-pulse--clipboard']"
+    assert_selector "[data-rails-pulse--clipboard-target='source']"
+    assert_selector "button[data-action~='click->rails-pulse--clipboard#copy']"
+  end
 end

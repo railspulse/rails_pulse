@@ -1,0 +1,34 @@
+<%#
+  Collapsible block of copy-to-clipboard text, intended for pasting into an LLM.
+
+  Locals:
+    content — the text to render and copy (required)
+    title   — heading above the block (default "Raw Data")
+%>
+<%
+  title ||= "Raw Data"
+%>
+
+<div
+  data-controller="rails-pulse--collapsible rails-pulse--clipboard"
+  data-rails-pulse--collapsible-collapsed-class="collapsed"
+  class="collapsible-code"
+>
+  <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs">
+    <%= title %>
+    <button
+      type="button"
+      class="collapsible-toggle"
+      data-rails-pulse--collapsible-target="toggle"
+      data-action="click->rails-pulse--collapsible#toggle"
+    >show</button>
+    <button
+      type="button"
+      class="collapsible-toggle"
+      data-action="click->rails-pulse--clipboard#copy"
+    >copy</button>
+  </h2>
+  <div class="prose max-i-none" data-rails-pulse--collapsible-target="content">
+    <pre class="mbs-0" style="white-space: pre; margin-block-end: 0; margin-block-start: 0;"><code data-rails-pulse--clipboard-target="source"><%= html_escape(content) %></code></pre>
+  </div>
+</div>

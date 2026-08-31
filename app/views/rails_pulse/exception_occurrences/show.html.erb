@@ -39,3 +39,7 @@
     <%= render 'rails_pulse/exceptions/backtrace', backtrace: @occurrence.backtrace %>
   <% end %>
 <% end %>
+
+<%= render 'rails_pulse/components/raw_data',
+    title: 'Raw Data',
+    content: RailsPulse::Exceptions::RawData.new(@exception_group, occurrence: @occurrence, aggregates: false).to_s %>

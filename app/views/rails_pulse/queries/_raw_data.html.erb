@@ -58,26 +58,4 @@
   json_output = JSON.pretty_generate(raw_data.compact)
 %>
 
-<div
-  data-controller="rails-pulse--collapsible"
-  data-rails-pulse--collapsible-collapsed-class="collapsed"
-  class="collapsible-code"
->
-  <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs">
-    Raw Data
-    <button
-      type="button"
-      class="collapsible-toggle"
-      data-rails-pulse--collapsible-target="toggle"
-      data-action="click->rails-pulse--collapsible#toggle"
-    >show</button>
-    <button
-      type="button"
-      class="collapsible-toggle"
-      onclick="navigator.clipboard.writeText(this.closest('.collapsible-code').querySelector('code').textContent).then(() => { this.textContent = 'copied!'; setTimeout(() => this.textContent = 'copy', 1500) })"
-    >copy</button>
-  </h2>
-  <div class="prose max-i-none" data-rails-pulse--collapsible-target="content">
-    <pre class="mbs-0" style="white-space: pre; margin-block-end: 0; margin-block-start: 0;"><code><%= html_escape(json_output) %></code></pre>
-  </div>
-</div>
+<%= render 'rails_pulse/components/raw_data', content: json_output %>

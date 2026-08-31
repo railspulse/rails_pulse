@@ -46,3 +46,7 @@
         description: '' %>
   <% end %>
 <% end %>
+
+<%= render 'rails_pulse/components/raw_data',
+    title: 'Raw Data',
+    content: RailsPulse::Exceptions::RawData.new(@exception_group, occurrence: @latest_occurrence).to_s %>
