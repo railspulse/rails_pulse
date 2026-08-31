@@ -78,6 +78,25 @@ module RailsPulse
         @stats[:count_based][:exception_groups]      = cleanup_exception_groups_by_count
         @stats[:count_based][:orphaned_exception_groups] = cleanup_orphaned_exception_groups
       end
+      @stats[:count_based][:findings] = cleanup_findings_by_count if findings_table_exists?
+    end
+
+    # Only resolved findings are prunable. An unresolved one is a live statement
+    # about the application's current behaviour and stays until detection says
+    # otherwise, however old it is.
+    def cleanup_findings_by_count
+      cleanup_by_count(
+        RailsPulse::Finding,
+        :rails_pulse_findings,
+        order_column: :last_detected_at,
+        scope: RailsPulse::Finding.resolved
+      )
+    end
+
+    def findings_table_exists?
+      RailsPulse::Finding.table_exists?
+    rescue ActiveRecord::ActiveRecordError
+      false
     end
 
     # Shared helper: delete oldest records beyond a configured max count

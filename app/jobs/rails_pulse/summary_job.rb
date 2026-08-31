@@ -13,6 +13,10 @@ module RailsPulse
       if midnight?(target_hour)
         process_daily_summary(target_hour.to_date - 1.day)
 
+        # Regression detection compares complete days, so it has nothing new to
+        # say until the day summary it reads has been written.
+        detect_findings(target_hour)
+
         # Check if we should run weekly summary (Monday at midnight)
         process_weekly_summary((target_hour.to_date - 1.week).beginning_of_week) if monday?(target_hour)
 
@@ -36,6 +40,15 @@ module RailsPulse
 
     def first_of_month?(time)
       time.day == 1
+    end
+
+    # Detection failing must not take the summary job down with it: summaries
+    # are the data everything else depends on, findings are derived from them.
+    def detect_findings(as_of)
+      RailsPulse.logger.info "Detecting findings as of #{as_of}"
+      FindingDetectionJob.perform_now(as_of)
+    rescue StandardError => e
+      RailsPulse.logger.error "Finding detection failed, summaries unaffected: #{e.message}"
     end
 
     def process_hourly_summary(hour)

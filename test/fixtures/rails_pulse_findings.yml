@@ -1,0 +1,88 @@
+# Findings are written by FindingDetector, never by hand in production. These
+# fixtures exist so views and dashboard code have something to render without
+# each test having to build a full baseline history first.
+
+open_route_regression:
+  fingerprint: <%= Digest::SHA256.hexdigest("performance_regression:RailsPulse::Route:1:p95") %>
+  kind: "performance_regression"
+  subject_type: "RailsPulse::Route"
+  subject_id: 1
+  metric: "p95"
+  severity: "critical"
+  status: "open"
+  baseline_value: 220.0
+  current_value: 1420.0
+  delta: 1200.0
+  ratio: 6.4545
+  baseline_count: 42000
+  current_count: 1800
+  changed_at: <%= 2.days.ago.beginning_of_hour %>
+  change_point_granularity: "hour"
+  first_detected_at: <%= 2.days.ago %>
+  last_detected_at: <%= 1.hour.ago %>
+  detection_count: 3
+  created_at: <%= 2.days.ago %>
+  updated_at: <%= 1.hour.ago %>
+
+open_query_regression:
+  fingerprint: <%= Digest::SHA256.hexdigest("performance_regression:RailsPulse::Query:1:p95") %>
+  kind: "performance_regression"
+  subject_type: "RailsPulse::Query"
+  subject_id: 1
+  metric: "p95"
+  severity: "warning"
+  status: "open"
+  baseline_value: 40.0
+  current_value: 120.0
+  delta: 80.0
+  ratio: 3.0
+  baseline_count: 90000
+  current_count: 3100
+  changed_at: <%= 5.days.ago.beginning_of_day %>
+  change_point_granularity: "day"
+  first_detected_at: <%= 5.days.ago %>
+  last_detected_at: <%= 1.hour.ago %>
+  detection_count: 5
+  created_at: <%= 5.days.ago %>
+  updated_at: <%= 1.hour.ago %>
+
+acknowledged_error_rate_regression:
+  fingerprint: <%= Digest::SHA256.hexdigest("error_rate_regression:RailsPulse::Route:2:error_rate") %>
+  kind: "error_rate_regression"
+  subject_type: "RailsPulse::Route"
+  subject_id: 2
+  metric: "error_rate"
+  severity: "critical"
+  status: "acknowledged"
+  baseline_value: 0.8
+  current_value: 12.5
+  delta: 11.7
+  ratio: 15.625
+  baseline_count: 26000
+  current_count: 1100
+  first_detected_at: <%= 3.days.ago %>
+  last_detected_at: <%= 2.hours.ago %>
+  detection_count: 4
+  created_at: <%= 3.days.ago %>
+  updated_at: <%= 2.hours.ago %>
+
+resolved_route_regression:
+  fingerprint: <%= Digest::SHA256.hexdigest("performance_regression:RailsPulse::Route:3:p95") %>
+  kind: "performance_regression"
+  subject_type: "RailsPulse::Route"
+  subject_id: 3
+  metric: "p95"
+  severity: "warning"
+  status: "resolved"
+  baseline_value: 180.0
+  current_value: 460.0
+  delta: 280.0
+  ratio: 2.5556
+  baseline_count: 15000
+  current_count: 700
+  first_detected_at: <%= 20.days.ago %>
+  last_detected_at: <%= 12.days.ago %>
+  resolved_at: <%= 11.days.ago %>
+  detection_count: 8
+  created_at: <%= 20.days.ago %>
+  updated_at: <%= 11.days.ago %>

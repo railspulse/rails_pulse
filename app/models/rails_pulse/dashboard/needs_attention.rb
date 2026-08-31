@@ -16,7 +16,7 @@ module RailsPulse
       MAX_ITEMS = 10
 
       def to_attention_data
-        items    = route_items + query_items + job_items
+        items    = regression_items + route_items + query_items + job_items
         critical = items.select { |i| i[:severity] == :critical }.sort_by { |i| -i[:sort_score] }
         warning  = items.select { |i| i[:severity] == :warning  }.sort_by { |i| -i[:sort_score] }
 
@@ -36,6 +36,60 @@ module RailsPulse
       end
 
       private
+
+      # Persisted regressions, from FindingDetector. These answer "what got
+      # worse?" where every other rule in this class answers "what is slow?" —
+      # a route that tripled from 90ms to 280ms is invisible to a threshold and
+      # is exactly what a user wants to see first.
+      #
+      # Findings are sorted above threshold items of the same severity by
+      # scoring on the size of the change, which is unbounded, rather than on a
+      # duration.
+      def regression_items
+        return [] unless findings_available?
+
+        RailsPulse::Finding.unresolved.recent.limit(MAX_ITEMS).map do |finding|
+          {
+            type:       "REGRESSION",
+            name:       finding.subject_label,
+            reason:     regression_reason(finding),
+            metric:     "#{finding.percent_change.round(0).to_i}% worse",
+            metric_sub: finding.to_s,
+            link:       regression_link(finding),
+            severity:   finding.severity.to_sym,
+            sort_score: (finding.ratio.to_f * 1000),
+            monospace:  finding.subject_type == "RailsPulse::Query"
+          }
+        end
+      end
+
+      def regression_reason(finding)
+        metric_label = finding.metric == "error_rate" ? "Error rate" : finding.metric.upcase
+
+        if finding.change_point_known?
+          precision = finding.hourly_change_point? ? finding.changed_at.strftime("%b %-d %H:%M") : finding.changed_at.strftime("%b %-d")
+          "#{metric_label} regression · started around #{precision}"
+        else
+          "#{metric_label} regression vs its own baseline"
+        end
+      end
+
+      def regression_link(finding)
+        case finding.subject_type
+        when "RailsPulse::Route" then url_helpers.route_path(finding.subject_id)
+        when "RailsPulse::Query" then url_helpers.query_path(finding.subject_id)
+        when "RailsPulse::Job"   then url_helpers.job_path(finding.subject_id)
+        else url_helpers.root_path
+        end
+      end
+
+      # The findings table arrives in a migration, so a host that has upgraded
+      # the gem but not yet run migrations must still get a working dashboard.
+      def findings_available?
+        RailsPulse::Finding.table_exists?
+      rescue ActiveRecord::ActiveRecordError
+        false
+      end
 
       def storage_pressure_items
         StoragePressure.new.pressure_items

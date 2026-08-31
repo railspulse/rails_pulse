@@ -31,6 +31,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     ChangeRailsPulseRoutesToMultiVerbModel
     AddNullActionUniqueIndexToRoutes
     AddLocationToExceptionGroups
+    CreateRailsPulseFindings
   ].freeze
 
   def setup
@@ -293,6 +294,19 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert @conn.column_exists?(:rails_pulse_exception_occurrences, :occurred_at), "occurred_at missing on occurrences"
   end
 
+  test "upgrade from v0.2.7 creates the findings table" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    assert @conn.table_exists?(:rails_pulse_findings), "findings table missing"
+    assert @conn.column_exists?(:rails_pulse_findings, :fingerprint), "fingerprint missing on findings"
+    assert @conn.column_exists?(:rails_pulse_findings, :kind), "kind missing on findings"
+    assert @conn.column_exists?(:rails_pulse_findings, :subject_type), "subject_type missing on findings"
+    assert @conn.column_exists?(:rails_pulse_findings, :subject_id), "subject_id missing on findings"
+    assert @conn.column_exists?(:rails_pulse_findings, :status), "status missing on findings"
+    assert @conn.column_exists?(:rails_pulse_findings, :changed_at), "changed_at missing on findings"
+  end
+
   test "upgrade from v0.2.7 adds actual_sql to operations" do
     load_baseline(RailsPulse::TestSchemas::V027)
     run_all_migrations
@@ -340,6 +354,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert @conn.table_exists?(:rails_pulse_exception_groups)
     assert @conn.table_exists?(:rails_pulse_exception_occurrences)
     assert @conn.table_exists?(:rails_pulse_job_runs)
+    assert @conn.table_exists?(:rails_pulse_findings)
     assert @conn.column_exists?(:rails_pulse_operations, :actual_sql)
     assert @conn.column_exists?(:rails_pulse_jobs, :p95_duration)
   end

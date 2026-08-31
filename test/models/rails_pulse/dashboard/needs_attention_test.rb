@@ -7,6 +7,9 @@ module RailsPulse
 
       def setup
         RailsPulse::Summary.delete_all
+        # Findings are loaded globally by `fixtures :all`; clear them so a test
+        # only sees the regressions it creates itself.
+        RailsPulse::Finding.delete_all
         # Zero out all jobs so they don't appear in results unless the test creates them
         RailsPulse::Job.update_all(runs_count: 0, failures_count: 0, p95_duration: nil)
         # Neutralize the query_with_issues fixture so it doesn't pollute unrelated tests
@@ -353,6 +356,128 @@ module RailsPulse
         route_items = (result[:critical] + result[:warning]).select { |i| i[:name] == "/api/users" }
 
         assert_equal 1, route_items.size
+      end
+
+      # Regression Tests
+
+      # Regressions answer "what got worse?" where every other rule here answers
+      # "what is slow?". A route well under its threshold that tripled is
+      # invisible to the threshold rules and must still surface.
+
+      def create_finding(severity: "warning", ratio: 3.0, subject: nil, **overrides)
+        route = subject || rails_pulse_routes(:api_users)
+
+        RailsPulse::Finding.create!({
+          fingerprint:       SecureRandom.hex(32),
+          kind:              "performance_regression",
+          subject_type:      "RailsPulse::Route",
+          subject_id:        route.id,
+          metric:            "p95",
+          severity:          severity,
+          status:            "open",
+          baseline_value:    100.0,
+          current_value:     100.0 * ratio,
+          delta:             100.0 * (ratio - 1),
+          ratio:             ratio,
+          baseline_count:    5000,
+          current_count:     500,
+          first_detected_at: 2.days.ago,
+          last_detected_at:  1.hour.ago,
+          detection_count:   2
+        }.merge(overrides))
+      end
+
+      test "surfaces an unresolved regression" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+        create_finding
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+        item = (result[:critical] + result[:warning]).find { |i| i[:type] == "REGRESSION" }
+
+        assert_not_nil item
+        assert_equal "/api/users", item[:name]
+        assert_equal "200% worse", item[:metric]
+      end
+
+      test "surfaces a regression on a route that is nowhere near its threshold" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+        # 100ms to 300ms: far below the 500ms slow threshold, so no threshold
+        # rule would ever report it.
+        create_finding(ratio: 3.0)
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+
+        assert_equal 1, result[:total]
+      end
+
+      test "does not surface a resolved regression" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+        create_finding(status: "resolved", resolved_at: 1.day.ago)
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+
+        assert_equal 0, result[:total]
+      end
+
+      test "surfaces an acknowledged regression" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+        create_finding(status: "acknowledged")
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+
+        assert_equal 1, result[:total]
+      end
+
+      test "a critical regression lands in the critical bucket" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+        create_finding(severity: "critical")
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+
+        assert_equal 1, result[:critical].size
+        assert_empty result[:warning]
+      end
+
+      test "a regression with a known change point says when it started" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+        create_finding(changed_at: 3.days.ago.beginning_of_day, change_point_granularity: "day")
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+        item = (result[:critical] + result[:warning]).find { |i| i[:type] == "REGRESSION" }
+
+        assert_includes item[:reason], "started around"
+      end
+
+      test "a regression with no change point still reports the regression" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+        create_finding(changed_at: nil, change_point_granularity: nil)
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+        item = (result[:critical] + result[:warning]).find { |i| i[:type] == "REGRESSION" }
+
+        assert_includes item[:reason], "vs its own baseline"
+      end
+
+      test "regressions are subject to the same 10-item cap" do
+        create_overall_hourly_summary(period_end: 30.minutes.ago)
+        routes = [
+          rails_pulse_routes(:api_users),
+          rails_pulse_routes(:api_posts),
+          rails_pulse_routes(:api_test),
+          rails_pulse_routes(:api_other),
+          rails_pulse_routes(:api_cleanup)
+        ]
+        # Two findings per route on different metrics, for 10, plus two more.
+        routes.each do |route|
+          create_finding(subject: route, metric: "p95")
+          create_finding(subject: route, metric: "error_rate", kind: "error_rate_regression")
+        end
+        create_finding(subject: routes.first, metric: "p99")
+        create_finding(subject: routes.last, metric: "p50")
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+
+        assert_operator result[:total], :<=, 10
       end
 
       # Edge Cases
