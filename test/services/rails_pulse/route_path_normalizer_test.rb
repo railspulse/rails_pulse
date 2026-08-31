@@ -52,8 +52,8 @@ module RailsPulse
       assert_equal "/api/v2/status", normalize("/api/v2/status", { controller: "api/status", action: "index" })
     end
 
-    test "returns path unchanged when path_params is empty hash" do
-      assert_equal "/users/42", normalize("/users/42", {})
+    test "buckets dynamic segments when path_params is empty hash" do
+      assert_equal "/users/:id", normalize("/users/42", {})
     end
 
     # Edge Case Tests
@@ -66,8 +66,8 @@ module RailsPulse
       assert_equal "", normalize("", { id: "42" })
     end
 
-    test "returns path unchanged when path_params is nil" do
-      assert_equal "/users/42", normalize("/users/42", nil)
+    test "buckets dynamic segments when path_params is nil" do
+      assert_equal "/users/:id", normalize("/users/42", nil)
     end
 
     test "safe fallback for ambiguous duplicate param values" do

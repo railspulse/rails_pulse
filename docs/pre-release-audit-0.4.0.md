@@ -883,7 +883,7 @@ different files.
 | 5 | **Migration safety** | §3, §4, §17, §28, §29 | `upgrade_generator.rb`, `rails_pulse.rake`, `rails_pulse_tasks.rake`, `route_controller_action_backfiller.rb` | [PR #203](https://github.com/railspulse-org/rails_pulse/pull/203) |
 | 6 | **CI + compatibility** | §22, §12, §13, §14 | `Rakefile`, `test.yml`, `route_indexes.rb`, `gemspec` | [PR #204](https://github.com/railspulse-org/rails_pulse/pull/204) |
 | 7 | **Website** | §9, §38, §39, §40 | separate repo: `rails_pulse_website` | [PR #1](https://github.com/studioomni/rails_pulse_website/pull/1) |
-| 8 | **Everything else** | remaining MEDIUMs, LOWs, NITs | various | Not started |
+| 8 | **Everything else** | remaining MEDIUMs, LOWs, NITs | various | [PR #205](https://github.com/railspulse-org/rails_pulse/pull/205) |
 
 **Merge order:** PR 1 first — the only finding where a dashboard page view can silently
 re-execute a production `DELETE`. PR 5 is what stops the recurring migration breakage.

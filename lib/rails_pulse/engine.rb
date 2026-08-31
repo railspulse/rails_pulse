@@ -73,6 +73,8 @@ module RailsPulse
     end
 
     initializer "rails_pulse.assets" do |app|
+      next unless RailsPulse.configuration.mount_dashboard
+
       # Dashboard assets are bundled at gem build time. They are not registered
       # with Sprockets (re-minifying the 2 MB bundle OOMs small hosts — #190).
       # assets:precompile copies them into public/assets for CDN/CSP; the

@@ -13,7 +13,13 @@ module RailsPulse
 
     def normalize
       return @path if @path.nil? || @path.empty?
-      return @path if route_params.empty?
+
+      if route_params.empty?
+        # No path params means the request missed the Rails router (404,
+        # middleware short-circuit, mounted Rack app). Bucket dynamic segments
+        # to prevent unbounded route cardinality from scanners and bots.
+        return bucket_unrecognized_path(@path)
+      end
 
       value_to_keys = build_value_map
       segments = @path.split("/", -1)
@@ -49,6 +55,25 @@ module RailsPulse
       end
 
       segment
+    end
+
+    # Replace dynamic-looking segments so scanner paths, bot probes, and
+    # arbitrary IDs don't create one route row per distinct URL.
+    UUID_RE  = /\A[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\z/i
+    SHA_RE   = /\A[0-9a-f]{40}\z/i
+    DIGIT_RE = /\A\d+\z/
+
+    def bucket_unrecognized_path(path)
+      segments = path.split("/", -1)
+      segments.map! do |seg|
+        case seg
+        when UUID_RE  then ":uuid"
+        when SHA_RE   then ":sha"
+        when DIGIT_RE then ":id"
+        else seg
+        end
+      end
+      segments.join("/")
     end
   end
 end
