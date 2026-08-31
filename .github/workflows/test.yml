@@ -19,6 +19,11 @@ jobs:
         ruby: ["3.2", "3.4"]
         rails: ["7.2", "8.0", "8.1"]
         database: ["sqlite3", "postgresql"]
+        include:
+          - ruby: "3.4"
+            rails: "8.1"
+            database: "sqlite3"
+            coverage: true
 
     services:
       postgres:
@@ -73,6 +78,11 @@ jobs:
           "test_setup_for_version[${{ matrix.database }},${{ steps.gemfile.outputs.appraisal }}]"
 
     - name: Run tests
+      env:
+        # Only the coverage cell measures coverage; scoped to this step so
+        # db:create/db:migrate never boot under SimpleCov (its minimum-coverage
+        # at_exit gate would kill setup at ~5% coverage).
+        COVERAGE: ${{ matrix.coverage && 'true' || '' }}
       run: |
         DB=${{ matrix.database }} BUNDLE_GEMFILE=${{ steps.gemfile.outputs.path }} \
           bundle exec appraisal ${{ steps.gemfile.outputs.appraisal }} rake test
@@ -184,6 +194,9 @@ jobs:
 
     - name: Run ESLint
       run: npm run lint:js
+
+    - name: Run generator tests
+      run: bin/test_generators
 
   js-test:
     runs-on: ubuntu-latest

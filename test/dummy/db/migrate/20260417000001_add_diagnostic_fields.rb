@@ -1,5 +1,8 @@
 class AddDiagnosticFields < ActiveRecord::Migration[7.0]
   def change
+    return unless table_exists?(:rails_pulse_operations)
+    return unless table_exists?(:rails_pulse_requests)
+
     unless column_exists?(:rails_pulse_operations, :row_count)
       add_column :rails_pulse_operations, :row_count, :integer
     end
