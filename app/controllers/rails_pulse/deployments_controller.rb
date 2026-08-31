@@ -1,8 +1,22 @@
 module RailsPulse
   class DeploymentsController < ApplicationController
-    skip_before_action :authenticate_rails_pulse_user!
+    # The API actions authenticate by token so CI can post without a session;
+    # the browsable pages use the dashboard's own authentication like every
+    # other page. Scoping the skip to create/finish means adding a UI does not
+    # widen the hole the 0.4.0 audit closed.
+    skip_before_action :authenticate_rails_pulse_user!, only: %i[create finish]
     skip_before_action :verify_authenticity_token, only: %i[create finish]
-    before_action :authenticate_deployment_request!
+    before_action :authenticate_deployment_request!, only: %i[create finish]
+
+    def index
+      @ransack_query = Deployment.ransack(params[:q] || {})
+      @ransack_query.sorts = "started_at desc" if @ransack_query.sorts.empty?
+      @pagination, @table_data = paginate(@ransack_query.result, limit: session_pagination_limit)
+    end
+
+    def show
+      @deployment = Deployment.find(params[:id])
+    end
 
     def create
       deployment = RailsPulse::Deployment.new(
