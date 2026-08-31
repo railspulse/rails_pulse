@@ -1,5 +1,8 @@
 module RailsPulse
   class ExceptionsController < ApplicationController
+    include TimeRangeConcern
+    include TagFilterConcern
+
     before_action :set_exception_group, only: %i[show update]
 
     def index
@@ -9,6 +12,8 @@ module RailsPulse
       @ransack_query = ExceptionGroup.ransack(ransack_params)
       @ransack_query.sorts = "last_seen_at desc" if @ransack_query.sorts.empty?
       @pagination, @table_data = paginate(@ransack_query.result, limit: session_pagination_limit)
+
+      setup_frequency_view
     end
 
     def show
@@ -26,6 +31,31 @@ module RailsPulse
     end
 
     private
+
+    # The index is a list of groups, not an aggregate table, so it does not use
+    # ChartTableConcern. It still needs a time range and a frequency series:
+    # without them the page can say what is failing but not whether it is
+    # getting worse, which is the question users actually arrive with.
+    def setup_frequency_view
+      start_timestamp, end_timestamp, @selected_time_range, time_diff = setup_time_range
+
+      @start_time  = Time.zone.at(start_timestamp)
+      @end_time    = Time.zone.at(end_timestamp)
+      @period_type = time_diff <= 25 ? "hour" : "day"
+      period_days  = [ ((@end_time - @start_time) / 1.day).ceil, 1 ].max
+
+      @occurrence_volume_chart = Exceptions::Charts::OccurrenceVolume.new(
+        start_time: @start_time, end_time: @end_time, period_type: @period_type
+      ).to_chart_data
+
+      @total_occurrences_metric_card = Exceptions::Cards::TotalOccurrences.new(
+        period: period_days, period_type: @period_type
+      ).to_metric_card
+
+      @open_groups_metric_card = Exceptions::Cards::OpenGroups.new(
+        period: period_days, period_type: @period_type
+      ).to_metric_card
+    end
 
     def set_exception_group
       @exception_group = ExceptionGroup.find(params[:id])

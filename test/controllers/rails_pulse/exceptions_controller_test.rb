@@ -35,6 +35,31 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "index assigns the frequency chart and metric cards" do
+    get rails_pulse.exceptions_path
+
+    assert_response :success
+    assert_not_nil assigns(:total_occurrences_metric_card)
+    assert_not_nil assigns(:open_groups_metric_card)
+  end
+
+  test "index assigns a time range" do
+    get rails_pulse.exceptions_path
+
+    assert_not_nil assigns(:start_time)
+    assert_not_nil assigns(:end_time)
+    assert_includes %w[hour day], assigns(:period_type)
+  end
+
+  test "index renders without a frequency chart when nothing is summarized" do
+    RailsPulse::Summary.delete_all
+
+    get rails_pulse.exceptions_path
+
+    assert_response :success
+    assert_nil assigns(:occurrence_volume_chart)
+  end
+
   test "index assigns table_data" do
     get rails_pulse.exceptions_path
 

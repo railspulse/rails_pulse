@@ -45,6 +45,7 @@ module RailsPulse
                 :request_thresholds,
                 :query_thresholds,
                 :job_thresholds,
+                :exception_thresholds,
                 :max_table_records
 
     def initialize
@@ -53,6 +54,9 @@ module RailsPulse
       @request_thresholds = { slow: 700, very_slow: 2000, critical: 4000 }
       @query_thresholds = { slow: 100, very_slow: 500, critical: 1000 }
       @job_thresholds = { slow: 5_000, very_slow: 30_000, critical: 60_000 }
+      # Exception thresholds are occurrence counts over the dashboard period,
+      # not durations — an exception has no duration.
+      @exception_thresholds = { warning: 10, critical: 100 }
       @ignored_routes = []
       @ignored_requests = []
       @ignored_queries = []
@@ -198,6 +202,7 @@ module RailsPulse
       validate_threshold_hash!(@request_thresholds, "request_thresholds")
       validate_threshold_hash!(@query_thresholds, "query_thresholds")
       validate_threshold_hash!(@job_thresholds, "job_thresholds")
+      validate_threshold_hash!(@exception_thresholds, "exception_thresholds")
     end
 
     def validate_retention_settings!
