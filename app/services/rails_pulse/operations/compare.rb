@@ -65,16 +65,26 @@ module RailsPulse
         RailsPulse.configuration.baseline_window
       end
 
-      # The recent slice under test.
+      # Windows are aligned to period boundaries rather than measured back from
+      # the wall clock. Day summaries are written by SummaryJob at midnight for
+      # the day that just ended, so an unaligned "now minus 24 hours" window
+      # straddles two day-periods and matches neither — at noon it would contain
+      # no day summary at all. Aligning means the current window is always the
+      # most recent *complete* day.
+      def current_end
+        RailsPulse::Summary.normalize_period_start(period_type, as_of)
+      end
+
+      # The recent slice under test: the last complete period(s).
       def current_range
-        (as_of - comparison_window)..as_of
+        (current_end - comparison_window)...current_end
       end
 
       # History, ending where the current window begins. The two must not
-      # overlap: including today in its own baseline damps exactly the change
-      # the comparison exists to detect.
+      # overlap: including the period under test in its own baseline damps
+      # exactly the change the comparison exists to detect.
       def baseline_range
-        baseline_end = as_of - comparison_window
+        baseline_end = current_end - comparison_window
         (baseline_end - baseline_window)...baseline_end
       end
     end
