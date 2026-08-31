@@ -24,6 +24,19 @@ module RailsPulse
       adapter = connection.adapter_name.downcase
 
       if adapter.include?("mysql")
+        version_string = connection.select_value("SELECT VERSION()")
+        if version_string.to_s.include?("MariaDB")
+          raise "Rails Pulse requires MySQL >= 8.0.13 for functional indexes. " \
+                "MariaDB is not supported — it does not implement the required " \
+                "CREATE INDEX ... ((expression)) syntax."
+        end
+
+        mysql_version = version_string.to_s.scan(/\A(\d+\.\d+\.\d+)/).flatten.first
+        if mysql_version && Gem::Version.new(mysql_version) < Gem::Version.new("8.0.13")
+          raise "Rails Pulse requires MySQL >= 8.0.13 for functional indexes " \
+                "(found #{mysql_version}). Upgrade MySQL or use PostgreSQL/SQLite."
+        end
+
         table = connection.quote_table_name(:rails_pulse_routes)
         connection.execute(<<~SQL.strip)
           CREATE UNIQUE INDEX #{NULL_ACTION_INDEX}

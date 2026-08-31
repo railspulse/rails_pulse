@@ -1,6 +1,8 @@
 # Enable code coverage tracking when COVERAGE env var is set
 # Configuration loaded from .simplecov file
-if ENV["COVERAGE"]
+# NOTE: compare against "true" — CI exports COVERAGE="" for non-coverage
+# cells, and "" is truthy in Ruby (see test/dummy/config/boot.rb).
+if ENV["COVERAGE"] == "true"
   require "simplecov"
 
   # Support parallel test execution with unique command names

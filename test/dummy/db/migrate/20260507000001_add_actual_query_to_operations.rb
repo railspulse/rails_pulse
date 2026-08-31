@@ -1,11 +1,11 @@
 class AddActualQueryToOperations < ActiveRecord::Migration[7.0]
   def up
+    return unless table_exists?(:rails_pulse_operations)
+
     unless column_exists?(:rails_pulse_operations, :actual_sql)
       add_column :rails_pulse_operations, :actual_sql, :text,
         comment: "Actual SQL that ran for sql operations — comment-stripped, unparameterized, unbounded"
     end
-
-    return unless table_exists?(:rails_pulse_operations)
 
     # Backfill actual_sql from label for existing sql operations.
     # NOTE: On MySQL installations that hit the 255-char truncation bug,
@@ -19,6 +19,8 @@ class AddActualQueryToOperations < ActiveRecord::Migration[7.0]
   end
 
   def down
+    return unless table_exists?(:rails_pulse_operations)
+
     remove_column :rails_pulse_operations, :actual_sql if column_exists?(:rails_pulse_operations, :actual_sql)
   end
 end

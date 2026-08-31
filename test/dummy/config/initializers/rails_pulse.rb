@@ -275,9 +275,13 @@ RailsPulse.configure do |config|
   # After time-based cleanup, if tables still exceed these limits,
   # the oldest remaining records will be deleted to stay under the limit
   config.max_table_records = {
-    rails_pulse_requests: 10000,    # HTTP requests (moderate volume)
-    rails_pulse_operations: 50000,  # Operations within requests (high volume)
-    rails_pulse_routes: 1000,       # Unique routes (low volume)
-    rails_pulse_queries: 500        # Normalized SQL queries (low volume)
+    rails_pulse_requests: 10000,                 # HTTP requests (moderate volume)
+    rails_pulse_operations: 50000,               # Operations within requests (high volume)
+    rails_pulse_routes: 1000,                    # Unique routes (low volume)
+    rails_pulse_queries: 500,                    # Normalized SQL queries (low volume)
+    rails_pulse_job_runs: 50000,                 # Individual job executions (high volume)
+    rails_pulse_jobs: 1000,                      # Unique job classes (low volume)
+    rails_pulse_exception_occurrences: 50000,    # Individual exception raises (high volume)
+    rails_pulse_exception_groups: 10000          # Distinct exception sites (moderate volume)
   }
 end

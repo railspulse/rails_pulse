@@ -83,6 +83,9 @@ module RailsPulse
           end
         end
         op[:label] = op[:label]&.truncate(255)
+        # actual_sql is used for normalization above but should not be persisted
+        # unless the user has opted in — it may contain unparameterized PII.
+        op[:actual_sql] = nil unless RailsPulse.configuration.capture_actual_sql
         op
       end
       # insert_all! requires every row to have identical keys.

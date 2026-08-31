@@ -876,13 +876,13 @@ different files.
 
 | PR | Area | Sections | Key files | Status |
 |---|---|---|---|---|
-| 1 | **Security: EXPLAIN + actual_sql** | §1, §11 | `explain_plan_analyzer.rb`, `brakeman.ignore`, `configuration.rb`, `operation_subscriber.rb` | Not started |
-| 2 | **Security: Deployments + auth** | §7, §19, §20 | `deployments_controller.rb`, `application_controller.rb`, `configuration.rb` | Not started |
-| 3 | **Failure isolation** ("Pulse never breaks the host") | §5, §6, §8 | `job_run_collector.rb`, `tracker.rb`, `request_collector.rb` | Not started |
-| 4 | **Shipped initializer + config drift** | §2, §23, §24, §25 | delete `config/initializers/rails_pulse.rb`, `configuration.rb`, `templates/rails_pulse.rb`, `config_updater.rb` | Not started |
-| 5 | **Migration safety** | §3, §4, §17, §28, §29 | `upgrade_generator.rb`, `rails_pulse.rake`, `rails_pulse_tasks.rake`, `route_controller_action_backfiller.rb` | Not started |
-| 6 | **CI + compatibility** | §22, §12, §13, §14 | `Rakefile`, `test.yml`, `route_indexes.rb`, `gemspec` | Not started |
-| 7 | **Website** | §9, §38, §39, §40 | separate repo: `/Users/scott/studioomni/rails_pulse_website` | Not started |
+| 1 | **Security: EXPLAIN + actual_sql** | §1, §11 | `explain_plan_analyzer.rb`, `brakeman.ignore`, `configuration.rb`, `operation_subscriber.rb` | [PR #199](https://github.com/railspulse-org/rails_pulse/pull/199) |
+| 2 | **Security: Deployments + auth** | §7, §19, §20 | `deployments_controller.rb`, `application_controller.rb`, `configuration.rb` | [PR #200](https://github.com/railspulse-org/rails_pulse/pull/200) |
+| 3 | **Failure isolation** ("Pulse never breaks the host") | §5, §6, §8 | `job_run_collector.rb`, `tracker.rb`, `request_collector.rb` | [PR #201](https://github.com/railspulse-org/rails_pulse/pull/201) |
+| 4 | **Shipped initializer + config drift** | §2, §23, §24, §25 | delete `config/initializers/rails_pulse.rb`, `configuration.rb`, `templates/rails_pulse.rb`, `config_updater.rb` | [PR #202](https://github.com/railspulse-org/rails_pulse/pull/202) |
+| 5 | **Migration safety** | §3, §4, §17, §28, §29 | `upgrade_generator.rb`, `rails_pulse.rake`, `rails_pulse_tasks.rake`, `route_controller_action_backfiller.rb` | [PR #203](https://github.com/railspulse-org/rails_pulse/pull/203) |
+| 6 | **CI + compatibility** | §22, §12, §13, §14 | `Rakefile`, `test.yml`, `route_indexes.rb`, `gemspec` | [PR #204](https://github.com/railspulse-org/rails_pulse/pull/204) |
+| 7 | **Website** | §9, §38, §39, §40 | separate repo: `rails_pulse_website` | [PR #1](https://github.com/studioomni/rails_pulse_website/pull/1) |
 | 8 | **Everything else** | remaining MEDIUMs, LOWs, NITs | various | [PR #205](https://github.com/railspulse-org/rails_pulse/pull/205) |
 
 **Merge order:** PR 1 first — the only finding where a dashboard page view can silently
