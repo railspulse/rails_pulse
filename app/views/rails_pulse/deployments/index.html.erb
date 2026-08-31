@@ -1,0 +1,15 @@
+<%= render 'rails_pulse/components/page_header' %>
+
+<%= render 'rails_pulse/components/panel', {
+  title: 'Deployments',
+  help_heading: 'Deployments',
+  help_text: 'Deployments recorded by your CI/CD pipeline via the deployments API or the rails_pulse:record_deployment rake task. They appear as markers on charts and are correlated against detected regressions.'
+} do %>
+  <% if @table_data.any? %>
+    <%= render 'rails_pulse/deployments/table' %>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No deployments recorded.',
+        description: 'Post to the deployments endpoint from your deploy pipeline, or run rails_pulse:record_deployment, and they will appear here.' %>
+  <% end %>
+<% end %>

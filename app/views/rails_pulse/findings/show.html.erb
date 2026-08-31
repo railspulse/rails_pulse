@@ -1,0 +1,87 @@
+<%= render 'rails_pulse/components/page_header' %>
+
+<%= render 'rails_pulse/components/panel', title: @finding.subject_label do %>
+  <div class="flex gap items-center mbe-4">
+    <%= render 'rails_pulse/findings/severity_badge', finding: @finding %>
+    <%= render 'rails_pulse/findings/status_badge', finding: @finding %>
+    <span class="text-subtle text-sm">
+      <%= finding_metric_label(@finding) %> regression
+    </span>
+  </div>
+
+  <dl class="flex gap flex-wrap">
+    <div>
+      <dt class="text-subtle text-xs uppercase">Baseline</dt>
+      <dd class="font-semibold"><%= finding_baseline_display(@finding) %></dd>
+    </div>
+    <div>
+      <dt class="text-subtle text-xs uppercase">Current</dt>
+      <dd class="font-semibold"><%= finding_current_display(@finding) %></dd>
+    </div>
+    <div>
+      <dt class="text-subtle text-xs uppercase">Change</dt>
+      <dd class="font-semibold">
+        <%= @finding.percent_change ? "+#{number_with_delimiter(@finding.percent_change.round(0).to_i)}%" : "—" %>
+      </dd>
+    </div>
+    <div>
+      <dt class="text-subtle text-xs uppercase">Observations</dt>
+      <dd class="font-semibold">
+        <%= number_with_delimiter(@finding.baseline_count.to_i) %> baseline /
+        <%= number_with_delimiter(@finding.current_count.to_i) %> current
+      </dd>
+    </div>
+  </dl>
+<% end %>
+
+<%= render 'rails_pulse/components/panel', title: 'When it changed' do %>
+  <% if @finding.change_point_known? %>
+    <p class="text-sm">
+      Behaviour changed around
+      <strong><%= human_readable_occurred_at(@finding.changed_at) %></strong>.
+      <% unless @finding.hourly_change_point? %>
+        <span class="text-subtle">
+          Estimated to the day — hourly summaries are pruned at
+          <%= distance_of_time_in_words(RailsPulse.configuration.hourly_summary_retention) %>,
+          so an hour-accurate change point is only available for recent changes.
+        </span>
+      <% end %>
+    </p>
+  <% else %>
+    <p class="text-sm text-subtle">
+      No change point could be located. This happens when the metric drifted
+      rather than stepped, or when there are too few periods to split.
+    </p>
+  <% end %>
+
+  <% if @deployment %>
+    <p class="text-sm mbs-2">
+      Deployment <code><%= @deployment.revision %></code> started
+      <%= human_readable_occurred_at(@deployment.started_at) %>,
+      close to the estimated change point.
+      <span class="text-subtle">
+        This is adjacency, not proof — it is a place to look first.
+      </span>
+    </p>
+  <% end %>
+<% end %>
+
+<%= render 'rails_pulse/components/panel', title: 'Actions' do %>
+  <div class="flex gap items-center">
+    <% if @finding.subject %>
+      <%= link_to "View #{@finding.subject_type.demodulize.downcase}", finding_subject_path(@finding), class: "btn" if finding_subject_path(@finding) %>
+    <% end %>
+
+    <% if @finding.status == "open" %>
+      <%= button_to "Acknowledge", finding_path(@finding, status: "acknowledged"), method: :patch, class: "btn" %>
+    <% elsif @finding.status == "acknowledged" %>
+      <%= button_to "Reopen", finding_path(@finding, status: "open"), method: :patch, class: "btn" %>
+    <% end %>
+  </div>
+
+  <p class="text-subtle text-xs mbs-2">
+    Findings resolve themselves when detection stops seeing them, so there is no
+    resolve button — marking one resolved by hand would be contradicted by the
+    next detection run.
+  </p>
+<% end %>

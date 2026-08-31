@@ -1,7 +1,11 @@
 require "test_helper"
 
 class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
-  fixtures :rails_pulse_deployments
+  include Rails::Controller::Testing::TestProcess
+  include Rails::Controller::Testing::TemplateAssertions
+  include Rails::Controller::Testing::Integration
+
+  fixtures :rails_pulse_deployments, :rails_pulse_routes, :rails_pulse_findings
 
   DEPLOY_TOKEN = "test-deploy-token"
 
@@ -28,6 +32,84 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
   end
 
   # POST /deployments
+
+  # Index Action Tests
+
+  test "index responds successfully" do
+    get rails_pulse.deployments_path
+
+    assert_response :success
+  end
+
+  test "index assigns deployments newest first" do
+    get rails_pulse.deployments_path
+
+    timestamps = assigns(:table_data).map(&:started_at)
+
+    assert_equal timestamps.sort.reverse, timestamps
+  end
+
+  test "index renders an empty state with no deployments" do
+    RailsPulse::Deployment.delete_all
+
+    get rails_pulse.deployments_path
+
+    assert_response :success
+    assert_empty assigns(:table_data)
+  end
+
+  # Show Action Tests
+
+  test "show responds successfully" do
+    deployment = rails_pulse_deployments(:v1_deploy)
+
+    get rails_pulse.deployment_path(deployment)
+
+    assert_response :success
+    assert_equal deployment, assigns(:deployment)
+  end
+
+  test "show renders deployment metadata" do
+    deployment = rails_pulse_deployments(:v2_deploy)
+
+    get rails_pulse.deployment_path(deployment)
+
+    assert_includes response.body, "production"
+  end
+
+  test "show assigns correlated findings" do
+    deployment = rails_pulse_deployments(:v1_deploy)
+
+    get rails_pulse.deployment_path(deployment)
+
+    assert_not_nil assigns(:findings)
+  end
+
+  test "show correlates a finding whose change point follows the deployment" do
+    deployment = rails_pulse_deployments(:v1_deploy)
+    finding = RailsPulse::Finding.create!(
+      fingerprint:       SecureRandom.hex(32),
+      kind:              "performance_regression",
+      subject_type:      "RailsPulse::Route",
+      subject_id:        rails_pulse_routes(:api_users).id,
+      metric:            "p95",
+      severity:          "warning",
+      status:            "open",
+      baseline_value:    100.0,
+      current_value:     500.0,
+      delta:             400.0,
+      ratio:             5.0,
+      changed_at:        deployment.started_at + 30.minutes,
+      change_point_granularity: "hour",
+      first_detected_at: 1.hour.ago,
+      last_detected_at:  1.hour.ago,
+      detection_count:   1
+    )
+
+    get rails_pulse.deployment_path(deployment)
+
+    assert_includes assigns(:findings), finding
+  end
 
   test "create records deployment and returns 201" do
     assert_difference -> { RailsPulse::Deployment.count }, 1 do

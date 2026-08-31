@@ -1,0 +1,42 @@
+<%= render 'rails_pulse/components/page_header' %>
+
+<%= render 'rails_pulse/components/panel', {
+  title: 'Findings',
+  help_heading: 'Findings',
+  help_text: 'Regressions detected by comparing each route, query, job and exception group against its own history. Unlike the threshold rules on the dashboard, a finding means something got worse — not that it is slow in absolute terms. Findings resolve themselves when detection stops seeing them.'
+} do %>
+  <%= search_form_for @ransack_query, url: findings_path, class: "filter-bar" do |form| %>
+    <div class="filter-bar__form">
+      <%= form.select :status_eq,
+        options_for_select(
+          [["All", ""]] + RailsPulse::Finding::STATUSES.map { |s| [s.capitalize, s] },
+          @ransack_query.status_eq
+        ),
+        {},
+        { class: "input" }
+      %>
+      <%= form.select :severity_eq,
+        options_for_select(
+          [["Any severity", ""]] + RailsPulse::Finding::SEVERITIES.map { |s| [s.capitalize, s] },
+          @ransack_query.severity_eq
+        ),
+        {},
+        { class: "input" }
+      %>
+      <%= link_to "Reset", findings_path, class: "btn btn--plain" if params.has_key?(:q) %>
+      <%= form.submit "Search", class: "btn" %>
+    </div>
+  <% end %>
+
+  <% if @table_data.any? %>
+    <div data-controller="rails-pulse--table-sort">
+      <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">
+        <%= render 'rails_pulse/findings/table' %>
+      </div>
+    </div>
+  <% else %>
+    <%= render 'rails_pulse/components/empty_state',
+        title: 'No findings.',
+        description: 'Regressions appear here once enough history exists to compare against. Detection runs daily, after the summary job writes each completed day.' %>
+  <% end %>
+<% end %>

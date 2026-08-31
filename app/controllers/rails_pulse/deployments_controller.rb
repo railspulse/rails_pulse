@@ -1,8 +1,23 @@
 module RailsPulse
   class DeploymentsController < ApplicationController
-    skip_before_action :authenticate_rails_pulse_user!
+    # The API actions authenticate by token so CI can post without a session;
+    # the browsable pages use the dashboard's own authentication like every
+    # other page. Keeping the skip scoped to create/finish means adding a UI
+    # does not widen the hole the 0.4.0 audit closed.
+    skip_before_action :authenticate_rails_pulse_user!, only: %i[create finish]
     skip_before_action :verify_authenticity_token, only: %i[create finish]
-    before_action :authenticate_deployment_request!
+    before_action :authenticate_deployment_request!, only: %i[create finish]
+
+    def index
+      @ransack_query = Deployment.ransack(params[:q] || {})
+      @ransack_query.sorts = "started_at desc" if @ransack_query.sorts.empty?
+      @pagination, @table_data = paginate(@ransack_query.result, limit: session_pagination_limit)
+    end
+
+    def show
+      @deployment = Deployment.find(params[:id])
+      @findings = related_findings(@deployment)
+    end
 
     def create
       deployment = RailsPulse::Deployment.new(
@@ -41,6 +56,19 @@ module RailsPulse
     end
 
     private
+
+    # Findings whose estimated change point sits close after this deployment.
+    # Derived rather than stored — see DeploymentCorrelator for why.
+    def related_findings(deployment)
+      window = DeploymentCorrelator::DEFAULT_WINDOW
+
+      candidates = RailsPulse::Finding
+        .where.not(changed_at: nil)
+        .where(changed_at: deployment.started_at..(deployment.started_at + DeploymentCorrelator::DAY_GRANULARITY_LOOKAHEAD + window))
+        .order(changed_at: :asc)
+
+      candidates.select { |finding| DeploymentCorrelator.for(finding)&.id == deployment.id }
+    end
 
     def authenticate_deployment_request!
       token = RailsPulse.configuration.deployment_api_token

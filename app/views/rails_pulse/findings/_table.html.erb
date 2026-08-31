@@ -1,0 +1,53 @@
+<% columns = [
+  { field: :subject_type,     label: 'What',       cell_class: 'truncate-cell', sortable: false },
+  { field: :severity,         label: 'Severity',   class: 'w-28' },
+  { field: :status,           label: 'Status',     class: 'w-32' },
+  { field: :ratio,            label: 'Change',     class: 'w-32' },
+  { field: :changed_at,       label: 'Started',    class: 'w-48' },
+  { field: :last_detected_at, label: 'Last Seen',  class: 'w-48' }
+] %>
+
+<table class="table table-fixed mbs-4">
+  <%= render "rails_pulse/components/table_head", columns: columns %>
+
+  <tbody>
+    <% @table_data.each do |finding| %>
+      <tr>
+        <td class="truncate-cell">
+          <%= link_to finding.subject_label, finding_path(finding) %>
+          <div class="text-subtle text-xs truncate">
+            <%= finding_metric_label(finding) %>
+            <%= finding_baseline_display(finding) %> → <%= finding_current_display(finding) %>
+          </div>
+          <% if (deployment = @deployments[finding.id]) %>
+            <div class="text-subtle text-xs truncate">
+              near deploy <code><%= deployment.revision.first(12) %></code>
+            </div>
+          <% end %>
+        </td>
+        <td><%= render 'rails_pulse/findings/severity_badge', finding: finding %></td>
+        <td><%= render 'rails_pulse/findings/status_badge', finding: finding %></td>
+        <td class="whitespace-nowrap">
+          <% if finding.percent_change %>
+            +<%= number_with_delimiter(finding.percent_change.round(0).to_i) %>%
+          <% else %>
+            —
+          <% end %>
+        </td>
+        <td class="whitespace-nowrap">
+          <% if finding.change_point_known? %>
+            <%= human_readable_occurred_at(finding.changed_at) %>
+            <% unless finding.hourly_change_point? %>
+              <span class="text-subtle text-xs">(to the day)</span>
+            <% end %>
+          <% else %>
+            <span class="text-subtle">unknown</span>
+          <% end %>
+        </td>
+        <td class="whitespace-nowrap"><%= human_readable_occurred_at(finding.last_detected_at) %></td>
+      </tr>
+    <% end %>
+  </tbody>
+</table>
+
+<%= render "rails_pulse/components/table_pagination" %>

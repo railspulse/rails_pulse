@@ -13,6 +13,11 @@
   <span class="overflow-ellipsis">Queries</span>
 <% end %>
 
+<%= link_to findings_path, class: 'btn sidebar-menu__button' do %>
+  <%= rails_pulse_icon "trending-up", width: "16" %>
+  <span class="overflow-ellipsis">Findings</span>
+<% end %>
+
 <% if RailsPulse.configuration.track_exceptions %>
   <%= link_to exceptions_path, class: 'btn sidebar-menu__button' do %>
     <%= rails_pulse_icon "alert-circle", width: "16" %>
@@ -25,6 +30,11 @@
     <%= rails_pulse_icon "zap", width: "16" %>
     <span class="overflow-ellipsis">Jobs</span>
   <% end %>
+<% end %>
+
+<%= link_to deployments_path, class: 'btn sidebar-menu__button' do %>
+  <%= rails_pulse_icon "rocket", width: "16" %>
+  <span class="overflow-ellipsis">Deployments</span>
 <% end %>
 
 <% RailsPulse.nav_items.each do |item| %>

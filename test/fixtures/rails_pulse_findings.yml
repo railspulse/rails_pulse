@@ -3,10 +3,10 @@
 # each test having to build a full baseline history first.
 
 open_route_regression:
-  fingerprint: <%= Digest::SHA256.hexdigest("performance_regression:RailsPulse::Route:1:p95") %>
+  fingerprint: <%= Digest::SHA256.hexdigest("performance_regression:RailsPulse::Route:#{ActiveRecord::FixtureSet.identify(:api_users)}:p95") %>
   kind: "performance_regression"
   subject_type: "RailsPulse::Route"
-  subject_id: 1
+  subject_id: <%= ActiveRecord::FixtureSet.identify(:api_users) %>
   metric: "p95"
   severity: "critical"
   status: "open"
@@ -25,10 +25,10 @@ open_route_regression:
   updated_at: <%= 1.hour.ago %>
 
 open_query_regression:
-  fingerprint: <%= Digest::SHA256.hexdigest("performance_regression:RailsPulse::Query:1:p95") %>
+  fingerprint: <%= Digest::SHA256.hexdigest("performance_regression:RailsPulse::Query:#{ActiveRecord::FixtureSet.identify(:simple_query)}:p95") %>
   kind: "performance_regression"
   subject_type: "RailsPulse::Query"
-  subject_id: 1
+  subject_id: <%= ActiveRecord::FixtureSet.identify(:simple_query) %>
   metric: "p95"
   severity: "warning"
   status: "open"
@@ -47,10 +47,10 @@ open_query_regression:
   updated_at: <%= 1.hour.ago %>
 
 acknowledged_error_rate_regression:
-  fingerprint: <%= Digest::SHA256.hexdigest("error_rate_regression:RailsPulse::Route:2:error_rate") %>
+  fingerprint: <%= Digest::SHA256.hexdigest("error_rate_regression:RailsPulse::Route:#{ActiveRecord::FixtureSet.identify(:api_posts)}:error_rate") %>
   kind: "error_rate_regression"
   subject_type: "RailsPulse::Route"
-  subject_id: 2
+  subject_id: <%= ActiveRecord::FixtureSet.identify(:api_posts) %>
   metric: "error_rate"
   severity: "critical"
   status: "acknowledged"
@@ -67,10 +67,10 @@ acknowledged_error_rate_regression:
   updated_at: <%= 2.hours.ago %>
 
 resolved_route_regression:
-  fingerprint: <%= Digest::SHA256.hexdigest("performance_regression:RailsPulse::Route:3:p95") %>
+  fingerprint: <%= Digest::SHA256.hexdigest("performance_regression:RailsPulse::Route:#{ActiveRecord::FixtureSet.identify(:api_test)}:p95") %>
   kind: "performance_regression"
   subject_type: "RailsPulse::Route"
-  subject_id: 3
+  subject_id: <%= ActiveRecord::FixtureSet.identify(:api_test) %>
   metric: "p95"
   severity: "warning"
   status: "resolved"

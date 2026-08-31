@@ -1,0 +1,52 @@
+<%= render 'rails_pulse/components/page_header' %>
+
+<%= render 'rails_pulse/components/panel', title: @deployment.revision do %>
+  <dl class="flex gap flex-wrap">
+    <div>
+      <dt class="text-subtle text-xs uppercase">Started</dt>
+      <dd class="font-semibold"><%= human_readable_occurred_at(@deployment.started_at) %></dd>
+    </div>
+    <div>
+      <dt class="text-subtle text-xs uppercase">Finished</dt>
+      <dd class="font-semibold">
+        <%= @deployment.finished_at ? human_readable_occurred_at(@deployment.finished_at) : "—" %>
+      </dd>
+    </div>
+  </dl>
+
+  <% if @deployment.metadata_hash.any? %>
+    <h3 class="font-semibold text-sm mbs-4 mbe-2">Metadata</h3>
+    <dl class="flex gap flex-wrap">
+      <% @deployment.metadata_hash.each do |key, value| %>
+        <div>
+          <dt class="text-subtle text-xs uppercase"><%= key %></dt>
+          <dd><%= value %></dd>
+        </div>
+      <% end %>
+    </dl>
+  <% end %>
+<% end %>
+
+<%= render 'rails_pulse/components/panel', {
+  title: 'Regressions near this deployment',
+  help_heading: 'Correlated Regressions',
+  help_text: 'Findings whose estimated change point falls shortly after this deployment. Adjacency is not causation — a deployment close to a regression is a place to look first, not an explanation.'
+} do %>
+  <% if @findings.any? %>
+    <ul class="flex flex-col gap-half mbs-2">
+      <% @findings.each do |finding| %>
+        <li class="text-sm">
+          <%= link_to finding.subject_label, finding_path(finding) %>
+          <span class="text-subtle">
+            — <%= finding_metric_label(finding) %>
+            <%= finding_baseline_display(finding) %> → <%= finding_current_display(finding) %>
+          </span>
+        </li>
+      <% end %>
+    </ul>
+  <% else %>
+    <p class="text-sm text-subtle mbs-2">
+      No detected regressions line up with this deployment.
+    </p>
+  <% end %>
+<% end %>

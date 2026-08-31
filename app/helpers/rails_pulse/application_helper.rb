@@ -4,6 +4,7 @@ module RailsPulse
     include BreadcrumbsHelper
     include ChartHelper
     include CspHelper
+    include FindingsHelper
     include FormattingHelper
     include FormHelper
     include IconHelper
