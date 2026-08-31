@@ -154,7 +154,7 @@ module RailsPulse
         if RailsPulse::ApplicationRecord.connection.adapter_name.downcase.include?("sqlite")
           assert_equal "SQLite", adapter
         else
-          refute_includes [ "PostgreSQL", "MySQL", "SQLite" ], adapter
+          assert_includes [ "PostgreSQL", "MySQL" ], adapter
         end
       end
 
