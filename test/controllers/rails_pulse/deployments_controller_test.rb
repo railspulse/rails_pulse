@@ -82,6 +82,14 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     assert_response :created
   end
 
+  test "index renders deployment status" do
+    get rails_pulse.deployments_path
+
+    assert_response :success
+    assert_includes response.body, "Finished"
+    assert_includes response.body, "In progress"
+  end
+
   # Show Action Tests
 
   test "show responds successfully" do

@@ -111,7 +111,47 @@ module RailsPulse
       assert_match(/\d{4}-\d{2}-\d{2}T/, marker[:started_at])
     end
 
+    test "to_breadcrumb returns the short revision" do
+      deployment = rails_pulse_deployments(:v1_deploy)
+
+      assert_equal "abc1234", deployment.to_breadcrumb
+    end
+
+    test "to_breadcrumb truncates long revisions" do
+      deployment = Deployment.new(revision: "a" * 40, started_at: Time.current)
+
+      assert_equal "a" * 12, deployment.to_breadcrumb
+    end
+
+    test "in_progress? is true when finished_at is blank" do
+      assert_predicate rails_pulse_deployments(:v2_deploy), :in_progress?
+    end
+
+    test "in_progress? is false when finished_at is set" do
+      refute_predicate rails_pulse_deployments(:v1_deploy), :in_progress?
+    end
+
+    test "duration returns elapsed seconds" do
+      deployment = rails_pulse_deployments(:v1_deploy)
+
+      assert_in_delta 300, deployment.duration, 1
+    end
+
+    test "duration is nil while still in progress" do
+      assert_nil rails_pulse_deployments(:v2_deploy).duration
+    end
+
     # Edge Cases
+
+    test "short_revision leaves short revisions untouched" do
+      deployment = Deployment.new(revision: "abc1234", started_at: Time.current)
+
+      assert_equal "abc1234", deployment.short_revision
+    end
+
+    test "short_revision returns empty string when revision is nil" do
+      assert_equal "", Deployment.new.short_revision
+    end
 
     test "metadata_hash returns empty hash when nil" do
       deployment = rails_pulse_deployments(:v1_deploy)

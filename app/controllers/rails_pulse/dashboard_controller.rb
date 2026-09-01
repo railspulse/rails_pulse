@@ -35,6 +35,13 @@ module RailsPulse
       @health_summary = RailsPulse::Dashboard::HealthSummary.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: @period).to_health_data
 
       @storage_status = RailsPulse::Dashboard::StorageStatus.new
+
+      # Deployments panel — scoped to the same window as the chart markers so
+      # the panel and the markers drawn on the charts always agree.
+      deployments_in_range = RailsPulse::Deployment.for_range(Time.zone.at(@start_time), Time.zone.at(@end_time))
+      @deployment_count = deployments_in_range.count
+      @recent_deployments = deployments_in_range.recent.limit(4)
+      @last_deployment = RailsPulse::Deployment.recent.first
     end
   end
 end

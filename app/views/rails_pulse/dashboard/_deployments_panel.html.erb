@@ -1,0 +1,64 @@
+<div class="card b-full flex flex-col">
+  <div class="flex mbe-3">
+    <h2 class="grow font-semibold leading-none uppercase text-xs">Deployments</h2>
+    <div class="panel-icon-bar flex gap items-center">
+      <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-end">
+        <a href="#"
+          data-rails-pulse--popover-target="button"
+          data-action="rails-pulse--popover#toggle"
+          data-popovertarget="popover"
+          class="block leading-none">
+          <%= rails_pulse_icon "message-circle-question", height: "16px", width: "16px" %>
+        </a>
+        <div popover class="popover card max-w-lg" data-rails-pulse--popover-target="menu">
+          <div class="flex flex-col">
+            <h3 class="font-semibold leading-none mbe-2 uppercase text-sm">Deployments</h3>
+            <p class="text-sm text-subtle">Releases your CI/CD pipeline recorded in the selected time range — the same ones drawn as markers on the charts above. Open the full page for every deploy and its metadata.</p>
+          </div>
+        </div>
+      </div>
+      <%= link_to deployments_path, class: "block leading-none", title: "View all deployments" do %>
+        <%= rails_pulse_icon "external-link", height: "16px", width: "16px" %>
+      <% end %>
+    </div>
+  </div>
+
+  <div class="deployments-panel-stats">
+    <div>
+      <p class="font-semibold uppercase text-xs text-subtle mbe-1">Last deploy</p>
+      <p class="text-lg font-bold"><%= @last_deployment ? time_ago_in_words(@last_deployment.started_at) : "—" %></p>
+      <p class="text-xs text-subtle">
+        <%= @last_deployment ? @last_deployment.short_revision : "Nothing recorded yet" %>
+      </p>
+    </div>
+    <div>
+      <p class="font-semibold uppercase text-xs text-subtle mbe-1">In this range</p>
+      <p class="text-lg font-bold"><%= number_with_delimiter(@deployment_count) %></p>
+      <p class="text-xs text-subtle"><%= humanize_time_range(@selected_time_range) %></p>
+    </div>
+  </div>
+
+  <div class="deployments-panel-rows grow">
+    <% if @recent_deployments.any? %>
+      <% @recent_deployments.each do |deployment| %>
+        <div class="deployments-panel-row">
+          <span class="deployments-panel-row__revision truncate">
+            <%= link_to deployment_path(deployment) do %>
+              <code><%= deployment.short_revision %></code>
+            <% end %>
+          </span>
+          <%= render "rails_pulse/deployments/status_badge", deployment: deployment %>
+          <span class="deployments-panel-row__time text-xs text-subtle">
+            <%= human_readable_occurred_at(deployment.started_at) %>
+          </span>
+        </div>
+      <% end %>
+    <% else %>
+      <p class="text-sm text-subtle">
+        No deployments recorded in the <%= humanize_time_range(@selected_time_range) %>.
+        Post to the deployments endpoint from your deploy pipeline, or run
+        <code>rails_pulse:record_deployment</code>, and they will appear here and as markers on the charts.
+      </p>
+    <% end %>
+  </div>
+</div>

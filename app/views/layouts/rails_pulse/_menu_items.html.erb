@@ -27,11 +27,6 @@
   <% end %>
 <% end %>
 
-<%= link_to deployments_path, class: 'btn sidebar-menu__button' do %>
-  <%= rails_pulse_icon "rocket", width: "16" %>
-  <span class="overflow-ellipsis">Deployments</span>
-<% end %>
-
 <% RailsPulse.nav_items.each do |item| %>
   <%= link_to public_send(item[:path_helper]), class: 'btn sidebar-menu__button' do %>
     <%= rails_pulse_icon item[:icon], width: "16" %>

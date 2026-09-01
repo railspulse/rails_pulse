@@ -2,7 +2,7 @@ require "test_helper"
 
 class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
   fixtures :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_jobs, :rails_pulse_summaries,
-           :rails_pulse_exception_groups
+           :rails_pulse_deployments, :rails_pulse_exception_groups
 
   def setup
     ENV["TEST_TYPE"] = "functional"
@@ -144,6 +144,34 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "storage-panel-stats"
     assert_includes response.body, rails_pulse.storage_path
+  end
+
+  test "response includes deployments panel" do
+    get rails_pulse.root_path
+
+    assert_response :success
+    assert_includes response.body, "deployments-panel-stats"
+    assert_includes response.body, rails_pulse.deployments_path
+    assert_includes response.body, "abc1234"
+  end
+
+  test "deployments panel is scoped to the selected time range" do
+    get rails_pulse.root_path, params: {
+      q: { occurred_at_gteq: 10.days.ago.iso8601, occurred_at_lt: 9.days.ago.iso8601 }
+    }
+
+    assert_response :success
+    assert_includes response.body, "No deployments recorded in the"
+    assert_not_includes response.body, "abc1234"
+  end
+
+  test "deployments panel renders an empty message when none are in range" do
+    RailsPulse::Deployment.delete_all
+
+    get rails_pulse.root_path
+
+    assert_response :success
+    assert_includes response.body, "No deployments recorded in the"
   end
 
   test "response includes health summary" do

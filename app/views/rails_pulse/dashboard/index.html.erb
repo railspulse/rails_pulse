@@ -199,4 +199,11 @@
     <% end %>
   </div>
 
-  <%= render "rails_pulse/dashboard/storage_panel" %>
+  <div class="row">
+    <div class="grid-item" style="flex: 1.5;">
+      <%= render "rails_pulse/dashboard/storage_panel" %>
+    </div>
+    <div class="grid-item">
+      <%= render "rails_pulse/dashboard/deployments_panel" %>
+    </div>
+  </div>
