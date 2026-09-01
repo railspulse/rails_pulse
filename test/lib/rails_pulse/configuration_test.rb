@@ -246,6 +246,24 @@ module RailsPulse
       end
     end
 
+    test "exception_message_filter defaults to nil" do
+      assert_nil Configuration.new.exception_message_filter
+    end
+
+    test "validate_configuration! accepts a callable exception_message_filter" do
+      config = build_config { self.exception_message_filter = ->(message, _exception) { message } }
+
+      assert_respond_to config.exception_message_filter, :call
+    end
+
+    test "validate_configuration! raises for a non-callable exception_message_filter" do
+      config = Configuration.new
+      config.exception_message_filter = "not callable"
+
+      error = assert_raises(ArgumentError) { config.validate_configuration! }
+      assert_match "exception_message_filter", error.message
+    end
+
     test "validate_configuration! raises for invalid authentication_method type" do
       config = Configuration.new
       config.instance_variable_set(:@authentication_method, 42)

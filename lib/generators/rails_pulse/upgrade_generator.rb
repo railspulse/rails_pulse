@@ -109,8 +109,9 @@ module RailsPulse
 
             config.track_exceptions = true
 
-          New installs enable this in the generated initializer. Messages are
-          stored unfiltered; request params use Rails filter_parameters.
+          New installs enable this in the generated initializer. Messages and
+          request params are both redacted using Rails filter_parameters; set
+          config.exception_message_filter for anything app-specific.
 
           Two new tables will be created:
             - rails_pulse_exception_groups

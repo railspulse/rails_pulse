@@ -55,7 +55,9 @@ module RailsPulse
                 status: failure_status_for(error),
                 duration: duration,
                 error_class: error.class.name,
-                error_message: error.message
+                # Same redaction as exception occurrences — a job failure
+                # message can carry the same literal PII a request one can.
+                error_message: RailsPulse::ExceptionMessageSanitizer.for_exception(error)
               )
             end
           end

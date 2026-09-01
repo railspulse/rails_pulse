@@ -132,8 +132,11 @@ RailsPulse.configure do |config|
   # upgrade. New apps get true from this template; the upgrade generator
   # inserts false into existing initializers.
   #
-  # Backtraces store the first 50 frames. Exception messages are stored as raised
-  # (not filtered); request params are filtered via Rails' filter_parameters.
+  # Backtraces store the first 50 frames. Request params are filtered via Rails'
+  # filter_parameters. Exception messages are filtered too: the SQL and echoed
+  # values in ActiveRecord::StatementInvalid messages are stripped, and any
+  # `key=value` / `key: value` fragment whose key matches filter_parameters
+  # (password=…, token: …) is masked. Messages are truncated to 500 characters.
 
   # Enable or disable exception tracking
   config.track_exceptions = true
@@ -143,6 +146,13 @@ RailsPulse.configure do |config|
   # Occurrences with params larger than 10KB after filtering are stored without params.
   # Set to false to disable entirely, e.g. for strict data-minimization requirements.
   config.capture_exception_params = true
+
+  # Extra redaction for exception messages, applied after the built-in
+  # filter_parameters pass. Receives the message and the exception; return the
+  # message to store. If the hook raises, the message is stored as "[FILTERED]".
+  # config.exception_message_filter = ->(message, exception) {
+  #   message.gsub(/\b\d{13,16}\b/, "[FILTERED]")   # card-number-shaped digits
+  # }
 
   # How many times an exception group has to fire over the dashboard period
   # before it is called out. These are occurrence counts, not durations.
