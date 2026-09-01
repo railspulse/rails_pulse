@@ -3,6 +3,16 @@ module RailsPulse
     include PaginationConcern
     include SessionFiltersConcern
 
+    # Declared here rather than inherited. ActionController::Base only gets
+    # protect_from_forgery from the host's `default_protect_from_forgery`,
+    # which load_defaults 5.2+ turns on — a host still on an older
+    # load_defaults (or one that set the flag false and calls
+    # protect_from_forgery in its own ApplicationController) would leave every
+    # state-changing engine endpoint forgeable. Idempotent when the host
+    # already has it; the deployments API and assets controller keep their
+    # explicit skips.
+    protect_from_forgery with: :exception
+
     before_action :authenticate_rails_pulse_user!
     before_action :set_onboarding_state
     before_action :load_deployment_markers

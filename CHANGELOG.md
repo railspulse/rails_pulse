@@ -18,6 +18,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   duplicate-entry values are redacted alongside the existing PostgreSQL
   `DETAIL:` clause, and job-run failure messages (`rails_pulse_job_runs.error_message`)
   go through the same sanitizer instead of being stored raw and unbounded.
+- **CSRF protection is now declared by the engine.** `RailsPulse::ApplicationController`
+  calls `protect_from_forgery with: :exception` itself instead of inheriting it from the
+  host's `default_protect_from_forgery`, which only `load_defaults 5.2+` enables. Hosts
+  on an older `load_defaults` had no CSRF protection on any engine endpoint (tags,
+  exception status, query reanalyze, session filters). Brakeman's `CheckForgerySetting`
+  is no longer skipped.
 
 ### Added
 
