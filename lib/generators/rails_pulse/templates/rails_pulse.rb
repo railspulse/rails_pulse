@@ -348,6 +348,38 @@ RailsPulse.configure do |config|
   }
 
   # ====================================================================================================
+  #                                       HISTORICAL COMPARISON
+  # ====================================================================================================
+
+  # Rails Pulse compares recent behaviour against a route, query or job's own
+  # history to answer "what changed?" rather than only "what is slow?".
+  #
+  # The baseline is the traffic-weighted metric across `baseline_window` of day
+  # summaries; `comparison_window` is the recent slice measured against it. The
+  # two never overlap.
+  # config.baseline_window   = 28.days
+  # config.comparison_window = 1.day
+
+  # Hourly summaries decide how precisely a change point can be placed. They are
+  # pruned at this age because the 1-day view is otherwise the only thing that
+  # reads them. Inside this window Rails Pulse can say a route slowed down at
+  # 14:00; beyond it, the finest answer is the day. Raising this buys precision
+  # at the cost of summary table growth.
+  # config.hourly_summary_retention = 2.days
+
+  # A change is reported as a regression only when it clears both the ratio and
+  # the absolute floor for its unit. The ratio alone flags trivial millisecond
+  # noise on fast endpoints; the floor alone flags slow endpoints that never
+  # actually changed. min_samples keeps low-traffic subjects quiet.
+  # config.regression_thresholds = {
+  #   ratio:                1.5,   # 50% worse than baseline
+  #   min_delta_ms:         50.0,  # ...and at least 50ms worse
+  #   min_delta_rate:       1.0,   # ...or 1 percentage point, for error rates
+  #   min_samples:          100,   # minimum observations on each side
+  #   min_baseline_periods: 3      # minimum days of history before comparing
+  # }
+
+  # ====================================================================================================
   #                                               ADVANCED
   # ====================================================================================================
 

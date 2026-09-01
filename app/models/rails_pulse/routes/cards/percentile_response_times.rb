@@ -28,8 +28,13 @@ module RailsPulse
 
           has_data = metrics.total_count.to_i > 0
 
-          # Use base class trend calculation
-          if show_trend?
+          # Prefer a comparison against this route's own history; fall back to
+          # period-over-period on the index, where there is no single subject.
+          baseline = baseline_trend_for(@route, metric: :p95)
+
+          if baseline
+            trend_icon, trend_amount, trend_caption = baseline
+          elsif show_trend?
             trend_icon, trend_amount = has_data ? trend_for(current_period_p95, previous_period_p95) : [ "move-right", "—" ]
           end
 
@@ -56,7 +61,7 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: (show_trend? ? comparison_period_text : nil),
+            trend_text: trend_caption || (show_trend? ? comparison_period_text : nil),
             period_stat: has_data ? "Across #{format_number(metrics.total_count.to_i)} requests" : period_date_range,
             help_heading: "P95 Response Time",
             help_text: "The 95th percentile response time — 95% of requests are faster than this. Weighted by request volume across all routes. A rising P95 indicates increasing slowness affecting your users."
