@@ -15,6 +15,17 @@
         health: @health_summary[:jobs],
         critical_label: "failing" %>
       <% end %>
+      <%# Nil when exception tracking is off, or when the tables have not been
+          migrated yet — which is also when exceptions_path does not exist. %>
+      <% if @health_summary[:exceptions] %>
+        <%= render "rails_pulse/dashboard/health_badge",
+        name: "Exceptions",
+        health: @health_summary[:exceptions],
+        healthy_label: "quiet",
+        slow_label: "firing",
+        critical_label: "critical",
+        link_url: exceptions_path %>
+      <% end %>
       <%= render "rails_pulse/dashboard/health_badge",
       name: "Storage",
       health: @health_summary[:storage],

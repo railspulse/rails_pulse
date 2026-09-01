@@ -144,6 +144,13 @@ RailsPulse.configure do |config|
   # Set to false to disable entirely, e.g. for strict data-minimization requirements.
   config.capture_exception_params = true
 
+  # How many times an exception group has to fire over the dashboard period
+  # before it is called out. These are occurrence counts, not durations.
+  # config.exception_thresholds = {
+  #   warning:  10,
+  #   critical: 100
+  # }
+
   # Capture the raw (unparameterized) SQL for each operation.
   # WARNING: mysql2 defaults to prepared_statements: false, so every literal
   # value (emails, passwords, tokens) is inlined and stored in plaintext.

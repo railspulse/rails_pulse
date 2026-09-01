@@ -17,6 +17,7 @@ module RailsPulse
         aggregate_routes    # Per-route metrics
         aggregate_queries   # Per-query metrics
         aggregate_jobs      # Per-job metrics
+        aggregate_exceptions # Per-exception-group frequency
       end
 
       RailsPulse.logger.info "Completed #{period_type} summary"
@@ -111,6 +112,50 @@ module RailsPulse
 
         summary.save!
       end
+    end
+
+    # Exception frequency, per group and overall.
+    #
+    # ExceptionGroup#occurrence_count is a lifetime counter and occurrence rows
+    # are pruned by retention, so without this there is no way to ask how often
+    # something happened last week — the history is gone as soon as cleanup
+    # runs. Only `count` is meaningful here; the duration columns stay null
+    # because an exception has no duration.
+    def aggregate_exceptions
+      return unless RailsPulse.configuration.track_exceptions
+      return unless ExceptionOccurrence.table_exists?
+
+      counts = ExceptionOccurrence
+        .where(occurred_at: start_time...end_time)
+        .group(:exception_group_id)
+        .count
+
+      return if counts.empty?
+
+      counts.each do |group_id, occurrences|
+        upsert_exception_summary(group_id, occurrences)
+      end
+
+      # A rollup across every group, so the dashboard can chart total exception
+      # volume without loading one series per group.
+      upsert_exception_summary(0, counts.values.sum)
+    rescue ActiveRecord::ActiveRecordError => e
+      # Exceptions are the newest summarizable and the only optional one. A
+      # failure here must not lose the route, query and job summaries that were
+      # written in the same transaction.
+      RailsPulse.logger.error "Exception summary skipped: #{e.message}"
+    end
+
+    def upsert_exception_summary(group_id, occurrences)
+      summary = Summary.find_or_initialize_by(
+        summarizable_type: "RailsPulse::ExceptionGroup",
+        summarizable_id: group_id,
+        period_type: period_type,
+        period_start: start_time
+      )
+
+      summary.assign_attributes(period_end: end_time, count: occurrences)
+      summary.save!
     end
 
     def aggregate_queries
