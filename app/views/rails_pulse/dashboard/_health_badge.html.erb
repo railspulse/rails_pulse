@@ -1,3 +1,7 @@
+<%# Exceptions do not have a "slow" state — a group that fired at all is
+    firing — so the two non-critical labels are overridable. %>
+<% healthy_label = local_assigns.fetch(:healthy_label, "healthy") %>
+<% slow_label    = local_assigns.fetch(:slow_label, "slow") %>
 <% dot_color = health[:critical] > 0 ? "var(--color-negative)" : (health[:slow] > 0 ? "#eab308" : "var(--color-positive)") %>
 <% border_color = health[:critical] > 0 ? "color-mix(in srgb, var(--color-negative) 40%, transparent)" : (health[:slow] > 0 ? "color-mix(in srgb, #eab308 40%, transparent)" : "color-mix(in srgb, var(--color-positive) 40%, transparent)") %>
 <% badge = capture do %>
@@ -5,10 +9,10 @@
     <span class="shrink-0 rounded-full" style="width: 10px; height: 10px; background: <%= dot_color %>;"></span>
     <span class="text-xs font-semibold"><%= name %></span>
     <% if health[:critical] > 0 %>
-      <span class="text-xs text-subtle"><%= health[:healthy] %> healthy · <%= health[:slow] %> slow ·</span>
+      <span class="text-xs text-subtle"><%= health[:healthy] %> <%= healthy_label %> · <%= health[:slow] %> <%= slow_label %> ·</span>
       <span class="text-xs font-semibold text-negative"><%= health[:critical] %> <%= critical_label %></span>
     <% else %>
-      <span class="text-xs text-subtle"><%= health[:healthy] %> healthy · <%= health[:slow] %> slow · 0 <%= critical_label %></span>
+      <span class="text-xs text-subtle"><%= health[:healthy] %> <%= healthy_label %> · <%= health[:slow] %> <%= slow_label %> · 0 <%= critical_label %></span>
     <% end %>
   </span>
 <% end %>

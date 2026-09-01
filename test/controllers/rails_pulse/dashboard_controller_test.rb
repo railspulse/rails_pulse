@@ -1,7 +1,8 @@
 require "test_helper"
 
 class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
-  fixtures :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_jobs, :rails_pulse_summaries
+  fixtures :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_jobs, :rails_pulse_summaries,
+           :rails_pulse_exception_groups
 
   def setup
     ENV["TEST_TYPE"] = "functional"
@@ -11,6 +12,29 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     RailsPulse::Engine.routes.url_helpers.root_path
     # Neutralize fixture jobs so NeedsAttention#job_items never calls job_path.
     RailsPulse::Job.update_all(runs_count: 0)
+  end
+
+  # Health Bar Tests
+
+  test "health bar shows an exceptions badge counting only open groups" do
+    get rails_pulse.root_path
+
+    assert_response :success
+    # Two of the four fixture groups are open; resolved and ignored are excluded.
+    assert_match(/Exceptions/, response.body)
+    assert_match(/2 quiet · 0 firing · 0 critical/, response.body)
+  end
+
+  test "health bar omits the exceptions badge when tracking is disabled" do
+    original = RailsPulse.configuration.track_exceptions
+    RailsPulse.configuration.track_exceptions = false
+
+    get rails_pulse.root_path
+
+    assert_response :success
+    assert_no_match(/quiet · .* firing/, response.body)
+  ensure
+    RailsPulse.configuration.track_exceptions = original
   end
 
   # Parameter & HTTP Response Tests
