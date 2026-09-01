@@ -58,11 +58,8 @@
 :absolute_paths: false  # Use relative paths in reports
 :summary_only: false    # Show full details, not just summary
 
-# Engine-specific: Skip checks that don't apply to mountable engines
-# These checks are more relevant for standalone apps
-:skip_checks:
-  # Skip checks that are handled by the host application
-  - CheckForgerySetting  # CSRF protection is handled by host app
-
+# Note: CheckForgerySetting is deliberately NOT skipped. The engine declares
+# protect_from_forgery in RailsPulse::ApplicationController instead of relying
+# on the host's default_protect_from_forgery (load_defaults 5.2+).
 # Note: We're NOT skipping SQL injection checks - those should be reviewed
 # Note: We're NOT skipping file access checks - those should be reviewed
