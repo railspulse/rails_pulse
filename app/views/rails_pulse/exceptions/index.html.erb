@@ -1,32 +1,15 @@
-<%= render 'rails_pulse/components/page_header' %>
+<%= render 'rails_pulse/components/page_header', show_active_filters: true %>
 
 <%= render 'rails_pulse/exceptions/metric_cards' %>
 
 <%= render 'rails_pulse/components/panel', {
-  title: 'Exception Frequency',
+  title: 'Exceptions',
   card_classes: 'b-full',
   help_heading: 'Exception Frequency',
   help_text: 'How often exceptions were raised over the selected period, across every group. Read from retained summaries rather than individual occurrence records, so the history stays accurate after cleanup has pruned old occurrences.'
 } do %>
-  <% if @occurrence_volume_chart %>
-    <div class="chart-container">
-      <%= render_stimulus_chart(
-        @occurrence_volume_chart,
-        type: "bar",
-        id: "exception_occurrence_volume_chart",
-        height: "220px"
-      ) %>
-    </div>
-  <% else %>
-    <%= render 'rails_pulse/components/empty_state',
-        title: 'No exception activity in this period.',
-        description: 'Frequency appears here once exceptions have been recorded and summarized.' %>
-  <% end %>
-<% end %>
-
-<%= render 'rails_pulse/components/panel', title: 'Exceptions' do %>
-  <%= search_form_for @ransack_query, url: exceptions_path, class: "filter-bar" do |form| %>
-    <div class="filter-bar__form">
+  <div class="filter-bar">
+    <%= search_form_for @ransack_query, url: exceptions_path, class: "filter-bar__form" do |form| %>
       <%= form.search_field :exception_class_cont,
         placeholder: "Filter by exception class",
         autocomplete: "off",
@@ -40,12 +23,36 @@
         {},
         { class: "input" }
       %>
-      <%= link_to "Reset", exceptions_path, class: "btn btn--plain" if params.has_key?(:q) %>
+      <%= if params.has_key?(:q)
+        link_to "Reset",
+        exceptions_path,
+        class: "btn btn--plain",
+        style: "text-decoration: none; color: var(--color-text-muted);"
+      end %>
       <%= form.submit "Search", class: "btn" %>
-    </div>
-  <% end %>
+    <% end %>
+  </div>
 
   <% if @table_data.any? %>
+    <% if @occurrence_volume_chart %>
+      <%# No chart tabs on this page — the toggles list holds the deploy toggle alone. %>
+      <div class="panel-tabs">
+        <div class="panel-tabs__list">
+          <%= render "rails_pulse/shared/deployment_markers_toggle" %>
+        </div>
+      </div>
+
+      <div class="chart-container chart-container--slim">
+        <%= render_stimulus_chart(
+          @occurrence_volume_chart,
+          type: "bar",
+          id: "exception_occurrence_volume_chart",
+          height: "100%",
+          options: bar_chart_options.deep_merge(series: { barMaxWidth: 48 })
+        ) %>
+      </div>
+    <% end %>
+
     <div data-controller="rails-pulse--table-sort">
       <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">
         <%= render 'rails_pulse/exceptions/table' %>

@@ -40,7 +40,15 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_not_nil assigns(:total_occurrences_metric_card)
+    assert_not_nil assigns(:exception_rate_metric_card)
     assert_not_nil assigns(:open_groups_metric_card)
+  end
+
+  test "index assigns deployment markers for the chart" do
+    get rails_pulse.exceptions_path
+
+    assert_response :success
+    assert_not_nil assigns(:deployment_markers)
   end
 
   test "index assigns a time range" do
