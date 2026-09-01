@@ -29,7 +29,10 @@ module RailsPulse
                   :async,
                   :service_level_objectives,
                   :query_service_level_objectives,
-                  :warn_on_stale_summaries
+                  :warn_on_stale_summaries,
+                  :baseline_window,
+                  :comparison_window,
+                  :hourly_summary_retention
 
     # Override the attr_accessor setter to track explicit assignment.
     # The default (enabled in production) should not trigger a warning
@@ -45,7 +48,9 @@ module RailsPulse
                 :request_thresholds,
                 :query_thresholds,
                 :job_thresholds,
-                :max_table_records
+                :exception_thresholds,
+                :max_table_records,
+                :regression_thresholds
 
     def initialize
       @enabled = true
@@ -53,6 +58,9 @@ module RailsPulse
       @request_thresholds = { slow: 700, very_slow: 2000, critical: 4000 }
       @query_thresholds = { slow: 100, very_slow: 500, critical: 1000 }
       @job_thresholds = { slow: 5_000, very_slow: 30_000, critical: 60_000 }
+      # Exception thresholds are occurrence counts over the dashboard period,
+      # not durations — an exception has no duration.
+      @exception_thresholds = { warning: 10, critical: 100 }
       @ignored_routes = []
       @ignored_requests = []
       @ignored_queries = []
@@ -112,6 +120,29 @@ module RailsPulse
 
       # Show a warning banner when summaries haven't been generated recently
       @warn_on_stale_summaries = true
+
+      # Historical comparison. The baseline is the traffic-weighted metric across
+      # `baseline_window` of day summaries; `comparison_window` is the recent
+      # slice measured against it.
+      @baseline_window   = 28.days
+      @comparison_window = 1.day
+
+      # Hourly summaries are what give a change point its precision. They are
+      # pruned aggressively because the 1-day UI view is all that reads them, so
+      # raising this is the knob that buys hour-accurate change points further
+      # back, at the cost of summary-table growth.
+      @hourly_summary_retention = 2.days
+
+      # Deterministic regression rules. A change must clear both the ratio and
+      # the absolute floor: without the floor, 2ms to 4ms reports as a 100%
+      # regression. min_samples keeps low-traffic routes from generating noise.
+      @regression_thresholds = {
+        ratio:                1.5,
+        min_delta_ms:         50.0,
+        min_delta_rate:       1.0,
+        min_samples:          100,
+        min_baseline_periods: 3
+      }
 
       # Validate defaults eagerly so that a misconfigured initializer raises at
       # boot time rather than at the first request. Auth settings are not
@@ -177,6 +208,7 @@ module RailsPulse
       validate_exception_settings!
       validate_service_level_objectives_settings!
       validate_query_service_level_objectives_settings!
+      validate_comparison_settings!
     end
 
     private
@@ -198,6 +230,7 @@ module RailsPulse
       validate_threshold_hash!(@request_thresholds, "request_thresholds")
       validate_threshold_hash!(@query_thresholds, "query_thresholds")
       validate_threshold_hash!(@job_thresholds, "job_thresholds")
+      validate_threshold_hash!(@exception_thresholds, "exception_thresholds")
     end
 
     def validate_retention_settings!
@@ -209,6 +242,41 @@ module RailsPulse
         unless count.is_a?(Integer) && count > 0
           raise ArgumentError, "max_table_records[#{table}] must be a positive integer, got #{count}"
         end
+      end
+    end
+
+    def validate_comparison_settings!
+      {
+        baseline_window:          @baseline_window,
+        comparison_window:        @comparison_window,
+        hourly_summary_retention: @hourly_summary_retention
+      }.each do |name, value|
+        unless value.respond_to?(:seconds) && value.to_i > 0
+          raise ArgumentError, "#{name} must be a positive time duration (e.g., 7.days), got #{value.inspect}"
+        end
+      end
+
+      if @baseline_window.to_i <= @comparison_window.to_i
+        raise ArgumentError,
+          "baseline_window (#{@baseline_window.inspect}) must be longer than " \
+          "comparison_window (#{@comparison_window.inspect})"
+      end
+
+      unless @regression_thresholds.is_a?(Hash)
+        raise ArgumentError, "regression_thresholds must be a hash, got #{@regression_thresholds.class}"
+      end
+
+      %i[ratio min_delta_ms min_delta_rate min_samples min_baseline_periods].each do |key|
+        value = @regression_thresholds[key]
+        unless value.is_a?(Numeric) && value > 0
+          raise ArgumentError, "regression_thresholds[:#{key}] must be a positive number, got #{value.inspect}"
+        end
+      end
+
+      if @regression_thresholds[:ratio] <= 1
+        raise ArgumentError,
+          "regression_thresholds[:ratio] must be greater than 1 — it is a multiple of the baseline, " \
+          "got #{@regression_thresholds[:ratio].inspect}"
       end
     end
 

@@ -27,6 +27,19 @@ module RailsPulse
   autoload :RouteMigrator,                   File.expand_path("../../app/services/rails_pulse/route_migrator", __dir__)
   autoload :RouteControllerActionBackfiller, File.expand_path("../../app/services/rails_pulse/route_controller_action_backfiller", __dir__)
 
+  # Historical comparison operations. This namespace is the read-only interface
+  # for "what changed?" — everything else in the codebase, and anything built on
+  # top of Rails Pulse later, should ask these rather than querying summaries
+  # directly.
+  module Operations
+    autoload :ChangePoint, File.expand_path("../../app/services/rails_pulse/operations/change_point", __dir__)
+    autoload :Compare,     File.expand_path("../../app/services/rails_pulse/operations/compare", __dir__)
+    autoload :Comparison,  File.expand_path("../../app/services/rails_pulse/operations/comparison", __dir__)
+    autoload :Metric,      File.expand_path("../../app/services/rails_pulse/operations/metric", __dir__)
+    autoload :Series,      File.expand_path("../../app/services/rails_pulse/operations/series", __dir__)
+    autoload :Subject,     File.expand_path("../../app/services/rails_pulse/operations/subject", __dir__)
+  end
+
   # Analysis services
   module Analysis
     autoload :BacktraceAnalyzer, File.expand_path("../../app/services/rails_pulse/analysis/backtrace_analyzer", __dir__)

@@ -1,0 +1,6 @@
+<% metric_cards = [
+  @total_occurrences_metric_card,
+  @exception_rate_metric_card,
+  @open_groups_metric_card
+].compact %>
+<%= render "rails_pulse/components/metric_strip", metrics_data: metric_cards %>

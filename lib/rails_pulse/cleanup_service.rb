@@ -266,9 +266,12 @@ module RailsPulse
     end
 
     def perform_summary_cleanup
-      # Hourly summaries are only used for the 1-day time range view — anything
-      # older than 2 days is unreachable in the UI and safe to delete.
-      cutoff = 2.days.ago
+      # Hourly summaries back the 1-day time range view and set how precisely
+      # Operations::ChangePoint can place a change. Beyond this cutoff the finest
+      # answer available is a day, so raising `hourly_summary_retention` is what
+      # buys hour-accurate change points further back — at the cost of summary
+      # table growth. Day, week and month summaries are never pruned.
+      cutoff = @config.hourly_summary_retention.ago
       deleted = RailsPulse::Summary.where(period_type: "hour").where("period_start < ?", cutoff).delete_all
       @stats[:time_based][:hourly_summaries] = deleted
     end

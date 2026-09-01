@@ -1,5 +1,9 @@
 module RailsPulse
   class ExceptionsController < ApplicationController
+    include TimeRangeConcern
+    include TagFilterConcern
+    include DeploymentMarkersConcern
+
     before_action :set_exception_group, only: %i[show update]
 
     def index
@@ -9,6 +13,8 @@ module RailsPulse
       @ransack_query = ExceptionGroup.ransack(ransack_params)
       @ransack_query.sorts = "last_seen_at desc" if @ransack_query.sorts.empty?
       @pagination, @table_data = paginate(@ransack_query.result, limit: session_pagination_limit)
+
+      setup_frequency_view
     end
 
     def show
@@ -27,8 +33,54 @@ module RailsPulse
 
     private
 
+    # The index is a list of groups, not an aggregate table, so it does not use
+    # ChartTableConcern. It still needs a time range and a frequency series:
+    # without them the page can say what is failing but not whether it is
+    # getting worse, which is the question users actually arrive with.
+    def setup_frequency_view
+      # Timestamps, not Times, to match every other index controller — the
+      # shared concerns and helpers that read @start_time expect integers.
+      @start_time, @end_time, @selected_time_range, @time_diff_hours = setup_time_range
+
+      @period_type = @time_diff_hours <= 25 ? "hour" : "day"
+      period_days  = window_days_for(@selected_time_range)
+
+      populate_deployment_markers
+
+      @occurrence_volume_chart = Exceptions::Charts::OccurrenceVolume.new(
+        start_time: Time.zone.at(@start_time),
+        end_time: Time.zone.at(@end_time),
+        period_type: @period_type
+      ).to_chart_data
+
+      card_params = { period: period_days, period_type: @period_type }
+
+      @total_occurrences_metric_card = Exceptions::Cards::TotalOccurrences.new(**card_params).to_metric_card
+      @exception_rate_metric_card    = Exceptions::Cards::ExceptionRate.new(**card_params).to_metric_card
+      @open_groups_metric_card       = Exceptions::Cards::OpenGroups.new(**card_params).to_metric_card
+    end
+
     def set_exception_group
       @exception_group = ExceptionGroup.find(params[:id])
+    end
+
+    # The card copy ("compared to previous N days") has to name the range the
+    # user picked. Measuring the span instead reads one day long, because the
+    # range runs from the start of the first day to the end of the last.
+    def window_days_for(selected_range)
+      case selected_range.to_s
+      when "last_24_hours" then 1
+      when "last_7_days"   then 7
+      when "last_14_days"  then 14
+      when "last_30_days"  then 30
+      else [ ((@end_time - @start_time) / 1.day.to_i).round, 1 ].max
+      end
+    end
+
+    # Exceptions are low-volume compared with requests, so a day is rarely
+    # enough to see a trend. Matches the jobs and queries defaults.
+    def default_time_range_key
+      :last_7_days
     end
 
     # Default the list to open groups. An explicit blank status ("All")
