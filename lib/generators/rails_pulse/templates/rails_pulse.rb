@@ -249,21 +249,30 @@ RailsPulse.configure do |config|
   #                                            AUTHENTICATION
   # ====================================================================================================
   # Configure authentication to secure access to the Rails Pulse dashboard.
-  # Authentication is ENABLED BY DEFAULT in production environments for security.
+  # Authentication is ENABLED BY DEFAULT outside development and test.
   #
-  # If no authentication method is configured, Rails Pulse will use HTTP Basic Auth
+  # If nothing below is configured, Rails Pulse will use HTTP Basic Auth
   # with credentials from RAILS_PULSE_USERNAME (default: 'admin') and RAILS_PULSE_PASSWORD
   # environment variables. Set RAILS_PULSE_PASSWORD to enable this fallback.
-  #
-  # Uncomment and configure one of the following patterns based on your authentication system:
 
-  # Enable/disable authentication (enabled by default in production)
-  # config.authentication_enabled = Rails.env.production?
+  # Enable/disable authentication (enabled by default outside development/test)
+  # config.authentication_enabled = !Rails.env.local?
 
-  # Where to redirect unauthorized users
+  # Where to redirect users when an authentication hook raises
   # config.authentication_redirect_path = "/"
 
-  # Custom authentication method - choose one of the examples below:
+  # RECOMMENDED: a fail-closed predicate. Receives the controller; return
+  # true to allow. Anything else (false, nil, no user) is a 403 Forbidden.
+  # config.authorize = ->(controller) { controller.current_user&.admin? }
+  #
+  # A zero-argument proc runs in the controller's context instead:
+  # config.authorize = proc { user_signed_in? && current_user.admin? }
+
+  # Alternatively, a hook that runs in the controller and DENIES BY RENDERING
+  # OR REDIRECTING. Returning false without responding is also a denial;
+  # returning nil (what `unless … end` returns on success) allows the request.
+  # Do not write predicate-style checks here — use config.authorize for those.
+  # If both are set, authentication_method runs first, then authorize.
 
   # Example 1: Devise with admin role check
   # config.authentication_method = proc {

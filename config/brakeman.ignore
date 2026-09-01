@@ -138,73 +138,96 @@
     {
       "warning_type": "SQL Injection",
       "warning_code": 0,
-      "fingerprint": "3c816cd9f565d6592595f5566cbd9d9a19ecb51ad704477f01a9bf2b4c1f29fb",
       "check_name": "SQL",
       "message": "Possible SQL injection",
-      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
-      "line": 191,
       "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN (ANALYZE, BUFFERS) #{sql}\")",
       "render_path": null,
+      "user_input": "sql",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "fingerprint": "becdaa493e66ef0e0bf0dc57eadcdaa621ef870b8bcacbcf4ee96fd5ff3d6e0c",
+      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
+      "line": 226,
+      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN #{sql}\")",
       "location": {
         "type": "method",
         "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
         "method": "execute_postgres_explain"
       },
-      "user_input": "sql",
-      "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "Reviewed: EXPLAIN (without ANALYZE) is planner-only on all adapters. Only SELECT/WITH statements are passed \u2014 non-SELECT verbs are rejected by SAFE_VERB check."
+      "note": "Reviewed: planner-only EXPLAIN (no ANALYZE). Input is SQL captured from the host app, gated by SAFE_VERB (SELECT/WITH only) and UNSAFE_SQL (refuses ';', '--', '/*' so no second statement or comment can ride along). Runs inside a savepoint that is always rolled back; on PostgreSQL also under SET LOCAL transaction_read_only = on with a statement_timeout."
     },
     {
       "warning_type": "SQL Injection",
       "warning_code": 0,
-      "fingerprint": "85c09ca9672d132fb206d0371e20087deaf381d89733f73d647129878b89f374",
       "check_name": "SQL",
       "message": "Possible SQL injection",
-      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
-      "line": 201,
       "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN QUERY PLAN #{sql}\")",
       "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
-        "method": "execute_sqlite_explain"
-      },
       "user_input": "sql",
       "confidence": "Medium",
       "cwe_id": [
         89
       ],
-      "note": "Reviewed: EXPLAIN QUERY PLAN is planner-only on SQLite. Only SELECT/WITH statements are passed \u2014 non-SELECT verbs are rejected by SAFE_VERB check."
-    },
-    {
-      "warning_type": "SQL Injection",
-      "warning_code": 0,
       "fingerprint": "a57a1c949d21de15d6b48e52bfc3077e3177a13ba1d703ddf48e241fb4e81c6e",
-      "check_name": "SQL",
-      "message": "Possible SQL injection",
       "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
-      "line": 196,
-      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "line": 231,
       "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN #{sql}\")",
-      "render_path": null,
       "location": {
         "type": "method",
         "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
         "method": "execute_mysql_explain"
       },
+      "note": "Reviewed: planner-only EXPLAIN (no ANALYZE). Input is SQL captured from the host app, gated by SAFE_VERB (SELECT/WITH only) and UNSAFE_SQL (refuses ';', '--', '/*' so no second statement or comment can ride along). Runs inside a savepoint that is always rolled back; on PostgreSQL also under SET LOCAL transaction_read_only = on with a statement_timeout."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "render_path": null,
       "user_input": "sql",
       "confidence": "Medium",
       "cwe_id": [
         89
       ],
-      "note": "Reviewed: EXPLAIN is planner-only on all adapters. Only SELECT/WITH statements are passed \u2014 non-SELECT verbs are rejected by SAFE_VERB check."
+      "fingerprint": "85c09ca9672d132fb206d0371e20087deaf381d89733f73d647129878b89f374",
+      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
+      "line": 236,
+      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN QUERY PLAN #{sql}\")",
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
+        "method": "execute_sqlite_explain"
+      },
+      "note": "Reviewed: planner-only EXPLAIN (no ANALYZE). Input is SQL captured from the host app, gated by SAFE_VERB (SELECT/WITH only) and UNSAFE_SQL (refuses ';', '--', '/*' so no second statement or comment can ride along). Runs inside a savepoint that is always rolled back; on PostgreSQL also under SET LOCAL transaction_read_only = on with a statement_timeout."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "render_path": null,
+      "user_input": "RailsPulse::Route.maximum(:id).to_i",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "fingerprint": "34a13be0814c310f2cbd905920970ee397e824b5d0a8afdc226c5f02ab18d1c6",
+      "file": "app/services/rails_pulse/route_migrator.rb",
+      "line": 122,
+      "code": "RailsPulse::Route.connection.execute(\"ALTER TABLE #{RailsPulse::Route.connection.quote_table_name(RailsPulse::Route.table_name)} AUTO_INCREMENT = #{(RailsPulse::Route.maximum(:id).to_i + 1)}\")",
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::RouteMigrator",
+        "method": "sync_id_sequence!"
+      },
+      "note": "Reviewed: table name goes through quote_table_name and the only interpolated value is an Integer (maximum(:id).to_i + 1). Rake-task only, no user input."
     }
   ],
-  "updated": "2026-04-14 21:59:41 +0700",
+  "updated": "2026-09-01 14:14:15 +0700",
   "brakeman_version": "7.1.1"
 }
