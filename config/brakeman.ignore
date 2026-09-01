@@ -3,117 +3,22 @@
     {
       "warning_type": "SQL Injection",
       "warning_code": 0,
-      "fingerprint": "3d4cff0f317df7445891a1fc467912f3ad09e869da9b3e8433d5897354f5d849",
+      "fingerprint": "1f5708c3c390b8eca34ed8f3dcabbf5f79f266bca195c856dc816168f1b9ff10",
       "check_name": "SQL",
       "message": "Possible SQL injection",
-      "file": "app/models/rails_pulse/request.rb",
-      "line": 40,
+      "file": "app/models/rails_pulse/exceptions/cards/total_occurrences.rb",
+      "line": 27,
       "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "Arel.sql(\"FLOOR(#{parent.table[:status].name} / 100)\")",
+      "code": "RailsPulse::Summary.overall_exceptions.where(:period_type => (@period_type), :period_start => ((range_start..now))).select(\"SUM(rails_pulse_summaries.count) AS total_count\", \"SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(current_window_start)} THEN rails_pulse_summaries.count ELSE 0 END) AS current_count\", \"SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(range_start)} AND rails_pulse_summaries.period_start < #{quote(current_window_start)} THEN rails_pulse_summaries.count ELSE 0 END) AS previous_count\")",
       "render_path": null,
       "location": {
         "type": "method",
-        "class": "Request",
-        "method": null
+        "class": "RailsPulse::Exceptions::Cards::TotalOccurrences",
+        "method": "to_metric_card"
       },
-      "user_input": "parent.table[:status].name",
+      "user_input": "quote(current_window_start)",
       "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "Reviewed: Using Arel.sql with column name from ActiveRecord table definition - safe, not user input"
-    },
-    {
-      "warning_type": "SQL Injection",
-      "warning_code": 0,
-      "fingerprint": "dc13170579f824326ffcaf309858f90fc807c7bdc4bfe41df3bb5d2b8f719a12",
-      "check_name": "SQL",
-      "message": "Possible SQL injection",
-      "file": "app/models/rails_pulse/request.rb",
-      "line": 54,
-      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "Arel.sql with configuration thresholds",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "Request",
-        "method": null
-      },
-      "user_input": "((RailsPulse.configuration rescue nil).request_thresholds or { :slow => 500, :very_slow => 1000, :critical => 2000 })[:slow]",
-      "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "Reviewed: Using Arel.sql with configuration values from RailsPulse.configuration - safe, not user input"
-    },
-    {
-      "warning_type": "SQL Injection",
-      "warning_code": 0,
-      "fingerprint": "3c816cd9f565d6592595f5566cbd9d9a19ecb51ad704477f01a9bf2b4c1f29fb",
-      "check_name": "SQL",
-      "message": "Possible SQL injection",
-      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
-      "line": 191,
-      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN (ANALYZE, BUFFERS) #{sql}\")",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
-        "method": "execute_postgres_explain"
-      },
-      "user_input": "sql",
-      "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "Reviewed: EXPLAIN (without ANALYZE) is planner-only on all adapters. Only SELECT/WITH statements are passed — non-SELECT verbs are rejected by SAFE_VERB check."
-    },
-    {
-      "warning_type": "SQL Injection",
-      "warning_code": 0,
-      "fingerprint": "a57a1c949d21de15d6b48e52bfc3077e3177a13ba1d703ddf48e241fb4e81c6e",
-      "check_name": "SQL",
-      "message": "Possible SQL injection",
-      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
-      "line": 196,
-      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN #{sql}\")",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
-        "method": "execute_mysql_explain"
-      },
-      "user_input": "sql",
-      "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "Reviewed: EXPLAIN is planner-only on all adapters. Only SELECT/WITH statements are passed — non-SELECT verbs are rejected by SAFE_VERB check."
-    },
-    {
-      "warning_type": "SQL Injection",
-      "warning_code": 0,
-      "fingerprint": "85c09ca9672d132fb206d0371e20087deaf381d89733f73d647129878b89f374",
-      "check_name": "SQL",
-      "message": "Possible SQL injection",
-      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
-      "line": 201,
-      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
-      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN QUERY PLAN #{sql}\")",
-      "render_path": null,
-      "location": {
-        "type": "method",
-        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
-        "method": "execute_sqlite_explain"
-      },
-      "user_input": "sql",
-      "confidence": "Medium",
-      "cwe_id": [
-        89
-      ],
-      "note": "Reviewed: EXPLAIN QUERY PLAN is planner-only on SQLite. Only SELECT/WITH statements are passed — non-SELECT verbs are rejected by SAFE_VERB check."
+      "note": "Reviewed: connection.quote() with internally computed Time objects (current_window_start / range_start), never user input. Same pattern as the jobs cards. The only interpolations are quoted timestamps; the period_type and period_start filters are bound parameters."
     },
     {
       "warning_type": "SQL Injection",
@@ -183,6 +88,121 @@
         89
       ],
       "note": "Reviewed: connection.quote() with internally computed Time objects (current_window_start, range_start) - safe, not user input. Used in SELECT CASE expressions where ? placeholders are not supported."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "3d4cff0f317df7445891a1fc467912f3ad09e869da9b3e8433d5897354f5d849",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/request.rb",
+      "line": 40,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "Arel.sql(\"FLOOR(#{parent.table[:status].name} / 100)\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Request",
+        "method": null
+      },
+      "user_input": "parent.table[:status].name",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: Using Arel.sql with column name from ActiveRecord table definition - safe, not user input"
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "dc13170579f824326ffcaf309858f90fc807c7bdc4bfe41df3bb5d2b8f719a12",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/models/rails_pulse/request.rb",
+      "line": 54,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "Arel.sql with configuration thresholds",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "Request",
+        "method": null
+      },
+      "user_input": "((RailsPulse.configuration rescue nil).request_thresholds or { :slow => 500, :very_slow => 1000, :critical => 2000 })[:slow]",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: Using Arel.sql with configuration values from RailsPulse.configuration - safe, not user input"
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "3c816cd9f565d6592595f5566cbd9d9a19ecb51ad704477f01a9bf2b4c1f29fb",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
+      "line": 191,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN (ANALYZE, BUFFERS) #{sql}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
+        "method": "execute_postgres_explain"
+      },
+      "user_input": "sql",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: EXPLAIN (without ANALYZE) is planner-only on all adapters. Only SELECT/WITH statements are passed \u2014 non-SELECT verbs are rejected by SAFE_VERB check."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "85c09ca9672d132fb206d0371e20087deaf381d89733f73d647129878b89f374",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
+      "line": 201,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN QUERY PLAN #{sql}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
+        "method": "execute_sqlite_explain"
+      },
+      "user_input": "sql",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: EXPLAIN QUERY PLAN is planner-only on SQLite. Only SELECT/WITH statements are passed \u2014 non-SELECT verbs are rejected by SAFE_VERB check."
+    },
+    {
+      "warning_type": "SQL Injection",
+      "warning_code": 0,
+      "fingerprint": "a57a1c949d21de15d6b48e52bfc3077e3177a13ba1d703ddf48e241fb4e81c6e",
+      "check_name": "SQL",
+      "message": "Possible SQL injection",
+      "file": "app/services/rails_pulse/analysis/explain_plan_analyzer.rb",
+      "line": 196,
+      "link": "https://brakemanscanner.org/docs/warning_types/sql_injection/",
+      "code": "RailsPulse::ApplicationRecord.connection.execute(\"EXPLAIN #{sql}\")",
+      "render_path": null,
+      "location": {
+        "type": "method",
+        "class": "RailsPulse::Analysis::ExplainPlanAnalyzer",
+        "method": "execute_mysql_explain"
+      },
+      "user_input": "sql",
+      "confidence": "Medium",
+      "cwe_id": [
+        89
+      ],
+      "note": "Reviewed: EXPLAIN is planner-only on all adapters. Only SELECT/WITH statements are passed \u2014 non-SELECT verbs are rejected by SAFE_VERB check."
     }
   ],
   "updated": "2026-04-14 21:59:41 +0700",

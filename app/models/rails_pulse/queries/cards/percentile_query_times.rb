@@ -26,8 +26,13 @@ module RailsPulse
           current_period_p95 = metrics.current_p95 || 0
           previous_period_p95 = metrics.previous_p95 || 0
 
-          # Use base class trend calculation
-          trend_icon, trend_amount = trend_for(current_period_p95, previous_period_p95) if show_trend?
+          baseline = baseline_trend_for(@query, metric: :p95)
+
+          if baseline
+            trend_icon, trend_amount, trend_caption = baseline
+          elsif show_trend?
+            trend_icon, trend_amount = trend_for(current_period_p95, previous_period_p95)
+          end
 
           # Create a query for sparkline data using only the current period
           sparkline_query = RailsPulse::Summary
@@ -65,7 +70,7 @@ module RailsPulse
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
-            trend_text: (show_trend? ? comparison_period_text : nil),
+            trend_text: trend_caption || (show_trend? ? comparison_period_text : nil),
             period_stat: metrics.total_count.to_i > 0 ? "Across #{format_number(metrics.total_count.to_i)} queries" : period_date_range,
             help_heading: "P95 Query Time",
             help_text: "The 95th percentile database query duration — 95% of queries complete faster than this. Weighted by execution frequency across all queries. Slow queries are often caused by missing indexes or N+1 patterns."

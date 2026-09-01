@@ -11,12 +11,13 @@ module RailsPulse
         @route_thresholds = RailsPulse.configuration.route_thresholds
         @query_thresholds = RailsPulse.configuration.query_thresholds
         @job_thresholds   = RailsPulse.configuration.job_thresholds
+        @exception_thresholds = RailsPulse.configuration.exception_thresholds
       end
 
       MAX_ITEMS = 10
 
       def to_attention_data
-        items    = route_items + query_items + job_items
+        items    = route_items + query_items + job_items + exception_items
         critical = items.select { |i| i[:severity] == :critical }.sort_by { |i| -i[:sort_score] }
         warning  = items.select { |i| i[:severity] == :warning  }.sort_by { |i| -i[:sort_score] }
 
@@ -245,6 +246,77 @@ module RailsPulse
               p95 ]
           end
         end
+      end
+
+      # Exception groups that fired often enough over the period to be worth
+      # looking at. Read from summaries, not from ExceptionGroup#occurrence_count
+      # — that is a lifetime counter, so a group that was noisy last year and is
+      # silent now would otherwise be reported forever.
+      #
+      # Ignored groups are excluded by design: a user marking something ignored
+      # is saying "stop telling me about this", and the attention list is
+      # exactly where that must be honoured.
+      def exception_items
+        return [] unless RailsPulse.configuration.track_exceptions
+        return [] unless exception_tables_available?
+
+        start, finish = period_range
+
+        counts = RailsPulse::Summary
+          .for_exceptions
+          .where.not(summarizable_id: 0)
+          .where(period_start: start..finish)
+          .group(:summarizable_id)
+          .sum(:count)
+
+        return [] if counts.empty?
+
+        groups = RailsPulse::ExceptionGroup
+          .where(id: counts.keys, status: "open")
+          .index_by(&:id)
+
+        counts.filter_map do |group_id, occurrences|
+          group = groups[group_id]
+          next if group.nil?
+
+          severity = exception_severity(occurrences)
+          next if severity.nil?
+
+          {
+            type:       "EXCEPTION",
+            name:       group.exception_class,
+            reason:     "#{occurrences} occurrence#{occurrences == 1 ? "" : "s"}#{group.location.present? ? " · #{group.location}" : ""}",
+            metric:     "#{occurrences} this period",
+            metric_sub: group.last_seen_at ? "last seen #{time_ago_phrase(group.last_seen_at)}" : "open",
+            link:       url_helpers.exception_path(group.id),
+            severity:   severity,
+            sort_score: occurrences.to_f
+          }
+        end
+      end
+
+      def exception_severity(occurrences)
+        return :critical if occurrences >= @exception_thresholds[:critical]
+        return :warning  if occurrences >= @exception_thresholds[:warning]
+
+        nil
+      end
+
+      def time_ago_phrase(time)
+        seconds = (Time.current - time).to_i
+        return "just now" if seconds < 60
+        return "#{seconds / 60}m ago" if seconds < 3600
+        return "#{seconds / 3600}h ago" if seconds < 86_400
+
+        "#{seconds / 86_400}d ago"
+      end
+
+      # The exception tables arrive in a migration, so a host that has upgraded
+      # the gem but not yet run migrations must still get a working dashboard.
+      def exception_tables_available?
+        RailsPulse::ExceptionGroup.table_exists?
+      rescue ActiveRecord::ActiveRecordError
+        false
       end
 
       def truncate_sql(sql)

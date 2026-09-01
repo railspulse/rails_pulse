@@ -13,6 +13,11 @@
   display: flex;
   flex-direction: row;
   overflow: hidden; /* keeps border-radius intact at edges */
+  /* The page container is a flex column inside a fixed-height <main>, so a long
+     page shrinks its children. The strip must keep its natural height or the
+     trend row — whose overflow:hidden zeroes its automatic minimum size —
+     collapses to nothing. */
+  flex-shrink: 0;
 }
 
 .metric-strip__section {
@@ -58,6 +63,7 @@
   align-items: center;
   overflow: hidden;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .metric-strip__trend-badge {
@@ -70,6 +76,7 @@
   text-overflow: ellipsis;
   white-space: nowrap;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 /* 2-column grid on tablet */

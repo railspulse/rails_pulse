@@ -26,6 +26,15 @@ SimpleCov.start do
   add_filter "/lib/rails_pulse/version.rb"
   add_filter "/lib/rails_pulse/adapters/delayed_job_plugin.rb"
 
+  # Rake task files are loaded by the task tests but only ever partially
+  # executed — a task body runs only when that task is invoked, and how many
+  # run depends on test ordering and on which tests skip. That makes the
+  # per-file gate flaky rather than informative: the same commit passes or
+  # fails depending on the seed. `rake test_migrations` already disables
+  # coverage for exactly this reason; this is the same problem in the main
+  # phase. The tasks are covered behaviourally by test/lib/tasks.
+  add_filter %r{\A/lib/tasks/}
+
   # Groups - organize coverage by component type
   add_group "Models", "app/models"
   add_group "Controllers", "app/controllers"

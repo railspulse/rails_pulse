@@ -11,6 +11,7 @@ module RailsPulse
         @route_thresholds = RailsPulse.configuration.route_thresholds
         @query_thresholds = RailsPulse.configuration.query_thresholds
         @job_thresholds   = RailsPulse.configuration.job_thresholds
+        @exception_thresholds = RailsPulse.configuration.exception_thresholds
       end
 
       def to_health_data
@@ -18,6 +19,7 @@ module RailsPulse
           routes:   route_counts,
           queries:  query_counts,
           jobs:     job_counts,
+          exceptions: exception_counts,
           storage:  storage_counts
         }
       end
@@ -107,6 +109,56 @@ module RailsPulse
         end
 
         { healthy: healthy, slow: slow, critical: critical }
+      end
+
+      # Exception groups classified by how often they fired over the dashboard
+      # period, read from summaries rather than from ExceptionGroup's lifetime
+      # occurrence_count — a group that fired ten thousand times last year and
+      # is now silent is not a critical problem today.
+      #
+      # A group with occurrences in the period but below the warning threshold
+      # counts as "slow" rather than "healthy": an exception happening at all is
+      # not healthy, it is just not yet urgent.
+      def exception_counts
+        return nil unless RailsPulse.configuration.track_exceptions
+        return nil unless exception_summaries_available?
+
+        start, finish = period_range
+
+        counts = RailsPulse::Summary
+          .for_exceptions
+          .where.not(summarizable_id: 0)
+          .where(period_start: start..finish)
+          .group(:summarizable_id)
+          .sum(:count)
+
+        healthy = slow = critical = 0
+
+        open_group_ids.each do |group_id|
+          occurrences = counts[group_id].to_i
+
+          if occurrences >= @exception_thresholds[:critical]
+            critical += 1
+          elsif occurrences >= @exception_thresholds[:warning]
+            slow += 1
+          elsif occurrences.positive?
+            slow += 1
+          else
+            healthy += 1
+          end
+        end
+
+        { healthy: healthy, slow: slow, critical: critical }
+      end
+
+      def open_group_ids
+        RailsPulse::ExceptionGroup.where(status: "open").pluck(:id)
+      end
+
+      def exception_summaries_available?
+        RailsPulse::ExceptionGroup.table_exists?
+      rescue ActiveRecord::ActiveRecordError
+        false
       end
     end
   end

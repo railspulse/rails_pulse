@@ -77,6 +77,14 @@
   border-left: 1px solid var(--color-border);
 }
 
+/* The toggles group normally follows a row of chart tabs, so it carries a
+   divider. Standing alone — a chart with no tabs — there is nothing to divide. */
+.panel-tabs__list > .panel-tabs__toggles:first-child {
+  padding-left: 0;
+  margin-left: 0;
+  border-left: none;
+}
+
 .text-deploy {
   color: var(--color-deploy);
 }
