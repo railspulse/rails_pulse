@@ -90,33 +90,65 @@ module RailsPulse
       RailsPulse.logger
     end
 
+    # Two hooks, run in order:
+    #
+    # * `authentication_method` — the legacy hook. It denies by rendering or
+    #   redirecting (the documented `unless signed_in? then redirect_to`
+    #   style). Returning literal `false` without responding is also a
+    #   denial; returning nil (which `unless … end` does on success) allows.
+    # * `authorize` — a fail-closed predicate. Anything falsy is a 403.
+    #
+    # With neither configured, HTTP Basic against RAILS_PULSE_PASSWORD.
     def authenticate_rails_pulse_user!
-      return unless RailsPulse.configuration.authentication_enabled
+      config = RailsPulse.configuration
+      return unless config.authentication_enabled
 
-      # If no authentication method is configured, use fallback HTTP Basic Auth
-      if RailsPulse.configuration.authentication_method.nil?
+      if config.authentication_method.nil? && config.authorize.nil?
         return fallback_http_basic_auth
       end
 
-      # Safely execute authentication method in controller context
-      case RailsPulse.configuration.authentication_method
-      when Proc
-        instance_exec(&RailsPulse.configuration.authentication_method)
-      when Symbol, String
-        method_name = RailsPulse.configuration.authentication_method.to_s
-        if respond_to?(method_name, true)
-          send(method_name)
-        else
-          logger.error "RailsPulse: Authentication method '#{method_name}' not found"
-          render plain: "Authentication configuration error", status: :internal_server_error
-        end
-      else
-        logger.error "RailsPulse: Invalid authentication method type: #{RailsPulse.configuration.authentication_method.class}"
-        render plain: "Authentication configuration error", status: :internal_server_error
+      unless config.authentication_method.nil?
+        run_authentication_method(config.authentication_method)
+        return if performed?
       end
+
+      run_authorize_predicate(config.authorize) if config.authorize
     rescue StandardError => e
       logger.warn "RailsPulse authentication failed: #{e.message}"
-      redirect_to RailsPulse.configuration.authentication_redirect_path
+      redirect_to config.authentication_redirect_path
+    end
+
+    def run_authentication_method(hook)
+      result = case hook
+      when Proc
+        instance_exec(&hook)
+      when Symbol, String
+        method_name = hook.to_s
+        unless respond_to?(method_name, true)
+          logger.error "RailsPulse: Authentication method '#{method_name}' not found"
+          return render plain: "Authentication configuration error", status: :internal_server_error
+        end
+        send(method_name)
+      else
+        logger.error "RailsPulse: Invalid authentication method type: #{hook.class}"
+        return render plain: "Authentication configuration error", status: :internal_server_error
+      end
+
+      return if performed?
+      return unless result == false
+
+      # `proc { current_user&.admin? }` reads as a predicate but never halts
+      # the chain. Treat an explicit false as the denial it was meant to be.
+      logger.warn "RailsPulse: authentication_method returned false without rendering or redirecting; " \
+                  "denying access. Use config.authorize for predicate-style checks."
+      render plain: "Forbidden", status: :forbidden
+    end
+
+    def run_authorize_predicate(predicate)
+      allowed = predicate.arity.zero? ? instance_exec(&predicate) : predicate.call(self)
+      return if allowed
+
+      render plain: "Forbidden", status: :forbidden
     end
 
     def fallback_http_basic_auth

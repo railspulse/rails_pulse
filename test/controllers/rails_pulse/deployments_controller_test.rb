@@ -82,6 +82,22 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     assert_response :created
   end
 
+  test "the API falls back to the authorize predicate when no token is configured" do
+    RailsPulse.configuration.deployment_api_token = nil
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(nil)
+    RailsPulse.configuration.stubs(:authorize).returns(->(_controller) { false })
+
+    assert_no_difference -> { RailsPulse::Deployment.count } do
+      post rails_pulse.deployments_path,
+        params: { deployment: { revision: "denied" } },
+        headers: {},
+        as: :json
+    end
+
+    assert_response :forbidden
+  end
+
   test "index renders deployment status" do
     get rails_pulse.deployments_path
 

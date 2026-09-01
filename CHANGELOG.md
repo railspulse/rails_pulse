@@ -24,12 +24,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   on an older `load_defaults` had no CSRF protection on any engine endpoint (tags,
   exception status, query reanalyze, session filters). Brakeman's `CheckForgerySetting`
   is no longer skipped.
+- **Authentication hooks fail closed.** An `authentication_method` that returned
+  `false` without rendering or redirecting used to grant access — `proc { current_user&.admin? }`
+  looked right and let every non-admin in. Literal `false` is now a 403; `nil`
+  (what the documented `unless … redirect_to … end` style returns on success) still allows.
+- **EXPLAIN hardening.** The query analyzer now refuses SQL containing `;`, `--` or `/*`
+  anywhere (PostgreSQL's `execute` runs every statement in a string, so a captured
+  `SELECT …; UPDATE …` would have re-run the UPDATE on each page view), runs the
+  PostgreSQL EXPLAIN inside `SET LOCAL transaction_read_only = on` with a 5s
+  `statement_timeout` instead of `Timeout.timeout`, and always rolls its savepoint back.
 
 ### Added
 
 - **`exception_message_filter` config option** — an optional `->(message, exception)`
   hook applied after the built-in redaction for app-specific patterns. If the hook
   raises, the message is stored as `[FILTERED]` rather than unfiltered.
+- **`authorize` config option** — a fail-closed predicate, `->(controller) { … }`
+  (or a zero-argument proc run in the controller). Anything falsy is a 403. Runs after
+  `authentication_method` when both are set, and replaces the HTTP Basic fallback on
+  its own. This is now the recommended way to gate the dashboard.
 
 ## [0.4.0.pre.1] - 2026-08-29
 

@@ -3,12 +3,21 @@
 module RailsPulse
   module Analysis
     class ExplainPlanAnalyzer < BaseAnalyzer
-      EXPLAIN_TIMEOUT = 5.seconds
+      # PostgreSQL statement_timeout for the EXPLAIN itself. Planner-only
+      # work is fast; this only guards against a pathological plan.
+      STATEMENT_TIMEOUT = "5s".freeze
 
       # Only EXPLAIN SELECT/WITH statements — executing EXPLAIN on a
       # DELETE/UPDATE/INSERT would re-run the statement on PostgreSQL
       # when ANALYZE is used, and is never useful for the dashboard.
       SAFE_VERB = /\A\s*(SELECT|WITH)\b/i
+
+      # The verb check only sees the first statement. PostgreSQL's execute
+      # (async_exec) runs every statement in the string, so a captured
+      # "SELECT …; UPDATE …" would re-run the UPDATE on every page view.
+      # Comments are refused too: nothing legitimate needs them explained,
+      # and they are the other place a second statement can hide.
+      UNSAFE_SQL = %r{;|--|/\*}
 
       def analyze
         return { explain_plan: nil, issues: [] } if recent_operations.empty?
@@ -28,27 +37,32 @@ module RailsPulse
         return nil unless sql.present?
         return nil unless sql.match?(SAFE_VERB)
 
-        begin
-          sanitized_sql = sanitize_sql_for_explain(sql)
-          conn = RailsPulse::ApplicationRecord.connection
+        sanitized_sql = sanitize_sql_for_explain(sql)
+        return nil unless sanitized_sql
 
-          # Wrap in a savepoint so that a failed EXPLAIN on PostgreSQL does not
-          # abort the surrounding transaction (e.g. during tests or inside a
-          # host app's transaction block).
+        begin
+          conn = RailsPulse::ApplicationRecord.connection
+          plan = nil
+
+          # A savepoint keeps a failed EXPLAIN from aborting the host's
+          # surrounding transaction, and it is always rolled back: EXPLAIN
+          # writes nothing, so rolling back costs nothing, and it undoes the
+          # SET LOCALs below (and anything a statement that slipped past the
+          # guards might have done) instead of leaking them into the caller's
+          # transaction.
           conn.transaction(requires_new: true) do
-            Timeout.timeout(EXPLAIN_TIMEOUT) do
-              case database_adapter
-              when "postgresql"
-                execute_postgres_explain(sanitized_sql)
-              when "mysql", "mysql2"
-                execute_mysql_explain(sanitized_sql)
-              when "sqlite"
-                execute_sqlite_explain(sanitized_sql)
-              else
-                nil
-              end
+            plan = case database_adapter
+            when "postgresql"
+              execute_postgres_explain(sanitized_sql)
+            when "mysql", "mysql2"
+              execute_mysql_explain(sanitized_sql)
+            when "sqlite"
+              execute_sqlite_explain(sanitized_sql)
             end
+            raise ActiveRecord::Rollback
           end
+
+          plan
         rescue => e
           RailsPulse.logger.warn("[ExplainPlanAnalyzer] EXPLAIN failed for query #{query.id}: #{e.message}")
           nil
@@ -191,13 +205,25 @@ module RailsPulse
         issues
       end
 
+      # Strips a trailing terminator, then refuses anything that could still
+      # carry a second statement or a comment. Returns nil for refused SQL.
       def sanitize_sql_for_explain(sql)
-        # Basic sanitization for EXPLAIN
-        sql.strip.gsub(/;+\s*$/, "")
+        cleaned = sql.strip.gsub(/;+\s*$/, "")
+        return nil if cleaned.match?(UNSAFE_SQL)
+
+        cleaned
       end
 
+      # SET LOCAL is scoped to the enclosing transaction/savepoint and is
+      # undone by the rollback in generate_explain_plan. Read-only means
+      # even a statement that got past the guards cannot write, and the
+      # timeout replaces Timeout.timeout, which could interrupt the driver
+      # mid-protocol and leave the connection in an undefined state.
       def execute_postgres_explain(sql)
-        result = RailsPulse::ApplicationRecord.connection.execute("EXPLAIN #{sql}")
+        conn = RailsPulse::ApplicationRecord.connection
+        conn.execute("SET LOCAL transaction_read_only = on")
+        conn.execute("SET LOCAL statement_timeout = '#{STATEMENT_TIMEOUT}'")
+        result = conn.execute("EXPLAIN #{sql}")
         result.values.flatten.join("\n")
       end
 

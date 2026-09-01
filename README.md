@@ -118,11 +118,20 @@ Full configuration reference: [railspulse.com/documentation/advanced](https://ra
 
 ## Authentication
 
-Rails Pulse has no built-in authentication, you protect the dashboard using your app's existing auth. Add an `authentication_method` to the initializer:
+Rails Pulse has no built-in user accounts; you protect the dashboard using your app's existing auth. Authentication is on by default outside development and test, and with nothing configured it falls back to HTTP Basic against `RAILS_PULSE_USERNAME` / `RAILS_PULSE_PASSWORD` (denying everything if the password is unset).
+
+The simplest hook is a predicate that receives the controller and returns `true` to allow — anything else is a 403:
 
 ```ruby
 RailsPulse.configure do |config|
-  config.authentication_enabled = true
+  config.authorize = ->(controller) { controller.current_user&.admin? }
+end
+```
+
+If you need to redirect to a login page instead, use `authentication_method`, which runs inside the controller and denies by rendering or redirecting:
+
+```ruby
+RailsPulse.configure do |config|
   config.authentication_redirect_path = "/login"
 
   config.authentication_method = proc {
@@ -132,6 +141,8 @@ RailsPulse.configure do |config|
   }
 end
 ```
+
+Returning `false` from `authentication_method` without responding is also treated as a denial, but `nil` (what `unless … end` returns on success) allows the request — so keep predicate-style checks in `authorize`.
 
 Authentication guide: [railspulse.com/documentation/authentication](https://railspulse.com/documentation/authentication)
 

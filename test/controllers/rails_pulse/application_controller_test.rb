@@ -318,6 +318,148 @@ class RailsPulse::ApplicationControllerTest < ActionDispatch::IntegrationTest
     assert_match "Invalid token", response.body
   end
 
+  # Fail-closed Hook Semantics
+
+  test "authentication denies when the Proc returns false without responding" do
+    # `proc { current_user&.admin? }` for a non-admin. Before this was
+    # enforced, the request went straight through.
+    auth_proc = proc { false }
+
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(auth_proc)
+    RailsPulse.configuration.stubs(:authorize).returns(nil)
+
+    get rails_pulse.root_path
+
+    assert_response :forbidden
+  end
+
+  test "authentication allows when the Proc returns nil without responding" do
+    # The documented `unless signed_in? then redirect_to … end` style returns
+    # nil on success; that must keep working.
+    auth_proc = proc { redirect_to "/login" unless true }
+
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(auth_proc)
+    RailsPulse.configuration.stubs(:authorize).returns(nil)
+
+    get rails_pulse.root_path
+
+    assert_response :success
+  end
+
+  test "authentication denies when a Symbol method returns false without responding" do
+    RailsPulse::ApplicationController.class_eval do
+      def predicate_style_auth
+        false
+      end
+    end
+
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(:predicate_style_auth)
+    RailsPulse.configuration.stubs(:authorize).returns(nil)
+
+    get rails_pulse.root_path
+
+    assert_response :forbidden
+  ensure
+    RailsPulse::ApplicationController.send(:remove_method, :predicate_style_auth) if RailsPulse::ApplicationController.method_defined?(:predicate_style_auth)
+  end
+
+  # authorize Predicate
+
+  test "authorize allows when the predicate is truthy" do
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(nil)
+    RailsPulse.configuration.stubs(:authorize).returns(->(controller) { controller.params[:role] == "admin" })
+
+    get rails_pulse.root_path, params: { role: "admin" }
+
+    assert_response :success
+  end
+
+  test "authorize denies when the predicate is false" do
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(nil)
+    RailsPulse.configuration.stubs(:authorize).returns(->(controller) { controller.params[:role] == "admin" })
+
+    get rails_pulse.root_path, params: { role: "viewer" }
+
+    assert_response :forbidden
+  end
+
+  test "authorize denies when the predicate is nil" do
+    # current_user&.admin? with no signed-in user.
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(nil)
+    RailsPulse.configuration.stubs(:authorize).returns(->(_controller) { nil })
+
+    get rails_pulse.root_path
+
+    assert_response :forbidden
+  end
+
+  test "authorize runs a zero-arity proc in the controller context" do
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(nil)
+    RailsPulse.configuration.stubs(:authorize).returns(proc { params[:role] == "admin" })
+
+    get rails_pulse.root_path, params: { role: "admin" }
+
+    assert_response :success
+  end
+
+  test "authorize alone does not fall back to HTTP Basic" do
+    ENV["RAILS_PULSE_PASSWORD"] = nil
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(nil)
+    RailsPulse.configuration.stubs(:authorize).returns(->(_c) { true })
+
+    get rails_pulse.root_path
+
+    assert_response :success
+  end
+
+  test "authorize is skipped when authentication_method already responded" do
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(proc { redirect_to "/login" })
+    RailsPulse.configuration.stubs(:authorize).returns(->(_c) { true })
+
+    get rails_pulse.root_path
+
+    assert_redirected_to "/login"
+  end
+
+  test "authorize runs after an authentication_method that allowed" do
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(proc { @signed_in = true })
+    RailsPulse.configuration.stubs(:authorize).returns(->(_c) { false })
+
+    get rails_pulse.root_path
+
+    assert_response :forbidden
+  end
+
+  test "authorize raising is rescued and redirects" do
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(nil)
+    RailsPulse.configuration.stubs(:authorize).returns(->(_c) { raise "boom" })
+    RailsPulse.configuration.stubs(:authentication_redirect_path).returns("/login")
+
+    get rails_pulse.root_path
+
+    assert_redirected_to "/login"
+  end
+
+  test "authorize is not consulted when authentication is disabled" do
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(false)
+    RailsPulse.configuration.stubs(:authorize).returns(->(_c) { false })
+
+    get rails_pulse.root_path
+
+    assert_response :success
+  end
+
   # set_global_filters Tests
 
   test "set_global_filters clears filters when clear param is true" do

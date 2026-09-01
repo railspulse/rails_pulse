@@ -280,6 +280,34 @@ module RailsPulse
       assert_nothing_raised { config.validate_configuration! }
     end
 
+    test "authorize defaults to nil" do
+      assert_nil Configuration.new.authorize
+    end
+
+    test "validate_configuration! accepts a callable authorize" do
+      config = build_config { self.authorize = ->(controller) { controller.present? } }
+
+      assert_respond_to config.authorize, :call
+    end
+
+    test "validate_configuration! raises for a non-callable authorize" do
+      config = Configuration.new
+      config.authorize = true
+
+      error = assert_raises(ArgumentError) { config.validate_configuration! }
+      assert_match "authorize", error.message
+    end
+
+    test "validate_authentication_settings! does not warn when authorize is configured" do
+      config = Configuration.new
+      config.authentication_enabled = true
+      config.authorize = ->(_controller) { true }
+
+      RailsPulse.logger.expects(:warn).never
+
+      config.validate_configuration!
+    end
+
     test "validate_configuration! raises for SLO entry missing percentile key" do
       config = Configuration.new
       config.instance_variable_set(:@service_level_objectives, [ { threshold: 200 } ])

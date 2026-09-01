@@ -20,6 +20,7 @@ module RailsPulse
                   :connects_to,
                   :authentication_enabled,
                   :authentication_method,
+                  :authorize,
                   :authentication_redirect_path,
                   :tags,
                   :job_tracking_mode,
@@ -99,6 +100,9 @@ module RailsPulse
       @authentication_enabled = !(Rails.env.development? || Rails.env.test?)
       @authentication_enabled_explicitly_set = false
       @authentication_method = nil
+      # Fail-closed predicate: ->(controller) { true to allow }. Anything
+      # falsy is a 403. Runs after authentication_method, if both are set.
+      @authorize = nil
       @authentication_redirect_path = "/"
       @tags = [ "ignored", "critical", "experimental" ]
       @job_tracking_mode = :universal
@@ -310,12 +314,16 @@ module RailsPulse
     end
 
     def validate_authentication_settings!
-      if @authentication_enabled && @authentication_enabled_explicitly_set && @authentication_method.nil?
+      if @authentication_enabled && @authentication_enabled_explicitly_set && @authentication_method.nil? && @authorize.nil?
         RailsPulse.logger.warn "Authentication is enabled but no authentication method is configured. This will deny all access."
       end
 
       if @authentication_method && ![ Proc, Symbol, String ].include?(@authentication_method.class)
         raise ArgumentError, "authentication_method must be a Proc, Symbol, String, or nil, got #{@authentication_method.class}"
+      end
+
+      if @authorize && !@authorize.respond_to?(:call)
+        raise ArgumentError, "authorize must respond to #call (a proc or lambda receiving the controller and returning true to allow), got #{@authorize.class}"
       end
     end
 

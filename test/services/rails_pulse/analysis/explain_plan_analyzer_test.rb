@@ -85,6 +85,78 @@ module RailsPulse
         assert_nil result[:explain_plan]
       end
 
+      test "refuses to EXPLAIN multi-statement SQL even when it starts with SELECT" do
+        op = create_operation(actual_sql: "SELECT 1; DELETE FROM users")
+        analyzer = ExplainPlanAnalyzer.new(@query, [ op ])
+        RailsPulse::ApplicationRecord.connection.expects(:execute).never
+
+        result = analyzer.analyze
+
+        assert_nil result[:explain_plan]
+      end
+
+      test "refuses to EXPLAIN SQL containing comments" do
+        [ "SELECT 1 -- ; DELETE FROM users", "SELECT /* ; DELETE */ 1" ].each do |sql|
+          analyzer = ExplainPlanAnalyzer.new(@query, [ create_operation(actual_sql: sql) ])
+
+          assert_nil analyzer.analyze[:explain_plan], "expected #{sql.inspect} to be refused"
+        end
+      end
+
+      # Fake connection that records every statement and honours the
+      # savepoint contract (ActiveRecord::Rollback is swallowed).
+      class RecordingConnection
+        attr_reader :executed, :rolled_back
+
+        def initialize(adapter_name)
+          @adapter_name = adapter_name
+          @executed = []
+          @rolled_back = false
+        end
+
+        attr_reader :adapter_name
+
+        def transaction(requires_new: false)
+          yield
+        rescue ActiveRecord::Rollback
+          @rolled_back = true
+          nil
+        end
+
+        def execute(sql)
+          @executed << sql
+          Struct.new(:values, :to_a).new([ [ "Seq Scan on users" ] ], [ { "plan" => "Seq Scan on users" } ])
+        end
+      end
+
+      test "postgres EXPLAIN runs read-only with a statement timeout and rolls the savepoint back" do
+        conn = RecordingConnection.new("PostgreSQL")
+        RailsPulse::ApplicationRecord.stubs(:connection).returns(conn)
+        analyzer = ExplainPlanAnalyzer.new(@query, [ create_operation(actual_sql: "SELECT * FROM users;") ])
+
+        result = analyzer.analyze
+
+        assert_equal [
+          "SET LOCAL transaction_read_only = on",
+          "SET LOCAL statement_timeout = '5s'",
+          "EXPLAIN SELECT * FROM users"
+        ], conn.executed
+        assert conn.rolled_back, "the EXPLAIN savepoint must be rolled back so SET LOCAL does not leak"
+        assert_equal "Seq Scan on users", result[:explain_plan]
+      end
+
+      test "mysql EXPLAIN rolls the savepoint back" do
+        conn = RecordingConnection.new("Mysql2")
+        RailsPulse::ApplicationRecord.stubs(:connection).returns(conn)
+        analyzer = ExplainPlanAnalyzer.new(@query, [ create_operation(actual_sql: "SELECT * FROM users") ])
+
+        result = analyzer.analyze
+
+        assert_equal [ "EXPLAIN SELECT * FROM users" ], conn.executed
+        assert conn.rolled_back
+        assert_equal "Seq Scan on users", result[:explain_plan]
+      end
+
       # ============================================================================
       # Sequential Scan Detection Tests
       # ============================================================================
@@ -416,6 +488,19 @@ module RailsPulse
         sanitized = analyzer.send(:sanitize_sql_for_explain, sql)
 
         assert_equal "SELECT * FROM users WHERE id = 1", sanitized
+      end
+
+      test "sanitize_sql_for_explain refuses an embedded semicolon" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+
+        assert_nil analyzer.send(:sanitize_sql_for_explain, "SELECT 1; DELETE FROM users;")
+      end
+
+      test "sanitize_sql_for_explain refuses line and block comments" do
+        analyzer = TestExplainPlanAnalyzer.new(@query, [ create_operation ])
+
+        assert_nil analyzer.send(:sanitize_sql_for_explain, "SELECT 1 -- trailing")
+        assert_nil analyzer.send(:sanitize_sql_for_explain, "SELECT /* hidden */ 1")
       end
 
       test "sanitize_sql_for_explain strips leading and trailing whitespace" do
