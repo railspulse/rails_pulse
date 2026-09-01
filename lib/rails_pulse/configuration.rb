@@ -11,6 +11,7 @@ module RailsPulse
                   :track_jobs,
                   :track_exceptions,
                   :capture_exception_params,
+                  :exception_message_filter,
                   :capture_actual_sql,
                   :custom_asset_patterns,
                   :mount_path,
@@ -73,6 +74,9 @@ module RailsPulse
       # default would start capturing exception messages (unfiltered) on upgrade.
       @track_exceptions = false
       @capture_exception_params = true
+      # Optional host hook applied to every captured exception message after
+      # the built-in filter_parameters redaction. nil means no extra filtering.
+      @exception_message_filter = nil
       # Off by default — actual_sql contains unparameterized SQL on mysql2
       # (prepared_statements: false) and PG behind PgBouncer transaction mode.
       # Inline literals (emails, passwords) would be stored in plaintext.
@@ -372,6 +376,10 @@ module RailsPulse
 
       unless [ true, false ].include?(@capture_exception_params)
         raise ArgumentError, "capture_exception_params must be a boolean"
+      end
+
+      if @exception_message_filter && !@exception_message_filter.respond_to?(:call)
+        raise ArgumentError, "exception_message_filter must respond to #call (a proc or lambda taking the message and the exception), got #{@exception_message_filter.class}"
       end
     end
 

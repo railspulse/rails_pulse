@@ -85,6 +85,22 @@ module RailsPulse
       assert_equal "boom", job_run.error_message
     end
 
+    test "track redacts the failure message like an exception occurrence" do
+      job = FakeJob.new
+
+      assert_raises RuntimeError do
+        RailsPulse::JobRunCollector.track(job) do
+          raise RuntimeError, "charge failed for token=tok_live_123 (" + ("x" * 600) + ")"
+        end
+      end
+
+      job_run = RailsPulse::JobRun.order(:created_at).last
+
+      refute_includes job_run.error_message, "tok_live_123"
+      assert_includes job_run.error_message, "token=[FILTERED]"
+      assert_operator job_run.error_message.length, :<=, 500
+    end
+
     test "track records a failed job as an exception occurrence" do
       job = FakeJob.new
 

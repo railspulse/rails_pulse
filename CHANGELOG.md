@@ -7,7 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-_Nothing yet._
+### Security
+
+- **Exception messages are now actually redacted.** The 0.4.0 sanitizer ran
+  `ActiveSupport::ParameterFilter` in a way that only fired when the host
+  filtered a key literally named `message`, so `password=…`, `token: …`, and
+  MySQL `Duplicate entry '<value>'` messages were stored verbatim. Messages now
+  have `key=value` / `key: value` / `"key":"value"` fragments masked whenever the
+  key matches `config.filter_parameters` (same rules as logged params), MySQL
+  duplicate-entry values are redacted alongside the existing PostgreSQL
+  `DETAIL:` clause, and job-run failure messages (`rails_pulse_job_runs.error_message`)
+  go through the same sanitizer instead of being stored raw and unbounded.
+
+### Added
+
+- **`exception_message_filter` config option** — an optional `->(message, exception)`
+  hook applied after the built-in redaction for app-specific patterns. If the hook
+  raises, the message is stored as `[FILTERED]` rather than unfiltered.
 
 ## [0.4.0.pre.1] - 2026-08-29
 
