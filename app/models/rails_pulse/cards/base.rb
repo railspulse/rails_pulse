@@ -173,6 +173,59 @@ module RailsPulse
         [ icon, format_percentage(percentage.abs, precision) ]
       end
 
+      # Compares a subject against its own history rather than against the
+      # immediately preceding window.
+      #
+      # The period-over-period arrow above answers "is this week worse than last
+      # week?", which is noisy — last week may itself have been unusual. This
+      # answers "is this worse than how this normally behaves?", which is the
+      # question the number is actually being read for.
+      #
+      # Only available where there is a single subject to have a history. Index
+      # pages aggregate across every route or query, so they keep the
+      # period-over-period arrow.
+      #
+      # @return [Array(String, String, String), nil] icon, amount, caption
+      def baseline_trend_for(subject, metric:)
+        return nil if subject.nil?
+
+        comparison = RailsPulse::Operations::Compare.call(subject, metric: metric)
+        return nil unless comparison.sufficient_data?
+
+        percentage = comparison.percent_change
+
+        icon = if percentage.abs < 0.1
+          "move-right"
+        elsif percentage.positive?
+          "trending-up"
+        else
+          "trending-down"
+        end
+
+        [ icon, format_percentage(percentage.abs, 1), baseline_caption(comparison) ]
+      end
+
+      # Names the change point only when there is a regression to explain. On a
+      # healthy metric "since Aug 26" would be noise, and locating it costs a
+      # second query that is not worth spending to say nothing.
+      def baseline_caption(comparison)
+        caption = "Compared to its #{baseline_window_text} normal"
+        return caption unless comparison.regression?
+
+        change_point = RailsPulse::Operations::ChangePoint.call(
+          comparison.subject, metric: comparison.metric
+        )
+        return caption if change_point.nil?
+
+        stamp = change_point.hourly? ? change_point.at.strftime("%b %-d %H:%M") : change_point.at.strftime("%b %-d")
+        "#{caption} · since #{stamp}"
+      end
+
+      def baseline_window_text
+        days = (RailsPulse.configuration.baseline_window / 1.day).round
+        "#{days}-day"
+      end
+
       # Existing format helpers (keep as-is)
       def format_percentage(value, precision = 1)
         "#{value.round(precision)}%"
