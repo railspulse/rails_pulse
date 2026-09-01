@@ -1,5 +1,6 @@
 <% columns = [
   { field: :revision,    label: 'Revision',  cell_class: 'truncate-cell' },
+  { field: :status,      label: 'Status',    class: 'w-28', sortable: false },
   { field: :started_at,  label: 'Started',   class: 'w-56' },
   { field: :finished_at, label: 'Finished',  class: 'w-56' }
 ] %>
@@ -15,6 +16,7 @@
             <code><%= deployment.revision %></code>
           <% end %>
         </td>
+        <td><%= render 'rails_pulse/deployments/status_badge', deployment: deployment %></td>
         <td class="whitespace-nowrap"><%= human_readable_occurred_at(deployment.started_at) %></td>
         <td class="whitespace-nowrap">
           <%= deployment.finished_at ? human_readable_occurred_at(deployment.finished_at) : content_tag(:span, "—", class: "text-subtle") %>

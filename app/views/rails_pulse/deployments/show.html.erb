@@ -1,28 +1,62 @@
 <%= render 'rails_pulse/components/page_header' %>
 
-<%= render 'rails_pulse/components/panel', title: @deployment.revision do %>
-  <dl class="flex gap flex-wrap">
-    <div>
-      <dt class="text-subtle text-xs uppercase">Started</dt>
-      <dd class="font-semibold"><%= human_readable_occurred_at(@deployment.started_at) %></dd>
-    </div>
-    <div>
-      <dt class="text-subtle text-xs uppercase">Finished</dt>
-      <dd class="font-semibold">
-        <%= @deployment.finished_at ? human_readable_occurred_at(@deployment.finished_at) : "—" %>
-      </dd>
-    </div>
-  </dl>
+<div class="row">
+  <div class="grid-item">
+    <%= render 'rails_pulse/components/panel',
+        title: 'Deployment Details',
+        help_heading: 'Deployment Details',
+        help_text: 'What your CI/CD pipeline reported for this deploy. The start time is what places the marker on charts, so you can line a regression up against the release that caused it.' do %>
+      <dl class="descriptive-list mbs-4">
+        <dt>Revision</dt>
+        <dd><code><%= @deployment.revision %></code></dd>
+        <dt>Status</dt>
+        <dd><%= render 'rails_pulse/deployments/status_badge', deployment: @deployment %></dd>
+        <dt>Started</dt>
+        <dd>
+          <%= human_readable_occurred_at(@deployment.started_at) %>
+          <span class="text-subtle">(<%= time_ago_in_words(@deployment.started_at) %>)</span>
+        </dd>
+        <dt>Finished</dt>
+        <dd>
+          <% if @deployment.in_progress? %>
+            <span class="text-subtle">—</span>
+          <% else %>
+            <%= human_readable_occurred_at(@deployment.finished_at) %>
+            <span class="text-subtle">(<%= time_ago_in_words(@deployment.finished_at) %>)</span>
+          <% end %>
+        </dd>
+        <dt>Duration</dt>
+        <dd>
+          <% if @deployment.duration %>
+            <%= distance_of_time_in_words(@deployment.started_at, @deployment.finished_at, include_seconds: true) %>
+          <% else %>
+            <span class="text-subtle">—</span>
+          <% end %>
+        </dd>
+        <dt>Recorded</dt>
+        <dd><%= human_readable_occurred_at(@deployment.created_at) %></dd>
+      </dl>
+    <% end %>
+  </div>
 
-  <% if @deployment.metadata_hash.any? %>
-    <h3 class="font-semibold text-sm mbs-4 mbe-2">Metadata</h3>
-    <dl class="flex gap flex-wrap">
-      <% @deployment.metadata_hash.each do |key, value| %>
-        <div>
-          <dt class="text-subtle text-xs uppercase"><%= key %></dt>
-          <dd><%= value %></dd>
-        </div>
+  <div class="grid-item">
+    <%= render 'rails_pulse/components/panel',
+        title: 'Metadata',
+        help_heading: 'Metadata',
+        help_text: 'Free-form key/value pairs sent with the deployment payload — typically environment, branch, and whoever or whatever triggered the deploy.' do %>
+      <% if @deployment.metadata_hash.any? %>
+        <dl class="descriptive-list mbs-4">
+          <% @deployment.metadata_hash.each do |key, value| %>
+            <dt><%= key.to_s.humanize %></dt>
+            <dd><%= value.is_a?(String) ? value : value.inspect %></dd>
+          <% end %>
+        </dl>
+      <% else %>
+        <p class="text-sm text-subtle mbs-4">
+          No metadata recorded. Send a metadata object with the deployment payload to
+          capture the environment, branch, or trigger for this deploy.
+        </p>
       <% end %>
-    </dl>
-  <% end %>
-<% end %>
+    <% end %>
+  </div>
+</div>
