@@ -29,8 +29,9 @@ RailsPulse::Engine.routes.draw do
   post "tags/:taggable_type/:taggable_id/add", to: "tags#create", as: :add_tag
   delete "tags/:taggable_type/:taggable_id/remove", to: "tags#destroy", as: :remove_tag
 
-  # Deployment event recording (API endpoint for CI/CD)
-  resources :deployments, only: [ :create ] do
+  # Deployments are both an API endpoint for CI/CD and a browsable record of
+  # what shipped when.
+  resources :deployments, only: %i[index show create] do
     collection do
       put :finish
     end

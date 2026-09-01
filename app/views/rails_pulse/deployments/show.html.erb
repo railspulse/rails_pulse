@@ -1,0 +1,28 @@
+<%= render 'rails_pulse/components/page_header' %>
+
+<%= render 'rails_pulse/components/panel', title: @deployment.revision do %>
+  <dl class="flex gap flex-wrap">
+    <div>
+      <dt class="text-subtle text-xs uppercase">Started</dt>
+      <dd class="font-semibold"><%= human_readable_occurred_at(@deployment.started_at) %></dd>
+    </div>
+    <div>
+      <dt class="text-subtle text-xs uppercase">Finished</dt>
+      <dd class="font-semibold">
+        <%= @deployment.finished_at ? human_readable_occurred_at(@deployment.finished_at) : "—" %>
+      </dd>
+    </div>
+  </dl>
+
+  <% if @deployment.metadata_hash.any? %>
+    <h3 class="font-semibold text-sm mbs-4 mbe-2">Metadata</h3>
+    <dl class="flex gap flex-wrap">
+      <% @deployment.metadata_hash.each do |key, value| %>
+        <div>
+          <dt class="text-subtle text-xs uppercase"><%= key %></dt>
+          <dd><%= value %></dd>
+        </div>
+      <% end %>
+    </dl>
+  <% end %>
+<% end %>

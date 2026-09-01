@@ -1,6 +1,10 @@
 require "test_helper"
 
 class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
+  include Rails::Controller::Testing::TestProcess
+  include Rails::Controller::Testing::TemplateAssertions
+  include Rails::Controller::Testing::Integration
+
   fixtures :rails_pulse_deployments
 
   DEPLOY_TOKEN = "test-deploy-token"
@@ -28,6 +32,88 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
   end
 
   # POST /deployments
+
+  # Index Action Tests
+
+  test "index responds successfully" do
+    get rails_pulse.deployments_path
+
+    assert_response :success
+  end
+
+  test "index assigns deployments newest first" do
+    get rails_pulse.deployments_path
+
+    timestamps = assigns(:table_data).map(&:started_at)
+
+    assert_equal timestamps.sort.reverse, timestamps
+  end
+
+  test "index renders an empty state with no deployments" do
+    RailsPulse::Deployment.delete_all
+
+    get rails_pulse.deployments_path
+
+    assert_response :success
+    assert_empty assigns(:table_data)
+  end
+
+  test "the browsable pages honour dashboard authentication" do
+    # The token skip covers create/finish only. If it leaked to the pages, an
+    # unauthenticated visitor could read the deployment history.
+    deny = proc { render plain: "Unauthorized", status: :unauthorized }
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(deny)
+
+    get rails_pulse.deployments_path
+
+    assert_response :unauthorized
+  end
+
+  test "the API actions still authenticate by token, not by session" do
+    deny = proc { render plain: "Unauthorized", status: :unauthorized }
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(deny)
+
+    post rails_pulse.deployments_path,
+      params: { deployment: { revision: "tok3n" } },
+      headers: { "X-Rails-Pulse-Token" => DEPLOY_TOKEN }
+
+    assert_response :created
+  end
+
+  # Show Action Tests
+
+  test "show responds successfully" do
+    deployment = rails_pulse_deployments(:v1_deploy)
+
+    get rails_pulse.deployment_path(deployment)
+
+    assert_response :success
+    assert_equal deployment, assigns(:deployment)
+  end
+
+  test "show renders the revision" do
+    deployment = rails_pulse_deployments(:v1_deploy)
+
+    get rails_pulse.deployment_path(deployment)
+
+    assert_includes response.body, deployment.revision
+  end
+
+  test "show renders deployment metadata" do
+    deployment = rails_pulse_deployments(:v2_deploy)
+
+    get rails_pulse.deployment_path(deployment)
+
+    assert_includes response.body, "production"
+  end
+
+  test "show 404s for an unknown deployment" do
+    get rails_pulse.deployment_path(id: 999_999)
+
+    assert_response :not_found
+  end
 
   test "create records deployment and returns 201" do
     assert_difference -> { RailsPulse::Deployment.count }, 1 do
