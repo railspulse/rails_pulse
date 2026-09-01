@@ -132,6 +132,34 @@ module RailsPulse
       end
     end
 
+    test "count-based cleanup prunes the oldest deployments beyond max" do
+      RailsPulse::Deployment.delete_all
+      RailsPulse.configuration.max_table_records = { rails_pulse_deployments: 2 }
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+
+      oldest = RailsPulse::Deployment.create!(revision: "old", started_at: 3.days.ago)
+      RailsPulse::Deployment.create!(revision: "mid", started_at: 2.days.ago)
+      newest = RailsPulse::Deployment.create!(revision: "new", started_at: 1.day.ago)
+
+      stats = CleanupService.perform
+
+      assert_equal 1, stats[:count_based][:deployments]
+      assert_equal 2, RailsPulse::Deployment.count
+      assert_not RailsPulse::Deployment.exists?(oldest.id)
+      assert RailsPulse::Deployment.exists?(newest.id)
+    end
+
+    test "time-based cleanup never deletes deployments" do
+      RailsPulse::Deployment.delete_all
+      RailsPulse.configuration.max_table_records = nil
+      RailsPulse.configuration.full_retention_period = 1.day
+      RailsPulse::Deployment.create!(revision: "ancient", started_at: 400.days.ago)
+
+      assert_no_difference -> { RailsPulse::Deployment.count } do
+        CleanupService.perform
+      end
+    end
+
     test "count-based cleanup keeps jobs within max limit" do
       RailsPulse.configuration.max_table_records = {
         rails_pulse_operations: 10_000,

@@ -11,6 +11,7 @@
 # Normalizes times to beginning/end of hour or day based on range duration.
 module TimeRangeConcern
   extend ActiveSupport::Concern
+  include RansackParamsConcern
 
   included do
     # Define the constant in the including class - ordered by most common usage
@@ -40,8 +41,6 @@ module TimeRangeConcern
     end_time = Time.zone.now
     selected_time_range = default_key
 
-    ransack_params = params[:q] || {}
-
     # Priority 1: Page-specific preset from dropdown (check this first!)
     if ransack_params[:period_start_range].present? && ransack_params[:period_start_range].to_sym != :custom
       # Predefined time range from dropdown
@@ -59,22 +58,30 @@ module TimeRangeConcern
     elsif ransack_params[:period_start_range].present? && ransack_params[:period_start_range].to_sym == :custom && ransack_params[:custom_date_range].present? && ransack_params[:custom_date_range].include?(" to ")
       # Custom datetime range from custom range picker
       dates = ransack_params[:custom_date_range].split(" to ")
-      start_time = parse_time_param(dates[0].strip)
-      end_time = parse_time_param(dates[1].strip)
-      selected_time_range = :custom
+      custom_start = parse_time_param(dates[0].strip)
+      custom_end = parse_time_param(dates[1].strip)
+      if custom_start && custom_end
+        start_time = custom_start
+        end_time = custom_end
+        selected_time_range = :custom
+      end
     # Priority 3: Page-specific filters (chart zoom)
     elsif ransack_params[:occurred_at_gteq].present? && ransack_params[:occurred_at_lt].present?
       # Custom time range from chart zoom
-      start_time = parse_time_param(ransack_params[:occurred_at_gteq])
-      end_time = parse_time_param(ransack_params[:occurred_at_lt])
-      selected_time_range = :custom
+      zoom_start = parse_time_param(ransack_params[:occurred_at_gteq])
+      zoom_end = parse_time_param(ransack_params[:occurred_at_lt])
+      if zoom_start && zoom_end
+        start_time = zoom_start
+        end_time = zoom_end
+        selected_time_range = :custom
+      end
     # Priority 4: Time range selector (from session)
     elsif session[:time_range_preference].present?
       preference = session[:time_range_preference]
       if preference.is_a?(Hash) && preference["type"] == "custom"
         # Custom range from time range selector
-        start_time = parse_time_param(preference["start_time"])
-        end_time = parse_time_param(preference["end_time"])
+        start_time = parse_time_param(preference["start_time"]) || start_time
+        end_time = parse_time_param(preference["end_time"]) || end_time
         selected_time_range = :custom
       else
         # Preset from time range selector
@@ -90,8 +97,8 @@ module TimeRangeConcern
       end
     # Priority 5: Global filters (from session)
     elsif session_global_filters["start_time"].present? || session_global_filters["end_time"].present?
-      start_time = parse_time_param(session_global_filters["start_time"]) if session_global_filters["start_time"].present?
-      end_time = parse_time_param(session_global_filters["end_time"]) if session_global_filters["end_time"].present?
+      start_time = parse_time_param(session_global_filters["start_time"]) || start_time
+      end_time = parse_time_param(session_global_filters["end_time"]) || end_time
       selected_time_range = :custom
     end
     # Priority 6: Default time range (already set above)
@@ -112,17 +119,24 @@ module TimeRangeConcern
 
   private
 
+  # Returns nil for anything that does not parse, so a hand-edited or stale
+  # value falls back to the default range instead of raising.
   def parse_time_param(param)
     case param
     when Time, DateTime
       param.in_time_zone
     when String
+      return nil if param.blank?
+
       # Parse as server local time (not UTC, not Time.zone)
       # This ensures flatpickr datetime strings are interpreted in server's timezone
       Time.parse(param).localtime
+    when Numeric
+      Time.zone.at(param)
     else
-      # Assume it's an integer timestamp
-      Time.zone.at(param.to_i)
+      nil
     end
+  rescue ArgumentError, TypeError, RangeError
+    nil
   end
 end

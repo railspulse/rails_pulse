@@ -109,7 +109,7 @@ module RailsPulse
 
       # If filtering or sorting by route_path, we need to join the routes table
       needs_join = @ransack_query.sorts.any? { |sort| sort.name == "route_path" } ||
-                   params.dig(:q, :route_path_cont).present?
+                   ransack_params[:route_path_cont].present?
 
       if needs_join
         base_query = base_query.joins(:route)

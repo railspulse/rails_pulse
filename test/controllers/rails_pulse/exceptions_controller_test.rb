@@ -27,6 +27,12 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
     assert_respond_to controller, :update
   end
 
+  test "index tolerates a non-hash q param" do
+    get rails_pulse.exceptions_path, params: { q: "garbage" }
+
+    assert_response :success
+  end
+
   # Index Action Tests
 
   test "index responds successfully" do

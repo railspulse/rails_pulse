@@ -78,6 +78,21 @@ module RailsPulse
         @stats[:count_based][:exception_groups]      = cleanup_exception_groups_by_count
         @stats[:count_based][:orphaned_exception_groups] = cleanup_orphaned_exception_groups
       end
+      if deployments_table_exists?
+        @stats[:count_based][:deployments] = cleanup_deployments_by_count
+      end
+    end
+
+    # Deployments are markers, not measurements, so they are never pruned by
+    # age — a marker from before the retention window still explains a
+    # summary row. They are capped by count so the token-authenticated
+    # create endpoint cannot grow the table without bound.
+    def cleanup_deployments_by_count
+      cleanup_by_count(RailsPulse::Deployment, :rails_pulse_deployments, order_column: :started_at)
+    end
+
+    def deployments_table_exists?
+      RailsPulse::ApplicationRecord.connection.table_exists?(:rails_pulse_deployments)
     end
 
     # Shared helper: delete oldest records beyond a configured max count

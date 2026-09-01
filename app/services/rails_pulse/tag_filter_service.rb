@@ -8,10 +8,12 @@ module RailsPulse
     def self.filter_ids(model_class, disabled_tags, show_non_tagged)
       relation = model_class.all
 
-      # Exclude items with disabled tags
+      # Exclude items with disabled tags. Explicit ESCAPE: SQLite has no
+      # default escape character, so without it an underscore in a tag is
+      # never matched literally there and the exclusion matches nothing.
       disabled_tags.each do |tag|
-        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
-        relation = relation.where.not("tags LIKE ?", "%#{sanitized_tag}%")
+        sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, RailsPulse::Taggable::LIKE_ESCAPE)
+        relation = relation.where.not("tags LIKE ? ESCAPE '!'", "%#{sanitized_tag}%")
       end
 
       # Exclude non-tagged items if show_non_tagged is false

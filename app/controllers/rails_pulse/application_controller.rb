@@ -2,6 +2,7 @@ module RailsPulse
   class ApplicationController < ActionController::Base
     include PaginationConcern
     include SessionFiltersConcern
+    include RansackParamsConcern
 
     # Declared here rather than inherited. ActionController::Base only gets
     # protect_from_forgery from the host's `default_protect_from_forgery`,
@@ -17,6 +18,14 @@ module RailsPulse
     before_action :set_onboarding_state
     before_action :load_deployment_markers
 
+    # Values accepted into the cookie session. Everything else is dropped:
+    # the session has a 4 KB ceiling and a stored value is re-parsed on every
+    # later request, so an unbounded or unparseable string would 500 the
+    # dashboard until the cookie is cleared.
+    TIME_RANGE_PRESETS = %w[last_24_hours last_7_days last_14_days last_30_days].freeze
+    PERFORMANCE_THRESHOLDS = %w[slow very_slow critical].freeze
+    MAX_TIME_PARAM_LENGTH = 64
+
     def set_global_filters
       if params[:clear] == "true"
         session.delete(:global_filters)
@@ -25,21 +34,24 @@ module RailsPulse
         filters = session[:global_filters] || {}
 
         # Update time filters if provided
-        if params[:start_time].present? && params[:end_time].present?
-          filters["start_time"] = params[:start_time]
-          filters["end_time"] = params[:end_time]
+        start_time = valid_time_param(params[:start_time])
+        end_time = valid_time_param(params[:end_time])
+        if start_time && end_time
+          filters["start_time"] = start_time
+          filters["end_time"] = end_time
         end
 
-        # Update performance threshold if provided (or remove if empty)
-        if params[:performance_threshold].present?
-          filters["performance_threshold"] = params[:performance_threshold]
+        # Update performance threshold if provided (or remove if empty/unknown)
+        threshold = params[:performance_threshold].to_s
+        if PERFORMANCE_THRESHOLDS.include?(threshold)
+          filters["performance_threshold"] = threshold
         else
           filters.delete("performance_threshold")
         end
 
         # Update tag visibility - convert enabled tags to disabled tags
         all_tags = RailsPulse.configuration.tags
-        enabled_tags = params[:enabled_tags] || []
+        enabled_tags = Array(params[:enabled_tags]).map(&:to_s)
 
         # Handle "non_tagged" separately
         session[:show_non_tagged] = enabled_tags.include?("non_tagged")
@@ -64,15 +76,19 @@ module RailsPulse
     end
 
     def set_time_range
-      if params[:preset].present?
+      preset = params[:preset].to_s
+      start_time = valid_time_param(params[:start_time])
+      end_time = valid_time_param(params[:end_time])
+
+      if preset.present?
         # Store preset selection
-        session[:time_range_preference] = params[:preset]
-      elsif params[:start_time].present? && params[:end_time].present?
+        session[:time_range_preference] = preset if TIME_RANGE_PRESETS.include?(preset)
+      elsif start_time && end_time
         # Store custom range
         session[:time_range_preference] = {
           type: "custom",
-          start_time: params[:start_time],
-          end_time: params[:end_time]
+          start_time: start_time,
+          end_time: end_time
         }
       end
 
@@ -81,6 +97,19 @@ module RailsPulse
     end
 
     private
+
+    # The original string if it is short enough to live in the session and
+    # Time.parse accepts it (TimeRangeConcern parses it back the same way);
+    # nil otherwise.
+    def valid_time_param(value)
+      value = value.to_s.strip
+      return nil if value.blank? || value.length > MAX_TIME_PARAM_LENGTH
+
+      Time.parse(value)
+      value
+    rescue ArgumentError, TypeError
+      nil
+    end
 
     def partial_request?
       request.headers["X-Partial-Request"] == "true"

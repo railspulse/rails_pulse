@@ -41,9 +41,11 @@ module RailsPulse
       def apply_tag_filters(query)
         actual_disabled_tags = @disabled_tags.reject { |tag| tag == "non_tagged" }
 
+        # Explicit ESCAPE: SQLite has no default escape character, so without
+        # it an underscore in a tag is never matched literally there.
         actual_disabled_tags.each do |tag|
-          sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, "\\")
-          query = query.where.not("#{model_table}.tags LIKE ?", "%#{sanitized_tag}%")
+          sanitized_tag = ActiveRecord::Base.sanitize_sql_like(tag.to_s, RailsPulse::Taggable::LIKE_ESCAPE)
+          query = query.where.not("#{model_table}.tags LIKE ? ESCAPE '!'", "%#{sanitized_tag}%")
         end
 
         unless @show_non_tagged

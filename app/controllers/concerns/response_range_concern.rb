@@ -5,9 +5,9 @@
 # Supports both page-specific duration filters and global performance threshold filters.
 module ResponseRangeConcern
   extend ActiveSupport::Concern
+  include RansackParamsConcern
 
   def setup_duration_range(type = :route)
-    ransack_params = params[:q] || {}
     thresholds = RailsPulse.configuration.public_send("#{type}_thresholds")
 
     # Check all duration-related parameters

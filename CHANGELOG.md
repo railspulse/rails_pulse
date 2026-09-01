@@ -33,6 +33,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `SELECT …; UPDATE …` would have re-run the UPDATE on each page view), runs the
   PostgreSQL EXPLAIN inside `SET LOCAL transaction_read_only = on` with a 5s
   `statement_timeout` instead of `Timeout.timeout`, and always rolls its savepoint back.
+- **Deployments API input is bounded.** `revision` is capped at 255 characters,
+  serialized `metadata` at 4 KB, and `started_at` may be at most one hour in the future
+  (a forged future marker would have stamped every later exception with a revision
+  that never shipped). `rails_pulse_deployments` now has a count cap
+  (`max_table_records`, default 1 000) enforced by `CleanupService`; deployments are
+  never pruned by age.
+- **Backtrace source snippets are limited to `app/`, `lib/` and `config/routes.rb`**
+  (`.rb`, `.erb`, `.rake`, `.haml`, `.slim`, `.jbuilder`). Previously any file under
+  `Rails.root` was readable through a backtrace frame, including initializers with
+  inline keys, `config/database.yml`, and `.env`.
+- **Standalone dashboard session cookie is `Secure` in production** (override with
+  `RAILS_PULSE_INSECURE_SESSION=1`). The rackup's "no Rails app" branch, which could
+  never boot (`NameError: uninitialized constant Rails`), is replaced with a clear
+  error; the deployment docs now give the working invocation.
 
 ### Added
 
@@ -43,6 +57,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (or a zero-argument proc run in the controller). Anything falsy is a 403. Runs after
   `authentication_method` when both are set, and replaces the HTTP Basic fallback on
   its own. This is now the recommended way to gate the dashboard.
+
+### Fixed
+
+- **Tag filters work on SQLite for tags containing `_`.** The `LIKE` patterns were
+  escaped but issued without an `ESCAPE` clause; SQLite has no default escape
+  character, so `my_tag` never matched and "hide records tagged my_tag" hid nothing.
+  All three adapters now get an explicit `ESCAPE '!'`.
+- **Hand-edited query strings no longer 500.** `?q=string`, unparseable custom date
+  ranges, unparseable `occurred_at` filters, a non-array `enabled_tags`, and
+  oversized or unparseable session time filters all fall back to defaults instead of
+  raising. Session-stored presets and performance thresholds are validated against
+  the known values.
 
 ## [0.4.0.pre.1] - 2026-08-29
 

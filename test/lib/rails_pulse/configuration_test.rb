@@ -74,6 +74,7 @@ module RailsPulse
         rails_pulse_operations rails_pulse_requests rails_pulse_job_runs
         rails_pulse_queries rails_pulse_routes rails_pulse_jobs
         rails_pulse_exception_occurrences rails_pulse_exception_groups
+        rails_pulse_deployments
       ]
 
       expected_tables.each do |key|

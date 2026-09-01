@@ -67,56 +67,40 @@ end
 
 **Standalone Server:**
 
-The standalone server can run from either:
-- **Your Rails app directory** (recommended): Has access to your `config/database.yml`
-- **Rails Pulse gem directory**: For development/testing
+The dashboard is a mounted engine: it needs your app's models, routes and
+`config/initializers/rails_pulse.rb` (authentication, database connection), so
+the server must start from your Rails application's root directory. It loads
+`config/environment.rb` from there and refuses to boot without it.
 
 ```bash
-# From your Rails app directory
-bundle exec rackup lib/rails_pulse_server.ru -p 3001
-
-# Or from the Rails Pulse gem directory (for development)
-cd vendor/bundle/ruby/*/gems/rails_pulse-*
-bundle exec rackup lib/rails_pulse_server.ru -p 3001
+cd /path/to/your/app
+RAILS_ENV=production bundle exec rackup $(bundle show rails_pulse)/lib/rails_pulse_server.ru -p 3001
 ```
 
-**Database Connection:**
+`RAILS_ENV` matters twice: it selects the database (from `config/database.yml`
+or `DATABASE_URL`, exactly as the main app does), and it decides whether
+dashboard authentication is on — the default is enabled outside `development`
+and `test`, so an unset `RAILS_ENV` boots an unauthenticated dashboard against
+the development database.
 
-The standalone server needs to connect to the same database as your main app. It supports two configuration methods (in priority order):
+Two environment variables are required or strongly recommended:
 
-**Option 1: DATABASE_URL environment variable (recommended for production)**
-   ```bash
-   export DATABASE_URL="postgresql://user:pass@host/db"
-   bundle exec rackup lib/rails_pulse_server.ru -p 3001
-   ```
+- `SECRET_KEY_BASE` — the server refuses to start without it; it signs the
+  dashboard's session cookie.
+- `RAILS_ENV=production` — see above.
 
-**Option 2: config/database.yml (recommended for development)**
+The session cookie is marked `Secure` in production, so it is only sent over
+HTTPS. Terminate TLS at your reverse proxy (see the nginx example below). For a
+deliberately non-TLS deployment on a private network, set
+`RAILS_PULSE_INSECURE_SESSION=1`.
 
-   When running from your Rails app directory, the server automatically reads `config/database.yml`:
-   - First looks for a `rails_pulse` connection in your current environment
-   - Falls back to the primary connection if `rails_pulse` is not defined
-   - Respects `RAILS_ENV` (defaults to `production`)
-
-   Example `config/database.yml`:
-   ```yaml
-   production:
-     primary:
-       adapter: postgresql
-       database: myapp_production
-       # ... other settings
-
-     # Optional: Dedicated connection for Rails Pulse
-     rails_pulse:
-       adapter: postgresql
-       database: myapp_production  # Same database, but isolated connection pool
-       # ... other settings
-   ```
-
-**Important:** The server will fail to start if neither DATABASE_URL nor config/database.yml is available.
+For development against the gem's own dummy app, run the same command from the
+gem root instead.
 
 **Deployment with Kamal:**
 
-Deploy the dashboard as an accessory
+Deploy the dashboard as an accessory using the same image as your app, so
+`config/environment.rb` and your initializer are present:
 
 ```yaml
 # config/deploy.yml
@@ -124,40 +108,19 @@ accessories:
   rails_pulse:
     image: your-app-image  # Same image as your main app
     host: your-server
-    cmd: bundle exec rackup lib/rails_pulse_server.ru -p 3001
+    cmd: sh -c 'bundle exec rackup $(bundle show rails_pulse)/lib/rails_pulse_server.ru -p 3001'
     env:
       clear:
-        DATABASE_URL: "postgresql://user:pass@host/db"
         RAILS_ENV: production
-        # Optional: Secret for session cookies (defaults to random value)
-        SECRET_KEY_BASE: <%= ENV.fetch("SECRET_KEY_BASE") %>
+      secret:
+        - SECRET_KEY_BASE
+        - DATABASE_URL          # or rely on config/database.yml in the image
     port: "3001:3001"  # Map container port to host port
     healthcheck:
       path: /health
       port: 3001
       interval: 10s
       timeout: 5s
-```
-
-**Alternative Kamal config using database.yml:**
-
-If your app image includes `config/database.yml`, you can omit DATABASE_URL:
-
-```yaml
-accessories:
-  rails_pulse:
-    image: your-app-image
-    host: your-server
-    cmd: bundle exec rackup lib/rails_pulse_server.ru -p 3001
-    env:
-      clear:
-        RAILS_ENV: production
-        SECRET_KEY_BASE: <%= ENV.fetch("SECRET_KEY_BASE") %>
-    port: "3001:3001"
-    healthcheck:
-      path: /health
-      port: 3001
-      interval: 10s
 ```
 
 **Nginx Configuration:**

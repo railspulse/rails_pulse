@@ -112,20 +112,26 @@ module RailsPulse
       Arel.sql("COUNT(rails_pulse_operations.id)")
     end
 
-    ransacker :occurred_at, formatter: ->(val) {
-      # Handle different time formats for database compatibility
+    # Handle different time formats for database compatibility. An
+    # unparseable value becomes nil, which Ransack treats as "no filter",
+    # rather than a 500 from a hand-edited query string.
+    OCCURRED_AT_FORMATTER = lambda do |val|
       case val
       when Time, DateTime, ActiveSupport::TimeWithZone
         val.utc.iso8601
       when String
-        Time.zone.parse(val).utc.iso8601
+        Time.zone.parse(val)&.utc&.iso8601
       when Integer
         Time.at(val).utc.iso8601
       else
         # Fallback: try to parse as integer timestamp
         Time.at(val.to_i).utc.iso8601
       end
-    } do |parent|
+    rescue ArgumentError, TypeError
+      nil
+    end
+
+    ransacker :occurred_at, formatter: OCCURRED_AT_FORMATTER do |parent|
       parent.table[:occurred_at]
     end
 
