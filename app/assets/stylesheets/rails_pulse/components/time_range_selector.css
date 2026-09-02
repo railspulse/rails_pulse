@@ -18,7 +18,7 @@
 
 .time-range-trigger:hover {
   background: var(--color-secondary);
-  border-color: var(--color-border-emphasis);
+  border-color: var(--color-border-dark);
 }
 
 .time-range-trigger svg {
@@ -28,7 +28,7 @@
 
 .time-range-trigger:has(+ [popover]:popover-open) {
   background: var(--color-secondary);
-  border-color: var(--color-border-emphasis);
+  border-color: var(--color-border-dark);
 }
 
 .time-range-trigger:has(+ [popover]:popover-open) svg {
@@ -36,16 +36,16 @@
 }
 
 /* Light mode improvements */
-html[data-color-scheme="light"] .time-range-trigger {
+html:not([data-color-scheme="dark"]) .time-range-trigger {
   border-color: rgba(0, 0, 0, 0.2);
 }
 
-html[data-color-scheme="light"] .time-range-trigger:hover {
+html:not([data-color-scheme="dark"]) .time-range-trigger:hover {
   background: rgba(0, 0, 0, 0.05);
   border-color: rgba(0, 0, 0, 0.3);
 }
 
-html[data-color-scheme="light"] .time-range-trigger:has(+ [popover]:popover-open) {
+html:not([data-color-scheme="dark"]) .time-range-trigger:has(+ [popover]:popover-open) {
   background: rgba(0, 0, 0, 0.05);
   border-color: rgba(0, 0, 0, 0.3);
 }

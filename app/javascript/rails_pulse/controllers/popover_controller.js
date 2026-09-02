@@ -42,6 +42,10 @@ export default class extends Controller {
   }
 
   disconnect() {
+    // A pending debouncedShow would otherwise fire showPopover() on an element
+    // that has already been removed (e.g. the table was replaced by a fetch).
+    clearTimeout(this.#showTimer)
+    clearTimeout(this.#hideTimer)
     this.cleanup()
   }
 

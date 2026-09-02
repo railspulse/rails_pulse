@@ -14,15 +14,13 @@
   --context-menu-y: 0px;
 }
 
-/* Popover positioning (used by popover_controller.js) */
+/* Positioning for popover_controller.js and context_menu_controller.js.
+   These were previously two separate [popover].positioned blocks of equal
+   specificity, so the second silently overrode the first and correct
+   behaviour depended on CSS file load order. Merged into one rule: the
+   context-menu coordinates win when set, otherwise the popover ones do. */
 [popover].positioned {
   position: fixed;
-  inset-inline-start: var(--popover-x, 0px) !important;
-  inset-block-start: var(--popover-y, 0px) !important;
-}
-
-/* Context menu positioning (used by context_menu_controller.js) */
-[popover].positioned {
   inset-inline-start: var(--context-menu-x, var(--popover-x, 0px)) !important;
   inset-block-start: var(--context-menu-y, var(--popover-y, 0px)) !important;
 }
