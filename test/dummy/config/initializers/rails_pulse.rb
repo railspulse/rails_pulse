@@ -282,6 +282,7 @@ RailsPulse.configure do |config|
     rails_pulse_job_runs: 50000,                 # Individual job executions (high volume)
     rails_pulse_jobs: 1000,                      # Unique job classes (low volume)
     rails_pulse_exception_occurrences: 50000,    # Individual exception raises (high volume)
-    rails_pulse_exception_groups: 10000          # Distinct exception sites (moderate volume)
+    rails_pulse_exception_groups: 10000,         # Distinct exception sites (moderate volume)
+    rails_pulse_deployments: 1000                # Deploy markers (low volume)
   }
 end

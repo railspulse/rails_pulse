@@ -13,15 +13,16 @@ class GlobalFiltersTest < ApplicationSystemTestCase
     @report_job = rails_pulse_jobs(:report_job)
 
     # Configure tags for testing
+    @original_tags = RailsPulse.configuration.tags
     RailsPulse.configure do |config|
       config.tags = [ "api", "users", "posts", "maintenance", "database", "critical" ]
     end
   end
 
   def teardown
-    # Reset configuration
+    # Restore the dummy app's configured tags
     RailsPulse.configure do |config|
-      config.tags = []
+      config.tags = @original_tags
     end
     super
   end

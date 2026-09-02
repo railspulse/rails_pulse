@@ -53,7 +53,7 @@ module ChartTableConcern
   end
 
   def setup_chart_and_table_data
-    ransack_params = params[:q] || {}
+    ransack_params = self.ransack_params
 
     unless partial_request?
       # Setup chart data first using original time range (no sorting from table)

@@ -21,6 +21,16 @@ module RailsPulse
       assert_not_includes ids, tagged_route.id
     end
 
+    test "filter_ids excludes an underscored tag literally on every adapter" do
+      underscored = Route.create!(http_methods: '["GET"]', path: "/tag_filter/underscored", tags: '["team_a"]')
+      lookalike   = Route.create!(http_methods: '["GET"]', path: "/tag_filter/lookalike",  tags: '["teamxa"]')
+
+      ids = TagFilterService.filter_ids(Route, [ "team_a" ], true)
+
+      assert_not_includes ids, underscored.id
+      assert_includes ids, lookalike.id
+    end
+
     test "filter_ids includes non-tagged items when show_non_tagged is true" do
       # Routes without tags should be included
       all_routes = Route.pluck(:id)

@@ -769,6 +769,57 @@ class RailsPulse::ApplicationControllerTest < ActionDispatch::IntegrationTest
 
   # Edge Cases
 
+  # Session Input Validation
+
+  test "set_global_filters ignores unparseable time params" do
+    patch rails_pulse.settings_global_filters_path, params: {
+      start_time: "not a time",
+      end_time: "2024-01-31 23:59"
+    }
+
+    assert_response :redirect
+    refute_includes session[:global_filters].keys, "start_time"
+  end
+
+  test "set_global_filters ignores oversized time params" do
+    # Time.parse is lenient about trailing words, so this parses — but it
+    # must not be allowed into the 4 KB cookie session.
+    patch rails_pulse.settings_global_filters_path, params: {
+      start_time: "2024-01-01 00:00 " + ("padding " * 8),
+      end_time: "2024-01-31 23:59"
+    }
+
+    refute_includes session[:global_filters].keys, "start_time"
+  end
+
+  test "set_global_filters drops an unknown performance threshold" do
+    patch rails_pulse.settings_global_filters_path, params: { performance_threshold: "<script>" }
+
+    refute_includes session[:global_filters].keys, "performance_threshold"
+  end
+
+  test "set_global_filters tolerates enabled_tags sent as a string" do
+    RailsPulse.configuration.stubs(:tags).returns([ "api", "critical" ])
+
+    patch rails_pulse.settings_global_filters_path, params: { enabled_tags: "critical" }
+
+    assert_response :redirect
+    assert_equal [ "api" ], session[:global_filters]["disabled_tags"]
+  end
+
+  test "set_time_range ignores an unknown preset" do
+    patch rails_pulse.settings_time_range_path, params: { preset: "x" * 2_000 }
+
+    assert_response :redirect
+    assert_nil session[:time_range_preference]
+  end
+
+  test "set_time_range ignores an unparseable custom range" do
+    patch rails_pulse.settings_time_range_path, params: { start_time: "garbage", end_time: "2024-01-31" }
+
+    assert_nil session[:time_range_preference]
+  end
+
   test "set_global_filters handles empty time params" do
     patch rails_pulse.settings_global_filters_path, params: {
       start_time: "",

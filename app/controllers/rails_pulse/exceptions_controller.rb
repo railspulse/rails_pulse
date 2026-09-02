@@ -7,7 +7,7 @@ module RailsPulse
     before_action :set_exception_group, only: %i[show update]
 
     def index
-      ransack_params = (params[:q] || {}).dup
+      ransack_params = self.ransack_params.dup
       apply_default_status_filter!(ransack_params)
 
       @ransack_query = ExceptionGroup.ransack(ransack_params)

@@ -21,6 +21,33 @@ class RailsPulse::TaggableTest < ActiveSupport::TestCase
     assert_not_includes RailsPulse::Route.with_tag("api"), @untagged
   end
 
+  # SQLite has no default LIKE escape character, so `_` in a tag was a wildcard
+  # (and the escaped `\_` a literal backslash) until the ESCAPE clause was made
+  # explicit. Both cases must behave identically on every adapter.
+  test "with_tag matches an underscore literally" do
+    underscored = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/taggable_test/underscored", tags: '["team_a"]')
+    lookalike   = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/taggable_test/lookalike",  tags: '["teamxa"]')
+
+    results = RailsPulse::Route.with_tag("team_a")
+
+    assert_includes results, underscored
+    assert_not_includes results, lookalike
+  end
+
+  test "without_tag excludes an underscored tag literally" do
+    underscored = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/taggable_test/underscored", tags: '["team_a"]')
+    lookalike   = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/taggable_test/lookalike",  tags: '["teamxa"]')
+
+    results = RailsPulse::Route.without_tag("team_a")
+
+    assert_not_includes results, underscored
+    assert_includes results, lookalike
+  end
+
+  test "with_tag treats a percent sign literally" do
+    assert_empty RailsPulse::Route.with_tag("%")
+  end
+
   # without_tag
 
   test "without_tag excludes records that have the exact tag" do

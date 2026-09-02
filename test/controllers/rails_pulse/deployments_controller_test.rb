@@ -218,6 +218,43 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     assert_not_empty json["errors"]
   end
 
+  test "create returns 422 for an oversized revision" do
+    assert_no_difference -> { RailsPulse::Deployment.count } do
+      post rails_pulse.deployments_path,
+           params: { deployment: { revision: "x" * 300 } },
+           as: :json
+    end
+
+    assert_response :unprocessable_content
+  end
+
+  test "create returns 422 for oversized metadata" do
+    assert_no_difference -> { RailsPulse::Deployment.count } do
+      post rails_pulse.deployments_path,
+           params: { deployment: { revision: "sha", metadata: { notes: "x" * 5_000 } } },
+           as: :json
+    end
+
+    assert_response :unprocessable_content
+    assert_match(/too large/, response.body)
+  end
+
+  test "create returns 422 for a started_at in the future" do
+    assert_no_difference -> { RailsPulse::Deployment.count } do
+      post rails_pulse.deployments_path,
+           params: { deployment: { revision: "sha", started_at: 1.day.from_now.iso8601 } },
+           as: :json
+    end
+
+    assert_response :unprocessable_content
+  end
+
+  test "index tolerates a non-hash q param" do
+    get rails_pulse.deployments_path, params: { q: "garbage" }
+
+    assert_response :success
+  end
+
   test "create returns 400 when deployment params are missing" do
     assert_no_difference -> { RailsPulse::Deployment.count } do
       post rails_pulse.deployments_path,

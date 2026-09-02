@@ -174,6 +174,50 @@ class RailsPulse::BacktraceHelperTest < ActionView::TestCase
     end
   end
 
+  # Allow-list: only application code is ever read from disk.
+
+  test "frame_source_lines reads files under app/" do
+    with_source_file("class Foo; end", relative_dir: "app/backtrace_helper_test") do |path|
+      assert_equal({ 1 => "class Foo; end" }, frame_source_lines({ "file" => path, "line" => 1 }))
+    end
+  end
+
+  test "frame_source_lines reads config/routes.rb" do
+    result = frame_source_lines({ "file" => Rails.root.join("config/routes.rb").to_s, "line" => 1 })
+
+    assert_kind_of Hash, result
+    assert_includes result.keys, 1
+  end
+
+  test "frame_source_lines refuses initializers" do
+    with_source_file("STRIPE_KEY = 'sk_live_secret'", relative_dir: "config/initializers") do |path|
+      assert_nil frame_source_lines({ "file" => path, "line" => 1 })
+    end
+  end
+
+  test "frame_source_lines refuses files under tmp/" do
+    with_source_file("some content", relative_dir: "tmp") do |path|
+      assert_nil frame_source_lines({ "file" => path, "line" => 1 })
+    end
+  end
+
+  test "frame_source_lines refuses non-code files even under app/" do
+    with_source_file("password: hunter2", relative_dir: "app/backtrace_helper_test", extension: ".yml") do |path|
+      assert_nil frame_source_lines({ "file" => path, "line" => 1 })
+    end
+  end
+
+  test "frame_source_lines refuses a directory merely named app outside Rails.root" do
+    Dir.mktmpdir do |outside|
+      dir = File.join(outside, "app")
+      FileUtils.mkdir_p(dir)
+      path = File.join(dir, "leak.rb")
+      File.write(path, "secret")
+
+      assert_nil frame_source_lines({ "file" => path, "line" => 1 })
+    end
+  end
+
   test "frame_source_lines returns nil for missing file" do
     frame = { "file" => "/nonexistent/path/file.rb", "line" => 5 }
 
@@ -241,11 +285,13 @@ class RailsPulse::BacktraceHelperTest < ActionView::TestCase
 
   private
 
-  # Source preview is restricted to Rails.root — write fixtures under tmp/.
-  def with_source_file(contents)
-    dir = Rails.root.join("tmp")
+  # Source preview is restricted to code under Rails.root/app and /lib —
+  # write fixtures under lib/ by default; tests for the allow-list pass
+  # another relative directory or extension.
+  def with_source_file(contents, relative_dir: "lib/backtrace_helper_test", extension: ".rb")
+    dir = Rails.root.join(relative_dir)
     FileUtils.mkdir_p(dir)
-    path = dir.join("backtrace_helper_test_#{SecureRandom.hex(8)}.rb")
+    path = dir.join("fixture_#{SecureRandom.hex(8)}#{extension}")
     File.write(path, contents)
     yield path.to_s
   ensure

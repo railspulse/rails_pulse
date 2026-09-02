@@ -13,6 +13,18 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
 
   # Controller Structure Tests
 
+  test "index tolerates a non-hash q param" do
+    get rails_pulse.requests_path, params: { q: "garbage" }
+
+    assert_response :success
+  end
+
+  test "index tolerates an unparseable occurred_at filter" do
+    get rails_pulse.requests_path, params: { q: { occurred_at_gteq: "not-a-time" } }
+
+    assert_response :success
+  end
+
   test "controller includes required concerns" do
     assert_includes RailsPulse::RequestsController.included_modules, ChartTableConcern
     assert_includes RailsPulse::RequestsController.included_modules, TagFilterConcern

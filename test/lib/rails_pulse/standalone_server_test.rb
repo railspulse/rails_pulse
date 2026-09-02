@@ -74,6 +74,41 @@ module RailsPulse
       assert_not_nil get("/").headers["Set-Cookie"]
     end
 
+    test "session cookie is HttpOnly and not Secure outside production" do
+      cookie = get("/").headers["Set-Cookie"]
+
+      assert_match(/httponly/i, cookie)
+      assert_no_match(/;\s*secure/i, cookie)
+    end
+
+    test "session cookie is Secure in production" do
+      app = with_rails_env("production") { build_server_app }
+
+      cookie = Rack::MockRequest.new(app).get("https://pulse.example.com/").headers["Set-Cookie"]
+
+      assert_match(/;\s*secure/i, cookie)
+    end
+
+    test "no session cookie is issued over plain HTTP in production" do
+      app = with_rails_env("production") { build_server_app }
+
+      # rack-session refuses to write a Secure cookie on a non-TLS request,
+      # so the session simply never reaches the browser.
+      assert_nil Rack::MockRequest.new(app).get("http://pulse.example.com/").headers["Set-Cookie"]
+    end
+
+    test "RAILS_PULSE_INSECURE_SESSION opts out of the Secure flag in production" do
+      original = ENV["RAILS_PULSE_INSECURE_SESSION"]
+      ENV["RAILS_PULSE_INSECURE_SESSION"] = "1"
+      app = with_rails_env("production") { build_server_app }
+
+      cookie = Rack::MockRequest.new(app).get("/").headers["Set-Cookie"]
+
+      assert_no_match(/;\s*secure/i, cookie)
+    ensure
+      ENV["RAILS_PULSE_INSECURE_SESSION"] = original
+    end
+
     # Server Configuration Tests
 
     test "server raises when SECRET_KEY_BASE is not set" do
@@ -86,6 +121,14 @@ module RailsPulse
 
     def build_server_app
       Rack::Builder.parse_file(SERVER_RU)
+    end
+
+    # The rackup reads Rails.env once, while the middleware stack is built.
+    def with_rails_env(name)
+      Rails.stubs(:env).returns(ActiveSupport::EnvironmentInquirer.new(name))
+      yield
+    ensure
+      Rails.unstub(:env)
     end
 
     def get(path)

@@ -79,9 +79,9 @@ module GlobalFiltersHelpers
   end
 
   def assert_time_range_label(expected_text)
-    label = find('[data-rails-pulse--time-range-target="label"]')
-
-    assert_includes label.text, expected_text
+    # Use a waiting matcher: after switching ranges the page reloads, and a
+    # one-shot find + text comparison races the old page's label.
+    assert_selector '[data-rails-pulse--time-range-target="label"]', text: expected_text, wait: 5
   end
 
   def close_custom_range_modal

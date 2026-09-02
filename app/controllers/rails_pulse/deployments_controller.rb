@@ -9,7 +9,7 @@ module RailsPulse
     before_action :authenticate_deployment_request!, only: %i[create finish]
 
     def index
-      @ransack_query = Deployment.ransack(params[:q] || {})
+      @ransack_query = Deployment.ransack(ransack_params)
       @ransack_query.sorts = "started_at desc" if @ransack_query.sorts.empty?
       @pagination, @table_data = paginate(@ransack_query.result, limit: session_pagination_limit)
     end

@@ -217,6 +217,45 @@ class TimeRangeConcernTest < ActionController::TestCase
     assert_equal "last_24_hours", selected_range
   end
 
+  test "setup_time_range falls back to the default when custom dates do not parse" do
+    @controller.params = ActionController::Parameters.new(q: {
+      period_start_range: "custom",
+      custom_date_range: "not-a-date to also-not-a-date"
+    })
+
+    _start_time, _end_time, selected_range, _time_diff = @controller.send(:setup_time_range)
+
+    assert_equal "last_24_hours", selected_range
+  end
+
+  test "setup_time_range tolerates q that is not a hash" do
+    @controller.params = ActionController::Parameters.new(q: "garbage")
+
+    _start_time, _end_time, selected_range, _time_diff = @controller.send(:setup_time_range)
+
+    assert_equal "last_24_hours", selected_range
+  end
+
+  test "setup_time_range ignores unparseable zoom bounds" do
+    @controller.params = ActionController::Parameters.new(q: {
+      occurred_at_gteq: "yesterday-ish",
+      occurred_at_lt: "later"
+    })
+
+    _start_time, _end_time, selected_range, _time_diff = @controller.send(:setup_time_range)
+
+    assert_equal "last_24_hours", selected_range
+  end
+
+  test "setup_time_range ignores unparseable session filters" do
+    @controller.session[:global_filters] = { "start_time" => "x" * 100, "end_time" => "nope" }
+
+    start_time, end_time, selected_range, _time_diff = @controller.send(:setup_time_range)
+
+    assert_equal "custom", selected_range
+    assert_operator start_time, :<, end_time
+  end
+
   # Priority 3: Chart Zoom Tests
 
   test "setup_time_range uses occurred_at_gteq and occurred_at_lt" do

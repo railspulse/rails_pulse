@@ -6,7 +6,7 @@ module RailsPulse
     before_action :set_run, only: :show
 
     def index
-      @ransack_query = @job.runs.ransack(params[:q])
+      @ransack_query = @job.runs.ransack(ransack_params)
       @pagination, @runs = paginate(@ransack_query.result.order(occurred_at: :desc), limit: session_pagination_limit)
       @table_data = @runs
     end

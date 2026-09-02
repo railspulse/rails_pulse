@@ -32,6 +32,41 @@ module RailsPulse
       assert_includes deployment.errors[:started_at], "can't be blank"
     end
 
+    test "validates revision length" do
+      deployment = Deployment.new(revision: "a" * 256, started_at: Time.current)
+
+      refute_predicate deployment, :valid?
+      assert_includes deployment.errors[:revision].join, "too long"
+    end
+
+    test "accepts a full 40-character sha with room to spare" do
+      assert_predicate Deployment.new(revision: "a" * 255, started_at: Time.current), :valid?
+    end
+
+    test "rejects started_at more than an hour in the future" do
+      deployment = Deployment.new(revision: "future", started_at: 2.hours.from_now)
+
+      refute_predicate deployment, :valid?
+      assert_includes deployment.errors[:started_at].join, "future"
+    end
+
+    test "allows started_at within clock skew" do
+      assert_predicate Deployment.new(revision: "soon", started_at: 30.minutes.from_now), :valid?
+    end
+
+    test "rejects metadata larger than 4 KB" do
+      deployment = Deployment.new(revision: "big", started_at: Time.current, metadata: { blob: "x" * 5_000 }.to_json)
+
+      refute_predicate deployment, :valid?
+      assert_includes deployment.errors[:metadata].join, "too large"
+    end
+
+    test "allows small metadata" do
+      deployment = Deployment.new(revision: "small", started_at: Time.current, metadata: { env: "production" }.to_json)
+
+      assert_predicate deployment, :valid?
+    end
+
     test "valid deployment saves successfully" do
       assert_difference -> { Deployment.count }, 1 do
         Deployment.create!(revision: "xyz999", started_at: Time.current)
