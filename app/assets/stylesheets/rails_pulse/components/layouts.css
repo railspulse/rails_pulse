@@ -1,27 +1,7 @@
-.sidebar-layout {
-  display: grid;
-  grid-template-areas: "header header" "sidebar main";
-  grid-template-columns: var(--sidebar-width, 0) 1fr;
-  grid-template-rows: auto 1fr;
-  block-size: 100dvh;
-
-  @media (min-width: 48rem) {
-    --sidebar-border-width: var(--border);
-    --sidebar-padding: var(--size-2);
-    --sidebar-width: var(--max-i-3xs);
-  }
-}
-
 .header-layout {
   display: grid;
   grid-template-areas: "header" "main";
   grid-template-rows: auto 1fr;
-  block-size: 100dvh;
-}
-
-.centered-layout {
-  display: grid;
-  place-items: center;
   block-size: 100dvh;
 }
 

@@ -1179,13 +1179,16 @@ Controllers with clear, mockable logic are tested here:
 | `color_scheme` | localStorage restore, light/dark toggle, custom event dispatch |
 | `collapsible` | collapsed/expanded class toggling, toggle text, start state |
 | `dialog` | show/showModal/close delegation, closeOnClickOutside |
-| `form` | submit, cancel, preventAttachment, debounce timing |
 | `series_toggle` | active state toggle, `rails-pulse:toggle-series` event detail |
 | `pagination` | URL param → select sync, sessionStorage fallback, updateLimit nav |
 | `chart_switcher` | default/URL-param selection, switch visibility, URL update |
-| `period_selector` | active styles, inactive styles on siblings |
+| `index` | document mouseup listener lifecycle (bound once, removed on disconnect) |
 
-**Do not write JSDOM tests for**: `chart`, `index`, `flame_graph`, `popover`, `datepicker`. These rely on canvas rendering, `getBoundingClientRect`, or Flatpickr DOM manipulation that JSDOM doesn't support. Test them with system tests instead.
+**Do not write JSDOM tests for**: `chart`, `flame_graph`, `popover`, `datepicker`. These rely on canvas rendering, `getBoundingClientRect`, or Flatpickr DOM manipulation that JSDOM doesn't support. Test them with system tests instead.
+
+`index` is a partial exception: its charting behaviour needs system tests, but its
+event-listener lifecycle is testable with a stub chart object and belongs here, since
+leaked listeners are invisible to system tests.
 
 ### Test structure
 

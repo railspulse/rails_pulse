@@ -43,9 +43,6 @@ module RailsPulse
           axisPointer: { type: "shadow" },
           formatter: tooltip_formatter
         },
-        toolbox: {
-          feature: { saveAsImage: { show: false } }
-        },
         xAxis: {
           axisLine: { show: false },
           axisTick: { show: false },

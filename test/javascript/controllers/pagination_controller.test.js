@@ -84,4 +84,20 @@ describe('PaginationController', () => {
     expect(locationMock.href).not.toMatch(/page=/)
     vi.unstubAllGlobals()
   })
+
+  // # missing limit target
+
+  it('connects without a limit target instead of throwing', async () => {
+    // Accessing a missing Stimulus target throws, so guarding on truthiness
+    // rather than hasLimitTarget used to break connect() outright.
+    vi.stubGlobal('location', { href: 'http://localhost/?limit=50', search: '?limit=50' })
+    ;({ app, element, teardown } = await mountController(
+      'pagination',
+      PaginationController,
+      '<div data-controller="pagination"></div>'
+    ))
+    // Stimulus swallows errors thrown in connect(), so call the method directly.
+    expect(() => ctrl().restorePaginationLimit()).not.toThrow()
+    vi.unstubAllGlobals()
+  })
 })

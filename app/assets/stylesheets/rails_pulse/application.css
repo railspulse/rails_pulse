@@ -182,19 +182,6 @@ html[data-color-scheme="dark"] .input {
   z-index: 10;
 }
 
-.flame-bar-label {
-  font-size: 11px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  padding: 0 5px;
-  line-height: 20px;
-  color: rgba(255, 255, 255, 0.92);
-  display: block;
-  pointer-events: none;
-  user-select: none;
-}
-
 .flame-time-axis {
   position: relative;
   height: 20px;
@@ -253,22 +240,3 @@ html[data-color-scheme="dark"] .input {
   font-size: 11px;
 }
 
-/* REQUEST OPERATIONS BAR */
-.bar-container {
-  height:10px;
-  position:relative
-}
-.bar {
-  background-color:#727579;
-  height:100%;
-  position:absolute;
-  top:0
-}
-.bar:first-child {
-  border-bottom-left-radius:1px;
-  border-top-left-radius:1px
-}
-.bar:last-child {
-  border-bottom-right-radius:1px;
-  border-top-right-radius:1px
-}

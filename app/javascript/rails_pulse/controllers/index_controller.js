@@ -40,6 +40,16 @@ export default class extends Controller {
     this.handleChartInitialized = this.onChartInitialized.bind(this);
 
     document.addEventListener('stimulus:echarts:rendered', this.handleChartInitialized);
+
+    // Releasing the mouse outside the chart still ends a drag-zoom. This is not
+    // chart-specific, so it is bound once per controller rather than in
+    // setupChartEventListeners — that runs again on every chart switch and used
+    // to stack a new document listener each time.
+    this.handleDocumentMouseUp = () => {
+      if (!this.chart || !this.visibleData) return;
+      this.handleZoomChange();
+    };
+    document.addEventListener('mouseup', this.handleDocumentMouseUp);
   }
 
   disconnect() {
@@ -226,12 +236,6 @@ export default class extends Controller {
       this.handleZoomChange();
     });
 
-    // When releasing the mouse button outside the chart, we want to check if the visible data has changed
-    this.handleDocumentMouseUp = () => {
-      this.handleZoomChange();
-    };
-    document.addEventListener('mouseup', this.handleDocumentMouseUp);
-
     // Use ZRender (the underlying canvas renderer) to catch clicks anywhere in the
     // chart grid — not just on data point markers — then map the pixel position back
     // to the nearest x-axis bucket so any click in a column triggers filtering.
@@ -398,8 +402,8 @@ export default class extends Controller {
       }
 
       if (this.getAxisType(currentOption) === 'time') {
-        const startValue = dataZoom.startValue || xAxisData[0];
-        const endValue = dataZoom.endValue || xAxisData[xAxisData.length - 1];
+        const startValue = dataZoom.startValue ?? xAxisData[0];
+        const endValue = dataZoom.endValue ?? xAxisData[xAxisData.length - 1];
 
         return {
           xAxis: xAxisData.filter(value => value >= startValue && value <= endValue),
@@ -410,8 +414,10 @@ export default class extends Controller {
         };
       }
 
-      const startValue = dataZoom.startValue || 0;
-      const endValue = dataZoom.endValue || xAxisData.length - 1;
+      // ?? not ||: index 0 is a valid category position, and `0 || fallback`
+      // silently widens the range back to the full axis.
+      const startValue = dataZoom.startValue ?? 0;
+      const endValue = dataZoom.endValue ?? xAxisData.length - 1;
 
       return {
         xAxis: xAxisData.slice(startValue, endValue + 1),

@@ -36,6 +36,10 @@ Gem::Specification.new do |spec|
       .reject { |f| f.end_with?(".map") }
       .reject { |f| f.start_with?("vendor/assets/") }
       .reject { |f| f.start_with?("config/brakeman") }
+      # The CSP test page is mounted only when Rails.env.local?, so its script
+      # is unreachable in a published gem. Keep it in the repo for development
+      # and the csp_compliance system test, but do not ship it.
+      .reject { |f| f == "public/rails-pulse-assets/csp-test.js" }
   end
 
   spec.bindir = "exe"
