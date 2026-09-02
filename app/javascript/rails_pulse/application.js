@@ -1,6 +1,31 @@
-import * as echarts from "echarts";
-import "./theme";
+// Only the chart types and components Rails Pulse actually renders are pulled in.
+// Importing the "echarts" barrel instead would bundle every chart type (sankey,
+// gauge, map, ...) and roughly quintuple the bundle.
+import * as echarts from "echarts/core";
+import { BarChart, LineChart } from "echarts/charts";
+import {
+  DataZoomComponent,
+  GridComponent,
+  LegendComponent,
+  MarkAreaComponent,
+  MarkLineComponent,
+  TooltipComponent
+} from "echarts/components";
+import { CanvasRenderer } from "echarts/renderers";
 import { Application } from "@hotwired/stimulus";
+
+// TooltipComponent installs AxisPointer itself, so `axisPointer` options work.
+echarts.use([
+  BarChart,
+  LineChart,
+  DataZoomComponent,
+  GridComponent,
+  LegendComponent,
+  MarkAreaComponent,
+  MarkLineComponent,
+  TooltipComponent,
+  CanvasRenderer
+]);
 
 // CSS Zero Controllers
 import ContextMenuController from "./controllers/context_menu_controller";
