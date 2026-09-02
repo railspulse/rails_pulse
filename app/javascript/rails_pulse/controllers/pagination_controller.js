@@ -28,11 +28,15 @@ export default class extends Controller {
 
   // Restore the pagination limit from URL or session storage on page load
   restorePaginationLimit() {
+    // hasLimitTarget, not truthiness: accessing a missing Stimulus target throws
+    // rather than returning undefined, which would break connect() outright.
+    if (!this.hasLimitTarget) return
+
     // URL params take precedence over session storage
     const urlParams = new URLSearchParams(window.location.search)
     const urlLimit = urlParams.get('limit')
 
-    if (urlLimit && this.limitTarget) {
+    if (urlLimit) {
       // Sync sessionStorage with URL param
       sessionStorage.setItem(this.storageKeyValue, urlLimit)
       if (this.limitTarget.value !== urlLimit) {
@@ -41,7 +45,7 @@ export default class extends Controller {
     } else {
       // Fall back to sessionStorage if no URL param
       const savedLimit = sessionStorage.getItem(this.storageKeyValue)
-      if (savedLimit && this.limitTarget && this.limitTarget.value !== savedLimit) {
+      if (savedLimit && this.limitTarget.value !== savedLimit) {
         this.limitTarget.value = savedLimit
       }
     }
