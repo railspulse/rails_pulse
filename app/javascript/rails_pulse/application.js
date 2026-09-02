@@ -33,14 +33,12 @@ import DatePickerController from "./controllers/datepicker_controller";
 import DialogController from "./controllers/dialog_controller";
 import MenuController from "./controllers/menu_controller";
 import PopoverController from "./controllers/popover_controller";
-import FormController from "./controllers/form_controller";
 
 // Rails Pulse Controllers
 import ChartController from "./controllers/chart_controller";
 import IndexController from "./controllers/index_controller";
 import ColorSchemeController from "./controllers/color_scheme_controller";
 import PaginationController from "./controllers/pagination_controller";
-import TimezoneController from "./controllers/timezone_controller";
 import IconController from "./controllers/icon_controller";
 import ExpandableRowsController from "./controllers/expandable_rows_controller";
 import CollapsibleController from "./controllers/collapsible_controller";
@@ -52,7 +50,6 @@ import SeriesToggleController from "./controllers/series_toggle_controller";
 import DeploymentMarkersToggleController from "./controllers/deployment_markers_toggle_controller";
 import FlameGraphController from "./controllers/flame_graph_controller";
 import ChartSwitcherController from "./controllers/chart_switcher_controller";
-import PeriodSelectorController from "./controllers/period_selector_controller";
 import TimeRangeController from "./controllers/time_range_controller";
 const application = Application.start();
 
@@ -68,13 +65,11 @@ application.register("rails-pulse--datepicker", DatePickerController);
 application.register("rails-pulse--dialog", DialogController);
 application.register("rails-pulse--menu", MenuController);
 application.register("rails-pulse--popover", PopoverController);
-application.register("rails-pulse--form", FormController);
 
 application.register("rails-pulse--chart", ChartController);
 application.register("rails-pulse--index", IndexController);
 application.register("rails-pulse--color-scheme", ColorSchemeController);
 application.register("rails-pulse--pagination", PaginationController);
-application.register("rails-pulse--timezone", TimezoneController);
 application.register("rails-pulse--icon", IconController);
 application.register("rails-pulse--expandable-rows", ExpandableRowsController);
 application.register("rails-pulse--collapsible", CollapsibleController);
@@ -86,7 +81,6 @@ application.register("rails-pulse--series-toggle", SeriesToggleController);
 application.register("rails-pulse--deployment-markers-toggle", DeploymentMarkersToggleController);
 application.register("rails-pulse--flame-graph", FlameGraphController);
 application.register("rails-pulse--chart-switcher", ChartSwitcherController);
-application.register("rails-pulse--period-selector", PeriodSelectorController);
 application.register("rails-pulse--time-range", TimeRangeController);
 
 // Register ECharts theme for Rails Pulse
