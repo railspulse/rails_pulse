@@ -4,6 +4,39 @@
 
 Rails Pulse uses a Stimulus controller architecture for chart rendering with Apache ECharts. This provides a clean, modular, CSP-compliant approach with zero inline scripts.
 
+## Registered ECharts modules
+
+ECharts is **tree-shaken**. `application.js` imports from `echarts/core` and
+registers only what the dashboard renders, rather than pulling the `echarts`
+barrel which bundles every chart type and roughly quadruples the bundle.
+
+Currently registered:
+
+| Kind | Registered |
+|---|---|
+| Series | `BarChart`, `LineChart` |
+| Components | `GridComponent`, `TooltipComponent`, `LegendComponent`, `DataZoomComponent`, `MarkLineComponent`, `MarkAreaComponent` |
+| Renderer | `CanvasRenderer` |
+
+`TooltipComponent` installs AxisPointer itself, so `axisPointer` options work
+without registering it separately.
+
+**Using anything outside this list requires registering it first.** Setting
+`type: 'pie'`, adding a `toolbox`, or using `visualMap` without adding the
+matching module will not raise — the series or component is silently dropped
+and the chart renders blank or without that feature. To add one, import it in
+`app/javascript/rails_pulse/application.js`, add it to the `echarts.use([...])`
+call, then run `npm run build`:
+
+```js
+import { PieChart } from "echarts/charts";
+echarts.use([ /* ...existing... */ PieChart ]);
+```
+
+Note that `type: 'area'` in the examples below is not an ECharts series type.
+An area chart is a `line` series with `areaStyle` set; `area_chart_options`
+supplies line styling only.
+
 ## Basic Usage
 
 ### In Views

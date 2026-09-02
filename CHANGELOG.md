@@ -70,6 +70,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   raising. Session-stored presets and performance thresholds are validated against
   the known values.
 
+- **Chart click/zoom got slower the more you switched chart tabs.** The requests,
+  routes and queries index pages attached a fresh `document` mouseup listener every
+  time a chart tab was re-selected, and only the most recent one was ever removed.
+  After N switches a single click anywhere on the page re-ran the zoom handler N
+  times. The listener is now bound once per controller.
+- **Zooming onto the first column of a category chart reset the range.** Visible-range
+  extraction used `dataZoom.startValue || 0`, so a legitimate index of `0` fell through
+  to the full-axis fallback.
+- **Hover popovers could throw after a table refresh.** `popover_controller` left its
+  show/hide timers running on disconnect, so a pending 700ms open could fire against
+  an element a fetch had already replaced.
+- **The time range selector's hover border was invisible.** It referenced
+  `--color-border-emphasis`, which is defined nowhere, so the declaration was invalid
+  at computed-value time and the border fell back to `currentColor`. Its light-mode
+  rules also never applied on a first visit, because `data-color-scheme` is only set
+  after an explicit toggle.
+- **`[popover].positioned` was declared twice** at equal specificity, so correct
+  popover placement depended on CSS file load order. Merged into one rule.
+
+### Changed
+
+- **The JavaScript bundle is 66% smaller: 2.19 MB → 759 KB (754 KB → 248 KB gzipped).**
+  ECharts is now tree-shaken — `application.js` imports from `echarts/core` and
+  registers only the series and components the dashboard uses, instead of the
+  `echarts` barrel that bundled every chart type including maps, sankey and gauge.
+  Charts outside that set must now register their module explicitly; see
+  `docs/stimulus_echarts_usage.md`. The stylesheet is 5% smaller.
+
+### Removed
+
+- **Three unreachable Stimulus controllers** — `form`, `timezone` and
+  `period_selector` — were bundled and registered despite no view referencing them.
+  `timezone` also ran a `MutationObserver` over the whole document body.
+- **`theme.js`**, which registered a chart theme that `application.js` immediately
+  overwrote. Its UMD wrapper called `require('echarts')`, which alone would have
+  defeated the tree-shaking above.
+- **Dead CSS**: unused css-zero ports, the removed dashboard period selector's styles,
+  and the disabled `toolbox` chart option.
+- **`csp-test.js` is no longer shipped in the gem.** Its page is mounted only when
+  `Rails.env.local?`, so it was unreachable in a published gem. It remains in the
+  repository for development and the CSP compliance system test.
+
 ## [0.4.0.pre.1] - 2026-08-29
 
 This release contains a **breaking schema change** and requires a one-time data
