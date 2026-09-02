@@ -23,48 +23,6 @@
   min-width: 0;
 }
 
-.dashboard-health-bar__controls {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: var(--size-4);
-  flex-shrink: 0;
-}
-
-/* Period Selector Button Group */
-.dashboard-health-bar__period-selector {
-  display: flex;
-  align-items: center;
-  gap: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--rounded-md);
-  overflow: hidden;
-}
-
-.dashboard-health-bar__period-button {
-  padding: var(--size-0_5) var(--size-2_5);
-  font-size: var(--text-xs);
-  font-weight: var(--font-semibold);
-  text-decoration: none;
-  display: inline-block;
-  border: none;
-  cursor: pointer;
-}
-
-.dashboard-health-bar__period-button:not(:first-child) {
-  border-left: 1px solid var(--color-border);
-}
-
-.dashboard-health-bar__period-button[data-active="true"] {
-  background: var(--color-primary);
-  color: var(--color-text-reversed);
-}
-
-.dashboard-health-bar__period-button[data-active="false"] {
-  background: transparent;
-  color: var(--color-text-subtle);
-}
-
 /* Attention Section */
 .attention-section__divider {
   flex: 1;
@@ -167,19 +125,9 @@
   .dashboard-health-bar__content {
     gap: var(--size-3);
   }
-  .dashboard-health-bar__label {
-    width: 100%;
-    margin-bottom: var(--size-1);
-  }
   .dashboard-health-bar__badges {
     flex: 1;
     min-width: 0;
-  }
-  .dashboard-health-bar__controls {
-    margin-left: 0;
-    width: 100%;
-    justify-content: space-between;
-    margin-top: var(--size-2);
   }
 }
 

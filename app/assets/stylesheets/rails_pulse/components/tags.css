@@ -31,20 +31,6 @@
   padding-right: 3px !important;
 }
 
-/* Individual Tag */
-.tag {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.25rem;
-  padding: 0.25rem 0.5rem;
-  background-color: var(--color-background-secondary);
-  border: 1px solid var(--color-border);
-  border-radius: 9999px;
-  font-size: 0.875rem;
-  line-height: 1.25;
-  white-space: nowrap;
-}
-
 /* Tag chips — pill shape with subtle translucent fill */
 .tag-list .badge {
   border-radius: 9999px;

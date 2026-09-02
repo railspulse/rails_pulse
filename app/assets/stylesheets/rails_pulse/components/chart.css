@@ -85,10 +85,6 @@
   border-left: none;
 }
 
-.text-deploy {
-  color: var(--color-deploy);
-}
-
 .panel-tab {
   display: inline-flex;
   align-items: center;
