@@ -799,10 +799,12 @@ class RailsPulse::ApplicationControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "set_global_filters tolerates enabled_tags sent as a string" do
+    RailsPulse.configuration.stubs(:tags).returns([ "api", "critical" ])
+
     patch rails_pulse.settings_global_filters_path, params: { enabled_tags: "critical" }
 
     assert_response :redirect
-    assert_equal RailsPulse.configuration.tags - [ "critical" ], session[:global_filters]["disabled_tags"]
+    assert_equal [ "api" ], session[:global_filters]["disabled_tags"]
   end
 
   test "set_time_range ignores an unknown preset" do
