@@ -46,31 +46,9 @@
   --btn-hover-color: color-mix(in oklch, var(--color-primary) 85%, black);
 }
 
-.btn--secondary {
-  --btn-background: var(--color-secondary);
-  --btn-border-color: transparent;
-  --btn-hover-color: color-mix(in oklch, var(--color-secondary) 85%, black);
-}
-
 .btn--borderless {
   --btn-border-color: transparent;
   --btn-box-shadow: none;
-}
-
-.btn--positive {
-  --btn-background: var(--color-positive);
-  --btn-border-color: transparent;
-  --btn-color: white;
-  --btn-icon-color: invert(1);
-  --btn-hover-color: color-mix(in oklch, var(--color-positive) 85%, black);
-}
-
-.btn--negative {
-  --btn-background: var(--color-negative);
-  --btn-border-color: transparent;
-  --btn-color: white;
-  --btn-icon-color: invert(1);
-  --btn-hover-color: color-mix(in oklch, var(--color-negative) 85%, black);
 }
 
 .btn--plain {
@@ -85,19 +63,3 @@
   --btn-padding: var(--size-2);
 }
 
-[aria-busy] .btn--loading:disabled {
-  > * {
-    visibility: hidden;
-  }
-
-  &::after {
-    animation: spin 1s linear infinite;
-    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cline x1='12' x2='12' y1='2' y2='6'/%3e%3cline x1='12' x2='12' y1='18' y2='22'/%3e%3cline x1='4.93' x2='7.76' y1='4.93' y2='7.76'/%3e%3cline x1='16.24' x2='19.07' y1='16.24' y2='19.07'/%3e%3cline x1='2' x2='6' y1='12' y2='12'/%3e%3cline x1='18' x2='22' y1='12' y2='12'/%3e%3cline x1='4.93' x2='7.76' y1='19.07' y2='16.24'/%3e%3cline x1='16.24' x2='19.07' y1='7.76' y2='4.93'/%3e%3c/svg%3e");
-    background-size: cover;
-    block-size: var(--size-5);
-    content: "";
-    filter: var(--btn-icon-color, var(--color-filter-text));
-    inline-size: var(--size-5);
-    position: absolute;
-  }
-}

@@ -31,19 +31,6 @@
   line-height: 0;
 }
 
-[data-controller*="rails-pulse--icon"].loading {
-  opacity: 0.6;
-}
-
-[data-controller*="rails-pulse--icon"].error {
-  opacity: 0.4;
-  filter: grayscale(1);
-}
-
-[data-controller*="rails-pulse--icon"].loaded {
-  opacity: 1;
-}
-
 /* CSP-safe icon rendering */
 [data-controller*="rails-pulse--icon"] svg {
   display: block;
@@ -63,22 +50,3 @@
   border-radius: 2px;
 }
 
-/* CSP Test Page Utilities */
-.csp-test-grid-single {
-  --columns: 1;
-}
-
-.csp-test-context-area {
-  padding: 2rem;
-  border: 2px dashed var(--color-border);
-  text-align: center;
-}
-
-.csp-test-nav-gap {
-  --column-gap: 1rem;
-}
-
-/* Sheet sizing for dialog */
-.csp-test-sheet {
-  --sheet-size: 288px;
-}

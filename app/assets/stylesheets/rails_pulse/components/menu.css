@@ -5,20 +5,10 @@
   row-gap: var(--size-1);
 }
 
-.menu__header {
-  font-size: var(--text-sm);
-  font-weight: var(--font-semibold);
-  padding: var(--size-1_5) var(--size-2);
-}
-
 .menu__group {
   display: flex;
   flex-direction: column;
   row-gap: 1px;
-}
-
-.menu__separator {
-  margin-inline: -0.25rem;
 }
 
 .menu__item {
@@ -39,12 +29,6 @@
   &:focus-visible {
     --btn-background: var(--color-secondary);
   }
-}
-
-.menu__item-key {
-  color: var(--color-text-subtle);
-  font-size: var(--text-xs);
-  margin-inline-start: auto;
 }
 
 .menu__item--active {
