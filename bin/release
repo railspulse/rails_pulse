@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# frozen_string_literal: true
 
 # release - Interactive Rails Pulse release manager
 #
@@ -10,20 +9,21 @@
 #   bin/release
 #   bin/release --help
 
-set -e
+set -euo pipefail
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-MAGENTA='\033[0;35m'
-CYAN='\033[0;36m'
-BOLD='\033[1m'
-NC='\033[0m' # No Color
+# Colors (ANSI-C quoting so the escapes are real characters — works with
+# both echo -e and plain cat/printf)
+RED=$'\033[0;31m'
+GREEN=$'\033[0;32m'
+YELLOW=$'\033[1;33m'
+BLUE=$'\033[0;34m'
+MAGENTA=$'\033[0;35m'
+CYAN=$'\033[0;36m'
+BOLD=$'\033[1m'
+NC=$'\033[0m' # No Color
 
 # Help
-if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
+if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
   cat <<EOF
 ${BOLD}Rails Pulse Release Manager${NC}
 
@@ -39,10 +39,9 @@ ${BOLD}What it does:${NC}
   4. Version bump (calls bin/bump_version)
   5. Commit changes (calls bin/commit_release)
   6. Create git tag (calls bin/tag_release)
-  7. Push to GitHub (calls bin/push_release)
-  8. Wait for CI (optional)
-  9. Publish gem (calls bin/publish_gem)
-  10. Open GitHub releases page
+  7. Push to GitHub, optionally waiting for CI (calls bin/push_release)
+  8. Publish gem (calls bin/publish_gem)
+  9. Open GitHub releases page
 
 ${BOLD}Individual scripts:${NC}
   bin/bump_version <version>      Update version files
@@ -89,6 +88,10 @@ check_command() {
     echo "Please install $1 and try again"
     exit 1
   fi
+}
+
+get_unreleased() {
+  awk '/^## \[Unreleased\]/{found=1; next} found && /^## (\[|[0-9])/{exit} found && NF{print}' CHANGELOG.md
 }
 
 # Banner
@@ -141,14 +144,27 @@ fi
 # Check if up to date with remote
 git fetch origin --quiet
 LOCAL=$(git rev-parse @)
-REMOTE=$(git rev-parse @{u})
+if ! REMOTE=$(git rev-parse '@{u}' 2>/dev/null); then
+  echo -e "${RED}✗ No upstream configured for $CURRENT_BRANCH${NC}"
+  echo "Aborted. Set an upstream first: git branch --set-upstream-to=origin/main"
+  exit 1
+fi
+BASE=$(git merge-base @ '@{u}')
 
-if [ "$LOCAL" != "$REMOTE" ]; then
-  echo -e "${RED}✗ Local branch is not up to date with origin${NC}"
+if [ "$LOCAL" = "$REMOTE" ]; then
+  echo -e "${GREEN}✓${NC} Up to date with origin"
+elif [ "$LOCAL" = "$BASE" ]; then
+  echo -e "${RED}✗ Local branch is behind origin${NC}"
   echo "Aborted. Pull latest changes first."
   exit 1
+elif [ "$REMOTE" = "$BASE" ]; then
+  echo -e "${RED}✗ Local branch has unpushed commits${NC}"
+  echo "Aborted. Push (or remove) local commits first."
+  exit 1
 else
-  echo -e "${GREEN}✓${NC} Up to date with origin"
+  echo -e "${RED}✗ Local branch has diverged from origin${NC}"
+  echo "Aborted. Reconcile local and remote history first."
+  exit 1
 fi
 
 echo ""
@@ -175,7 +191,7 @@ echo ""
 
 if ask_yes_no "Run pre-release tests?" "y"; then
   echo ""
-  if rake test_release; then
+  if bundle exec rake test_release; then
     echo ""
     echo -e "${GREEN}✅ All pre-release tests passed!${NC}"
   else
@@ -198,10 +214,15 @@ echo -e "${BOLD}${BLUE}📝 Changelog${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-# Check if [Unreleased] section has any content
-UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## (\[|[0-9])/{exit} found && NF{print}' CHANGELOG.md)
+# The [Unreleased] header is required — the version bump renames it later
+if ! grep -q '^## \[Unreleased\]' CHANGELOG.md; then
+  echo -e "${RED}✗ CHANGELOG.md has no ## [Unreleased] section${NC}"
+  echo "Aborted. Add an [Unreleased] section and try again."
+  exit 1
+fi
 
-if [ -z "$UNRELEASED_CONTENT" ]; then
+# Check if [Unreleased] section has any content
+if [ -z "$(get_unreleased)" ]; then
   echo -e "${YELLOW}⚠  The [Unreleased] section in CHANGELOG.md is empty.${NC}"
   echo ""
 else
@@ -216,7 +237,7 @@ if [ -n "$LAST_TAG" ]; then
   git log "$LAST_TAG"..HEAD --oneline --no-merges
 else
   echo "Commits (no previous tag found):"
-  git log --oneline --no-merges | head -20
+  git log --oneline --no-merges | head -20 || true
 fi
 echo ""
 
@@ -226,8 +247,7 @@ if ask_yes_no "Open CHANGELOG.md to review/update [Unreleased]?"; then
 fi
 
 # Final check — abort if still empty
-UNRELEASED_CONTENT=$(awk '/^## \[Unreleased\]/{found=1; next} found && /^## (\[|[0-9])/{exit} found && NF{print}' CHANGELOG.md)
-if [ -z "$UNRELEASED_CONTENT" ]; then
+if [ -z "$(get_unreleased)" ]; then
   echo -e "${YELLOW}⚠  [Unreleased] section is still empty.${NC}"
   if ! ask_yes_no "Continue anyway?"; then
     echo "Aborted. Update CHANGELOG.md and try again."
@@ -259,13 +279,21 @@ echo ""
 
 while true; do
   read -p "Enter new version number: " NEW_VERSION
-  if [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[a-zA-Z0-9]+)*$ ]]; then
-    break
-  else
+  if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[a-zA-Z0-9]+)*$ ]]; then
     echo -e "${RED}Invalid version format.${NC}"
     echo "Expected: MAJOR.MINOR.PATCH (e.g., 0.3.0)"
     echo "Or: MAJOR.MINOR.PATCH.TAG (e.g., 0.3.0.pre.1)"
+    continue
   fi
+  if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
+    echo -e "${RED}Version $NEW_VERSION is already the current version.${NC}"
+    continue
+  fi
+  if git rev-parse -q --verify "refs/tags/v$NEW_VERSION" > /dev/null; then
+    echo -e "${RED}Tag v$NEW_VERSION already exists.${NC}"
+    continue
+  fi
+  break
 done
 
 echo ""
@@ -315,13 +343,7 @@ echo -e "${BOLD}${BLUE}🏷️  Create Git Tag${NC}"
 echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
 echo ""
 
-echo "An editor will open for you to write release notes."
-echo ""
-
-if ! ask_yes_no "Open editor for release notes?"; then
-  echo "Aborted"
-  exit 1
-fi
+read -p "An editor will open for you to write release notes. Press Enter to continue..."
 
 echo ""
 ./bin/tag_release "$NEW_VERSION"
@@ -340,9 +362,13 @@ echo ""
 if ! ask_yes_no "Push commits and tags to GitHub?"; then
   echo "Aborted"
   echo ""
-  echo "To push manually:"
+  echo "The release commit and tag exist locally. To push manually:"
   echo "  git push origin $CURRENT_BRANCH"
   echo "  git push origin v$NEW_VERSION"
+  echo ""
+  echo "Or to undo the release entirely:"
+  echo "  git tag -d v$NEW_VERSION"
+  echo "  git reset --hard origin/$CURRENT_BRANCH"
   exit 1
 fi
 
@@ -356,7 +382,7 @@ if command -v gh &> /dev/null; then
   fi
 fi
 
-./bin/push_release $WAIT_CI_FLAG
+./bin/push_release ${WAIT_CI_FLAG:+"$WAIT_CI_FLAG"}
 
 echo ""
 
@@ -396,10 +422,10 @@ echo "  $GITHUB_RELEASE_URL"
 echo ""
 
 if ask_yes_no "Open GitHub releases page in browser?"; then
-  if command -v open &> /dev/null; then
-    open "$GITHUB_RELEASE_URL"
-  elif command -v xdg-open &> /dev/null; then
+  if command -v xdg-open &> /dev/null; then
     xdg-open "$GITHUB_RELEASE_URL"
+  elif command -v open &> /dev/null; then
+    open "$GITHUB_RELEASE_URL"
   else
     echo "Could not open browser automatically"
   fi
