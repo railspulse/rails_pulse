@@ -11,6 +11,17 @@
   max-inline-size: var(--container-width, 80rem);
 }
 
+#header {
+  align-items: center;
+  background-color: rgba(0, 0, 0, 0.05);
+  border-block-end-width: var(--border);
+  block-size: var(--size-16);
+  column-gap: var(--size-4);
+  display: flex;
+  grid-area: header;
+  padding-inline: var(--size-4);
+}
+
 #sidebar {
   background-color: rgba(0, 0, 0, 0.05);
   border-inline-end-width: var(--sidebar-border-width, 0);

@@ -41,6 +41,27 @@ html[data-color-scheme="dark"] .badge--negative-inverse {
   --badge-background: rgb(47, 47, 47);
 }
 
+html[data-color-scheme="dark"] .badge--get {
+  --badge-background: var(--blue-950);
+  --badge-color: var(--blue-200);
+}
+
+html[data-color-scheme="dark"] .badge--post {
+  --badge-background: var(--green-950);
+  --badge-color: var(--green-200);
+}
+
+html[data-color-scheme="dark"] .badge--put,
+html[data-color-scheme="dark"] .badge--patch {
+  --badge-background: var(--amber-950);
+  --badge-color: var(--amber-200);
+}
+
+html[data-color-scheme="dark"] .badge--delete {
+  --badge-background: var(--red-950);
+  --badge-color: var(--red-200);
+}
+
 html[data-color-scheme="dark"] .input {
   --input-background: #535252;
   --input-border-color: #7e7d7d;
