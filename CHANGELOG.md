@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.0.pre.1] - 2026-09-03
+
 This release contains a **breaking schema change** and requires a one-time data
 migration. Read "Upgrading from 0.3.x" below before deploying. Take a database
 backup first: the route migration is irreversible.
