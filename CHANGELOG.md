@@ -7,17 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+This release contains a **breaking schema change** and requires a one-time data
+migration. Read "Upgrading from 0.3.x" below before deploying. Take a database
+backup first: the route migration is irreversible.
+
 ### Security
 
-- **Exception messages are now actually redacted.** The 0.4.0 sanitizer ran
-  `ActiveSupport::ParameterFilter` in a way that only fired when the host
-  filtered a key literally named `message`, so `password=…`, `token: …`, and
-  MySQL `Duplicate entry '<value>'` messages were stored verbatim. Messages now
-  have `key=value` / `key: value` / `"key":"value"` fragments masked whenever the
-  key matches `config.filter_parameters` (same rules as logged params), MySQL
-  duplicate-entry values are redacted alongside the existing PostgreSQL
-  `DETAIL:` clause, and job-run failure messages (`rails_pulse_job_runs.error_message`)
-  go through the same sanitizer instead of being stored raw and unbounded.
+- **Job failure messages are redacted and bounded.** `rails_pulse_job_runs.error_message`
+  used to be stored raw and unbounded. It now goes through the same sanitizer as
+  exception messages: `key=value` / `key: value` / `"key":"value"` fragments are
+  masked whenever the key matches `config.filter_parameters` (same rules as logged
+  params), and MySQL `Duplicate entry '<value>'` values are redacted alongside
+  PostgreSQL `DETAIL:` clauses.
 - **CSRF protection is now declared by the engine.** `RailsPulse::ApplicationController`
   calls `protect_from_forgery with: :exception` itself instead of inheriting it from the
   host's `default_protect_from_forgery`, which only `load_defaults 5.2+` enables. Hosts
@@ -50,6 +51,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Exception tracking** — Captures unhandled exceptions from web requests and
+  background jobs, groups them by class and location, and displays backtraces (first
+  50 frames) with filtered request params in a new Exceptions tab. Exception
+  messages are redacted before storage: `key=value` / `key: value` / `"key":"value"`
+  fragments are masked whenever the key matches `config.filter_parameters`, and
+  MySQL `Duplicate entry '<value>'` values are redacted alongside PostgreSQL
+  `DETAIL:` clauses.
+- **`track_exceptions` config option** — Gem default is `false`, so existing installs
+  do not begin capturing on upgrade; the upgrade generator inserts `false`
+  explicitly. The install template sets `true` for new apps.
+- **`capture_exception_params` config option** — Captures request params alongside
+  each occurrence, filtered via Rails' `filter_parameters`. Occurrences whose params
+  exceed 10 KB after filtering are stored without params. Default `true`, and only
+  consulted while `track_exceptions` is on.
 - **`exception_message_filter` config option** — an optional `->(message, exception)`
   hook applied after the built-in redaction for app-specific patterns. If the hook
   raises, the message is stored as `[FILTERED]` rather than unfiltered.
@@ -57,6 +72,50 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (or a zero-argument proc run in the controller). Anything falsy is a 403. Runs after
   `authentication_method` when both are set, and replaces the HTTP Basic fallback on
   its own. This is now the recommended way to gate the dashboard.
+- **Upgrade generator syncs new initializer settings** — Appends keys (and
+  `max_table_records` entries) the host file does not already mention, without
+  rewriting existing values. Review with `git diff`.
+
+### Changed
+
+- **BREAKING — route identity is now `[controller_action, path]`.** GET `/users`
+  (`users#index`) and POST `/users` (`users#create`) are distinct routes. Dynamic
+  paths are normalized at capture time (`/posts/42` → `/posts/:id`).
+- **A one-time backfill is mandatory.** `rails rails_pulse:migrate_routes` backfills
+  `controller_action` (from the live router, then from request history), collapses
+  historical literal paths, and merges routes sharing an action (GET+POST `/sign_in`
+  → `sessions#new`). A schema migrate alone leaves the Action column empty. The
+  upgrade generator and the dashboard both warn when the step is outstanding.
+- **The JavaScript bundle is 66% smaller: 2.19 MB → 759 KB (754 KB → 248 KB gzipped).**
+  ECharts is now tree-shaken — `application.js` imports from `echarts/core` and
+  registers only the series and components the dashboard uses, instead of the
+  `echarts` barrel that bundled every chart type including maps, sankey and gauge.
+  Charts outside that set must now register their module explicitly; see
+  `docs/stimulus_echarts_usage.md`. The stylesheet is 5% smaller.
+
+### Removed
+
+- **BREAKING — `rails_pulse_routes.method` is dropped.** The HTTP verb now lives on
+  each request (`rails_pulse_requests.method`); a route carries an `http_methods`
+  array instead. All application, worker, and dashboard processes must be restarted
+  together against the migrated schema. A rolling restart that leaves 0.3.x
+  processes running will silently drop request tracking and 500 the routes dashboard.
+- **BREAKING — the route migration is irreversible.** `db:rollback` raises
+  `ActiveRecord::IrreversibleMigration` on
+  `ChangeRailsPulseRoutesToMultiVerbModel`, and routes merged by
+  `rails_pulse:migrate_routes` are deleted with no audit trail. Recovery from a bad
+  upgrade is restore-from-backup only.
+- **Three unreachable Stimulus controllers** — `form`, `timezone` and
+  `period_selector` — were bundled and registered despite no view referencing them.
+  `timezone` also ran a `MutationObserver` over the whole document body.
+- **`theme.js`**, which registered a chart theme that `application.js` immediately
+  overwrote. Its UMD wrapper called `require('echarts')`, which alone would have
+  defeated the tree-shaking above.
+- **Dead CSS**: unused css-zero ports, the removed dashboard period selector's styles,
+  and the disabled `toolbox` chart option.
+- **`csp-test.js` is no longer shipped in the gem.** Its page is mounted only when
+  `Rails.env.local?`, so it was unreachable in a published gem. It remains in the
+  repository for development and the CSP compliance system test.
 
 ### Fixed
 
@@ -69,7 +128,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   oversized or unparseable session time filters all fall back to defaults instead of
   raising. Session-stored presets and performance thresholds are validated against
   the known values.
-
 - **Chart click/zoom got slower the more you switched chart tabs.** The requests,
   routes and queries index pages attached a fresh `document` mouseup listener every
   time a chart tab was re-selected, and only the most recent one was ever removed.
@@ -88,80 +146,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   after an explicit toggle.
 - **`[popover].positioned` was declared twice** at equal specificity, so correct
   popover placement depended on CSS file load order. Merged into one rule.
-
-### Changed
-
-- **The JavaScript bundle is 66% smaller: 2.19 MB → 759 KB (754 KB → 248 KB gzipped).**
-  ECharts is now tree-shaken — `application.js` imports from `echarts/core` and
-  registers only the series and components the dashboard uses, instead of the
-  `echarts` barrel that bundled every chart type including maps, sankey and gauge.
-  Charts outside that set must now register their module explicitly; see
-  `docs/stimulus_echarts_usage.md`. The stylesheet is 5% smaller.
-
-### Removed
-
-- **Three unreachable Stimulus controllers** — `form`, `timezone` and
-  `period_selector` — were bundled and registered despite no view referencing them.
-  `timezone` also ran a `MutationObserver` over the whole document body.
-- **`theme.js`**, which registered a chart theme that `application.js` immediately
-  overwrote. Its UMD wrapper called `require('echarts')`, which alone would have
-  defeated the tree-shaking above.
-- **Dead CSS**: unused css-zero ports, the removed dashboard period selector's styles,
-  and the disabled `toolbox` chart option.
-- **`csp-test.js` is no longer shipped in the gem.** Its page is mounted only when
-  `Rails.env.local?`, so it was unreachable in a published gem. It remains in the
-  repository for development and the CSP compliance system test.
-
-## [0.4.0.pre.1] - 2026-08-29
-
-This release contains a **breaking schema change** and requires a one-time data
-migration. Read "Upgrading from 0.3.x" below before deploying. Take a database
-backup first: the route migration is irreversible.
-
-### Removed
-
-- **BREAKING — `rails_pulse_routes.method` is dropped.** The HTTP verb now lives on
-  each request (`rails_pulse_requests.method`); a route carries an `http_methods`
-  array instead. All application, worker, and dashboard processes must be restarted
-  together against the migrated schema. A rolling restart that leaves 0.3.x
-  processes running will silently drop request tracking and 500 the routes dashboard.
-- **BREAKING — the route migration is irreversible.** `db:rollback` raises
-  `ActiveRecord::IrreversibleMigration` on
-  `ChangeRailsPulseRoutesToMultiVerbModel`, and routes merged by
-  `rails_pulse:migrate_routes` are deleted with no audit trail. Recovery from a bad
-  upgrade is restore-from-backup only.
-
-### Changed
-
-- **BREAKING — route identity is now `[controller_action, path]`.** GET `/users`
-  (`users#index`) and POST `/users` (`users#create`) are distinct routes. Dynamic
-  paths are normalized at capture time (`/posts/42` → `/posts/:id`).
-- **A one-time backfill is mandatory.** `rails rails_pulse:migrate_routes` backfills
-  `controller_action` (from the live router, then from request history), collapses
-  historical literal paths, and merges routes sharing an action (GET+POST `/sign_in`
-  → `sessions#new`). A schema migrate alone leaves the Action column empty. The
-  upgrade generator and the dashboard both warn when the step is outstanding.
-
-### Added
-
-- **Exception tracking** — Captures unhandled exceptions from web requests and
-  background jobs, groups them by class and location, and displays backtraces (first
-  50 frames) with filtered request params in a new Exceptions tab. **Exception
-  messages are stored unfiltered** and can contain literal data — a
-  `PG::UniqueViolation` message, for example, embeds the conflicting value.
-- **`track_exceptions` config option** — Gem default is `false`, so existing installs
-  do not begin capturing on upgrade; the upgrade generator inserts `false`
-  explicitly. The install template sets `true` for new apps.
-- **`capture_exception_params` config option** — Captures request params alongside
-  each occurrence, filtered via Rails' `filter_parameters`. Occurrences whose params
-  exceed 10 KB after filtering are stored without params. Default `true`, and only
-  consulted while `track_exceptions` is on.
-- **Upgrade generator syncs new initializer settings** — Appends keys (and
-  `max_table_records` entries) the host file does not already mention, without
-  rewriting existing values. Review with `git diff`.
-
-### Fixed
-
 - Fixed upgrading when using a separate database installation.
 - Separate-database installs set `schema_dump: false`, so `db:migrate` no longer
   dumps or loads `db/rails_pulse_structure.sql` (#189).
