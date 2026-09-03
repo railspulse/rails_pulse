@@ -53,13 +53,15 @@ Full architecture details: `docs/database_setup.md`
 ## Running Tests
 
 ```bash
-DB=sqlite3 rails test          # Default (SQLite3 + Rails 8.0)
-DB=postgresql rails test       # PostgreSQL
+DB=sqlite3 rake test           # Default (SQLite3); use rake, NOT `rails test`
+DB=postgresql rake test        # PostgreSQL
 rake test_matrix               # All DBs × Rails versions (pre-release validation)
 BROWSER=true rake test_matrix  # Include system tests
 ```
 
 Tests are parallelized by default. System tests (`BROWSER=true`) disable parallelization automatically.
+
+Never run a bare `rails test` over the whole repo: it picks up `test/migrations/`, whose non-transactional upgrade test rebuilds the DB from a v0.2.7 snapshot mid-suite and destroys fixtures for every test after it, causing hundreds of seed-dependent `RecordNotFound` errors. `rake test` runs the main suite with `test/migrations` excluded, then runs `rake test_migrations` in a separate process.
 
 ## Testing Conventions
 
