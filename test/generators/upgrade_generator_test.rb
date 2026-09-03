@@ -2,6 +2,7 @@ require "test_helper"
 require "generators/rails_pulse/upgrade_generator"
 require_relative "../support/generator_test_helpers"
 require "ostruct"
+require "ripper"
 
 class UpgradeGeneratorTest < Rails::Generators::TestCase
   include GeneratorTestHelpers
@@ -285,6 +286,20 @@ test "separate database upgrade copies migrations to rails_pulse_migrate" do
     assert_match(/Creating upgrade migration for missing columns/, output)
     assert_migration "db/migrate/upgrade_rails_pulse_tables.rb" do |content|
       assert_match(/add_column :rails_pulse_routes, :tags, :text/, content)
+    end
+  end
+
+  test "generated migration escapes quotes inside column comments" do
+    File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
+
+    mock_tables_with_missing_columns do
+      run_generator([], {})
+    end
+
+    assert_migration "db/migrate/upgrade_rails_pulse_tables.rb" do |content|
+      assert_includes content,
+        %{comment: "JSON array of HTTP methods accepted by this route (e.g., [\\"GET\\",\\"POST\\"])"}
+      assert_not_nil Ripper.sexp(content), "Generated migration is not valid Ruby:\n#{content}"
     end
   end
 

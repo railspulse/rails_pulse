@@ -4,7 +4,7 @@ class UpgradeRailsPulseTables < ActiveRecord::Migration[<%= @migration_version %
     <% @missing_columns.each do |table_name, columns| %>
       <% columns.each do |column_name, definition| %>
     # Add <%= column_name %> column to <%= table_name %>
-    add_column :<%= table_name %>, :<%= column_name %>, :<%= definition[:type] %><% if definition[:comment] %>, comment: "<%= definition[:comment] %>"<% end %>
+    add_column :<%= table_name %>, :<%= column_name %>, :<%= definition[:type] %><% if definition[:comment] %>, comment: <%= definition[:comment].inspect %><% end %>
       <% end %>
     <% end %>
   end

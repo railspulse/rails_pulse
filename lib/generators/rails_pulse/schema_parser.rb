@@ -48,6 +48,25 @@ module RailsPulse
 
       private
 
+      # Column definitions look like: t.text :column_name, comment: "..."
+      # The comment capture must tolerate escaped quotes — the http_methods
+      # comment embeds a JSON example, [\"GET\",\"POST\"] — so it matches a
+      # full Ruby string literal (quotes included) rather than stopping at the
+      # first quote character.
+      COLUMN_DEFINITION = /t\.(\w+)\s+:([a-zA-Z_][a-zA-Z0-9_]*)(?:.*?comment:\s*("(?:[^"\\]|\\.)*"))?/
+
+      # Turn the matched Ruby string literal back into the string it denotes, so
+      # callers hold the real comment text and re-escape it themselves (the
+      # upgrade migration template uses String#inspect). Falls back to stripping
+      # the quotes if the literal uses an escape String#undump rejects.
+      def decode_comment(literal)
+        return nil if literal.nil?
+
+        literal.undump
+      rescue RuntimeError
+        literal.delete_prefix('"').delete_suffix('"')
+      end
+
       # Parse column definitions from a table block
       # Returns hash of column_name => { type:, comment: }
       def parse_table_columns(table_block)
@@ -55,9 +74,10 @@ module RailsPulse
 
         table_block.split("\n").each do |line|
           # Match column definitions: t.text :column_name, comment: "..."
-          next unless match = line.match(/t\.(\w+)\s+:([a-zA-Z_][a-zA-Z0-9_]*)(?:.*?comment:\s*"([^"]*)")?/)
+          next unless match = line.match(COLUMN_DEFINITION)
 
-          column_type, column_name, comment = match.captures
+          column_type, column_name, comment_literal = match.captures
+          comment = decode_comment(comment_literal)
 
           # Skip timestamps and references (Rails handles these)
           next if %w[timestamps references].include?(column_type)

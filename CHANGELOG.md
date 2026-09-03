@@ -7,6 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`rails generate rails_pulse:upgrade` wrote a migration that would not parse.**
+  The schema parser matched a column comment with `comment: "([^"]*)"`, which stops
+  at the first escaped quote. The `http_methods` comment embeds a `["GET","POST"]`
+  example, so it was truncated mid-escape and the trailing backslash escaped the
+  closing quote of the generated `comment:` string — the copied
+  `upgrade_rails_pulse_tables.rb` then failed to load with
+  `unterminated string meets end of file`. Comments are now matched as complete Ruby
+  string literals, decoded with `String#undump`, and re-escaped with `String#inspect`
+  when the migration is rendered.
+
 ## [0.4.0.pre.1] - 2026-09-03
 
 This release contains a **breaking schema change** and requires a one-time data
