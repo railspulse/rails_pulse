@@ -57,9 +57,10 @@ echo -e "${BLUE}⚙️  Pushing commits...${NC}"
 git push origin "$BRANCH"
 echo -e "  ${GREEN}✓${NC} Commits pushed"
 
-# Push tags
+# Push annotated tags reachable from the pushed commits (NOT --tags, which
+# pushes every local tag and fails on any stale tag the remote already has)
 echo -e "${BLUE}⚙️  Pushing tags...${NC}"
-git push origin --tags
+git push origin --follow-tags
 echo -e "  ${GREEN}✓${NC} Tags pushed"
 
 echo ""
