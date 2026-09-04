@@ -294,14 +294,16 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
       conn.stubs(:table_exists?).with(:schema_migrations).returns(false)
       table = mock("table")
       table.stubs(:string).with(:version, null: false)
-      conn.stubs(:create_table).with(:schema_migrations, id: false).yields(table)
-      conn.stubs(:add_index).with(:schema_migrations, :version, unique: true, name: "unique_schema_migrations")
+      conn.expects(:create_table).with(:schema_migrations, id: false).yields(table)
+      conn.expects(:add_index).with(:schema_migrations, :version, unique: true, name: "unique_schema_migrations")
       conn.stubs(:select_values).returns([])
       conn.stubs(:quote).returns("'20260101000000'")
       conn.stubs(:execute)
       RailsPulse::ApplicationRecord.stubs(:connection).returns(conn)
 
-      record_rails_pulse_migrations_applied
+      output = capture_stdout { record_rails_pulse_migrations_applied }
+
+      assert_includes output, "Marked migration 20260101000000 as applied"
     end
   end
 

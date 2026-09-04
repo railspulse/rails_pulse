@@ -120,7 +120,7 @@ task :test_migrations do
   # Migration regression tests run DDL against historical schema snapshots;
   # coverage is meaningless there, and the SimpleCov per-file gate would fail
   # on rake task files that load but never execute in that process.
-  sh({ "COVERAGE" => nil }, "rails test test/migrations")
+  sh({ "COVERAGE" => nil }, "rails test test/migrations", verbose: false)
 end
 
 desc "Run test suite"
@@ -149,7 +149,7 @@ task :test do
   puts "=" * 50
   puts
 
-  sh "rails test test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb"
+  sh "rails test test/controllers test/generators test/helpers test/instrumentation test/jobs test/lib test/middleware test/models test/services test/rails_pulse_test.rb test/tracker_test.rb", verbose: false
   Rake::Task[:test_migrations].invoke
 end
 
