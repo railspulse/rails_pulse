@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Development dependencies: puma updated to 7.2.1** in the gem's own `Gemfile`
+  and `Gemfile.lock` (pinned to match the dummy app), resolving two high-severity
+  advisories in the PROXY protocol v1 parser: remote memory exhaustion, and
+  repeated protocol headers accepted on persistent connections. Puma is a
+  test-only dependency of the gem; host apps are unaffected.
+
 ## [0.4.0.pre.2] - 2026-09-04
 
 ### Fixed
