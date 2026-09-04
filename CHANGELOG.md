@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Development dependencies: mail stack and json updated**: mail 2.9.0 → 2.9.1
+  (email address spoofing via malformed RFC 2047 encoded-words; also updated in
+  the dummy app's lockfile), net-imap 0.6.4 → 0.6.6 (command injection via the
+  ID command argument and via non-synchronizing literals, denial of service via
+  incomplete raw argument validation), and json 2.19.5 → 2.21.2 (generator heap
+  buffer overflow when streaming to an IO). These only affect development/CI of
+  the gem; host apps resolve their own versions.
+
 ### Changed
 
 - **Cleaned up test suite output.** A green `rake test` run no longer prints RDoc
