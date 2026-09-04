@@ -138,8 +138,10 @@ module RailsPulse
         end
 
         test "includes SLO series when configured" do
-          # Skip if no SLOs configured
-          skip if RailsPulse.configuration.service_level_objectives.empty?
+          original_config = RailsPulse.configuration.service_level_objectives
+          RailsPulse.configuration.service_level_objectives = [
+            { percentile: 95, threshold: 200 }
+          ]
 
           chart = ResponseTimePercentiles.new(
             ransack_query: @ransack_query,
@@ -152,6 +154,8 @@ module RailsPulse
           series_names = data[:series].map { |s| s[:name] }
 
           assert series_names.any? { |name| name.match?(/P\d+ SLO \(\d+ms\)/) }
+        ensure
+          RailsPulse.configuration.service_level_objectives = original_config
         end
 
         test "renders one SLO line per configured SLO entry" do

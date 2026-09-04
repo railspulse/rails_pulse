@@ -488,7 +488,9 @@ module RailsPulse
       RailsPulse.instance_variable_set(:@logger, nil)
 
       begin
-        assert_nothing_raised { config.validate_configuration! }
+        out, _err = capture_io { config.validate_configuration! }
+
+        assert_match(/no authentication method is configured/, out)
       ensure
         Rails.logger = original_logger
         RailsPulse.instance_variable_set(:@logger, nil)
