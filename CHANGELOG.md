@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Development dependencies: concurrent-ruby updated to 1.3.8** in the gem's own
+  `Gemfile.lock`, resolving a high-severity advisory (`AtomicReference#update`
+  livelocks when the stored value is `Float::NAN`). This lockfile only affects
+  development/CI of the gem itself; host apps resolve their own version.
+
 ## [0.4.0.pre.2] - 2026-09-04
 
 ### Fixed
