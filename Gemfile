@@ -9,7 +9,7 @@ gem "dotenv-rails", groups: [ :development, :test ]
 # Testing dependencies
 group :test do
   gem "appraisal"
-  gem "puma"
+  gem "puma", "7.2.1"
   gem "capybara"
   gem "minitest-reporters"
   gem "mocha"
