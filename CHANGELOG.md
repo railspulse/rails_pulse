@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Development dependencies: websocket-driver updated to 0.8.2** in the gem's own
+  `Gemfile.lock`, resolving a high-severity advisory (denial of service via a
+  malformed Host header). This lockfile only affects development/CI of the gem
+  itself; host apps resolve their own version.
+
 ## [0.4.0.pre.2] - 2026-09-04
 
 ### Fixed
