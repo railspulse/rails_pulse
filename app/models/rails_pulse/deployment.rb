@@ -18,6 +18,12 @@ module RailsPulse
     scope :for_range, ->(start_time, end_time) { where(started_at: start_time..end_time) }
     scope :recent,    -> { order(started_at: :desc) }
 
+    # A revision can be deployed more than once (rollbacks, re-deploys); both
+    # the finish API endpoint and rails_pulse:finish_deployment close this row.
+    def self.latest_for_revision(revision)
+      where(revision: revision).order(started_at: :desc).first
+    end
+
     def self.ransackable_attributes(auth_object = nil)
       %w[id revision started_at finished_at created_at]
     end

@@ -166,7 +166,7 @@ namespace :rails_pulse do
     revision = args[:revision]
     abort "ERROR: revision is required. Usage: rake rails_pulse:finish_deployment[abc1234]" if revision.blank?
 
-    deployment = RailsPulse::Deployment.where(revision: revision).order(started_at: :desc).first
+    deployment = RailsPulse::Deployment.latest_for_revision(revision)
     abort "ERROR: no deployment recorded for revision #{revision}" unless deployment
 
     deployment.update!(finished_at: Time.current)
