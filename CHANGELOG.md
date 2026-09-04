@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security
+
+- **Development dependencies: Rails updated to 8.1.3.1** in the gem's own
+  `Gemfile.lock`, resolving GHSA advisory for Active Storage (possible arbitrary
+  file read and remote code execution in variant processing). Host apps are
+  unaffected by this lockfile; update your own app's Rails to 8.1.3.1.
+
 ## [0.4.0.pre.2] - 2026-09-04
 
 ### Fixed
