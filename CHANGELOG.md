@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- **Cleaned up test suite output.** A green `rake test` run no longer prints RDoc
+  constant-redefinition warnings, stray blank lines from a leftover progress `puts`,
+  leaked log/rake-task output, a "missing assertions" warning, or a seed-dependent
+  skip — the full run is now a clean ~35-line report.
+
 ## [0.4.0.pre.2] - 2026-09-04
 
 ### Fixed
