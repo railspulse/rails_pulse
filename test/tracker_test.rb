@@ -126,6 +126,33 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     end
   end
 
+  # use_transactional_tests pins this pool's connection and shares it with every
+  # thread, so a background writer would race the test on the same socket.
+  test "writes inline under a shared test connection even when async is enabled" do
+    original_async = RailsPulse.configuration.async
+    RailsPulse.configuration.async = true
+    Thread.expects(:new).never
+
+    result = RailsPulse::Tracker.track_request(@tracking_data)
+
+    assert_kind_of RailsPulse::Request, result
+    assert_not_nil RailsPulse::Request.find_by(request_uuid: @tracking_data[:request_uuid])
+  ensure
+    RailsPulse.configuration.async = original_async
+  end
+
+  test "spawns a background thread when async is enabled and the connection is not shared" do
+    original_async = RailsPulse.configuration.async
+    RailsPulse.configuration.async = true
+    RailsPulse::Tracker.stubs(:connection_shared_across_threads?).returns(false)
+    Thread.expects(:new).once
+
+    assert_nil RailsPulse::Tracker.track_request(@tracking_data)
+  ensure
+    RailsPulse.configuration.async = original_async
+    RailsPulse::Tracker.unstub(:connection_shared_across_threads?)
+  end
+
   test "persists response_size_bytes to request record" do
     data = @tracking_data.merge(response_size_bytes: 4096)
     RailsPulse::Tracker.track_request(data)
