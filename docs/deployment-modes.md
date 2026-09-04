@@ -161,17 +161,15 @@ server {
 
 ## Tracking Behavior
 
-Rails Pulse uses **async tracking** by default in all environments for minimal performance overhead:
+Rails Pulse persists tracking data on a background thread by default (`config.async = true`), so the database writes for a request do not hold up its response.
 
-- **Production/Development:** Uses fiber-based async tracking (via `async` gem)
-- **Test:** Runs synchronously for predictability and easier debugging
-
-This is handled automatically and requires no configuration.
+- **Production/Development:** writes happen on a background thread once the response has been built
+- **Test:** writes happen inline. The generated initializer sets `config.async = false if Rails.env.test?`, and the tracker also falls back to inline writes on its own whenever it detects a transactional-test connection, because Rails shares that single connection with every thread
 
 **Performance Impact:**
-- Async mode: ~0.1ms overhead per request
-- Database writes happen in background fibers
-- Non-blocking for request processing
+- The request thread only hands the collected data to the writer thread
+- Database writes happen off the request thread
+- Set `config.async = false` to write inline before the response is sent
 
 ---
 

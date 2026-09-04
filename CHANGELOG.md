@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **`rails generate rails_pulse:upgrade` wrote a migration that would not parse.**
+  The schema parser matched a column comment with `comment: "([^"]*)"`, which stops
+  at the first escaped quote. The `http_methods` comment embeds a `["GET","POST"]`
+  example, so it was truncated mid-escape and the trailing backslash escaped the
+  closing quote of the generated `comment:` string — the copied
+  `upgrade_rails_pulse_tables.rb` then failed to load with
+  `unterminated string meets end of file`. Comments are now matched as complete Ruby
+  string literals, decoded with `String#undump`, and re-escaped with `String#inspect`
+  when the migration is rendered.
+
+- **Background tracking writes corrupted the host app's test database connection.**
+  Under `use_transactional_tests` Rails pins one connection per pool and hands that
+  same connection to every thread, so the tracker's writer thread interleaved its
+  INSERTs with the test's own statements on a single socket. PostgreSQL reported
+  this as `message type 0x5a arrived from server while idle` and
+  `server sent data ("D" message) without prior row description`, and suites hung
+  or failed at random. The gem's own dummy app avoided it with
+  `config.async = false if Rails.env.test?`, but the installed initializer never
+  shipped that line. The tracker now writes inline whenever the pool's connection
+  is shared across threads, and `rails generate rails_pulse:install` adds the
+  test-environment line to the initializer. Existing installs should add
+  `config.async = false if Rails.env.test?` to `config/initializers/rails_pulse.rb`.
+
 ## [0.4.0.pre.1] - 2026-09-03
 
 This release contains a **breaking schema change** and requires a one-time data
