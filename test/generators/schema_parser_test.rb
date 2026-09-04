@@ -63,6 +63,14 @@ module RailsPulse
         assert_match(/HTTP methods/, routes["http_methods"][:comment])
       end
 
+      test "preserves escaped quotes inside column comments" do
+        schema = @parser.extract_expected_schema
+        routes = schema["rails_pulse_routes"]
+
+        assert_equal 'JSON array of HTTP methods accepted by this route (e.g., ["GET","POST"])',
+          routes["http_methods"][:comment]
+      end
+
       test "skips timestamps columns" do
         schema = @parser.extract_expected_schema
         routes = schema["rails_pulse_routes"]
@@ -95,6 +103,21 @@ module RailsPulse
           schema = parser.extract_expected_schema
 
           assert_empty schema
+        end
+      end
+
+      test "falls back to the raw comment when the literal holds an escape undump rejects" do
+        Dir.mktmpdir do |dir|
+          schema_file = File.join(dir, "schema.rb")
+          File.write(schema_file, <<~RUBY)
+            connection.create_table :rails_pulse_routes do |t|
+              t.string :path, comment: "bad escape \\x"
+            end
+          RUBY
+
+          schema = SchemaParser.new(schema_file).extract_expected_schema
+
+          assert_equal 'bad escape \\x', schema["rails_pulse_routes"]["path"][:comment]
         end
       end
 

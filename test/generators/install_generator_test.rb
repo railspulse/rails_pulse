@@ -40,6 +40,7 @@ class InstallGeneratorTest < Rails::Generators::TestCase
       assert_match(/RailsPulse.configure/, content)
       assert_match(/schema_dump: false/, content)
       assert_match(/migrations_paths: db\/rails_pulse_migrate/, content)
+      assert_match(/config\.async = false if Rails\.env\.test\?/, content)
     end
   end
 

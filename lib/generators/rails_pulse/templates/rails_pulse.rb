@@ -6,6 +6,11 @@ RailsPulse.configure do |config|
   # Enable or disable Rails Pulse
   config.enabled = true
 
+  # Tracking writes happen on a background thread by default (see `config.async`
+  # under ADVANCED). Transactional tests share one database connection across
+  # threads, so write inline there to keep the writer off the test's connection.
+  config.async = false if Rails.env.test?
+
   # ====================================================================================================
   #                                               THRESHOLDS
   # ====================================================================================================
