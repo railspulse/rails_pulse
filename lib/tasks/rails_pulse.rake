@@ -151,9 +151,41 @@ namespace :rails_pulse do
     revision = args[:revision]
     abort "ERROR: revision is required. Usage: rake rails_pulse:record_deployment[abc1234]" if revision.blank?
 
-    deployment = RailsPulse::Deployment.create!(revision: revision, started_at: Time.current)
+    attributes = { revision: revision, started_at: Time.current }
+    metadata = deployment_metadata_from_env
+    attributes[:metadata] = metadata if metadata
+
+    deployment = RailsPulse::Deployment.create!(attributes)
     puts "[RailsPulse] Deployment recorded: #{deployment.revision} at #{deployment.started_at}"
   rescue ActiveRecord::RecordInvalid => e
     abort "ERROR: #{e.message}"
   end
+
+  desc "Mark the latest deployment for a revision as finished. Usage: rake rails_pulse:finish_deployment[revision]"
+  task :finish_deployment, [ :revision ] => :environment do |_t, args|
+    revision = args[:revision]
+    abort "ERROR: revision is required. Usage: rake rails_pulse:finish_deployment[abc1234]" if revision.blank?
+
+    deployment = RailsPulse::Deployment.where(revision: revision).order(started_at: :desc).first
+    abort "ERROR: no deployment recorded for revision #{revision}" unless deployment
+
+    deployment.update!(finished_at: Time.current)
+    puts "[RailsPulse] Deployment finished: #{deployment.revision} at #{deployment.finished_at} (#{deployment.duration.round}s)"
+  rescue ActiveRecord::RecordInvalid => e
+    abort "ERROR: #{e.message}"
+  end
+end
+
+# Optional metadata for rails_pulse:record_deployment, as a JSON object:
+#   RAILS_PULSE_DEPLOYMENT_METADATA='{"environment":"production"}'
+# Rake splits task arguments on commas, so JSON cannot be passed positionally.
+def deployment_metadata_from_env
+  raw = ENV["RAILS_PULSE_DEPLOYMENT_METADATA"]
+  return nil if raw.blank?
+
+  parsed = JSON.parse(raw)
+  abort "ERROR: RAILS_PULSE_DEPLOYMENT_METADATA must be a JSON object" unless parsed.is_a?(Hash)
+  parsed.to_json
+rescue JSON::ParserError => e
+  abort "ERROR: RAILS_PULSE_DEPLOYMENT_METADATA is not valid JSON: #{e.message}"
 end

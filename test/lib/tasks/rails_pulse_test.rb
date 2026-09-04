@@ -386,4 +386,74 @@ class RailsPulseRakeTest < ActiveSupport::TestCase
   ensure
     FileUtils.remove_entry(dir) if dir
   end
+  # Deployment tasks
+
+  test "record_deployment creates a deployment for the revision" do
+    output = reenable_and_capture("rails_pulse:record_deployment") do
+      Rake::Task["rails_pulse:record_deployment"].invoke("rake-rec-1")
+    end
+
+    deployment = RailsPulse::Deployment.find_by(revision: "rake-rec-1")
+
+    assert_not_nil deployment
+    assert_nil deployment.finished_at
+    assert_nil deployment.metadata
+    assert_includes output, "Deployment recorded: rake-rec-1"
+  end
+
+  test "record_deployment stores metadata from RAILS_PULSE_DEPLOYMENT_METADATA" do
+    with_env("RAILS_PULSE_DEPLOYMENT_METADATA" => '{"environment":"staging"}') do
+      reenable_and_capture("rails_pulse:record_deployment") do
+        Rake::Task["rails_pulse:record_deployment"].invoke("rake-meta-1")
+      end
+    end
+
+    assert_equal({ "environment" => "staging" }, RailsPulse::Deployment.find_by(revision: "rake-meta-1").metadata_hash)
+  end
+
+  test "record_deployment aborts on metadata that is not a JSON object" do
+    Rake::Task["rails_pulse:record_deployment"].reenable
+
+    _out, err = capture_io do
+      with_env("RAILS_PULSE_DEPLOYMENT_METADATA" => "[1,2]") do
+        assert_raises(SystemExit) { Rake::Task["rails_pulse:record_deployment"].invoke("rake-bad-1") }
+      end
+    end
+
+    assert_includes err, "must be a JSON object"
+    assert_nil RailsPulse::Deployment.find_by(revision: "rake-bad-1")
+  end
+
+  test "finish_deployment marks the latest deployment for the revision as finished" do
+    older = RailsPulse::Deployment.create!(revision: "rake-fin-1", started_at: 2.hours.ago)
+    latest = RailsPulse::Deployment.create!(revision: "rake-fin-1", started_at: 5.minutes.ago)
+
+    output = reenable_and_capture("rails_pulse:finish_deployment") do
+      Rake::Task["rails_pulse:finish_deployment"].invoke("rake-fin-1")
+    end
+
+    assert_not_nil latest.reload.finished_at
+    assert_nil older.reload.finished_at
+    assert_includes output, "Deployment finished: rake-fin-1"
+  end
+
+  test "finish_deployment aborts when no deployment exists for the revision" do
+    Rake::Task["rails_pulse:finish_deployment"].reenable
+
+    _out, err = capture_io do
+      assert_raises(SystemExit) { Rake::Task["rails_pulse:finish_deployment"].invoke("rake-none-1") }
+    end
+
+    assert_includes err, "no deployment recorded for revision rake-none-1"
+  end
+
+  private
+
+  def with_env(overrides)
+    previous = overrides.keys.to_h { |key| [ key, ENV[key] ] }
+    overrides.each { |key, value| ENV[key] = value }
+    yield
+  ensure
+    previous.each { |key, value| ENV[key] = value }
+  end
 end
