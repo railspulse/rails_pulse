@@ -16,6 +16,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   references, SVG `href` local-reference restriction bypass), and
   rails-html-sanitizer 1.7.0 → 1.7.1 (possible XSS with certain configurations).
   These only affect development/CI of the gem; host apps resolve their own versions.
+- **Development dependencies updated for Dependabot's critical and high alerts.**
+  In the gem's own `Gemfile.lock`: Rails 8.1.3 → 8.1.3.1 (Active Storage arbitrary
+  file read / remote code execution in variant processing), puma 6.6.1 → 7.2.1
+  (PROXY protocol v1 remote memory exhaustion, and repeated protocol headers
+  accepted on persistent connections; pinned to match the dummy app), websocket-driver
+  0.8.0 → 0.8.2 (denial of service via malformed Host header), and concurrent-ruby
+  1.3.6 → 1.3.8 (`AtomicReference#update` livelock on `Float::NAN`). These are
+  development/test dependencies of the gem — host apps resolve their own versions,
+  but should update their own Rails to 8.1.3.1.
 
 ### Changed
 
