@@ -57,7 +57,7 @@ class RailsPulse::SchemaOutdatedTest < ActionDispatch::IntegrationTest
 
   def make_schema_outdated
     RailsPulse::SchemaCheck.stubs(:expected_schema).returns(
-      "rails_pulse_routes" => { "http_methods" => {}, "not_a_real_column" => {} }
+      "rails_pulse_routes" => %w[http_methods not_a_real_column]
     )
   end
 end

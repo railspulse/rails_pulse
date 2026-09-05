@@ -20,7 +20,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
   end
 
   test "track_request persists nothing while the schema is outdated" do
-    RailsPulse::SchemaCheck.stubs(:expected_schema).returns("rails_pulse_routes" => { "ghost" => {} })
+    RailsPulse::SchemaCheck.stubs(:expected_schema).returns("rails_pulse_routes" => [ "ghost" ])
 
     assert_no_difference [ "RailsPulse::Request.count", "RailsPulse::Route.count" ] do
       RailsPulse::Tracker.track_request(tracking_data)

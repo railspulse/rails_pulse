@@ -33,13 +33,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   migrated for it — a deploy that shipped the gem before `db:migrate`, or a rolling
   restart that left old and new processes side by side — used to log "Failed to
   persist tracking data" on every request and 500 every dashboard page that touched a
-  missing column. `RailsPulse::SchemaCheck` now compares the live tables with the
-  gem's `db/rails_pulse_schema.rb` once per process. While anything is missing,
+  missing column. `RailsPulse::SchemaCheck` now checks, once per process, that every
+  Rails Pulse table exists and that a short explicit list of sentinel columns (the ones
+  incremental migrations have added, e.g. `routes.http_methods`, `requests.method`) is
+  present. While anything is missing,
   request, job and exception tracking pause after a single logged warning that names
   the missing tables and columns and the upgrade commands, and the dashboard answers
   every page with a 503 explaining the same (JSON for non-HTML requests). Any database
   error during the comparison is treated as "not outdated", so an app booting without a
-  database (`assets:precompile`, `db:create`) is never blocked.
+  database (`assets:precompile`, `db:create`) is never blocked, and
+  `config.schema_check_enabled = false` disables the check.
 
 ### Fixed
 
