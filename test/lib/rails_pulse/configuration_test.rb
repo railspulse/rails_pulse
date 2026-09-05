@@ -291,6 +291,25 @@ module RailsPulse
       assert_respond_to config.authorize, :call
     end
 
+    test "standalone_authentication_method defaults to nil" do
+      assert_nil Configuration.new.standalone_authentication_method
+    end
+
+    test "validate_configuration! accepts a proc standalone_authentication_method" do
+      config = build_config { self.standalone_authentication_method = proc { true } }
+
+      assert_kind_of Proc, config.standalone_authentication_method
+    end
+
+    test "validate_configuration! raises for a non-proc standalone_authentication_method" do
+      config = Configuration.new
+      config.standalone_authentication_method = :not_a_proc
+
+      error = assert_raises(ArgumentError) { config.validate_configuration! }
+
+      assert_match "standalone_authentication_method", error.message
+    end
+
     test "validate_configuration! raises for a non-callable authorize" do
       config = Configuration.new
       config.authorize = true

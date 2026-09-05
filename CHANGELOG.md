@@ -15,8 +15,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accepts. A new `rake rails_pulse:finish_deployment[revision]` sets `finished_at` on the
   latest deployment for that revision, so release scripts can close a deployment without
   a token or network access to the dashboard.
+- **Standalone mode is now something the gem knows about.** `RailsPulse.standalone?`
+  is true in the process started by `rails_pulse_server`, and two things change with
+  it. Links: engine helpers reached through the `rails_pulse` view proxy used to ask the
+  host's route set where the engine is mounted and prefix that path, so a dashboard
+  served at `/` linked to `/rails_pulse/routes` and 404ed against itself; the standalone
+  process now generates root-relative links. Authentication: the standalone process has
+  the host's models but not its session, Warden or Devise helpers (and a different
+  hostname, so no shared cookie), so `authentication_method` and `authorize` are ignored
+  there in favour of the new `config.standalone_authentication_method`, falling back to
+  HTTP Basic against `RAILS_PULSE_USERNAME` / `RAILS_PULSE_PASSWORD`. An authentication
+  error in standalone mode renders 403 instead of redirecting to a host login page the
+  process does not serve. `docs/deployment-modes.md` no longer tells standalone users to
+  comment out the engine mount — keeping it is fine and lets the host keep linking to
+  `rails_pulse.root_path`.
+
 ### Fixed
 
+- **Breadcrumbs no longer produce protocol-relative links when the engine is served at
+  `/`.** With an empty mount prefix (the standalone server, or a host that mounts the
+  engine at root) the helper built `"/" + "/queries"` — `//queries`, which browsers
+  resolve to a host called `queries`. The prefix is now empty in that case, so crumbs
+  link to `/queries`.
 - **The standalone dashboard server now serves its own assets.** `rails_pulse_server.ru`
   calls the engine directly, bypassing the host middleware stack — which is where
   `RailsPulse::Middleware::AssetServer` (the `/rails-pulse-assets/...` fallback) and

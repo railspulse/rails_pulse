@@ -314,6 +314,18 @@ RailsPulse.configure do |config|
   #   end
   # }
 
+  # STANDALONE DASHBOARD (bin/rails_pulse_server, see docs/deployment-modes.md):
+  # that process has your models but not your app's session, Warden or Devise
+  # helpers, and runs on its own hostname, so the hooks above are ignored there.
+  # By default it uses HTTP Basic auth (RAILS_PULSE_USERNAME / RAILS_PULSE_PASSWORD).
+  # Set this to run something else instead; same rules as authentication_method
+  # (deny by rendering or redirecting, or by returning false).
+  # config.standalone_authentication_method = proc {
+  #   authenticate_or_request_with_http_token do |token, _options|
+  #     ActiveSupport::SecurityUtils.secure_compare(token, ENV["RAILS_PULSE_DASHBOARD_TOKEN"].to_s)
+  #   end
+  # }
+
   # ====================================================================================================
   #                                             DEPLOYMENT TRACKING
   # ====================================================================================================

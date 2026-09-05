@@ -30,13 +30,16 @@ module RailsPulse
       # Only keep segments after the mount point
       path_segments = path_segments[(mount_end_index + 1)..-1]
 
-      # Build the engine root path directly from mount segments (avoids relying on named route helper)
-      engine_root = "/" + mount_segments.join("/")
+      # Build the engine root path directly from mount segments (avoids relying on named route helper).
+      # Served at "/" (standalone server, or a host that mounts the engine at root) the prefix
+      # is empty, not "/": segments are appended as "/#{segment}", and "/" + "/queries" would be
+      # "//queries" — a protocol-relative URL that browsers resolve to a host called "queries".
+      engine_root = mount_segments.empty? ? "" : "/" + mount_segments.join("/")
 
       # Start with the Home link
       crumbs = [ {
         title: "Home",
-        path: engine_root,
+        path: engine_root.empty? ? "/" : engine_root,
         current: path_segments.empty?
       } ]
 
