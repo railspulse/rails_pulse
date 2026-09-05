@@ -104,6 +104,15 @@ The generator automatically handles both upgrade paths:
 - If new migrations exist in the gem → copies them to your app
 - If no new migrations but missing columns → generates a migration for you
 
+### If the new gem is deployed before the migrations run
+
+Rails Pulse checks the live tables against the schema it ships, once per process,
+the first time it needs to write or render. While the database is behind, tracking
+pauses after a single logged warning listing the missing tables and columns, and
+every dashboard page returns a 503 with the upgrade commands, instead of failing
+on each request. The check is by table and column presence only; it never alters
+anything, and a database error during the check is treated as "not outdated".
+
 ### Route identity backfill
 
 Route identity is `[controller_action, path]`. Schema migrations add the new columns and move the HTTP verb onto each request; they do **not** collapse GET `/users` and POST `/users` into one row.
