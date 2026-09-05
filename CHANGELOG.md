@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Shell-based deploy tracking without the HTTP API.** `rake rails_pulse:record_deployment`
+  now reads optional metadata from `RAILS_PULSE_DEPLOYMENT_METADATA` (a JSON object, since
+  rake splits positional arguments on commas), matching what `POST /rails_pulse/deployments`
+  accepts. A new `rake rails_pulse:finish_deployment[revision]` sets `finished_at` on the
+  latest deployment for that revision, so release scripts can close a deployment without
+  a token or network access to the dashboard.
 ### Security
 
 - **Development dependencies: mail stack and json updated**: mail 2.9.0 → 2.9.1

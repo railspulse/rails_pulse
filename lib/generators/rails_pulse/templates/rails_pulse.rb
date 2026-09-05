@@ -338,8 +338,11 @@ RailsPulse.configure do |config|
   #     -H "Content-Type: application/json" \
   #     -d '{"deployment": {"revision": "abc1234", "metadata": {"environment": "production"}}}'
   #
-  # Or use the rake task for simple shell-based deploys:
+  # Or use the rake tasks for shell-based deploys (no token or HTTP access needed):
   #   rake rails_pulse:record_deployment[abc1234]
+  #   rake rails_pulse:finish_deployment[abc1234]
+  # Metadata for the rake task comes from an environment variable, as a JSON object:
+  #   RAILS_PULSE_DEPLOYMENT_METADATA='{"environment":"production"}' rake rails_pulse:record_deployment[abc1234]
 
   # config.deployment_api_token = ENV["RAILS_PULSE_DEPLOYMENT_TOKEN"]
 

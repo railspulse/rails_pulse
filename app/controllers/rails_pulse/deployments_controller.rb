@@ -36,10 +36,7 @@ module RailsPulse
     end
 
     def finish
-      deployment = RailsPulse::Deployment
-        .where(revision: finish_params[:revision])
-        .order(started_at: :desc)
-        .first
+      deployment = RailsPulse::Deployment.latest_for_revision(finish_params[:revision])
 
       return render json: { status: "error", error: "Deployment not found" }, status: :not_found unless deployment
 
