@@ -149,10 +149,12 @@ module RailsPulse
 
     private
 
+    # Lowercase keys: Rack 3 requires them, and Rack::Lint (which rackup
+    # inserts in its development environment) rejects mixed case with a 500.
     def self.asset_headers
       {
-        "Cache-Control" => "public, max-age=31536000, immutable",
-        "Vary" => "Accept-Encoding"
+        "cache-control" => "public, max-age=31536000, immutable",
+        "vary" => "Accept-Encoding"
       }
     end
   end

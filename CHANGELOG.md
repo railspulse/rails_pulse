@@ -15,6 +15,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accepts. A new `rake rails_pulse:finish_deployment[revision]` sets `finished_at` on the
   latest deployment for that revision, so release scripts can close a deployment without
   a token or network access to the dashboard.
+### Fixed
+
+- **The standalone dashboard server now serves its own assets.** `rails_pulse_server.ru`
+  calls the engine directly, bypassing the host middleware stack — which is where
+  `RailsPulse::Middleware::AssetServer` (the `/rails-pulse-assets/...` fallback) and
+  `ActionDispatch::Static` (the digested `/assets/...` copies that `assets:precompile`
+  installs) live. Every standalone page therefore rendered with 404s for its stylesheet
+  and scripts. The rackup now serves both paths itself.
+- **Asset responses are Rack 3 compliant.** `Engine.asset_headers` and
+  `AssetServer#cache_headers` used mixed-case header names (`Cache-Control`, `Vary`,
+  `Expires`, `Pragma`). Rack 3 requires lowercase, and `Rack::Lint` — which `rackup`
+  inserts in its development environment — turned every asset request into a 500.
+- **`rails_pulse_server` passes the environment through to `rackup`.** `rackup`
+  defaults to its own `development` environment regardless of `RAILS_ENV`, wrapping the
+  dashboard in `Rack::Lint` and `Rack::ShowExceptions` in production. The executable now
+  passes `-E` from `RACK_ENV`, then `RAILS_ENV`, unless given explicitly.
+- **The standalone server falls back to the host's `secret_key_base`.** It required a
+  literal `SECRET_KEY_BASE` environment variable, which hosts on encrypted credentials do
+  not have, even though `config/environment.rb` (and so
+  `Rails.application.secret_key_base`) was already loaded. It still refuses to boot when
+  neither is available.
+
 ### Security
 
 - **Development dependencies: mail stack and json updated**: mail 2.9.0 → 2.9.1

@@ -1,5 +1,6 @@
 require "test_helper"
 require "rack/mock_request"
+require "rack/lint"
 
 module RailsPulse
   class StandaloneServerTest < ActiveSupport::TestCase
@@ -109,12 +110,79 @@ module RailsPulse
       ENV["RAILS_PULSE_INSECURE_SESSION"] = original
     end
 
+    # Asset Tests
+    #
+    # The layout links either the gem-served bundle (/rails-pulse-assets/...)
+    # or, after assets:precompile, the digested copies under public/assets.
+    # Neither is served by the engine itself, so the rackup must serve both.
+
+    test "serves the gem-bundled dashboard stylesheet and scripts" do
+      %w[rails-pulse.css rails-pulse.js rails-pulse-icons.js].each do |asset|
+        response = lint_get("/rails-pulse-assets/#{RailsPulse::VERSION}/#{asset}")
+
+        assert_equal 200, response.status, "expected #{asset} to be served"
+        assert_operator response.body.bytesize, :>, 0
+      end
+    end
+
+    test "gem-bundled assets carry immutable cache headers" do
+      response = lint_get("/rails-pulse-assets/#{RailsPulse::VERSION}/rails-pulse.css")
+
+      assert_match(/immutable/, response.headers["cache-control"])
+    end
+
+    test "serves the digested assets installed by assets:precompile" do
+      destination = Rails.public_path.join("assets")
+      RailsPulse::PackagedAssets.install!(destination: destination)
+      digested_path = RailsPulse::PackagedAssets.url_path("rails-pulse.css")
+
+      assert_match(%r{\A/assets/rails-pulse-[a-f0-9]{64}\.css\z}, digested_path)
+
+      response = lint_get(digested_path)
+
+      assert_equal 200, response.status
+      assert_match(/immutable/, response.headers["cache-control"])
+    ensure
+      RailsPulse::PackagedAssets.uninstall!(destination: destination)
+    end
+
+    test "unknown asset paths fall through to the dashboard rather than the static server" do
+      response = lint_get("/assets/does-not-exist.css")
+
+      assert_not_equal 200, response.status
+    end
+
+    # Rack Compliance Tests
+    #
+    # rackup wraps the app in Rack::Lint in its development environment, so a
+    # non-compliant response (e.g. a mixed-case header name) is a 500 there.
+
+    test "dashboard and health responses pass Rack::Lint" do
+      assert_nothing_raised do
+        lint_get("/health")
+        lint_get("/")
+      end
+    end
+
     # Server Configuration Tests
 
-    test "server raises when SECRET_KEY_BASE is not set" do
+    test "falls back to the host app's secret_key_base when SECRET_KEY_BASE is not set" do
       ENV.delete("SECRET_KEY_BASE")
 
-      assert_raises(RuntimeError) { build_server_app }
+      app = build_server_app
+
+      assert_not_nil Rack::MockRequest.new(app).get("/").headers["Set-Cookie"]
+    end
+
+    test "server raises when neither SECRET_KEY_BASE nor a Rails secret_key_base is available" do
+      ENV.delete("SECRET_KEY_BASE")
+      Rails.application.stubs(:secret_key_base).returns(nil)
+
+      error = assert_raises(RuntimeError) { build_server_app }
+
+      assert_match(/SECRET_KEY_BASE/, error.message)
+    ensure
+      Rails.application.unstub(:secret_key_base)
     end
 
     private
@@ -133,6 +201,11 @@ module RailsPulse
 
     def get(path)
       Rack::MockRequest.new(@app).get(path)
+    end
+
+    # Rack::Lint raises on any spec violation in the request env or response.
+    def lint_get(path)
+      Rack::MockRequest.new(Rack::Lint.new(@app)).get(path)
     end
   end
 end

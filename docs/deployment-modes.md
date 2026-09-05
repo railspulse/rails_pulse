@@ -85,8 +85,10 @@ the development database.
 
 Two environment variables are required or strongly recommended:
 
-- `SECRET_KEY_BASE` — the server refuses to start without it; it signs the
-  dashboard's session cookie.
+- `SECRET_KEY_BASE` — signs the dashboard's session cookie. When it is not
+  set the server falls back to the host app's `secret_key_base` (from
+  encrypted credentials or `config/secrets`), and refuses to start only if
+  neither is available.
 - `RAILS_ENV=production` — see above.
 
 The session cookie is marked `Secure` in production, so it is only sent over
