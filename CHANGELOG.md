@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Development dependencies: mail stack and json updated**: mail 2.9.0 → 2.9.1
+  (email address spoofing via malformed RFC 2047 encoded-words; also updated in
+  the dummy app's lockfile), net-imap 0.6.4 → 0.6.6 (command injection via the
+  ID command argument and via non-synchronizing literals, denial of service via
+  incomplete raw argument validation), and json 2.19.5 → 2.21.2 (generator heap
+  buffer overflow when streaming to an IO). These only affect development/CI of
+  the gem; host apps resolve their own versions.
 - **Development dependencies: HTML/XML sanitization stack updated** in the gem's
   own `Gemfile.lock`: nokogiri 1.19.3 → 1.19.4 (eight low/medium advisories —
   use-after-free, out-of-bounds read, null-pointer, and JRuby NONET bypass fixes),
