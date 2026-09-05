@@ -32,6 +32,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **Breadcrumbs no longer produce protocol-relative links when the engine is served at
+  `/`.** With an empty mount prefix (the standalone server, or a host that mounts the
+  engine at root) the helper built `"/" + "/queries"` — `//queries`, which browsers
+  resolve to a host called `queries`. The prefix is now empty in that case, so crumbs
+  link to `/queries`.
 - **The standalone dashboard server now serves its own assets.** `rails_pulse_server.ru`
   calls the engine directly, bypassing the host middleware stack — which is where
   `RailsPulse::Middleware::AssetServer` (the `/rails-pulse-assets/...` fallback) and

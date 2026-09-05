@@ -208,6 +208,13 @@ module RailsPulse
       assert_no_match(%r{href="/rails_pulse/}, body)
     end
 
+    test "breadcrumb links are root-relative, not protocol-relative" do
+      body = get("/queries").body
+
+      assert_no_match(%r{href="//}, body)
+      assert_match(%r{href="/"}, body)
+    end
+
     test "engine helpers through the rails_pulse proxy are root-relative too" do
       assert_equal "/storage", RailsPulse::Engine.routes.url_helpers.storage_path
       assert_equal "/", RailsPulse::Engine.routes.url_helpers.root_path
