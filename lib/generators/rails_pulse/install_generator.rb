@@ -80,6 +80,8 @@ module RailsPulse
                  migrations_paths: db/rails_pulse_migrate
                  schema_dump: false
 
+          Repeat this entry for each environment (development, test, production).
+
           schema_dump: false is required so Rails does not dump or load
           db/rails_pulse_structure.sql. Keep database_tasks enabled so
           rails db:migrate:rails_pulse still runs upgrades.
