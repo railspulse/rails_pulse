@@ -62,14 +62,15 @@ module RailsPulse
         path.to_s.sub(VERSIONED_ASSET_PATH, '\1')
       end
 
+      # Lowercase keys: Rack 3 requires them, and Rack::Lint rejects mixed case.
       def cache_headers
         if defined?(Rails) && Rails.env.development?
-          { "Cache-Control" => "no-cache, no-store, must-revalidate", "Pragma" => "no-cache" }
+          { "cache-control" => "no-cache, no-store, must-revalidate", "pragma" => "no-cache" }
         else
           {
-            "Cache-Control" => "public, max-age=31536000, immutable",
-            "Vary" => "Accept-Encoding",
-            "Expires" => (Time.now + 1.year).httpdate
+            "cache-control" => "public, max-age=31536000, immutable",
+            "vary" => "Accept-Encoding",
+            "expires" => (Time.now + 1.year).httpdate
           }
         end
       end
