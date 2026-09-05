@@ -19,6 +19,9 @@ else
   MESSAGE
 end
 
+# Root-relative links and standalone authentication — see lib/rails_pulse/standalone.rb.
+RailsPulse.standalone!
+
 # Disable output buffering so logs appear immediately
 $stdout.sync = true
 $stderr.sync = true

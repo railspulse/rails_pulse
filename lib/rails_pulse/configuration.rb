@@ -21,6 +21,7 @@ module RailsPulse
                   :authentication_enabled,
                   :authentication_method,
                   :authorize,
+                  :standalone_authentication_method,
                   :authentication_redirect_path,
                   :tags,
                   :job_tracking_mode,
@@ -104,6 +105,10 @@ module RailsPulse
       # Fail-closed predicate: ->(controller) { true to allow }. Anything
       # falsy is a 403. Runs after authentication_method, if both are set.
       @authorize = nil
+      # Used instead of authentication_method / authorize by the standalone
+      # dashboard server, where host session helpers are unavailable. nil
+      # means HTTP Basic against RAILS_PULSE_USERNAME / RAILS_PULSE_PASSWORD.
+      @standalone_authentication_method = nil
       @authentication_redirect_path = "/"
       @tags = [ "ignored", "critical", "experimental" ]
       @job_tracking_mode = :universal
@@ -325,6 +330,10 @@ module RailsPulse
 
       if @authorize && !@authorize.respond_to?(:call)
         raise ArgumentError, "authorize must respond to #call (a proc or lambda receiving the controller and returning true to allow), got #{@authorize.class}"
+      end
+
+      if @standalone_authentication_method && !@standalone_authentication_method.is_a?(Proc)
+        raise ArgumentError, "standalone_authentication_method must be a Proc or nil, got #{@standalone_authentication_method.class}"
       end
     end
 
