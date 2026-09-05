@@ -15,6 +15,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accepts. A new `rake rails_pulse:finish_deployment[revision]` sets `finished_at` on the
   latest deployment for that revision, so release scripts can close a deployment without
   a token or network access to the dashboard.
+### Security
+
+- **Development dependencies: mail stack and json updated**: mail 2.9.0 → 2.9.1
+  (email address spoofing via malformed RFC 2047 encoded-words; also updated in
+  the dummy app's lockfile), net-imap 0.6.4 → 0.6.6 (command injection via the
+  ID command argument and via non-synchronizing literals, denial of service via
+  incomplete raw argument validation), and json 2.19.5 → 2.21.2 (generator heap
+  buffer overflow when streaming to an IO). These only affect development/CI of
+  the gem; host apps resolve their own versions.
+- **Development dependencies: HTML/XML sanitization stack updated** in the gem's
+  own `Gemfile.lock`: nokogiri 1.19.3 → 1.19.4 (eight low/medium advisories —
+  use-after-free, out-of-bounds read, null-pointer, and JRuby NONET bypass fixes),
+  loofah 2.25.1 → 2.25.2 (`javascript:` URI detection bypasses via character
+  references, SVG `href` local-reference restriction bypass), and
+  rails-html-sanitizer 1.7.0 → 1.7.1 (possible XSS with certain configurations).
+  These only affect development/CI of the gem; host apps resolve their own versions.
+- **Development dependencies updated for Dependabot's critical and high alerts.**
+  In the gem's own `Gemfile.lock`: Rails 8.1.3 → 8.1.3.1 (Active Storage arbitrary
+  file read / remote code execution in variant processing), puma 6.6.1 → 7.2.1
+  (PROXY protocol v1 remote memory exhaustion, and repeated protocol headers
+  accepted on persistent connections; pinned to match the dummy app), websocket-driver
+  0.8.0 → 0.8.2 (denial of service via malformed Host header), and concurrent-ruby
+  1.3.6 → 1.3.8 (`AtomicReference#update` livelock on `Float::NAN`). These are
+  development/test dependencies of the gem — host apps resolve their own versions,
+  but should update their own Rails to 8.1.3.1.
+
+### Changed
+
+- **Cleaned up test suite output.** A green `rake test` run no longer prints RDoc
+  constant-redefinition warnings, stray blank lines from a leftover progress `puts`,
+  leaked log/rake-task output, a "missing assertions" warning, or a seed-dependent
+  skip — the full run is now a clean ~35-line report.
 
 ## [0.4.0.pre.2] - 2026-09-04
 
