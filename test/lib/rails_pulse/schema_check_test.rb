@@ -1,4 +1,5 @@
 require "test_helper"
+require "generators/rails_pulse/schema_parser"
 
 class RailsPulse::SchemaCheckTest < ActiveSupport::TestCase
   def setup
