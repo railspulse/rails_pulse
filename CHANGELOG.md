@@ -9,6 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Security
 
+- **Development dependencies: HTML/XML sanitization stack updated** in the gem's
+  own `Gemfile.lock`: nokogiri 1.19.3 → 1.19.4 (eight low/medium advisories —
+  use-after-free, out-of-bounds read, null-pointer, and JRuby NONET bypass fixes),
+  loofah 2.25.1 → 2.25.2 (`javascript:` URI detection bypasses via character
+  references, SVG `href` local-reference restriction bypass), and
+  rails-html-sanitizer 1.7.0 → 1.7.1 (possible XSS with certain configurations).
+  These only affect development/CI of the gem; host apps resolve their own versions.
 - **Development dependencies updated for Dependabot's critical and high alerts.**
   In the gem's own `Gemfile.lock`: Rails 8.1.3 → 8.1.3.1 (Active Storage arbitrary
   file read / remote code execution in variant processing), puma 6.6.1 → 7.2.1
