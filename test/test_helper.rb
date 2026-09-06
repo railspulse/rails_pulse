@@ -29,6 +29,9 @@ end
 # Load support files needed for controller tests
 Dir[File.expand_path("support/**/*.rb", __dir__)].each { |f| require f }
 
+# Single-row live progress output (see test/support/rails_pulse_test_reporter.rb)
+Minitest::Reporters.use!(RailsPulseTestReporter.new)
+
 class ActiveSupport::TestCase
   # Enable parallel testing for local performance
   # Disable when BROWSER is set to avoid multiple browser windows

@@ -9,12 +9,7 @@
 
 set -e
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-BLUE='\033[0;34m'
-NC='\033[0m' # No Color
+source "$(dirname "${BASH_SOURCE[0]}")/lib/rails_pulse_console.sh"
 
 # Help
 if [ "$1" = "--help" ] || [ "$1" = "-h" ]; then
@@ -33,7 +28,7 @@ fi
 
 # Validate arguments
 if [ -z "$1" ]; then
-  echo -e "${RED}❌ Error: Version number required${NC}"
+  rp_fail "version number required"
   echo "Usage: bin/bump_version <new_version>"
   echo "Run with --help for more information"
   exit 1
@@ -43,7 +38,7 @@ NEW_VERSION="$1"
 
 # Validate version format (semantic versioning with dots for pre-release)
 if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[a-zA-Z0-9]+)*$ ]]; then
-  echo -e "${RED}❌ Error: Invalid version format: $NEW_VERSION${NC}"
+  rp_fail "invalid version format: $NEW_VERSION"
   echo "Expected format: MAJOR.MINOR.PATCH (e.g., 0.3.0)"
   echo "Or with pre-release: MAJOR.MINOR.PATCH.TAG (e.g., 0.3.0.pre.1, 0.3.0.beta.1)"
   echo ""
@@ -54,28 +49,24 @@ fi
 # Get current version (including pre-release suffix if present)
 VERSION_FILE="lib/rails_pulse/version.rb"
 if [ ! -f "$VERSION_FILE" ]; then
-  echo -e "${RED}❌ Error: $VERSION_FILE not found${NC}"
+  rp_fail "$VERSION_FILE not found"
   exit 1
 fi
 
 CURRENT_VERSION=$(grep 'VERSION = ' "$VERSION_FILE" | sed 's/.*VERSION = "\(.*\)".*/\1/')
 
-echo -e "${BLUE}📦 Rails Pulse Version Bump${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo -e "Current version: ${YELLOW}$CURRENT_VERSION${NC}"
-echo -e "New version:     ${GREEN}$NEW_VERSION${NC}"
-echo ""
+echo
+echo "$(rp_rule "VERSION BUMP" "$(rp_dim "$CURRENT_VERSION -> $NEW_VERSION")")"
+echo
 
 # Update version.rb
-echo -e "${BLUE}⚙️  Updating $VERSION_FILE...${NC}"
 sed -i.bak "s/VERSION = \"$CURRENT_VERSION\"/VERSION = \"$NEW_VERSION\"/" "$VERSION_FILE"
 rm "${VERSION_FILE}.bak"
-echo -e "  ${GREEN}✓${NC} Updated lib/rails_pulse/version.rb"
+rp_ok "updated $VERSION_FILE"
 
 # Update root Gemfile.lock
-echo -e "${BLUE}⚙️  Updating Gemfile.lock...${NC}"
 bundle install --quiet
-echo -e "  ${GREEN}✓${NC} Updated Gemfile.lock"
+rp_ok "updated Gemfile.lock"
 
 # Update Rails-specific Gemfile.locks.
 # Derived from the gemfiles/ directory rather than hardcoded: a hardcoded list
@@ -88,38 +79,38 @@ for gemfile in gemfiles/rails_*.gemfile; do
 done
 
 if [ ${#RAILS_VERSIONS[@]} -eq 0 ]; then
-  echo -e "  ${YELLOW}⚠${NC}  No gemfiles/rails_*.gemfile found"
+  rp_warn "no gemfiles/rails_*.gemfile found"
 fi
 
 for rails_ver in "${RAILS_VERSIONS[@]}"; do
   GEMFILE="gemfiles/rails_${rails_ver}.gemfile"
 
-  echo -e "${BLUE}⚙️  Updating gemfiles/rails_${rails_ver}.gemfile.lock...${NC}"
-
   if [ ! -f "$GEMFILE" ]; then
-    echo -e "  ${YELLOW}⚠${NC}  Gemfile not found: $GEMFILE (skipping)"
+    rp_warn "gemfile not found: $GEMFILE (skipping)"
     continue
   fi
 
   BUNDLE_GEMFILE="$GEMFILE" bundle install --quiet
-  echo -e "  ${GREEN}✓${NC} Updated gemfiles/rails_${rails_ver}.gemfile.lock"
+  rp_ok "updated gemfiles/rails_${rails_ver}.gemfile.lock"
 done
 
 # Update the dummy app's lockfile so the tagged tree is internally consistent
 if [ -f "test/dummy/Gemfile" ]; then
-  echo -e "${BLUE}⚙️  Updating test/dummy/Gemfile.lock...${NC}"
-  BUNDLE_GEMFILE="test/dummy/Gemfile" bundle install --quiet \
-    && echo -e "  ${GREEN}✓${NC} Updated test/dummy/Gemfile.lock" \
-    || echo -e "  ${YELLOW}⚠${NC}  Could not update test/dummy/Gemfile.lock"
+  if BUNDLE_GEMFILE="test/dummy/Gemfile" bundle install --quiet; then
+    rp_ok "updated test/dummy/Gemfile.lock"
+  else
+    rp_warn "could not update test/dummy/Gemfile.lock"
+  fi
 fi
 
-echo ""
-echo -e "${GREEN}✅ Version bump complete!${NC}"
-echo ""
-echo "Files updated:"
-echo "  • lib/rails_pulse/version.rb"
-echo "  • Gemfile.lock"
+echo
+echo "  Files updated:"
+echo "    - lib/rails_pulse/version.rb"
+echo "    - Gemfile.lock"
 for rails_ver in "${RAILS_VERSIONS[@]}"; do
-  echo "  • gemfiles/rails_${rails_ver}.gemfile.lock"
+  echo "    - gemfiles/rails_${rails_ver}.gemfile.lock"
 done
-[ -f "test/dummy/Gemfile.lock" ] && echo "  • test/dummy/Gemfile.lock"
+[ -f "test/dummy/Gemfile.lock" ] && echo "    - test/dummy/Gemfile.lock"
+echo
+echo "$(rp_rule "PASS" "" "$RP_GREEN")"
+echo

@@ -19,6 +19,8 @@ RAILS_PULSE_ROOT = File.expand_path("..", __dir__)
 DUMMY_ROOT       = File.join(RAILS_PULSE_ROOT, "test", "dummy")
 RESULTS_DIR      = File.join(RAILS_PULSE_ROOT, "benchmarks", "results")
 
+require_relative "../test/support/rails_pulse_console"
+
 # --- Argument parsing ---
 
 args            = ARGV.dup
@@ -67,13 +69,21 @@ end
 
 # --- Boot Rails ---
 
-puts "Booting dummy app (#{ENV.fetch("DB", "sqlite3")})..."
+# RailsPulseConsole.rule() reads the terminal width via io/console, which activates
+# a RubyGems spec for that gem; do this only after the dummy app's own
+# Bundler.setup has run below, or it can conflict with the io-console version
+# pinned in test/dummy/Gemfile.lock.
+puts "Booting dummy app (#{ENV.fetch('DB', 'sqlite3')})..."
 ENV["RAILS_ENV"] ||= "development"
 Dir.chdir(DUMMY_ROOT)
 
 require File.join(DUMMY_ROOT, "config", "environment")
 require "rack/mock_request"
 require "fileutils"
+
+puts
+puts RailsPulseConsole.rule("RAILS PULSE", RailsPulseConsole.dim("benchmark · #{ENV.fetch('DB', 'sqlite3')}"))
+puts
 
 FileUtils.mkdir_p(RESULTS_DIR)
 
@@ -138,17 +148,15 @@ scenarios = [
 # --- Run ---
 
 db_adapter = ActiveRecord::Base.connection_db_config.adapter
-puts "Ruby #{RUBY_VERSION} | Rails #{Rails::VERSION::STRING} | DB: #{db_adapter}"
-puts "Iterations per scenario: #{iterations}"
-puts
+puts RailsPulseConsole.line(:ok, "ruby #{RUBY_VERSION} · rails #{Rails::VERSION::STRING} · #{db_adapter} #{RailsPulseConsole.dim("(#{iterations} iterations per scenario)")}")
 
 # Suppress Rails Pulse's own logger during benchmark
 RailsPulse.configuration.logger = Logger.new(IO::NULL)
 
 run_results = {}
+started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
 
 scenarios.each do |scenario|
-  print "  #{scenario[:name].ljust(30)}"
   scenario[:setup].call
 
   middleware = RailsPulse::Middleware::RequestCollector.new(passthrough)
@@ -175,7 +183,8 @@ scenarios.each do |scenario|
   stats["db_writes"] = db_writes
   run_results[scenario[:name]] = stats
 
-  puts "median: #{stats["median"]}ms  p95: #{stats["p95"]}ms  p99: #{stats["p99"]}ms  writes: #{db_writes}"
+  detail = "median #{stats['median']}ms · p95 #{stats['p95']}ms · p99 #{stats['p99']}ms · #{db_writes} writes"
+  puts RailsPulseConsole.line(:ok, "#{scenario[:name].ljust(24)} #{RailsPulseConsole.dim(detail)}")
 end
 
 # Restore logger
@@ -195,24 +204,27 @@ run_data = {
 filename = "#{Time.now.strftime("%Y-%m-%d_%H-%M-%S")}_#{db_adapter}.json"
 path = File.join(RESULTS_DIR, filename)
 File.write(path, JSON.pretty_generate(run_data))
-puts "\nSaved to benchmarks/results/#{filename}"
+
+puts
+puts RailsPulseConsole.rule("SAVED", RailsPulseConsole.dim("benchmarks/results/#{filename}"), color: :green)
+puts
 
 # --- Overhead summary ---
 
 baseline = run_results["Baseline (disabled)"]["median"]
-puts
-puts "Overhead vs baseline:"
+puts "  Overhead vs baseline:"
 run_results.each do |name, stats|
   next if name == "Baseline (disabled)"
   overhead = (stats["median"] - baseline).round(3)
-  puts "  #{name.ljust(30)} +#{overhead}ms median"
+  puts "    #{name.ljust(24)} #{RailsPulseConsole.dim("+#{overhead}ms median")}"
 end
+puts "  #{RailsPulseConsole.dim(RailsPulseConsole.duration(Process.clock_gettime(Process::CLOCK_MONOTONIC) - started))}"
 
 # --- Historical comparison ---
 
 all_runs = load_results
 if all_runs.size > 1
   puts
-  puts "Recent runs:"
+  puts "  Recent runs:"
   print_comparison(all_runs)
 end

@@ -5,6 +5,8 @@
 
 set -e
 
+source "$(dirname "${BASH_SOURCE[0]}")/lib/rails_pulse_console.sh"
+
 # Parse arguments
 VERBOSE=false
 STANDALONE_DASHBOARD=false
@@ -48,7 +50,9 @@ for arg in "$@"; do
   esac
 done
 
-echo "🚀 Starting Rails Pulse development server..."
+echo
+echo "$(rp_rule "RAILS PULSE" "$(rp_dim "$([ "$STANDALONE_DASHBOARD" = true ] && echo "standalone dashboard" || echo "dev server")")")"
+echo
 
 # We're already in the Rails Pulse root directory
 ROOT_DIR="$(pwd)"
@@ -56,34 +60,34 @@ DUMMY_DIR="$ROOT_DIR/test/dummy"
 
 # Check if npm is available
 if ! command -v npm &> /dev/null; then
-  echo "❌ npm is required but not installed. Please install Node.js and npm."
+  rp_fail "npm is required but not installed. Please install Node.js and npm."
   exit 1
 fi
 
 # Check if node_modules exists
 if [ ! -d "node_modules" ]; then
-  echo "📦 Installing npm dependencies..."
   if [ "$VERBOSE" = true ]; then
     npm install
   else
     npm install --silent
   fi
+  rp_ok "installed npm dependencies"
 fi
 
 # Start asset watching in background (unless running standalone dashboard)
 if [ "$STANDALONE_DASHBOARD" = false ]; then
   if [ "$VERBOSE" = true ]; then
-    echo "👀 Starting asset watcher..."
     RAILS_PULSE_VERBOSE=true npm run watch &
   else
-    echo "👀 Asset watcher started"
     npm run watch > /dev/null 2>&1 &
   fi
   WATCH_PID=$!
+  rp_ok "asset watcher started"
 
   # Function to cleanup background processes
   cleanup() {
-    echo "🛑 Stopping asset watcher..."
+    echo
+    rp_warn "stopping asset watcher"
     kill $WATCH_PID 2>/dev/null || true
     exit
   }
@@ -93,23 +97,22 @@ if [ "$STANDALONE_DASHBOARD" = false ]; then
 
   # Initial build
   if [ "$VERBOSE" = true ]; then
-    echo "🔨 Building Rails Pulse assets..."
     RAILS_PULSE_VERBOSE=true npm run build
   else
-    echo "🔨 Assets built successfully"
     npm run build > /dev/null 2>&1
   fi
+  rp_ok "assets built"
 fi
+
+echo
 
 # Run in the appropriate mode
 if [ "$STANDALONE_DASHBOARD" = true ]; then
   # Standalone dashboard mode
-  echo "📊 Mode: STANDALONE DASHBOARD"
-  echo "🌐 Starting standalone dashboard on port 3001..."
-  echo ""
-  echo "   The dashboard will read from the dummy app's database."
-  echo "   Make sure to run the main app separately with: ./bin/dev"
-  echo ""
+  echo "  Mode: standalone dashboard, port 3001"
+  echo "  The dashboard will read from the dummy app's database."
+  echo "  Make sure to run the main app separately with: ./bin/dev"
+  echo
 
   # Point to dummy app's database
   export DATABASE_URL="sqlite3:$DUMMY_DIR/db/development.sqlite3"
@@ -119,10 +122,8 @@ if [ "$STANDALONE_DASHBOARD" = true ]; then
 
 else
   # Embedded dashboard mode
-  echo "📊 Starting RailsPulse dashboard (embedded mode)"
-  echo "   Dashboard available at /rails_pulse"
-  echo ""
-  echo "🌐 Starting Rails server..."
+  echo "  Mode: embedded dashboard, available at /rails_pulse"
+  echo
   cd "$DUMMY_DIR"
   exec ./bin/rails server "${RAILS_ARGS[@]}"
 fi

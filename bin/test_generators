@@ -5,6 +5,7 @@
 # Verifies that generators run successfully and create expected files
 
 require "fileutils"
+require_relative "../test/support/rails_pulse_console"
 
 class GeneratorTester
   attr_reader :test_dir, :errors
@@ -18,9 +19,9 @@ class GeneratorTester
   end
 
   def run
-    puts "\n" + "=" * 80
-    puts "Rails Pulse Generator Smoke Tests"
-    puts "=" * 80
+    @started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    puts
+    puts RailsPulseConsole.rule("RAILS PULSE", RailsPulseConsole.dim("generator smoke tests"))
 
     cleanup_before_tests
 
@@ -55,7 +56,7 @@ class GeneratorTester
     section "Cleaning up after tests"
     full_cleanup
     restore_original_files
-    puts "  ✓ Working directory is clean"
+    puts RailsPulseConsole.line(:ok, "working directory is clean")
   end
 
   def backup_existing_files
@@ -93,7 +94,7 @@ class GeneratorTester
           File.write(file, content)
         end
       end
-      puts "  ✓ Restored #{@original_files.size} original file(s)" if @original_files.any?
+      puts RailsPulseConsole.line(:ok, "restored #{RailsPulseConsole.plural(@original_files.size, 'original file')}") if @original_files.any?
     end
   end
 
@@ -292,37 +293,35 @@ class GeneratorTester
   end
 
   def section(title)
-    puts "\n#{title}"
-    puts "-" * 80
+    puts
+    puts "  #{RailsPulseConsole.bold(title)}"
   end
 
   def pass(message)
     @passed += 1
-    puts "  ✓ #{message}"
+    puts RailsPulseConsole.line(:ok, message)
   end
 
   def fail(message)
     @failed += 1
     @errors << message
-    puts "  ✗ #{message}"
+    puts RailsPulseConsole.line(:fail, message)
   end
 
   def print_summary
-    puts "\n" + "=" * 80
-    puts "Test Summary"
-    puts "=" * 80
-    puts "Passed: #{@passed}"
-    puts "Failed: #{@failed}"
+    puts
+    left, colour = @failed.zero? ? [ "PASS", :green ] : [ "FAIL", :red ]
+    parts = [ "#{RailsPulseConsole.number(@passed)} passed", "#{RailsPulseConsole.number(@failed)} failed" ]
+    parts << RailsPulseConsole.duration(Process.clock_gettime(Process::CLOCK_MONOTONIC) - @started)
+    puts RailsPulseConsole.rule(left, parts.join(RailsPulseConsole.dim(" · ")), color: colour)
+    puts
 
     if @failed > 0
-      puts "\nFailures:"
-      @errors.each do |error|
-        puts "  - #{error}"
-      end
-      puts "\n❌ Some tests failed"
+      puts "  Failures:"
+      @errors.each { |error| puts "    #{RailsPulseConsole.paint('-', :red)} #{error}" }
+      puts
       exit 1
     else
-      puts "\n✅ All tests passed!"
       exit 0
     end
   end

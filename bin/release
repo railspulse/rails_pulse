@@ -11,28 +11,19 @@
 
 set -euo pipefail
 
-# Colors (ANSI-C quoting so the escapes are real characters — works with
-# both echo -e and plain cat/printf)
-RED=$'\033[0;31m'
-GREEN=$'\033[0;32m'
-YELLOW=$'\033[1;33m'
-BLUE=$'\033[0;34m'
-MAGENTA=$'\033[0;35m'
-CYAN=$'\033[0;36m'
-BOLD=$'\033[1m'
-NC=$'\033[0m' # No Color
+source "$(dirname "${BASH_SOURCE[0]}")/lib/rails_pulse_console.sh"
 
 # Help
 if [ "${1:-}" = "--help" ] || [ "${1:-}" = "-h" ]; then
   cat <<EOF
-${BOLD}Rails Pulse Release Manager${NC}
+$(rp_bold "Rails Pulse Release Manager")
 
 Interactive script to guide you through the release process.
 
-${BOLD}Usage:${NC}
+$(rp_bold "Usage:")
   bin/release
 
-${BOLD}What it does:${NC}
+$(rp_bold "What it does:")
   1. Pre-flight checks (git status, branch, etc.) — hard stop on failure
   2. Pre-release tests (npm run test:js + rake test_release — includes RuboCop, Brakeman, full matrix)
   3. Changelog review
@@ -43,14 +34,14 @@ ${BOLD}What it does:${NC}
   8. Publish gem (calls bin/publish_gem)
   9. Open GitHub releases page
 
-${BOLD}Individual scripts:${NC}
+$(rp_bold "Individual scripts:")
   bin/bump_version <version>      Update version files
   bin/commit_release <version>    Create version bump commit
   bin/tag_release <version>       Create annotated git tag
   bin/push_release [--wait-ci]    Push and optionally wait for CI
   bin/publish_gem                 Build and publish to RubyGems
 
-${BOLD}Example:${NC}
+$(rp_bold "Example:")
   bin/release
 
 For more info on individual scripts:
@@ -84,7 +75,7 @@ ask_yes_no() {
 
 check_command() {
   if ! command -v "$1" &> /dev/null; then
-    echo -e "${RED}❌ Error: '$1' command not found${NC}"
+    rp_fail "'$1' command not found"
     echo "Please install $1 and try again"
     exit 1
   fi
@@ -94,25 +85,15 @@ get_unreleased() {
   awk '/^## \[Unreleased\]/{found=1; next} found && /^## (\[|[0-9])/{exit} found && NF{print}' CHANGELOG.md
 }
 
-# Banner
-echo ""
-echo -e "${BOLD}${MAGENTA}"
-cat << "EOF"
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃                                                               ┃
-┃               🚀  Rails Pulse Release Manager                 ┃
-┃                                                               ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-EOF
-echo -e "${NC}"
-echo ""
+echo
+echo "$(rp_rule "RAILS PULSE" "$(rp_dim "release manager")")"
+echo
 
 # ============================================================================
 # STEP 1: Pre-flight Checks
 # ============================================================================
-echo -e "${BOLD}${BLUE}📋 Pre-flight Checks${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "$(rp_rule "1/9 PRE-FLIGHT CHECKS")"
+echo
 
 # Check required commands
 check_command git
@@ -121,191 +102,187 @@ check_command npm
 
 # Check git status
 if [ -n "$(git status --porcelain)" ]; then
-  echo -e "${RED}✗ Git working directory is not clean${NC}"
-  echo ""
+  rp_fail "git working directory is not clean"
+  echo
   git status --short
-  echo ""
+  echo
   echo "Aborted. Commit or stash your changes first."
   exit 1
 else
-  echo -e "${GREEN}✓${NC} Git working directory is clean"
+  rp_ok "git working directory is clean"
 fi
 
 # Check current branch
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
 if [ "$CURRENT_BRANCH" != "main" ]; then
-  echo -e "${RED}✗ On branch: $CURRENT_BRANCH (expected: main)${NC}"
+  rp_fail "on branch: $CURRENT_BRANCH (expected: main)"
   echo "Aborted. Switch to main branch first."
   exit 1
 else
-  echo -e "${GREEN}✓${NC} On main branch"
+  rp_ok "on main branch"
 fi
 
 # Check if up to date with remote
 git fetch origin --quiet
 LOCAL=$(git rev-parse @)
 if ! REMOTE=$(git rev-parse '@{u}' 2>/dev/null); then
-  echo -e "${RED}✗ No upstream configured for $CURRENT_BRANCH${NC}"
+  rp_fail "no upstream configured for $CURRENT_BRANCH"
   echo "Aborted. Set an upstream first: git branch --set-upstream-to=origin/main"
   exit 1
 fi
 BASE=$(git merge-base @ '@{u}')
 
 if [ "$LOCAL" = "$REMOTE" ]; then
-  echo -e "${GREEN}✓${NC} Up to date with origin"
+  rp_ok "up to date with origin"
 elif [ "$LOCAL" = "$BASE" ]; then
-  echo -e "${RED}✗ Local branch is behind origin${NC}"
+  rp_fail "local branch is behind origin"
   echo "Aborted. Pull latest changes first."
   exit 1
 elif [ "$REMOTE" = "$BASE" ]; then
-  echo -e "${RED}✗ Local branch has unpushed commits${NC}"
+  rp_fail "local branch has unpushed commits"
   echo "Aborted. Push (or remove) local commits first."
   exit 1
 else
-  echo -e "${RED}✗ Local branch has diverged from origin${NC}"
+  rp_fail "local branch has diverged from origin"
   echo "Aborted. Reconcile local and remote history first."
   exit 1
 fi
 
-echo ""
+echo
 
 # ============================================================================
 # STEP 2: Pre-release Tests
 # ============================================================================
-echo -e "${BOLD}${BLUE}🧪 Pre-release Tests${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "$(rp_rule "2/9 PRE-RELEASE TESTS")"
+echo
 
-echo "This will run:"
-echo "  • Git status check"
-echo "  • RuboCop linting"
-echo "  • Brakeman security scan"
-echo "  • JavaScript unit tests (npm run test:js)"
-echo "  • Asset building"
-echo "  • Gem build verification"
-echo "  • Generator tests"
-echo "  • Full test matrix (all databases + Rails versions + system tests)"
-echo ""
-echo -e "${YELLOW}Note: This may take 10-30 minutes${NC}"
-echo ""
+echo "  This will run:"
+echo "    - Git status check"
+echo "    - RuboCop linting"
+echo "    - Brakeman security scan"
+echo "    - JavaScript unit tests (npm run test:js)"
+echo "    - Asset building"
+echo "    - Gem build verification"
+echo "    - Generator tests"
+echo "    - Full test matrix (all databases + Rails versions + system tests)"
+echo
+echo "  $(rp_dim "Note: this may take 10-30 minutes")"
+echo
 
 if ask_yes_no "Run pre-release tests?" "y"; then
-  echo ""
+  echo
   if bundle exec rake test_release; then
-    echo ""
-    echo -e "${GREEN}✅ All pre-release tests passed!${NC}"
+    echo
+    rp_ok "all pre-release tests passed"
   else
-    echo ""
-    echo -e "${RED}❌ Pre-release tests failed!${NC}"
+    echo
+    rp_fail "pre-release tests failed"
     echo "Aborted. Fix tests and try again."
     exit 1
   fi
 else
-  echo -e "${YELLOW}⊘ Skipping pre-release tests${NC}"
-  echo -e "${YELLOW}  Make sure you ran them manually!${NC}"
+  rp_warn "skipping pre-release tests, make sure you ran them manually"
 fi
 
-echo ""
+echo
 
 # ============================================================================
 # STEP 3: Changelog
 # ============================================================================
-echo -e "${BOLD}${BLUE}📝 Changelog${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "$(rp_rule "3/9 CHANGELOG")"
+echo
 
 # The [Unreleased] header is required — the version bump renames it later
 if ! grep -q '^## \[Unreleased\]' CHANGELOG.md; then
-  echo -e "${RED}✗ CHANGELOG.md has no ## [Unreleased] section${NC}"
+  rp_fail "CHANGELOG.md has no ## [Unreleased] section"
   echo "Aborted. Add an [Unreleased] section and try again."
   exit 1
 fi
 
 # Check if [Unreleased] section has any content
 if [ -z "$(get_unreleased)" ]; then
-  echo -e "${YELLOW}⚠  The [Unreleased] section in CHANGELOG.md is empty.${NC}"
-  echo ""
+  rp_warn "the [Unreleased] section in CHANGELOG.md is empty"
+  echo
 else
-  echo -e "${GREEN}✓${NC} [Unreleased] section has content"
-  echo ""
+  rp_ok "[Unreleased] section has content"
+  echo
 fi
 
 # Show git log since last tag
 LAST_TAG=$(git describe --tags --abbrev=0 2>/dev/null || echo "")
 if [ -n "$LAST_TAG" ]; then
-  echo "Commits since $LAST_TAG:"
-  git log "$LAST_TAG"..HEAD --oneline --no-merges
+  echo "  Commits since $LAST_TAG:"
+  git log "$LAST_TAG"..HEAD --oneline --no-merges | sed 's/^/  /'
 else
-  echo "Commits (no previous tag found):"
-  git log --oneline --no-merges | head -20 || true
+  echo "  Commits (no previous tag found):"
+  git log --oneline --no-merges | head -20 | sed 's/^/  /' || true
 fi
-echo ""
+echo
 
 if ask_yes_no "Open CHANGELOG.md to review/update [Unreleased]?"; then
   ${EDITOR:-vi} CHANGELOG.md
-  echo ""
+  echo
 fi
 
 # Final check — abort if still empty
 if [ -z "$(get_unreleased)" ]; then
-  echo -e "${YELLOW}⚠  [Unreleased] section is still empty.${NC}"
+  rp_warn "[Unreleased] section is still empty"
   if ! ask_yes_no "Continue anyway?"; then
     echo "Aborted. Update CHANGELOG.md and try again."
     exit 1
   fi
 fi
 
-echo ""
+echo
 
 # ============================================================================
 # STEP 4: Version Bump
 # ============================================================================
-echo -e "${BOLD}${BLUE}📦 Version Bump${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "$(rp_rule "4/9 VERSION BUMP")"
+echo
 
 # Get current version (including pre-release suffix if present)
 CURRENT_VERSION=$(grep 'VERSION = ' lib/rails_pulse/version.rb | sed 's/.*VERSION = "\(.*\)".*/\1/')
-echo -e "Current version: ${YELLOW}$CURRENT_VERSION${NC}"
-echo ""
+echo "  Current version: $(rp_dim "$CURRENT_VERSION")"
+echo
 
 # Ask for new version
-echo "Examples:"
-echo "  • Release: 0.3.0"
-echo "  • Pre-release: 0.3.0.pre.1, 0.3.0.beta.1, 0.3.0.rc.1"
-echo ""
-echo -e "${YELLOW}IMPORTANT: Use dots (.) not hyphens (-) for pre-release versions${NC}"
-echo ""
+echo "  Examples:"
+echo "    - Release: 0.3.0"
+echo "    - Pre-release: 0.3.0.pre.1, 0.3.0.beta.1, 0.3.0.rc.1"
+echo
+echo "  $(rp_dim "IMPORTANT: Use dots (.) not hyphens (-) for pre-release versions")"
+echo
 
 while true; do
   read -p "Enter new version number: " NEW_VERSION
   if ! [[ "$NEW_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+(\.[a-zA-Z0-9]+)*$ ]]; then
-    echo -e "${RED}Invalid version format.${NC}"
-    echo "Expected: MAJOR.MINOR.PATCH (e.g., 0.3.0)"
-    echo "Or: MAJOR.MINOR.PATCH.TAG (e.g., 0.3.0.pre.1)"
+    echo "  Invalid version format."
+    echo "  Expected: MAJOR.MINOR.PATCH (e.g., 0.3.0)"
+    echo "  Or: MAJOR.MINOR.PATCH.TAG (e.g., 0.3.0.pre.1)"
     continue
   fi
   if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
-    echo -e "${RED}Version $NEW_VERSION is already the current version.${NC}"
+    echo "  Version $NEW_VERSION is already the current version."
     continue
   fi
   if git rev-parse -q --verify "refs/tags/v$NEW_VERSION" > /dev/null; then
-    echo -e "${RED}Tag v$NEW_VERSION already exists.${NC}"
+    echo "  Tag v$NEW_VERSION already exists."
     continue
   fi
   break
 done
 
-echo ""
-echo -e "New version: ${GREEN}$NEW_VERSION${NC}"
-echo ""
+echo
+echo "  New version: $(rp_dim "$NEW_VERSION")"
+echo
 
 if ! ask_yes_no "Proceed with version bump?"; then
   echo "Aborted"
   exit 1
 fi
 
-echo ""
+echo
 
 # Rename [Unreleased] → versioned section in CHANGELOG.md
 TODAY=$(date +%Y-%m-%d)
@@ -318,61 +295,58 @@ awk -v version="$NEW_VERSION" -v date="$TODAY" '
   }
   { print }
 ' CHANGELOG.md > CHANGELOG.md.tmp && mv CHANGELOG.md.tmp CHANGELOG.md
-echo -e "${GREEN}✓${NC} Renamed [Unreleased] → [$NEW_VERSION] - $TODAY in CHANGELOG.md"
-echo ""
+rp_ok "renamed [Unreleased] -> [$NEW_VERSION] - $TODAY in CHANGELOG.md"
+echo
 
 ./bin/bump_version "$NEW_VERSION"
 
-echo ""
+echo
 
 # ============================================================================
 # STEP 5: Commit Version Bump
 # ============================================================================
-echo -e "${BOLD}${BLUE}💾 Commit Version Bump${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "$(rp_rule "5/9 COMMIT VERSION BUMP")"
+echo
 
 ./bin/commit_release "$NEW_VERSION"
 
-echo ""
+echo
 
 # ============================================================================
 # STEP 6: Create Git Tag
 # ============================================================================
-echo -e "${BOLD}${BLUE}🏷️  Create Git Tag${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "$(rp_rule "6/9 CREATE GIT TAG")"
+echo
 
 read -p "An editor will open for you to write release notes. Press Enter to continue..."
 
-echo ""
+echo
 ./bin/tag_release "$NEW_VERSION"
 
-echo ""
+echo
 read -p "Press Enter to push to GitHub and publish..."
-echo ""
+echo
 
 # ============================================================================
 # STEP 7: Push to GitHub
 # ============================================================================
-echo -e "${BOLD}${BLUE}↑ Push to GitHub${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "$(rp_rule "7/9 PUSH TO GITHUB")"
+echo
 
 if ! ask_yes_no "Push commits and tags to GitHub?"; then
   echo "Aborted"
-  echo ""
+  echo
   echo "The release commit and tag exist locally. To push manually:"
   echo "  git push origin $CURRENT_BRANCH"
   echo "  git push origin v$NEW_VERSION"
-  echo ""
+  echo
   echo "Or to undo the release entirely:"
   echo "  git tag -d v$NEW_VERSION"
   echo "  git reset --hard origin/$CURRENT_BRANCH"
   exit 1
 fi
 
-echo ""
+echo
 
 # Check if gh CLI is available for CI monitoring
 WAIT_CI_FLAG=""
@@ -384,42 +358,40 @@ fi
 
 ./bin/push_release ${WAIT_CI_FLAG:+"$WAIT_CI_FLAG"}
 
-echo ""
+echo
 
 # ============================================================================
 # STEP 8: Publish Gem
 # ============================================================================
-echo -e "${BOLD}${BLUE}💎 Publish Gem to RubyGems${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "$(rp_rule "8/9 PUBLISH GEM TO RUBYGEMS")"
+echo
 
-echo "This will build and publish rails_pulse v$NEW_VERSION to RubyGems.org"
-echo ""
+echo "  This will build and publish rails_pulse v$NEW_VERSION to RubyGems.org"
+echo
 
 if ! ask_yes_no "Publish gem to RubyGems?"; then
-  echo -e "${YELLOW}⊘ Skipping gem publication${NC}"
-  echo ""
+  rp_warn "skipping gem publication"
+  echo
   echo "To publish manually:"
   echo "  bin/publish_gem"
 else
-  echo ""
+  echo
   ./bin/publish_gem
 fi
 
-echo ""
+echo
 
 # ============================================================================
 # STEP 9: GitHub Release
 # ============================================================================
-echo -e "${BOLD}${BLUE}🌐 GitHub Release${NC}"
-echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-echo ""
+echo "$(rp_rule "9/9 GITHUB RELEASE")"
+echo
 
 GITHUB_RELEASE_URL="https://github.com/railspulse/rails_pulse/releases/new?tag=v$NEW_VERSION"
 
-echo "Create a GitHub release at:"
-echo "  $GITHUB_RELEASE_URL"
-echo ""
+echo "  Create a GitHub release at:"
+echo "    $GITHUB_RELEASE_URL"
+echo
 
 if ask_yes_no "Open GitHub releases page in browser?"; then
   if command -v xdg-open &> /dev/null; then
@@ -431,30 +403,20 @@ if ask_yes_no "Open GitHub releases page in browser?"; then
   fi
 fi
 
-echo ""
+echo
 
 # ============================================================================
 # Complete!
 # ============================================================================
-echo -e "${BOLD}${GREEN}"
-cat << "EOF"
-┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
-┃                                                               ┃
-┃               ✅  Release Complete!                           ┃
-┃                                                               ┃
-┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛
-EOF
-echo -e "${NC}"
-echo ""
+echo "$(rp_rule "RELEASE COMPLETE" "$(rp_dim "v$NEW_VERSION")" "$RP_GREEN")"
+echo
 
-echo -e "${BOLD}Released version: ${GREEN}v$NEW_VERSION${NC}"
-echo ""
-echo "Links:"
-echo "  • RubyGems: https://rubygems.org/gems/rails_pulse/versions/$NEW_VERSION"
-echo "  • GitHub: https://github.com/railspulse/rails_pulse/releases/tag/v$NEW_VERSION"
-echo ""
-echo "Next steps:"
-echo "  1. Create GitHub release (if not done): $GITHUB_RELEASE_URL"
-echo "  2. Test installation: gem install rails_pulse -v $NEW_VERSION"
-echo "  3. Announce the release"
-echo ""
+echo "  Links:"
+echo "    - RubyGems: https://rubygems.org/gems/rails_pulse/versions/$NEW_VERSION"
+echo "    - GitHub: https://github.com/railspulse/rails_pulse/releases/tag/v$NEW_VERSION"
+echo
+echo "  Next steps:"
+echo "    1. Create GitHub release (if not done): $GITHUB_RELEASE_URL"
+echo "    2. Test installation: gem install rails_pulse -v $NEW_VERSION"
+echo "    3. Announce the release"
+echo
