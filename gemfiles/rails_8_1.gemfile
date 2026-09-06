@@ -8,7 +8,7 @@ gem "rdoc", ">= 7.2"
 
 group :test do
   gem "appraisal"
-  gem "puma"
+  gem "puma", "7.2.1"
   gem "capybara"
   gem "minitest-reporters"
   gem "mocha"

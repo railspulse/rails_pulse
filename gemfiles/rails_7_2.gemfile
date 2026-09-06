@@ -7,7 +7,7 @@ gem "rails", "~> 7.2.0"
 
 group :test do
   gem "appraisal"
-  gem "puma"
+  gem "puma", "7.2.1"
   gem "capybara"
   gem "minitest-reporters"
   gem "mocha"

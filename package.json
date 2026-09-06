@@ -14,9 +14,9 @@
     "clean": "rimraf public/rails-pulse-assets/rails-pulse*.{css,js,map} vendor/assets/stylesheets/*.{css,map} vendor/assets/javascripts/*.{js,map}",
     "lint:js": "eslint app/javascript scripts test/javascript",
     "lint:js:files": "eslint app/javascript scripts test/javascript --debug 2>&1 | grep 'Linting'",
-    "test:js": "vitest run",
-    "test:js:watch": "vitest",
-    "test:js:coverage": "vitest run --coverage"
+    "test:js": "NODE_OPTIONS=--no-experimental-webstorage vitest run",
+    "test:js:watch": "NODE_OPTIONS=--no-experimental-webstorage vitest",
+    "test:js:coverage": "NODE_OPTIONS=--no-experimental-webstorage vitest run --coverage"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.4",
