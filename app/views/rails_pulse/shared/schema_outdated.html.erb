@@ -1,0 +1,96 @@
+<%# Rendered with layout: false from ApplicationController#require_current_schema!.
+    Mirrors the application layout's setup screen (same head, stylesheet and
+    setup-* classes) without depending on the before_actions or table reads the
+    real layout needs — the schema behind this page is, by definition, not one
+    this gem version can query. %>
+<!DOCTYPE html>
+<html data-color-scheme="light">
+  <head>
+    <title>Schema upgrade required — Rails Pulse</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <%= csp_meta_tag %>
+
+    <script nonce="<%= rails_pulse_csp_nonce %>">
+      (function() {
+        var storageKey = 'color-scheme';
+        var root = document.documentElement;
+        var scheme = 'light';
+
+        try {
+          var stored = localStorage.getItem(storageKey);
+          if (stored === 'dark' || stored === 'light') {
+            scheme = stored;
+          } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            scheme = 'dark';
+          }
+        } catch (error) {
+          if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            scheme = 'dark';
+          }
+        }
+
+        root.setAttribute('data-color-scheme', scheme);
+      })();
+    </script>
+
+    <%# tag.link/script (not stylesheet_link_tag): middleware fallback paths must stay off asset_host. %>
+    <%= tag.link rel: "stylesheet", href: rails_pulse.asset_path("rails-pulse.css") %>
+    <%= tag.script "", src: rails_pulse.asset_path("rails-pulse-icons.js"), defer: true, nonce: rails_pulse_csp_nonce %>
+  </head>
+
+  <body class="header-layout">
+    <main id="main">
+      <div class="container flex flex-col gap">
+        <div class="setup-screen">
+          <div class="setup-screen__brand">
+            <%= tag.img src: rails_pulse.asset_path("rails-pulse-logo.png"),
+              width: 72,
+              height: 72,
+              alt: "Rails Pulse",
+              class: "setup-screen__logo" %>
+            <p class="setup-screen__brand-name">Rails Pulse</p>
+          </div>
+
+          <div class="setup-banner setup-banner--negative">
+            <p class="setup-banner__title">Rails Pulse <%= RailsPulse::VERSION %> needs a schema upgrade</p>
+            <p class="setup-banner__body">
+              The gem in this process is newer than the Rails Pulse tables it is connected to.
+              Request, job and exception tracking is paused, and the dashboard is unavailable,
+              until the database is migrated. Missing from the database:
+            </p>
+            <ul class="setup-banner__body">
+              <% missing.each do |table, columns| %>
+                <li>
+                  <code><%= table %></code>
+                  <% if columns == [ :table ] %>
+                    — table does not exist
+                  <% else %>
+                    — columns: <%= safe_join(columns.map { |column| tag.code(column) }, ", ") %>
+                  <% end %>
+                </li>
+              <% end %>
+            </ul>
+            <p class="setup-banner__body">Run these from the application root, then restart every process (web and workers) together:</p>
+            <% RailsPulse::SchemaCheck::UPGRADE_INSTRUCTIONS.each do |instruction| %>
+              <% command, _, comment = instruction.partition("#") %>
+              <code class="setup-banner__command"><span class="setup-banner__command-prefix">$</span>
+                <%= command.strip %><% if comment.present? %>
+                <span class="setup-banner__command-prefix"># <%= comment.strip %></span><% end %></code>
+            <% end %>
+            <p class="setup-banner__body">
+              A rolling restart that leaves older processes running against the migrated schema
+              breaks tracking the other way round. Back up the database first: the route identity
+              migration is irreversible.
+            </p>
+          </div>
+
+          <%= link_to "View upgrade docs →",
+            "https://railspulse.com/documentation/upgrade/",
+            class: "setup-screen__docs",
+            target: "_blank",
+            rel: "noopener" %>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>
