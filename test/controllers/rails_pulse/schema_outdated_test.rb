@@ -32,6 +32,16 @@ class RailsPulse::SchemaOutdatedTest < ActionDispatch::IntegrationTest
     assert_match(/not_a_real_column/, response.body)
   end
 
+  test "the upgrade page uses the dashboard's own stylesheet and setup-screen styling" do
+    make_schema_outdated
+
+    get rails_pulse.root_path
+
+    assert_select "link[rel=stylesheet][href*='rails-pulse']"
+    assert_select "div.setup-screen div.setup-banner.setup-banner--negative"
+    assert_select "code.setup-banner__command", count: RailsPulse::SchemaCheck::UPGRADE_INSTRUCTIONS.size
+  end
+
   test "every dashboard page is gated, not just the root" do
     make_schema_outdated
 
