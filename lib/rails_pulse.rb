@@ -5,6 +5,8 @@ require "rails_pulse/configuration"
 require "rails_pulse/paginator"
 require "rails_pulse/cleanup_service"
 require "rails_pulse/tracker"
+require "rails_pulse/standalone"
+require "rails_pulse/schema_check"
 
 module RailsPulse
   class << self

@@ -19,14 +19,19 @@ else
   MESSAGE
 end
 
+# Root-relative links and standalone authentication — see lib/rails_pulse/standalone.rb.
+RailsPulse.standalone!
+
 # Disable output buffering so logs appear immediately
 $stdout.sync = true
 $stderr.sync = true
 
 # Build the Rack app with session support
 require "rack/session/cookie"
+require "rack/static"
 require "securerandom"
 require_relative "rails_pulse/rack_compat"
+require_relative "rails_pulse/middleware/asset_server"
 
 # Simple Rack app that just serves the dashboard
 class DashboardApp
@@ -57,10 +62,38 @@ class DashboardApp
   end
 end
 
-# Add session middleware for the dashboard
-# Require SECRET_KEY_BASE for security
-secret_key = ENV.fetch("SECRET_KEY_BASE") do
-  raise "SECRET_KEY_BASE environment variable must be set for standalone dashboard"
+# Dashboard assets. RouteHelper#asset_path emits one of two URL shapes: the
+# gem-served fallback (/rails-pulse-assets/<version>/...) or, once
+# assets:precompile has run, the digested copies it installs under the host's
+# public/assets. In the main app those are served by AssetServer (inserted
+# into the host middleware stack by the engine) and by ActionDispatch::Static
+# or the CDN. This process calls the engine directly and has neither, so both
+# are served here; without them every dashboard page renders unstyled.
+use RailsPulse::Middleware::AssetServer,
+  RailsPulse::Engine.root.join("public").to_s,
+  urls: [ "/rails-pulse-assets" ],
+  headers: RailsPulse::Engine.asset_headers
+
+use Rack::Static,
+  urls: [ "/assets" ],
+  root: Rails.public_path.to_s,
+  header_rules: [ [ :all, RailsPulse::Engine.asset_headers ] ]
+
+# Add session middleware for the dashboard. The cookie is signed with
+# SECRET_KEY_BASE when set, otherwise with the host app's own secret_key_base
+# (config/environment.rb is already loaded above) — hosts on encrypted
+# credentials have no SECRET_KEY_BASE environment variable.
+secret_key = ENV["SECRET_KEY_BASE"].to_s
+if secret_key.empty?
+  secret_key = begin
+    Rails.application.secret_key_base.to_s
+  rescue StandardError
+    ""
+  end
+end
+if secret_key.empty?
+  raise "SECRET_KEY_BASE environment variable must be set for standalone dashboard " \
+        "(no Rails secret_key_base was available to fall back to)"
 end
 
 # `secure` keeps the session cookie off plain HTTP in production. Set

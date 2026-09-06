@@ -15,6 +15,7 @@ module RailsPulse
     protect_from_forgery with: :exception
 
     before_action :authenticate_rails_pulse_user!
+    before_action :require_current_schema!
     before_action :set_onboarding_state
     before_action :load_deployment_markers
 
@@ -132,6 +133,8 @@ module RailsPulse
       config = RailsPulse.configuration
       return unless config.authentication_enabled
 
+      return authenticate_standalone!(config) if RailsPulse.standalone?
+
       if config.authentication_method.nil? && config.authorize.nil?
         return fallback_http_basic_auth
       end
@@ -144,7 +147,39 @@ module RailsPulse
       run_authorize_predicate(config.authorize) if config.authorize
     rescue StandardError => e
       logger.warn "RailsPulse authentication failed: #{e.message}"
-      redirect_to config.authentication_redirect_path
+      # The redirect target is a host app page; from the standalone server
+      # it would point at a route this process does not serve.
+      if RailsPulse.standalone?
+        render plain: "Forbidden", status: :forbidden
+      else
+        redirect_to config.authentication_redirect_path
+      end
+    end
+
+    # The standalone server has the host's models but not its middleware:
+    # no host session store, Warden, or Devise helpers, and a different
+    # hostname so no shared cookie. A session-based `authentication_method`
+    # or `authorize` would raise (rescued above into a useless redirect) or,
+    # worse, be written so that it silently allows. Ignore both here; use
+    # `standalone_authentication_method` when set, else HTTP Basic.
+    def authenticate_standalone!(config)
+      hook = config.standalone_authentication_method
+      if hook.nil?
+        note_ignored_host_authentication(config)
+        return fallback_http_basic_auth
+      end
+
+      run_authentication_method(hook)
+    end
+
+    def note_ignored_host_authentication(config)
+      return if config.authentication_method.nil? && config.authorize.nil?
+      return if self.class.instance_variable_get(:@_rails_pulse_standalone_auth_noted)
+
+      self.class.instance_variable_set(:@_rails_pulse_standalone_auth_noted, true)
+      logger.info "RailsPulse: standalone dashboard ignores config.authentication_method / config.authorize " \
+                  "(host session helpers are not available here); using HTTP Basic auth. " \
+                  "Set config.standalone_authentication_method to customise."
     end
 
     def run_authentication_method(hook)
@@ -192,6 +227,30 @@ module RailsPulse
         else
           ActiveSupport::SecurityUtils.secure_compare(username.to_s, expected_username) &&
             ActiveSupport::SecurityUtils.secure_compare(password.to_s, expected_password)
+        end
+      end
+    end
+
+    # New gem code against un-migrated tables would otherwise 500 on every
+    # page that touches a missing column. Runs after authentication so the
+    # schema report is not exposed to anonymous callers.
+    def require_current_schema!
+      return if RailsPulse::SchemaCheck.current?
+
+      RailsPulse::SchemaCheck.warn_once!
+      missing = RailsPulse::SchemaCheck.missing
+
+      respond_to do |format|
+        format.html do
+          render template: "rails_pulse/shared/schema_outdated", layout: false,
+                 status: :service_unavailable, locals: { missing: missing }
+        end
+        format.any do
+          render json: {
+            error: "Rails Pulse #{RailsPulse::VERSION} requires a schema upgrade",
+            missing: missing,
+            instructions: RailsPulse::SchemaCheck::UPGRADE_INSTRUCTIONS
+          }, status: :service_unavailable
         end
       end
     end

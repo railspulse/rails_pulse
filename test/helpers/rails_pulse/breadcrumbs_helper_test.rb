@@ -221,6 +221,37 @@ class RailsPulse::BreadcrumbsHelperTest < ActionView::TestCase
     assert_equal @route.to_breadcrumb, crumbs[2][:title]
   end
 
+  # ============================================================================
+  # Root Mount Point Tests (standalone server, or `mount RailsPulse::Engine => "/"`)
+  # ============================================================================
+
+  test "breadcrumbs build single-slash paths when the engine is served at root" do
+    RailsPulse::Engine.routes.stubs(:find_script_name).returns("")
+    setup_request_path("/routes/#{@route.id}")
+
+    crumbs = breadcrumbs
+
+    assert_equal [ "/", "/routes", "/routes/#{@route.id}" ], crumbs.map { |crumb| crumb[:path] }
+    assert_equal [ "Home", "Routes", @route.to_breadcrumb ], crumbs.map { |crumb| crumb[:title] }
+  end
+
+  test "breadcrumbs nested collection links to the parent when served at root" do
+    RailsPulse::Engine.routes.stubs(:find_script_name).returns("")
+    setup_request_path("/jobs/#{@job.id}/runs/#{@job_run.id}")
+
+    crumbs = breadcrumbs
+
+    assert_equal "/jobs/#{@job.id}", crumbs[2][:path]
+    assert_no_match(%r{\A//}, crumbs.map { |crumb| crumb[:path] }.join(" "))
+  end
+
+  test "breadcrumbs are empty at the root of a root-mounted engine" do
+    RailsPulse::Engine.routes.stubs(:find_script_name).returns("")
+    setup_request_path("/")
+
+    assert_empty breadcrumbs
+  end
+
   # Error Handling Tests
 
   test "breadcrumbs handles missing resources gracefully" do

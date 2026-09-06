@@ -84,7 +84,7 @@ module RailsPulse
 
         headers = @middleware.send(:cache_headers)
 
-        assert_includes headers["Cache-Control"], "immutable"
+        assert_includes headers["cache-control"], "immutable"
       ensure
         Rails.unstub(:env)
       end
@@ -94,7 +94,7 @@ module RailsPulse
 
         headers = @middleware.send(:cache_headers)
 
-        assert_includes headers["Cache-Control"], "no-cache"
+        assert_includes headers["cache-control"], "no-cache"
       ensure
         Rails.unstub(:env)
       end

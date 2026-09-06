@@ -54,16 +54,26 @@ The dashboard runs as a separate Rack application process.
 ```ruby
 # config/initializers/rails_pulse.rb
 RailsPulse.configure do |config|
-  config.mount_dashboard = false  # Disable embedded dashboard
+  config.mount_dashboard = false  # Skip the dashboard asset middleware in the main app
 end
 ```
 
-**Important:** When `mount_dashboard = false`, you should also remove (or comment out) the `mount RailsPulse::Engine` line from your `config/routes.rb` to prevent the engine from being accessible through your main app. The `mount_dashboard` setting controls whether RailsPulse initializes dashboard-related middleware and assets, while the routes mounting controls URL accessibility.
+`mount_dashboard = false` stops the main app inserting the dashboard asset
+middleware. It does not affect tracking, and it does not unmount the engine:
+whether `/rails_pulse` stays reachable through the main app is decided by the
+`mount RailsPulse::Engine` line in `config/routes.rb`. Keep it if other parts
+of your app link to `rails_pulse.root_path`; remove it to make the standalone
+server the only way in. The standalone process ignores the mount path either
+way — its links are generated root-relative (`RailsPulse.standalone?` is true
+there), so it never produces `/rails_pulse/...` URLs against itself.
 
-```ruby
-# config/routes.rb - Comment this out for standalone mode
-# mount RailsPulse::Engine => "/rails_pulse"
-```
+**Authentication:** the standalone process has your models but not your
+app's session, Warden or Devise helpers, and runs on its own hostname, so
+`config.authentication_method` and `config.authorize` are ignored there. It
+uses HTTP Basic auth (`RAILS_PULSE_USERNAME`, default `admin`, and
+`RAILS_PULSE_PASSWORD`) unless you set `config.standalone_authentication_method`
+to a proc that renders or redirects to deny (the same contract as
+`authentication_method`).
 
 **Standalone Server:**
 
@@ -85,8 +95,10 @@ the development database.
 
 Two environment variables are required or strongly recommended:
 
-- `SECRET_KEY_BASE` — the server refuses to start without it; it signs the
-  dashboard's session cookie.
+- `SECRET_KEY_BASE` — signs the dashboard's session cookie. When it is not
+  set the server falls back to the host app's `secret_key_base` (from
+  encrypted credentials or `config/secrets`), and refuses to start only if
+  neither is available.
 - `RAILS_ENV=production` — see above.
 
 The session cookie is marked `Secure` in production, so it is only sent over
@@ -154,7 +166,7 @@ server {
 
 **Disadvantages:**
 - ❌ Requires additional process/container
-- ❌ Separate authentication setup
+- ❌ Separate authentication setup (HTTP Basic by default; see above)
 - ❌ Slightly more complex deployment
 
 ---
@@ -236,6 +248,8 @@ curl http://localhost:3001/health
    ```ruby
    config.mount_dashboard = false
    ```
+   Optionally remove `mount RailsPulse::Engine` from `config/routes.rb` so
+   the embedded dashboard is no longer reachable.
 
 4. **Deploy main app changes**
 

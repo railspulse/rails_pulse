@@ -314,6 +314,18 @@ RailsPulse.configure do |config|
   #   end
   # }
 
+  # STANDALONE DASHBOARD (bin/rails_pulse_server, see docs/deployment-modes.md):
+  # that process has your models but not your app's session, Warden or Devise
+  # helpers, and runs on its own hostname, so the hooks above are ignored there.
+  # By default it uses HTTP Basic auth (RAILS_PULSE_USERNAME / RAILS_PULSE_PASSWORD).
+  # Set this to run something else instead; same rules as authentication_method
+  # (deny by rendering or redirecting, or by returning false).
+  # config.standalone_authentication_method = proc {
+  #   authenticate_or_request_with_http_token do |token, _options|
+  #     ActiveSupport::SecurityUtils.secure_compare(token, ENV["RAILS_PULSE_DASHBOARD_TOKEN"].to_s)
+  #   end
+  # }
+
   # ====================================================================================================
   #                                             DEPLOYMENT TRACKING
   # ====================================================================================================
@@ -424,6 +436,12 @@ RailsPulse.configure do |config|
 
   # Show a dashboard banner when summary data is stale (default: true)
   # config.warn_on_stale_summaries = true
+
+  # When this gem version is newer than the Rails Pulse tables it is connected
+  # to (deployed before `db:migrate`, or a rolling restart), pause tracking after
+  # one logged warning and answer every dashboard page with a 503 that lists the
+  # upgrade commands, instead of erroring on each request (default: true).
+  # config.schema_check_enabled = true
 
   # Set to false to skip dashboard middleware and asset serving entirely.
   # Useful for standalone/API-only deployments that use a separate dashboard app.

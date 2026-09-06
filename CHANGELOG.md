@@ -15,6 +15,71 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   accepts. A new `rake rails_pulse:finish_deployment[revision]` sets `finished_at` on the
   latest deployment for that revision, so release scripts can close a deployment without
   a token or network access to the dashboard.
+- **Standalone mode is now something the gem knows about.** `RailsPulse.standalone?`
+  is true in the process started by `rails_pulse_server`, and two things change with
+  it. Links: engine helpers reached through the `rails_pulse` view proxy used to ask the
+  host's route set where the engine is mounted and prefix that path, so a dashboard
+  served at `/` linked to `/rails_pulse/routes` and 404ed against itself; the standalone
+  process now generates root-relative links. Authentication: the standalone process has
+  the host's models but not its session, Warden or Devise helpers (and a different
+  hostname, so no shared cookie), so `authentication_method` and `authorize` are ignored
+  there in favour of the new `config.standalone_authentication_method`, falling back to
+  HTTP Basic against `RAILS_PULSE_USERNAME` / `RAILS_PULSE_PASSWORD`. An authentication
+  error in standalone mode renders 403 instead of redirecting to a host login page the
+  process does not serve. `docs/deployment-modes.md` no longer tells standalone users to
+  comment out the engine mount — keeping it is fine and lets the host keep linking to
+  `rails_pulse.root_path`.
+- **`rails rails_pulse:status`.** One shell command that says where an install stands:
+  whether the schema is current for the running gem (via `RailsPulse::SchemaCheck`), gem
+  migrations not yet copied into the app, migration files present but not run, whether
+  `rails_pulse:migrate_routes` and the unrecognised-path index are done, settings this
+  version added that the initializer does not mention, the tracking and authentication
+  configuration, and when summaries last ran. Everything that needs action is repeated in
+  a closing list and the task exits 1, so a release script can stop before serving
+  traffic. `RailsPulse::Installers::ConfigUpdater.missing` is the read-only counterpart
+  of `update` that backs the initializer check.
+- **Schema drift guard.** New gem code running against tables that have not been
+  migrated for it — a deploy that shipped the gem before `db:migrate`, or a rolling
+  restart that left old and new processes side by side — used to log "Failed to
+  persist tracking data" on every request and 500 every dashboard page that touched a
+  missing column. `RailsPulse::SchemaCheck` now checks, once per process, that every
+  Rails Pulse table exists and that a short explicit list of sentinel columns (the ones
+  incremental migrations have added, e.g. `routes.http_methods`, `requests.method`) is
+  present. While anything is missing,
+  request, job and exception tracking pause after a single logged warning that names
+  the missing tables and columns and the upgrade commands, and the dashboard answers
+  every page with a 503 explaining the same (JSON for non-HTML requests). Any database
+  error during the comparison is treated as "not outdated", so an app booting without a
+  database (`assets:precompile`, `db:create`) is never blocked, and
+  `config.schema_check_enabled = false` disables the check.
+
+### Fixed
+
+- **Breadcrumbs no longer produce protocol-relative links when the engine is served at
+  `/`.** With an empty mount prefix (the standalone server, or a host that mounts the
+  engine at root) the helper built `"/" + "/queries"` — `//queries`, which browsers
+  resolve to a host called `queries`. The prefix is now empty in that case, so crumbs
+  link to `/queries`.
+- **The standalone dashboard server now serves its own assets.** `rails_pulse_server.ru`
+  calls the engine directly, bypassing the host middleware stack — which is where
+  `RailsPulse::Middleware::AssetServer` (the `/rails-pulse-assets/...` fallback) and
+  `ActionDispatch::Static` (the digested `/assets/...` copies that `assets:precompile`
+  installs) live. Every standalone page therefore rendered with 404s for its stylesheet
+  and scripts. The rackup now serves both paths itself.
+- **Asset responses are Rack 3 compliant.** `Engine.asset_headers` and
+  `AssetServer#cache_headers` used mixed-case header names (`Cache-Control`, `Vary`,
+  `Expires`, `Pragma`). Rack 3 requires lowercase, and `Rack::Lint` — which `rackup`
+  inserts in its development environment — turned every asset request into a 500.
+- **`rails_pulse_server` passes the environment through to `rackup`.** `rackup`
+  defaults to its own `development` environment regardless of `RAILS_ENV`, wrapping the
+  dashboard in `Rack::Lint` and `Rack::ShowExceptions` in production. The executable now
+  passes `-E` from `RACK_ENV`, then `RAILS_ENV`, unless given explicitly.
+- **The standalone server falls back to the host's `secret_key_base`.** It required a
+  literal `SECRET_KEY_BASE` environment variable, which hosts on encrypted credentials do
+  not have, even though `config/environment.rb` (and so
+  `Rails.application.secret_key_base`) was already loaded. It still refuses to boot when
+  neither is available.
+
 ### Security
 
 - **Development dependencies: mail stack and json updated**: mail 2.9.0 → 2.9.1

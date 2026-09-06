@@ -21,5 +21,14 @@ unless args.any? { |arg| arg.start_with?("-p") || arg == "--port" }
   args.unshift("-p", port)
 end
 
+# rackup's own environment defaults to "development" regardless of RAILS_ENV,
+# and in that mode it wraps the app in Rack::Lint and Rack::ShowExceptions.
+# Follow RACK_ENV, then RAILS_ENV, so a production dashboard is served without
+# the development middleware (an explicit -E/--env still wins).
+rack_env = ENV["RACK_ENV"].to_s.empty? ? ENV["RAILS_ENV"] : ENV["RACK_ENV"]
+unless rack_env.to_s.empty? || args.any? { |arg| arg.start_with?("-E") || arg == "--env" }
+  args.unshift("-E", rack_env)
+end
+
 # Execute rackup with the server file
 exec("rackup", rackup_file, *args)
