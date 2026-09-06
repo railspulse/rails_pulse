@@ -15,6 +15,13 @@ require_relative "smoke_test_helpers"
 # visible? returning false excludes the detached node from selector results.
 # visible_text/all_text returning "" lets assert_no_selector finish building its
 # ExpectationNotMet message (which maps .text over matches) so synchronize can retry.
+#
+# click hits the same detached-node error when the element is found right as a prior
+# navigation/re-render swaps it out (e.g. clicking the global-filters button right after a
+# page reload). Capybara::Node::Element#click already wraps the driver call in
+# `synchronize`, which reloads the element and retries — but only for errors in
+# `driver.invalid_element_errors` (StaleElementReferenceError et al), not this UnknownError.
+# Re-raising as StaleElementReferenceError routes it into that existing retry path.
 module CapybaraDetachedNodeFix
   DETACHED_NODE_MSG = "Node with given id does not belong to the document"
 
@@ -37,6 +44,13 @@ module CapybaraDetachedNodeFix
   rescue Selenium::WebDriver::Error::UnknownError => e
     raise unless detached_node_error?(e)
     ""
+  end
+
+  def click(...)
+    super
+  rescue Selenium::WebDriver::Error::UnknownError => e
+    raise unless detached_node_error?(e)
+    raise Selenium::WebDriver::Error::StaleElementReferenceError, e.message
   end
 
   private

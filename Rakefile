@@ -9,6 +9,7 @@ load "rails/tasks/engine.rake"
 
 require "json"
 require "fileutils"
+require "open3"
 require_relative "test/support/rails_pulse_console"
 
 # ---------------------------------------------------------------------------
@@ -92,12 +93,23 @@ def run_pulse_session(meta)
   exit 1 unless passed
 end
 
+# Runs `command`, capturing combined stdout/stderr. Silent on success — the
+# step's own [ok] row is the whole signal, so a passing RuboCop/Brakeman/npm/
+# gem/bundler run doesn't bury it in tool banners. Raises with the captured
+# output as the message on failure, so pulse_steps' failure rendering shows
+# exactly what the tool printed, with none of the green-path noise mixed in.
+def pulse_sh(command, env = {})
+  output, status = Open3.capture2e(env, command)
+  raise output unless status.success?
+end
+
 # Runs a numbered list of [label, block] steps under one heading, printing an
 # [ok]/[!!] row for each. A step's block raises to fail it; the remaining
 # steps still run. Returns the list of failed labels.
 def pulse_steps(title, meta, steps)
   failed = []
   started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+  label_width = steps.map { |label, _| label.length }.max
 
   puts
   puts RailsPulseConsole.rule(title, meta)
@@ -110,10 +122,10 @@ def pulse_steps(title, meta, steps)
     begin
       block.call
       elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - step_started
-      puts RailsPulseConsole.line(:ok, "#{label} #{RailsPulseConsole.dim(RailsPulseConsole.duration(elapsed))}")
+      puts RailsPulseConsole.line(:ok, "#{label.ljust(label_width)}  #{RailsPulseConsole.dim(format('%7s', RailsPulseConsole.duration(elapsed)))}")
     rescue => e
       elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - step_started
-      puts RailsPulseConsole.line(:fail, "#{label} #{RailsPulseConsole.dim(RailsPulseConsole.duration(elapsed))}")
+      puts RailsPulseConsole.line(:fail, "#{label.ljust(label_width)}  #{RailsPulseConsole.dim(format('%7s', RailsPulseConsole.duration(elapsed)))}")
       e.message.each_line { |line| puts "        #{RailsPulseConsole.paint(line.chomp, :red)}" }
       failed << label
     end
@@ -245,36 +257,52 @@ task :test_coverage do
   puts
 end
 
-desc "Setup database for specific Rails version and database"
-task :test_setup_for_version, [ :database, :rails_version ] do |t, args|
-  database = args[:database] || ENV["DB"] || "sqlite3"
-  rails_version = args[:rails_version] || "rails-8-0"
-
-  puts
-  puts RailsPulseConsole.rule("TEST SETUP", RailsPulseConsole.dim("#{database} · #{rails_version.tr('-', ' ')}"))
-  puts
+# Prepares the dummy app's database for one database/Rails combination.
+# quiet: true (used by test_matrix) suppresses this method's own heading and
+# per-line output entirely — the caller's own row already reports pass/fail
+# for the whole combination, so a nested "TEST SETUP" box here would just be
+# another layer of chrome around nothing new. On failure, quiet mode raises
+# with the setup failure wrapped around the captured command output instead
+# of printing locally, so pulse_steps shows it once, in the right place.
+def perform_test_setup_for_version(database, rails_version, quiet: false)
+  unless quiet
+    puts
+    puts RailsPulseConsole.rule("TEST SETUP", RailsPulseConsole.dim("#{database} · #{rails_version.tr('-', ' ')}"))
+    puts
+  end
 
   begin
-    Rake::Task[:sync_test_schema].reenable
-    Rake::Task[:sync_test_schema].invoke
+    source = "db/rails_pulse_schema.rb"
+    dest = "test/dummy/db/rails_pulse_schema.rb"
+    FileUtils.cp(source, dest) if File.exist?(source)
+    puts RailsPulseConsole.line(:ok, "synced schema #{RailsPulseConsole.dim("#{source} -> #{dest}")}") unless quiet
 
     schema_file = "test/dummy/db/schema.rb"
     if File.exist?(schema_file)
       File.delete(schema_file)
-      puts RailsPulseConsole.line(:ok, "removed stale schema.rb")
+      puts RailsPulseConsole.line(:ok, "removed stale schema.rb") unless quiet
     end
 
-    sh "DB=#{database} bundle exec appraisal #{rails_version} rails db:drop db:create db:migrate RAILS_ENV=test", verbose: false
-    puts RailsPulseConsole.line(:ok, "#{database} + #{rails_version.tr('-', ' ')} database ready")
+    # RUBYOPT=-W0 silences duplicate-constant warnings from Ruby loading two
+    # different rdoc versions across the root and per-Rails-version Gemfile.locks.
+    pulse_sh("bundle exec appraisal #{rails_version} rails db:drop db:create db:migrate RAILS_ENV=test",
+      "DB" => database, "RUBYOPT" => "-W0")
+    puts RailsPulseConsole.line(:ok, "#{database} + #{rails_version.tr('-', ' ')} database ready") unless quiet
   rescue => e
-    puts RailsPulseConsole.line(:fail, "database setup failed")
-    e.message.each_line { |line| puts "        #{RailsPulseConsole.paint(line.chomp, :red)}" }
-    # Re-raise (rather than exit) so a caller running this in-process, such as
-    # test_matrix's per-combination step, sees a normal failure instead of a
-    # bare `exit` that would kill the whole matrix run.
-    raise
+    if quiet
+      raise "database setup failed:\n#{e.message}"
+    else
+      puts RailsPulseConsole.line(:fail, "database setup failed")
+      e.message.each_line { |line| puts "        #{RailsPulseConsole.paint(line.chomp, :red)}" }
+      raise
+    end
   end
-  puts
+  puts unless quiet
+end
+
+desc "Setup database for specific Rails version and database"
+task :test_setup_for_version, [ :database, :rails_version ] do |t, args|
+  perform_test_setup_for_version(args[:database] || ENV["DB"] || "sqlite3", args[:rails_version] || "rails-8-0")
 end
 
 desc "Test all database and Rails version combinations"
@@ -285,12 +313,34 @@ task :test_matrix do
 
   steps = databases.product(rails_versions).map do |database, rails_version|
     label = "#{database} + #{rails_version.tr('-', ' ')}"
-    block = -> {
-      Rake::Task[:test_setup_for_version].reenable
-      Rake::Task[:test_setup_for_version].invoke(database, rails_version)
+    test_env = { "DB" => database, "MYSQL_PASSWORD" => ENV.fetch("MYSQL_PASSWORD", ""), "RUBYOPT" => "-W0" }
 
-      sh "DB=#{database} MYSQL_PASSWORD=#{ENV.fetch('MYSQL_PASSWORD', '')} bundle exec appraisal #{rails_version} rails test #{base_test_paths}", verbose: false
-      sh "DB=#{database} MYSQL_PASSWORD=#{ENV.fetch('MYSQL_PASSWORD', '')} bundle exec appraisal #{rails_version} rails test test/migrations", verbose: false
+    # Each phase can run 30-90s+ with no output of its own (pulse_sh captures
+    # it silently so a passing run doesn't bury the step's [ok] row), so a
+    # combination with no sub-step marker looks stuck. On a TTY this updates
+    # one line in place; otherwise it prints plain lines so CI logs still
+    # show forward progress.
+    block = -> {
+      progress = ->(msg) do
+        if RailsPulseConsole.fancy?
+          print "\r\e[2K        #{RailsPulseConsole.dim(msg)}"
+        else
+          puts "        #{msg}"
+        end
+      end
+
+      begin
+        progress.call("setting up database…")
+        perform_test_setup_for_version(database, rails_version, quiet: true)
+
+        progress.call("running main suite…")
+        pulse_sh("bundle exec appraisal #{rails_version} rails test #{base_test_paths}", test_env)
+
+        progress.call("running migrations…")
+        pulse_sh("bundle exec appraisal #{rails_version} rails test test/migrations", test_env)
+      ensure
+        print "\r\e[2K" if RailsPulseConsole.fancy?
+      end
     }
     [ label, block ]
   end
@@ -306,7 +356,7 @@ task :test_release do
   vendor_js = "vendor/assets/javascripts"
 
   verify_assets = -> {
-    sh "npm run build", verbose: false
+    pulse_sh("npm run build --silent")
     { public_assets => "public assets", vendor_css => "vendor CSS", vendor_js => "vendor JS" }.each do |dir, label|
       raise "#{label} directory is missing or empty (#{dir})" unless Dir.exist?(dir) && !Dir.empty?(dir)
     end
@@ -314,7 +364,7 @@ task :test_release do
 
   verify_gem_build = -> {
     begin
-      sh "gem build rails_pulse.gemspec", verbose: false
+      pulse_sh("gem build rails_pulse.gemspec")
     ensure
       Dir.glob("rails_pulse-*.gem").each { |f| File.delete(f) }
     end
@@ -325,14 +375,14 @@ task :test_release do
       git_status = `git status --porcelain`.strip
       raise "working directory is not clean:\n#{git_status}" unless git_status.empty?
     } ],
-    [ "Updating appraisal gemfiles", -> { sh "bundle exec appraisal install", verbose: false } ],
+    [ "Updating appraisal gemfiles", -> { pulse_sh("bundle exec appraisal install") } ],
     [ "Syncing test schema", -> { sh "rake sync_test_schema", verbose: false } ],
     [ "Verifying dummy app migrations", -> { sh "rake verify_dummy_migrations", verbose: false } ],
-    [ "Running RuboCop linting", -> { sh "bundle exec rubocop", verbose: false } ],
+    [ "Running RuboCop linting", -> { pulse_sh("bundle exec rubocop") } ],
     [ "Running Brakeman security scanner", -> { sh "rake brakeman", verbose: false } ],
-    [ "Installing Node dependencies", -> { sh "npm install", verbose: false } ],
-    [ "Running ESLint JS linting", -> { sh "npm run lint:js", verbose: false } ],
-    [ "Running JavaScript unit tests", -> { sh "npm run test:js", verbose: false } ],
+    [ "Installing Node dependencies", -> { pulse_sh("npm install --no-fund --no-audit") } ],
+    [ "Running ESLint JS linting", -> { pulse_sh("npm run lint:js --silent") } ],
+    [ "Running JavaScript unit tests", -> { pulse_sh("npm run test:js --silent") } ],
     [ "Building production assets", verify_assets ],
     [ "Verifying gem builds correctly", verify_gem_build ],
     [ "Running generator tests", -> { sh "./bin/test_generators", verbose: false } ],
@@ -363,7 +413,8 @@ task :brakeman do
     result = Brakeman.run(
       app_path: ".",
       config_file: "config/brakeman.yml",
-      print_report: true,
+      quiet: true,
+      print_report: false,
       pager: false
     )
 
@@ -373,6 +424,11 @@ task :brakeman do
 
     puts
     if unignored_warnings.any? || result.errors.any?
+      # Only show the full report when there's something to act on — a clean
+      # scan doesn't need the check list and file-by-file breakdown repeated.
+      puts result.report.format(:to_s)
+      puts
+
       detail = [ RailsPulseConsole.plural(unignored_warnings.count, "warning") ]
       detail << "#{ignored_count} ignored" if ignored_count > 0
       detail << RailsPulseConsole.plural(result.errors.count, "error")
