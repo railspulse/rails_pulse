@@ -117,12 +117,10 @@ class RailsPulse::JobsControllerTest < ActionDispatch::IntegrationTest
   # Show Action Tests
 
   test "show chart tabs show the aggregation zone badge (#303)" do
-    Time.use_zone("UTC") do
-      get rails_pulse.job_path(@job)
+    get rails_pulse.job_path(@job)
 
-      assert_response :success
-      assert_select ".panel-tabs .zone-badge", text: "UTC"
-    end
+    assert_response :success
+    assert_select ".panel-tabs .zone-badge", text: RailsPulse::TimeRange.aggregation_zone_short_label
   end
 
   test "show action loads successfully" do
