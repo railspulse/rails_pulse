@@ -314,6 +314,61 @@ module RailsPulse
 
         assert_predicate result, :error?
       end
+
+      # --- Coverage ---
+
+      COVERAGE_RESPONSE = {
+        "as_of" => "2026-09-26T12:00:00Z",
+        "telemetry" => {
+          "requests" => { "oldest" => "2026-08-27T12:00:00Z", "newest" => "2026-09-26T11:59:00Z", "count" => 5000, "tracked" => true },
+          "job_runs" => { "oldest" => nil, "newest" => nil, "count" => 0, "tracked" => true },
+          "exceptions" => { "tracked" => false, "reason" => "config.track_exceptions is false" }
+        },
+        "summaries" => { "hourly_from" => "2026-09-24T12:00:00Z", "hourly_through" => "2026-09-26T11:00:00Z", "stale" => false, "note" => nil },
+        "retention" => { "raw_records" => { "seconds" => 2_592_000, "days" => 30.0 } },
+        "collection" => { "known" => true, "live_writers" => 2, "dropped_last_hour" => 0, "gap_suspected" => false, "note" => nil }
+      }.freeze
+
+      test "coverage reports the span of what was recorded" do
+        _, data = call(Tools::Coverage, client("/coverage" => COVERAGE_RESPONSE))
+
+        assert_equal 5000, data["telemetry"]["requests"]["count"]
+        assert_includes data["summary"], "5000 rows"
+      end
+
+      # An agent that reads "no errors" without this caveat reports an
+      # all-clear the data does not support.
+      test "coverage warns that untracked exceptions make an empty result meaningless" do
+        _, data = call(Tools::Coverage, client("/coverage" => COVERAGE_RESPONSE))
+
+        assert data["next_steps"].any? { |s| s.include?("Exceptions are not being recorded") }
+      end
+
+      test "coverage relays a collection gap as a next step" do
+        gapped = COVERAGE_RESPONSE.merge(
+          "collection" => { "known" => true, "live_writers" => 0, "dropped_last_hour" => 12, "gap_suspected" => true,
+                            "note" => "12 request(s) were dropped in the last hour because the writer queue was full, so counts understate traffic." }
+        )
+        _, data = call(Tools::Coverage, client("/coverage" => gapped))
+
+        assert_includes data["summary"], "Collection gap suspected"
+        assert data["next_steps"].any? { |s| s.include?("understate traffic") }
+      end
+
+      test "coverage says nothing was recorded rather than implying health" do
+        empty = COVERAGE_RESPONSE.merge(
+          "telemetry" => { "requests" => { "oldest" => nil, "newest" => nil, "count" => 0, "tracked" => true } }
+        )
+        _, data = call(Tools::Coverage, client("/coverage" => empty))
+
+        assert_includes data["summary"], "No requests have been recorded"
+      end
+
+      test "coverage handles API error" do
+        result = Tools::Coverage.call(server_context: { client: error_client })
+
+        assert_predicate result, :error?
+      end
     end
   end
 end

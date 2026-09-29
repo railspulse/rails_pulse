@@ -47,6 +47,9 @@ RailsPulse::Engine.routes.draw do
     resources :job_runs,    only: :index
     resources :deployments, only: :index
     resources :exceptions,  only: %i[index show]
+
+    # Whether the data is there, rather than a question about the data.
+    get "coverage", to: "coverage#show", as: :coverage
   end
 
   # CSP compliance testing (development/test only)

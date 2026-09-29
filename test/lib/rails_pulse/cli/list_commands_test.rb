@@ -6,6 +6,7 @@ require "rails_pulse/cli/jobs"
 require "rails_pulse/cli/job_runs"
 require "rails_pulse/cli/exceptions"
 require "rails_pulse/cli/deployments"
+require "rails_pulse/cli/coverage"
 
 module RailsPulse
   module CLI
@@ -281,6 +282,50 @@ module RailsPulse
         run_cmd(Exceptions)
 
         assert_equal %w[limit offset], captured_params.keys
+      end
+
+      # --- Coverage ---
+
+      COVERAGE_RESPONSE = {
+        "as_of" => "2026-09-26T12:00:00Z",
+        "telemetry" => {
+          "requests" => { "oldest" => "2026-08-27T12:00:00Z", "newest" => "2026-09-26T11:59:00Z", "count" => 5000, "tracked" => true },
+          "exceptions" => { "tracked" => false, "reason" => "config.track_exceptions is false" }
+        },
+        "summaries" => { "hourly_from" => "2026-09-24T12:00:00Z", "hourly_through" => "2026-09-26T11:00:00Z", "stale" => false },
+        "retention" => { "raw_records" => { "days" => 30.0 }, "hourly_summaries" => { "days" => 2.0 }, "events" => { "days" => 90.0 } },
+        "collection" => { "known" => true, "live_writers" => 2, "queue_depth" => 0, "queue_size" => 1000,
+                          "dropped_last_hour" => 0, "last_heartbeat_at" => "2026-09-26T11:59:30Z", "gap_suspected" => false }
+      }.freeze
+
+      def run_coverage(options = {})
+        cmd = Coverage.new([], { "json" => false }.merge(options.transform_keys(&:to_s)))
+        capture_io { cmd.show }
+      end
+
+      test "coverage show calls /coverage and prints each section" do
+        stub_list(COVERAGE_RESPONSE)
+        out, _err = run_coverage
+
+        assert_includes @captured_uri.path, "/coverage"
+        assert_match(/Telemetry/, out)
+        assert_match(/Summaries/, out)
+        assert_match(/Retention/, out)
+        assert_match(/Collection/, out)
+      end
+
+      test "coverage show names a kind that is not tracked" do
+        stub_list(COVERAGE_RESPONSE)
+        out, _err = run_coverage
+
+        assert_match(/exceptions\s+not tracked/, out)
+      end
+
+      test "coverage show prints raw JSON with --json" do
+        stub_list(COVERAGE_RESPONSE)
+        out, _err = run_coverage(json: true)
+
+        assert_equal COVERAGE_RESPONSE, JSON.parse(out)
       end
 
       # --- Deployments ---

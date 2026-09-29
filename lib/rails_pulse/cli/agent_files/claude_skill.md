@@ -26,6 +26,7 @@ All tools are read-only. Each returns a `summary` and `next_steps`.
 |------|---------|
 | `rails_pulse_routes` | Discover endpoints: request volume, latency and errors per route |
 | `rails_pulse_slow_requests` | The slowest endpoints for a period |
+| `rails_pulse_coverage` | What has been recorded, how recently, and any collection gaps |
 | `rails_pulse_errors` | Recent 4xx/5xx responses grouped by endpoint |
 | `rails_pulse_exceptions` | Exception groups with status, occurrence count, location and latest message |
 | `rails_pulse_exception` | One group's recent occurrences with full backtraces, request, params and deploy SHA |
@@ -123,6 +124,7 @@ makes them a mix of both versions.
 
 - **SQL is not always the cause.** External API calls, serialization, view rendering and application logic slow requests too.
 - **Use more than one tool.** Cross-reference latency with error rates, SQL timing and job performance before concluding.
+- **Confirm the data exists before reporting an all-clear.** An empty result means nothing was recorded, which only means nothing happened when collection was healthy over that window. Call `rails_pulse_coverage` before concluding a period was clean, and say so when it flags a gap, stale summaries or a kind that is not tracked.
 - **Check the error rate.** A fast endpoint with a high error rate may be failing early rather than performing well.
 - **Read percentiles, not just averages.** A low average with a high p95 or p99 means intermittent trouble.
 - **Weigh request volume.** A slow endpoint nobody calls may not be worth the work.

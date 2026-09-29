@@ -31,6 +31,7 @@ require_relative "tools/exceptions"
 require_relative "tools/exception_detail"
 require_relative "tools/routes"
 require_relative "tools/deployments"
+require_relative "tools/coverage"
 
 module RailsPulse
   module Mcp
@@ -66,7 +67,8 @@ module RailsPulse
           Tools::Jobs,
           Tools::Exceptions,
           Tools::ExceptionDetail,
-          Tools::Deployments
+          Tools::Deployments,
+          Tools::Coverage
         ]
       end
     end

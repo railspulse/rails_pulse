@@ -8,6 +8,7 @@ require_relative "jobs"
 require_relative "job_runs"
 require_relative "exceptions"
 require_relative "deployments"
+require_relative "coverage"
 require_relative "mcp"
 
 module RailsPulse
@@ -31,6 +32,8 @@ module RailsPulse
                "List exception groups with status, search, and time filters")
       register(Deployments, "deployments", "deployments SUBCOMMAND",
                "List recorded deployments with optional time filters")
+      register(Coverage,  "coverage",  "coverage SUBCOMMAND",
+               "What has been recorded, how recently, and any collection gaps")
       register(Mcp,       "mcp",       "mcp",
                "Start MCP server for AI coding agents (Claude Code, Codex, Cursor)")
 

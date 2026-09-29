@@ -43,6 +43,7 @@ All tools are read-only. Each returns a `summary` and `next_steps`.
 |------|---------|
 | `rails_pulse_routes` | Discover endpoints with request volume, latency and errors |
 | `rails_pulse_slow_requests` | Slowest endpoints for a period |
+| `rails_pulse_coverage` | What has been recorded, how recently, and any collection gaps |
 | `rails_pulse_errors` | Recent errors grouped by endpoint |
 | `rails_pulse_exceptions` | Exception groups with status, count, location and latest message |
 | `rails_pulse_exception` | One group's recent occurrences with backtraces, request and params |

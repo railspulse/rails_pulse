@@ -56,6 +56,12 @@ header.
   `404`. An
   unrecognised `sort`, `status`, `since` or `until` is a `400` with the accepted values.
   Substring filters match `_`, `%` and `!` literally.
+- `GET coverage` answers whether the data is there rather than a question about the data:
+  the oldest and newest request, job run and exception held with their counts, how far hourly
+  summaries have been generated and whether they are stale, what retention keeps, and the
+  writer's live count, queue depth and requests dropped in the last hour with
+  `collection.gap_suspected`. It is what distinguishes "no failures recorded" from "no data
+  captured"; a kind that is not being tracked says so instead of reporting zero.
 - `jobs` answers a `since`/`until` window from the per-job summaries rather than the lifetime
   counters cached on the job row. Windowed figures are in each row's `stats`; the top-level
   counters stay lifetime totals. `meta.window` reports the bounds actually read and the summary
@@ -85,7 +91,7 @@ over HTTP — it never loads the Rails app or the engine, so nothing under `lib/
 may reference Rails, models, or configuration directly. `rails-pulse configure` prompts for a
 URL and token and writes `~/.rails-pulse`; credentials otherwise come from `RAILS_PULSE_URL`
 and `RAILS_PULSE_TOKEN`. Each API resource above has a matching subcommand
-(`routes`, `requests`, `queries`, `jobs`, `job_runs`, `exceptions`, `deployments`).
+(`routes`, `requests`, `queries`, `jobs`, `job_runs`, `exceptions`, `deployments`, `coverage`).
 `rails-pulse install claude` writes an agent skill file to
 `~/.claude/skills/rails-pulse/SKILL.md`.
 
@@ -94,9 +100,9 @@ and `RAILS_PULSE_TOKEN`. Each API resource above has a matching subcommand
 `rails-pulse mcp` (`lib/rails_pulse/mcp/`) starts an MCP server over stdio for AI coding
 agents, built on the same HTTP client as the CLI. It needs the `mcp` gem, which is a
 development dependency of this gem and not a runtime one: the host adds `gem "mcp"` to its
-own Gemfile, and without it the command exits 1 saying so. All nine tools are read-only
+own Gemfile, and without it the command exits 1 saying so. All ten tools are read-only
 (`read_only_hint: true`) and named `rails_pulse_<resource>`: `routes`, `endpoint`, `queries`,
-`errors`, `exceptions`, `exception`, `jobs`, `slow_requests`, and `deployments`.
+`errors`, `exceptions`, `exception`, `jobs`, `slow_requests`, `deployments`, and `coverage`.
 
 Every tool that takes a `period` also takes `since` and `until` as ISO 8601 timestamps, so a
 window can be pinned rather than measured relative to now — what makes a before/after-deploy
