@@ -202,7 +202,49 @@ class GlobalFiltersTest < ApplicationSystemTestCase
     assert_tag_enabled("api")
   end
 
+  # An underscore is a LIKE wildcard, and tag names are allowed to contain one
+  # (TAG_NAME_REGEX permits a-z0-9_-). The filter escapes it, so disabling
+  # "work_orders" must leave a route tagged "workXorders" on the page.
+  test "tag filter treats an underscore in a tag name literally" do
+    RailsPulse.configure { |config| config.tags = [ "work_orders", "workXorders" ] }
+    create_summarized_route("/evaluation/work_orders", "work_orders")
+    create_summarized_route("/evaluation/workXorders", "workXorders")
+
+    visit_rails_pulse_path "/routes"
+
+    assert_selector "table tbody tr", text: "/evaluation/work_orders", wait: 5
+    assert_selector "table tbody tr", text: "/evaluation/workXorders"
+
+    toggle_tag_filter("work_orders")
+
+    assert_no_selector "table tbody tr", text: "/evaluation/work_orders"
+    assert_selector "table tbody tr", text: "/evaluation/workXorders", wait: 5
+  end
+
   private
+
+  # The routes table is built from summaries, and which granularity it reads
+  # depends on the selected range, so both are written rather than assuming
+  # the page's default window.
+  def create_summarized_route(path, tag)
+    route = RailsPulse::Route.create!(
+      http_methods: '["GET"]', path: path, controller_action: "#{path.tr('/', '_').delete_prefix('_')}#index",
+      tags: [ tag ].to_json
+    )
+    summarize(route, "hour", 1.hour.ago.beginning_of_hour, 1.hour.ago.end_of_hour)
+    summarize(route, "day", 2.hours.ago.beginning_of_day, 2.hours.ago.end_of_day)
+    route
+  end
+
+  def summarize(route, period_type, period_start, period_end)
+    RailsPulse::Summary.create!(
+      summarizable: route, period_type: period_type,
+      period_start: period_start, period_end: period_end,
+      count: 10, avg_duration: 100.0, min_duration: 50.0, max_duration: 200.0,
+      total_duration: 1000.0, p50_duration: 95.0, p95_duration: 180.0, p99_duration: 195.0,
+      error_count: 0, success_count: 10
+    )
+  end
 
   def create_comprehensive_test_data
     # Create requests with various performance levels at different times
