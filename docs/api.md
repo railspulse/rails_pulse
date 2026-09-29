@@ -102,7 +102,10 @@ URL and token and writes `~/.rails-pulse`; credentials otherwise come from `RAIL
 and `RAILS_PULSE_TOKEN`. Each API resource above has a matching subcommand
 (`routes`, `requests`, `queries`, `jobs`, `job_runs`, `exceptions`, `deployments`, `coverage`).
 `rails-pulse install claude` writes an agent skill file to
-`~/.claude/skills/rails-pulse/SKILL.md`.
+`~/.claude/skills/rails-pulse/SKILL.md`; `rails-pulse install agents` writes a
+framework-neutral descriptor to `./AGENTS.md`, and with `--append` adds a delimited Rails
+Pulse section to an existing one, which a later `--append` replaces in place rather than
+duplicating.
 
 ## MCP server
 

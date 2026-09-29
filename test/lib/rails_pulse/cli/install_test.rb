@@ -84,7 +84,7 @@ module RailsPulse
 
           assert_equal "mine\n", File.read("agents.md")
           assert_includes out, "already exists; not overwriting it"
-          assert_includes out, "agent_files/agents.md"
+          assert_includes out, "--append"
         end
       end
 
@@ -101,6 +101,75 @@ module RailsPulse
           assert_equal "project instructions\n", File.read("AGENTS.md")
           assert_includes out, "AGENTS.md already exists"
           assert_equal [ "AGENTS.md" ], Dir.children(@tmpdir)
+        end
+      end
+
+      # --- agents --append ---
+      #
+      # A project with its own AGENTS.md should not have to paste the section
+      # in by hand, and a re-run must not leave two copies of it.
+
+      test "append adds a delimited Rails Pulse section to an existing AGENTS.md" do
+        Dir.chdir(@tmpdir) do
+          File.write("AGENTS.md", "# Project instructions\n\nDo the thing.\n")
+
+          out, _err = run_install("agents", append: true)
+          written = File.read("AGENTS.md")
+
+          assert_includes out, "Appended a Rails Pulse section"
+          assert_includes written, "# Project instructions"
+          assert_includes written, "Do the thing."
+          assert_includes written, "<!-- rails-pulse:start -->"
+          assert_includes written, "<!-- rails-pulse:end -->"
+          assert_includes written, "Rails Pulse — Agent Integration"
+        end
+      end
+
+      test "append leaves the project's own instructions untouched" do
+        Dir.chdir(@tmpdir) do
+          original = "# Project instructions\n\nDo the thing.\n"
+          File.write("AGENTS.md", original)
+          run_install("agents", append: true)
+
+          assert File.read("AGENTS.md").start_with?(original)
+        end
+      end
+
+      test "a second append replaces the section rather than duplicating it" do
+        Dir.chdir(@tmpdir) do
+          File.write("AGENTS.md", "# Project instructions\n")
+          run_install("agents", append: true)
+          first = File.read("AGENTS.md")
+
+          out, _err = run_install("agents", append: true)
+          second = File.read("AGENTS.md")
+
+          assert_includes out, "Updated the Rails Pulse section"
+          assert_equal first, second
+          assert_equal 1, second.scan("<!-- rails-pulse:start -->").size
+        end
+      end
+
+      test "append keeps content the project added after the section" do
+        Dir.chdir(@tmpdir) do
+          File.write("AGENTS.md", "# Project instructions\n")
+          run_install("agents", append: true)
+          File.write("AGENTS.md", "#{File.read('AGENTS.md')}\n## Our own notes\n")
+
+          run_install("agents", append: true)
+          written = File.read("AGENTS.md")
+
+          assert_includes written, "## Our own notes"
+          assert_includes written, "# Project instructions"
+          assert_equal 1, written.scan("<!-- rails-pulse:start -->").size
+        end
+      end
+
+      test "append writes the file when no AGENTS.md exists yet" do
+        Dir.chdir(@tmpdir) do
+          run_install("agents", append: true)
+
+          assert_path_exists File.join(@tmpdir, "agents.md")
         end
       end
 

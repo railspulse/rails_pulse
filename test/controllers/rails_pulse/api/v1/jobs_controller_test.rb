@@ -116,10 +116,29 @@ module RailsPulse
         # The job row's counters are lifetime totals, so a window is answered
         # from the per-job summaries instead. Returning the lifetime numbers
         # would answer a different question without saying so.
+        #
+        # Bounds come from the fixture rows rather than from `n.hours.ago`,
+        # which snaps to a different hour depending on where in the hour the
+        # suite happens to run.
+
+        def hourly_job_summaries
+          RailsPulse::Summary.for_jobs.for_period_type("hour")
+            .where(summarizable_id: rails_pulse_jobs(:report_job).id)
+        end
+
+        def window_over_all_hours
+          { since: hourly_job_summaries.minimum(:period_start).iso8601,
+            until: hourly_job_summaries.maximum(:period_end).iso8601 }
+        end
+
+        def window_over_one_hour
+          latest = hourly_job_summaries.order(:period_start).last
+          { since: latest.period_start.iso8601, until: latest.period_end.iso8601 }
+        end
 
         test "a window is answered from summaries, not the lifetime counters" do
           get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
-            params: { since: 2.hours.ago.iso8601, until: Time.current.iso8601 }
+            params: window_over_all_hours
           body = JSON.parse(response.body)
           report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
 
@@ -131,18 +150,18 @@ module RailsPulse
         end
 
         test "a window reports the bounds and granularity it read" do
-          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
-            params: { since: 2.hours.ago.iso8601, until: Time.current.iso8601 }
+          window = window_over_all_hours
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: window
           body = JSON.parse(response.body)
 
           assert_equal "hour", body["meta"]["window"]["period_type"]
-          assert_operator Time.parse(body["meta"]["window"]["since"]), :<=, 2.hours.ago
-          assert_operator Time.parse(body["meta"]["window"]["until"]), :>=, Time.current
+          assert_operator Time.parse(body["meta"]["window"]["since"]), :<=, Time.parse(window[:since])
+          assert_operator Time.parse(body["meta"]["window"]["until"]), :>=, Time.parse(window[:until])
         end
 
         test "lifetime counters are still returned alongside the window" do
           get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
-            params: { since: 2.hours.ago.iso8601 }
+            params: window_over_all_hours
           body = JSON.parse(response.body)
           report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
 
@@ -154,7 +173,7 @@ module RailsPulse
         # behind each period is not kept, so several periods cannot be combined.
         test "percentiles are reported when one period covers the window" do
           get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
-            params: { since: 1.hour.ago.beginning_of_hour.iso8601, until: 1.hour.ago.end_of_hour.iso8601 }
+            params: window_over_one_hour
           body = JSON.parse(response.body)
           report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
 
@@ -165,7 +184,7 @@ module RailsPulse
 
         test "percentiles are withheld with a reason across several periods" do
           get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
-            params: { since: 3.hours.ago.iso8601, until: Time.current.iso8601 }
+            params: window_over_all_hours
           body = JSON.parse(response.body)
           report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
 
@@ -186,8 +205,14 @@ module RailsPulse
         # hourly retention is answered from daily rows rather than reported as
         # empty.
         test "a window older than hourly retention falls back to daily summaries" do
+          # Retention has removed the hourly rows for that window; only the
+          # daily ones are left to answer from.
+          RailsPulse::Summary.for_jobs.for_period_type("hour").delete_all
+          daily = RailsPulse::Summary.for_jobs.for_period_type("day")
+            .where(summarizable_id: rails_pulse_jobs(:report_job).id).order(:period_start).last
+
           get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
-            params: { since: 1.day.ago.beginning_of_day.iso8601, until: 1.day.ago.end_of_day.iso8601 }
+            params: { since: daily.period_start.iso8601, until: daily.period_end.iso8601 }
           body = JSON.parse(response.body)
           report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
 
