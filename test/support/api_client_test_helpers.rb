@@ -59,6 +59,29 @@ module ApiClientTestHelpers
     end
   end
 
+  # Answers each request with the body registered for the endpoint it asks
+  # for, so a command that calls more than one endpoint gets the right shape
+  # from each. Keys are matched as substrings of the request path. The block
+  # receives every path requested.
+  def stub_http_response_by_path(bodies, code: 200, &block)
+    silence_warnings do
+      Net::HTTP.define_singleton_method(:start) do |host, _port, **_opts, &http_block|
+        http_stub = Object.new
+        http_stub.define_singleton_method(:request) do |req|
+          block&.call(req.path)
+          _, body = bodies.find { |endpoint, _| req.path.include?(endpoint) }
+
+          response_class = Net::HTTPResponse::CODE_TO_OBJ[code.to_s] || Net::HTTPResponse
+          response = response_class.new("1.1", code.to_s, "")
+          response.instance_variable_set(:@body, (body || {}).to_json)
+          response.instance_variable_set(:@read, true)
+          response
+        end
+        http_block.call(http_stub)
+      end
+    end
+  end
+
   # Makes Net::HTTP.start raise, as a refused connection would.
   def stub_http_failure(error = Errno::ECONNREFUSED)
     silence_warnings { Net::HTTP.define_singleton_method(:start) { |*_args, **_opts| raise error } }

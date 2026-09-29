@@ -6,9 +6,10 @@ module RailsPulse
     class Coverage < BaseCommand
       desc "show", "Report what has been recorded, how recently, and any gaps"
       long_desc <<~DESC
-        Answers whether the data is there, rather than a question about the data: the span of
-        requests, job runs and exceptions held, how far summaries have been generated, what
-        retention keeps, and whether the background writer has dropped anything.
+        Answers whether the data is there, rather than a question about the data: which
+        application and environment answered, the span of requests, job runs and exceptions
+        held, how far summaries have been generated, what retention keeps, and whether the
+        background writer has dropped anything.
 
         Read this before concluding that nothing went wrong. An empty error list means
         "nothing recorded", which is only the same as "nothing happened" when collection was
@@ -20,8 +21,10 @@ module RailsPulse
       def show
         with_error_handling do
           data = client.get("/coverage", {})
-          next say(JSON.pretty_generate(data)) if options[:json]
+          capabilities = client.get("/capabilities", {})
+          next say(JSON.pretty_generate(data.merge("capabilities" => capabilities))) if options[:json]
 
+          print_installation(capabilities)
           print_telemetry(data["telemetry"] || {})
           print_summaries(data["summaries"] || {})
           print_retention(data["retention"] || {})
@@ -30,6 +33,13 @@ module RailsPulse
       end
 
       private
+
+      def print_installation(capabilities)
+        say "Installation"
+        say "  application  #{capabilities['application'] || '—'} (#{capabilities['environment']})"
+        say "  version      #{capabilities['rails_pulse_version']}"
+        say ""
+      end
 
       def print_telemetry(telemetry)
         say "Telemetry"

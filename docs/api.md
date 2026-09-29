@@ -61,6 +61,10 @@ header.
   gets from "this endpoint is slow" to "this is the SQL inside it". It implies a window the
   way `sort` does. Each query's `stats.source_locations` names the file and line it was issued
   from, most frequent first.
+- `GET capabilities` reports the Rails Pulse version and the application name and environment
+  that answered, so numbers gathered against staging are not read as production. The
+  `rails_pulse_coverage` tool and `rails-pulse coverage show` fold it into their own output,
+  so orientation is one call.
 - `GET coverage` answers whether the data is there rather than a question about the data:
   the oldest and newest request, job run and exception held with their counts, how far hourly
   summaries have been generated and whether they are stale, what retention keeps, and the

@@ -298,16 +298,32 @@ module RailsPulse
                           "dropped_last_hour" => 0, "last_heartbeat_at" => "2026-09-26T11:59:30Z", "gap_suspected" => false }
       }.freeze
 
+      CAPABILITIES_RESPONSE = {
+        "rails_pulse_version" => "0.5.0",
+        "environment" => "production",
+        "application" => "Shop"
+      }.freeze
+
+      # The command makes two calls, so the stub answers each by path and
+      # remembers every path it was asked for.
+      def stub_coverage
+        @coverage_paths = []
+        bodies = { "/coverage" => COVERAGE_RESPONSE, "/capabilities" => CAPABILITIES_RESPONSE }
+        stub_http_response_by_path(bodies) { |path| @coverage_paths << path }
+      end
+
       def run_coverage(options = {})
         cmd = Coverage.new([], { "json" => false }.merge(options.transform_keys(&:to_s)))
         capture_io { cmd.show }
       end
 
-      test "coverage show calls /coverage and prints each section" do
-        stub_list(COVERAGE_RESPONSE)
+      test "coverage show calls both endpoints and prints each section" do
+        stub_coverage
         out, _err = run_coverage
 
-        assert_includes @captured_uri.path, "/coverage"
+        assert(@coverage_paths.any? { |p| p.include?("/coverage") })
+        assert(@coverage_paths.any? { |p| p.include?("/capabilities") })
+        assert_match(/Installation/, out)
         assert_match(/Telemetry/, out)
         assert_match(/Summaries/, out)
         assert_match(/Retention/, out)
@@ -315,17 +331,26 @@ module RailsPulse
       end
 
       test "coverage show names a kind that is not tracked" do
-        stub_list(COVERAGE_RESPONSE)
+        stub_coverage
         out, _err = run_coverage
 
         assert_match(/exceptions\s+not tracked/, out)
       end
 
+      # Attributing findings to the wrong deployment is the mistake this
+      # line exists to prevent.
+      test "coverage show names the installation that answered" do
+        stub_coverage
+        out, _err = run_coverage
+
+        assert_match(/Shop \(production\)/, out)
+      end
+
       test "coverage show prints raw JSON with --json" do
-        stub_list(COVERAGE_RESPONSE)
+        stub_coverage
         out, _err = run_coverage(json: true)
 
-        assert_equal COVERAGE_RESPONSE, JSON.parse(out)
+        assert_equal COVERAGE_RESPONSE.merge("capabilities" => CAPABILITIES_RESPONSE), JSON.parse(out)
       end
 
       # --- Deployments ---

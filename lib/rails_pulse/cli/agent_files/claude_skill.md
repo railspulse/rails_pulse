@@ -132,6 +132,7 @@ makes them a mix of both versions.
 
 - **SQL is not always the cause.** External API calls, serialization, view rendering and application logic slow requests too.
 - **Use more than one tool.** Cross-reference latency with error rates, SQL timing and job performance before concluding.
+- **Orient once before investigating.** `rails_pulse_coverage` names the application, environment and version you are querying. Call it first, so findings are attributed to the installation that actually produced them.
 - **Confirm the data exists before reporting an all-clear.** An empty result means nothing was recorded, which only means nothing happened when collection was healthy over that window. Call `rails_pulse_coverage` before concluding a period was clean, and say so when it flags a gap, stale summaries or a kind that is not tracked.
 - **Check the error rate.** A fast endpoint with a high error rate may be failing early rather than performing well.
 - **Read percentiles, not just averages.** A low average with a high p95 or p99 means intermittent trouble.

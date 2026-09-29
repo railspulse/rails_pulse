@@ -50,6 +50,10 @@ RailsPulse::Engine.routes.draw do
 
     # Whether the data is there, rather than a question about the data.
     get "coverage", to: "coverage#show", as: :coverage
+
+    # Which application, environment and version answered, so results gathered
+    # against staging are not read as production.
+    get "capabilities", to: "capabilities#show", as: :capabilities
   end
 
   # CSP compliance testing (development/test only)

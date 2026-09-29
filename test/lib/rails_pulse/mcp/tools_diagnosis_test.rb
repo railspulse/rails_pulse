@@ -364,8 +364,28 @@ module RailsPulse
         "collection" => { "known" => true, "live_writers" => 2, "dropped_last_hour" => 0, "gap_suspected" => false, "note" => nil }
       }.freeze
 
+      CAPABILITIES_RESPONSE = {
+        "rails_pulse_version" => "0.5.0",
+        "environment" => "production",
+        "application" => "Shop"
+      }.freeze
+
+      def coverage_client(coverage: COVERAGE_RESPONSE, capabilities: CAPABILITIES_RESPONSE)
+        client("/coverage" => coverage, "/capabilities" => capabilities)
+      end
+
+      # Results gathered against staging read exactly like production ones
+      # unless the tool says which answered.
+      test "coverage identifies which installation answered" do
+        _, data = call(Tools::Coverage, coverage_client)
+
+        assert_equal "Shop", data["installation"]["application"]
+        assert_equal "production", data["installation"]["environment"]
+        assert_equal "0.5.0", data["installation"]["rails_pulse_version"]
+      end
+
       test "coverage reports the span of what was recorded" do
-        _, data = call(Tools::Coverage, client("/coverage" => COVERAGE_RESPONSE))
+        _, data = call(Tools::Coverage, coverage_client)
 
         assert_equal 5000, data["telemetry"]["requests"]["count"]
         assert_includes data["summary"], "5000 rows"
@@ -374,7 +394,7 @@ module RailsPulse
       # An agent that reads "no errors" without this caveat reports an
       # all-clear the data does not support.
       test "coverage warns that untracked exceptions make an empty result meaningless" do
-        _, data = call(Tools::Coverage, client("/coverage" => COVERAGE_RESPONSE))
+        _, data = call(Tools::Coverage, coverage_client)
 
         assert data["next_steps"].any? { |s| s.include?("Exceptions are not being recorded") }
       end
@@ -384,7 +404,7 @@ module RailsPulse
           "collection" => { "known" => true, "live_writers" => 0, "dropped_last_hour" => 12, "gap_suspected" => true,
                             "note" => "12 request(s) were dropped in the last hour because the writer queue was full, so counts understate traffic." }
         )
-        _, data = call(Tools::Coverage, client("/coverage" => gapped))
+        _, data = call(Tools::Coverage, coverage_client(coverage: gapped))
 
         assert_includes data["summary"], "Collection gap suspected"
         assert data["next_steps"].any? { |s| s.include?("understate traffic") }
@@ -394,7 +414,7 @@ module RailsPulse
         empty = COVERAGE_RESPONSE.merge(
           "telemetry" => { "requests" => { "oldest" => nil, "newest" => nil, "count" => 0, "tracked" => true } }
         )
-        _, data = call(Tools::Coverage, client("/coverage" => empty))
+        _, data = call(Tools::Coverage, coverage_client(coverage: empty))
 
         assert_includes data["summary"], "No requests have been recorded"
       end

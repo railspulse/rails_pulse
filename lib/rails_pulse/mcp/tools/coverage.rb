@@ -5,10 +5,10 @@ module RailsPulse
         extend Helpers
 
         tool_name "rails_pulse_coverage"
-        description "What Rails Pulse has recorded and how recently: the span of requests, job runs and " \
-                    "exceptions held, how far summaries have been generated, what retention keeps, and whether " \
-                    "any requests were dropped. Call this before reporting that nothing went wrong, to tell " \
-                    "'no failures recorded' apart from 'no data captured'."
+        description "Orientation for this installation: which application and environment it is, what has " \
+                    "been recorded and how recently, what retention keeps, and whether any requests were " \
+                    "dropped. Call this first in a session, and before reporting that nothing went wrong, " \
+                    "to tell 'no failures recorded' apart from 'no data captured'."
 
         annotations(
           read_only_hint: true,
@@ -21,9 +21,11 @@ module RailsPulse
         def self.call(server_context:, **_options)
           respond(server_context) do |client|
             data = client.get("/coverage", {})
+            capabilities = client.get("/capabilities", {})
 
             {
               as_of: data["as_of"],
+              installation: installation(capabilities),
               telemetry: data["telemetry"],
               summaries: data["summaries"],
               retention: data["retention"],
@@ -32,6 +34,16 @@ module RailsPulse
               next_steps: build_next_steps(data)
             }
           end
+        end
+
+        # Which application and environment answered, so results gathered
+        # against staging are not read as production.
+        private_class_method def self.installation(capabilities)
+          {
+            application: capabilities["application"],
+            environment: capabilities["environment"],
+            rails_pulse_version: capabilities["rails_pulse_version"]
+          }
         end
 
         private_class_method def self.build_summary(data)
