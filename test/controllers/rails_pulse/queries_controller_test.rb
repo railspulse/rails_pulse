@@ -43,6 +43,13 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
   # HTTP Response Tests
 
+  test "index chart tabs show the aggregation zone badge (#303)" do
+    get rails_pulse.queries_path
+
+    assert_response :success
+    assert_select ".panel-tabs .zone-badge", text: RailsPulse::TimeRange.aggregation_zone_short_label
+  end
+
   test "index response body is not nil" do
     setup_basic_test_data
 
