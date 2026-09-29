@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- Patch releases can be cut from a stable branch (`0-4-stable` for 0.4.x) while `main` carries the next release; `bin/release` and CI accept those branches.
 - **All timestamps display in the app's `config.time_zone`.** Chart axes and tooltips are formatted in that zone rather than the browser's, so a daily point no longer lands on the wrong calendar day for viewers in another zone. Request, job, exception and operation timestamps also use it instead of the server's OS zone; on a host whose server runs in UTC with a different `config.time_zone`, those pages now show the configured zone. (#303)
 
 - **Dashboard health bar badges omit zero counts.** "26 healthy · 0 slow · 0 critical" now reads "26 healthy"; the Storage badge is shown only under warning or critical pressure.
