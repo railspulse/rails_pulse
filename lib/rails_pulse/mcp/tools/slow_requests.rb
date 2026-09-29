@@ -45,14 +45,13 @@ module RailsPulse
             limit = limit.to_i.clamp(1, 100)
             min_requests = min_requests.to_i.clamp(1, 1_000_000)
 
-            result = client.get("/routes", { since: resolve_since(period), sort: "avg_duration", limit: limit })
+            result = client.get("/routes", { since: resolve_since(period), sort: "avg_duration", limit: limit, min_requests: min_requests })
             routes = result["data"] || []
+            routes_with_traffic = result.dig("meta", "routes_with_traffic") || result.dig("meta", "total") || 0
 
-            endpoints = routes.filter_map do |route|
+            endpoints = routes.map do |route|
               stats = route["stats"] || {}
               request_count = stats["request_count"].to_i
-              next if request_count < min_requests
-
               error_count = stats["error_count"].to_i
               {
                 endpoint: route["controller_action"] || route["path"],
@@ -67,16 +66,25 @@ module RailsPulse
 
             {
               period: period,
-              routes_with_traffic: result.dig("meta", "total") || endpoints.size,
+              routes_with_traffic: routes_with_traffic,
+              min_requests: min_requests,
               endpoints: endpoints,
-              summary: build_summary(endpoints),
-              next_steps: build_next_steps(endpoints)
+              summary: build_summary(endpoints, routes_with_traffic, min_requests),
+              next_steps: build_next_steps(endpoints, routes_with_traffic, min_requests)
             }
           end
         end
 
-        private_class_method def self.build_summary(endpoints)
-          return "No request data found for this period." if endpoints.empty?
+        # An empty result means one of two things, and they lead to different
+        # next steps: nothing was recorded at all, or endpoints ran but none
+        # reached min_requests.
+        private_class_method def self.build_summary(endpoints, routes_with_traffic, min_requests)
+          if endpoints.empty?
+            return "No request data found for this period." if routes_with_traffic.zero?
+
+            return "#{routes_with_traffic} #{routes_with_traffic == 1 ? 'endpoint' : 'endpoints'} received traffic, " \
+                   "but none reached min_requests of #{min_requests}."
+          end
 
           slowest = endpoints.first
           parts = [ "Slowest endpoint: #{slowest[:endpoint]} (avg #{slowest[:avg_duration_ms]}ms over #{slowest[:request_count]} requests)" ]
@@ -90,8 +98,12 @@ module RailsPulse
           parts.join(". ") + "."
         end
 
-        private_class_method def self.build_next_steps(endpoints)
-          return [ "Widen the period or confirm requests are being recorded (rails_pulse_routes with period: \"last_7_days\")." ] if endpoints.empty?
+        private_class_method def self.build_next_steps(endpoints, routes_with_traffic, min_requests)
+          if endpoints.empty?
+            return [ "Lower min_requests below #{min_requests} to rank the #{routes_with_traffic} #{routes_with_traffic == 1 ? 'endpoint' : 'endpoints'} that did receive traffic." ] if routes_with_traffic > 0
+
+            return [ "Widen the period or confirm requests are being recorded (rails_pulse_routes with period: \"last_7_days\")." ]
+          end
 
           steps = [ "Pass an endpoint's controller_action to rails_pulse_endpoint for percentiles and recent errors." ]
           steps << "Low-volume endpoints at the top may be one slow hit; raise min_requests to rank by sustained latency." if endpoints.any? { |e| e[:request_count] < 5 }

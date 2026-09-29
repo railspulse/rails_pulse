@@ -102,12 +102,49 @@ module RailsPulse
         assert_equal 1, checkout["error_count"]
       end
 
-      test "slow_requests drops endpoints below min_requests" do
+      # The threshold is applied by the API before its LIMIT. Filtering the
+      # returned page instead hides a qualifying endpoint that ranked below
+      # the limit, and reports nothing while an answer exists.
+      test "slow_requests forwards min_requests to the routes endpoint" do
+        ctx = server_context("/routes" => ROUTES_RESPONSE)
+        Tools::SlowRequests.call(min_requests: 10, server_context: ctx)
+
+        _path, params = ctx[:client].calls.first
+
+        assert_equal 10, params[:min_requests]
+      end
+
+      test "slow_requests keeps every endpoint the API returned" do
         ctx = server_context("/routes" => ROUTES_RESPONSE)
         result = Tools::SlowRequests.call(min_requests: 10, server_context: ctx)
         data = JSON.parse(result.content.first[:text])
 
-        assert_equal [ "HomeController#index" ], data["endpoints"].map { |e| e["endpoint"] }
+        assert_equal [ "CheckoutController#create", "HomeController#index" ], data["endpoints"].map { |e| e["endpoint"] }
+      end
+
+      test "slow_requests separates no traffic from nothing meeting min_requests" do
+        qualifying_none = {
+          "data" => [],
+          "meta" => { "total" => 0, "limit" => 10, "offset" => 0, "min_requests" => 10, "routes_with_traffic" => 4 }
+        }
+        ctx = server_context("/routes" => qualifying_none)
+        result = Tools::SlowRequests.call(min_requests: 10, server_context: ctx)
+        data = JSON.parse(result.content.first[:text])
+
+        assert_equal 4, data["routes_with_traffic"]
+        assert_includes data["summary"], "4 endpoints received traffic"
+        assert_includes data["summary"], "min_requests of 10"
+        assert_includes data["next_steps"].first, "Lower min_requests below 10"
+      end
+
+      test "slow_requests reports no data when nothing was recorded" do
+        empty = { "data" => [], "meta" => { "total" => 0, "limit" => 10, "offset" => 0 } }
+        ctx = server_context("/routes" => empty)
+        result = Tools::SlowRequests.call(server_context: ctx)
+        data = JSON.parse(result.content.first[:text])
+
+        assert_equal "No request data found for this period.", data["summary"]
+        assert_includes data["next_steps"].first, "Widen the period"
       end
 
       test "slow_requests includes a summary" do

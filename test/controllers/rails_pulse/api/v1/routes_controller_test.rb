@@ -97,6 +97,53 @@ module RailsPulse
           assert_equal 1, body["meta"]["total"]
         end
 
+        # min_requests is applied before the LIMIT, so a qualifying route that
+        # ranks below the limit is still reachable. Filtering the page after
+        # the fact returned nothing here.
+        test "min_requests keeps a busy route that ranks below the limit" do
+          busy = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/busy", controller_action: "busy#index")
+          12.times do |i|
+            RailsPulse::Request.create!(route: busy, duration: 5.0, status: 200, is_error: false,
+              request_uuid: "min-req-busy-#{i}", controller_action: "busy#index", occurred_at: 1.hour.ago)
+          end
+          3.times do |i|
+            rare = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/rare#{i}", controller_action: "rare#{i}#index")
+            RailsPulse::Request.create!(route: rare, duration: 10_000.0, status: 200, is_error: false,
+              request_uuid: "min-req-rare-#{i}", controller_action: "rare#{i}#index", occurred_at: 1.hour.ago)
+          end
+
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: 2.hours.ago.iso8601, sort: "avg_duration", limit: 3, min_requests: 10 }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "/busy" ], body["data"].map { |r| r["path"] }
+          assert_equal 1, body["meta"]["total"]
+        end
+
+        test "min_requests reports how many routes had traffic" do
+          route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/quiet", controller_action: "quiet#index")
+          RailsPulse::Request.create!(route: route, duration: 5.0, status: 200, is_error: false,
+            request_uuid: "min-req-quiet", controller_action: "quiet#index", occurred_at: 1.hour.ago)
+
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: 2.hours.ago.iso8601, sort: "avg_duration", min_requests: 1_000_000 }
+          body = JSON.parse(response.body)
+
+          assert_empty body["data"]
+          assert_equal 0, body["meta"]["total"]
+          assert_equal 1_000_000, body["meta"]["min_requests"]
+          assert_operator body["meta"]["routes_with_traffic"], :>, 0
+        end
+
+        test "min_requests is absent from meta when unset" do
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: 2.hours.ago.iso8601, sort: "avg_duration" }
+          body = JSON.parse(response.body)
+
+          refute_includes body["meta"].keys, "min_requests"
+          refute_includes body["meta"].keys, "routes_with_traffic"
+        end
+
         # LIKE metacharacters are escaped and paired with an explicit ESCAPE
         # clause, so a search term containing one matches it literally rather
         # than as a wildcard. SQLite has no default escape character, so

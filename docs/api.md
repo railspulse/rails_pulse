@@ -55,6 +55,12 @@ header.
   backtrace, request method, URL, filtered params, environment and deploy SHA; an unknown id is a
   `404`. An
   unrecognised `sort`, `status`, `since` or `until` is a `400` with the accepted values.
+  Substring filters match `_`, `%` and `!` literally.
+- `routes` takes `min_requests` when a time window is given: routes with fewer requests in
+  the window are excluded in SQL, before `limit`, so a busy route ranked below the limit is
+  still returned. When it is above 1 the response's `meta` carries `min_requests` and
+  `routes_with_traffic`, which separate "nothing ran in this window" from "nothing ran often
+  enough".
 - `POST deployments` and `PUT deployments/:id/finish` are the existing endpoints CI calls to
   record a release (the same action as the `rails_pulse:record_deployment` and
   `rails_pulse:finish_deployment` rake tasks below). They sit outside the `api/v1` read-only

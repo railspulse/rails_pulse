@@ -38,12 +38,21 @@ module RailsPulse
         def render_with_stats(scope, range, sort)
           base = RailsPulse::Request.where(occurred_at: range)
           base = base.where(route_id: scope.select(:id)) if params[:search].present?
-          total = base.distinct.count(:route_id)
+
+          # HAVING rather than a filter over the fetched page: a route busy
+          # enough to qualify can rank below the limit, and dropping it after
+          # the fact returns nothing while an answer exists.
+          grouped = base.group(:route_id)
+          grouped = grouped.having("COUNT(*) >= ?", min_requests) if min_requests > 1
+
+          # Grouping yields one row per route, so counting the rows counts the
+          # routes that qualify.
+          routes_with_traffic = base.distinct.count(:route_id)
+          total = min_requests > 1 ? grouped.count.size : routes_with_traffic
 
           # CASE WHEN on the boolean column itself is valid on SQLite, PostgreSQL
           # and MySQL alike, so no adapter-specific literal is interpolated.
-          rows = base
-            .group(:route_id)
+          rows = grouped
             .select(
               "route_id, COUNT(*) AS request_count, AVG(duration) AS avg_duration, " \
               "SUM(CASE WHEN is_error THEN 1 ELSE 0 END) AS error_count"
@@ -59,7 +68,20 @@ module RailsPulse
             RouteSerializer.serialize(route, stats: stats_for(row)) if route
           end
 
-          render json: { data: data, meta: { total: total, limit: limit, offset: offset } }
+          meta = { total: total, limit: limit, offset: offset }
+          # Lets a caller tell "nothing ran in this window" from "nothing ran
+          # often enough", which are different next steps, without asking again
+          # at a lower threshold.
+          if min_requests > 1
+            meta[:min_requests] = min_requests
+            meta[:routes_with_traffic] = routes_with_traffic
+          end
+
+          render json: { data: data, meta: meta }
+        end
+
+        def min_requests
+          params.fetch(:min_requests, 1).to_i.clamp(1, Float::INFINITY)
         end
 
         def stats_for(row)
