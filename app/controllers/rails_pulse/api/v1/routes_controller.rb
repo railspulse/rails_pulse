@@ -16,8 +16,12 @@ module RailsPulse
 
           scope = RailsPulse::Route.all
           if params[:search].present?
-            term = "%#{RailsPulse::Route.sanitize_sql_like(params[:search].downcase)}%"
-            scope = scope.where("LOWER(path) LIKE :term OR LOWER(controller_action) LIKE :term", term: term)
+            term = RailsPulse::LikePattern.containing(params[:search].downcase)
+            scope = scope.where(
+              "LOWER(path) LIKE :term #{RailsPulse::LikePattern::CLAUSE} " \
+              "OR LOWER(controller_action) LIKE :term #{RailsPulse::LikePattern::CLAUSE}",
+              term: term
+            )
           end
 
           if since_start || until_end || sort

@@ -30,9 +30,10 @@ module RailsPulse
         def apply_route_filter(scope)
           return scope unless params[:route].present?
 
-          term = "%#{RailsPulse::Request.sanitize_sql_like(params[:route].to_s.downcase)}%"
+          term = RailsPulse::LikePattern.containing(params[:route].to_s.downcase)
           scope.joins(:route).where(
-            "LOWER(rails_pulse_requests.controller_action) LIKE :term OR LOWER(rails_pulse_routes.path) LIKE :term",
+            "LOWER(rails_pulse_requests.controller_action) LIKE :term #{RailsPulse::LikePattern::CLAUSE} " \
+            "OR LOWER(rails_pulse_routes.path) LIKE :term #{RailsPulse::LikePattern::CLAUSE}",
             term: term
           )
         end

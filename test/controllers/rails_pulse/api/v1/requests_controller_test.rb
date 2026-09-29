@@ -125,6 +125,36 @@ module RailsPulse
           assert_equal 0, body["meta"]["total"]
         end
 
+        # The route filter escapes LIKE metacharacters and pairs the pattern
+        # with an explicit ESCAPE clause. Without it SQLite treats `_` as a
+        # wildcard and an endpoint named for one matches nothing.
+        test "route matches an underscore literally" do
+          underscored = RailsPulse::Route.create!(http_methods: '["PATCH"]', path: "/evaluation/work_orders", controller_action: "evaluation/work_orders#update")
+          decoyed = RailsPulse::Route.create!(http_methods: '["PATCH"]', path: "/evaluation/workXorders", controller_action: "evaluation/workXorders#update")
+          [ underscored, decoyed ].each_with_index do |route, index|
+            RailsPulse::Request.create!(route: route, duration: 10.0, status: 200, is_error: false,
+              request_uuid: "like-escape-#{index}", controller_action: route.controller_action, occurred_at: 1.hour.ago)
+          end
+
+          get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { route: "work_orders" }
+          body = JSON.parse(response.body)
+
+          assert_equal 1, body["meta"]["total"]
+          assert_equal [ underscored.id ], body["data"].map { |r| r["route_id"] }
+        end
+
+        test "route matches a percent sign literally" do
+          route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/reports/100%", controller_action: "reports#full")
+          RailsPulse::Request.create!(route: route, duration: 10.0, status: 200, is_error: false,
+            request_uuid: "like-escape-percent", controller_action: route.controller_action, occurred_at: 1.hour.ago)
+
+          get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { route: "100%" }
+          body = JSON.parse(response.body)
+
+          assert_equal 1, body["meta"]["total"]
+          assert_equal [ route.id ], body["data"].map { |r| r["route_id"] }
+        end
+
         test "returns 400 for a status that is neither a code nor a class" do
           get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { status: "failed" }
 

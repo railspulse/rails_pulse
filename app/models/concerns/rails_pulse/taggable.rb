@@ -5,25 +5,18 @@ module RailsPulse
     # Tag validation constants
     TAG_NAME_REGEX = /\A[a-z0-9_-]+\z/i
     MAX_TAG_LENGTH = 50
-    # Escape character for LIKE patterns over the serialized tags column.
-    # Never appears in a valid tag name, and needs no quoting on any adapter.
-    LIKE_ESCAPE = "!".freeze
-
     included do
       # Callbacks
       before_save :ensure_tags_is_array
 
-      # Scopes with table name qualification to avoid ambiguity.
-      # LIKE patterns are sanitized so `_`/`%` in a tag are matched literally.
-      # The ESCAPE clause is explicit because SQLite has no default escape
-      # character — without it `my\_tag` matches a literal backslash there
-      # and the filter silently matches nothing. `!` is used rather than `\`
-      # because MySQL and PostgreSQL disagree on how to quote a backslash.
+      # Scopes with table name qualification to avoid ambiguity. Tags are
+      # matched against the serialized column, so the quoted tag name is
+      # escaped by LikePattern and paired with its ESCAPE clause.
       scope :with_tag, ->(tag) {
-        where("#{table_name}.tags LIKE ? ESCAPE '!'", "%\"#{sanitize_sql_like(tag.to_s, LIKE_ESCAPE)}\"%")
+        where("#{table_name}.tags LIKE ? #{RailsPulse::LikePattern::CLAUSE}", "%\"#{RailsPulse::LikePattern.escape(tag)}\"%")
       }
       scope :without_tag, ->(tag) {
-        where.not("#{table_name}.tags LIKE ? ESCAPE '!'", "%\"#{sanitize_sql_like(tag.to_s, LIKE_ESCAPE)}\"%")
+        where.not("#{table_name}.tags LIKE ? #{RailsPulse::LikePattern::CLAUSE}", "%\"#{RailsPulse::LikePattern.escape(tag)}\"%")
       }
       scope :with_tags, -> { where("#{table_name}.tags IS NOT NULL AND #{table_name}.tags != '[]'") }
     end

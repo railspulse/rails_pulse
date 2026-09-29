@@ -97,6 +97,48 @@ module RailsPulse
           assert_equal 1, body["meta"]["total"]
         end
 
+        # LIKE metacharacters are escaped and paired with an explicit ESCAPE
+        # clause, so a search term containing one matches it literally rather
+        # than as a wildcard. SQLite has no default escape character, so
+        # without the clause these searches silently return nothing.
+
+        test "search matches an underscore literally" do
+          RailsPulse::Route.create!(http_methods: '["PATCH"]', path: "/evaluation/work_orders", controller_action: "evaluation/work_orders#update")
+          RailsPulse::Route.create!(http_methods: '["PATCH"]', path: "/evaluation/workXorders", controller_action: "evaluation/workXorders#update")
+
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { search: "work_orders" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "/evaluation/work_orders" ], body["data"].map { |r| r["path"] }
+        end
+
+        test "search matches a percent sign literally" do
+          RailsPulse::Route.create!(http_methods: '["GET"]', path: "/reports/100%", controller_action: "reports#full")
+
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { search: "100%" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "/reports/100%" ], body["data"].map { |r| r["path"] }
+        end
+
+        test "search matches the escape character literally" do
+          RailsPulse::Route.create!(http_methods: '["GET"]', path: "/alerts/urgent!", controller_action: "alerts#urgent")
+
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { search: "urgent!" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "/alerts/urgent!" ], body["data"].map { |r| r["path"] }
+        end
+
+        test "search matches a backslash literally" do
+          RailsPulse::Route.create!(http_methods: '["GET"]', path: "/files/a\\b", controller_action: "files#show")
+
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { search: "a\\b" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "/files/a\\b" ], body["data"].map { |r| r["path"] }
+        end
+
         test "returns 400 for invalid sort" do
           get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { sort: "bogus" }
 
