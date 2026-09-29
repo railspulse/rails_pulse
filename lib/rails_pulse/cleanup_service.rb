@@ -1,5 +1,13 @@
 module RailsPulse
   class CleanupService
+    # Rows removed per DELETE statement. Statement size, lock time and
+    # transaction length stay flat however far a table has outgrown its limits.
+    BATCH_SIZE = 5_000
+
+    # Parent rows handled per round when their child rows must go first. The
+    # parent ids are held in Ruby and sent back as a list, so this bounds it.
+    PARENT_BATCH_SIZE = 1_000
+
     def self.perform
       new.perform
     end
@@ -11,6 +19,7 @@ module RailsPulse
         count_based: {},
         total_deleted: 0
       }
+      @failures = []
     end
 
     def perform
@@ -23,10 +32,64 @@ module RailsPulse
       perform_summary_cleanup
 
       log_cleanup_summary
+      raise @failures.first[:error] if @failures.any?
+
       @stats
     end
 
     private
+
+    # Runs one table's cleanup and records its count. A failure is logged and
+    # held until every stage has run, so one table that cannot be cleaned does
+    # not stop the others; each stage removes its own child rows or skips rows
+    # that still have them, so none depends on an earlier stage succeeding.
+    def run_stage(group, name)
+      @stats[group][name] = yield
+    rescue StandardError => e
+      @stats[group][name] = 0
+      @failures << { stage: "#{name} (#{group})", error: e }
+      RailsPulse.logger.error "Cleanup stage #{name} (#{group}) failed: #{e.class}: #{e.message}"
+    end
+
+    # Deletes the relation's rows in statements of at most BATCH_SIZE rows,
+    # choosing each batch inside the database. `order_column` decides which
+    # rows go first; `limit` stops after that many rows.
+    def delete_in_batches(relation, order_column: nil, limit: nil)
+      relation = relation.order(order_column => :asc) if order_column
+      deleted = 0
+
+      loop do
+        batch_size = limit ? [ BATCH_SIZE, limit - deleted ].min : BATCH_SIZE
+        break if batch_size <= 0
+
+        count = relation.limit(batch_size).delete_all
+        deleted += count
+        break if count < batch_size
+      end
+
+      deleted
+    end
+
+    # Deletes parent rows oldest first, removing each batch's child rows before
+    # the parents — there is no ON DELETE CASCADE on the foreign keys. Returns
+    # the number of parent rows deleted.
+    def delete_parents_in_batches(parents, order_column:, children:, foreign_key:, limit: nil)
+      deleted = 0
+
+      loop do
+        batch_size = limit ? [ PARENT_BATCH_SIZE, limit - deleted ].min : PARENT_BATCH_SIZE
+        break if batch_size <= 0
+
+        ids = parents.order(order_column => :asc).limit(batch_size).pluck(:id)
+        break if ids.empty?
+
+        delete_in_batches(children.where(foreign_key => ids))
+        deleted += parents.where(id: ids).delete_all
+        break if ids.size < batch_size
+      end
+
+      deleted
+    end
 
     def cleanup_enabled?
       @config.archiving_enabled
@@ -41,15 +104,15 @@ module RailsPulse
       RailsPulse.logger.info "Time-based cleanup: removing records older than #{cutoff_time}"
 
       # Clean up in order that respects foreign key constraints
-      @stats[:time_based][:operations]            = cleanup_operations_by_time(cutoff_time)
-      @stats[:time_based][:job_runs]              = cleanup_job_runs_by_time(cutoff_time)
-      @stats[:time_based][:requests]              = cleanup_requests_by_time(cutoff_time)
-      @stats[:time_based][:queries]               = cleanup_queries_by_time(cutoff_time)
-      @stats[:time_based][:routes]                = cleanup_routes_by_time(cutoff_time)
-      @stats[:time_based][:jobs]                  = cleanup_jobs_by_time(cutoff_time)
+      run_stage(:time_based, :operations) { cleanup_operations_by_time(cutoff_time) }
+      run_stage(:time_based, :job_runs)   { cleanup_job_runs_by_time(cutoff_time) }
+      run_stage(:time_based, :requests)   { cleanup_requests_by_time(cutoff_time) }
+      run_stage(:time_based, :queries)    { cleanup_queries_by_time(cutoff_time) }
+      run_stage(:time_based, :routes)     { cleanup_routes_by_time(cutoff_time) }
+      run_stage(:time_based, :jobs)       { cleanup_jobs_by_time(cutoff_time) }
       if exception_tables_exist?
-        @stats[:time_based][:exception_occurrences] = cleanup_exception_occurrences_by_time(cutoff_time)
-        @stats[:time_based][:exception_groups]      = cleanup_orphaned_exception_groups
+        run_stage(:time_based, :exception_occurrences) { cleanup_exception_occurrences_by_time(cutoff_time) }
+        run_stage(:time_based, :exception_groups)      { cleanup_orphaned_exception_groups }
       end
     end
 
@@ -58,28 +121,20 @@ module RailsPulse
 
       RailsPulse.logger.info "Count-based cleanup: enforcing table record limits"
 
-      # Only delete records from periods that have already been summarized.
-      # This prevents count-based cleanup from removing data before the summary
-      # job has had a chance to aggregate it.
-      cutoff = summarized_cutoff
-
-      # Operations: only delete those before the summarization cutoff
-      ops_scope = cutoff ? RailsPulse::Operation.where("occurred_at < ?", cutoff) : RailsPulse::Operation.none
-
       # Clean up in order that respects foreign key constraints
-      @stats[:count_based][:operations]            = cleanup_by_count(RailsPulse::Operation, :rails_pulse_operations, order_column: :occurred_at, scope: ops_scope)
-      @stats[:count_based][:job_runs]              = cleanup_job_runs_by_count
-      @stats[:count_based][:requests]              = cleanup_requests_by_count
-      @stats[:count_based][:queries]               = cleanup_queries_by_count
-      @stats[:count_based][:routes]                = cleanup_routes_by_count
-      @stats[:count_based][:jobs]                  = cleanup_jobs_by_count
+      run_stage(:count_based, :operations) { cleanup_operations_by_count }
+      run_stage(:count_based, :job_runs)   { cleanup_job_runs_by_count }
+      run_stage(:count_based, :requests)   { cleanup_requests_by_count }
+      run_stage(:count_based, :queries)    { cleanup_queries_by_count }
+      run_stage(:count_based, :routes)     { cleanup_routes_by_count }
+      run_stage(:count_based, :jobs)       { cleanup_jobs_by_count }
       if exception_tables_exist?
-        @stats[:count_based][:exception_occurrences] = cleanup_exception_occurrences_by_count
-        @stats[:count_based][:exception_groups]      = cleanup_exception_groups_by_count
-        @stats[:count_based][:orphaned_exception_groups] = cleanup_orphaned_exception_groups
+        run_stage(:count_based, :exception_occurrences)     { cleanup_exception_occurrences_by_count }
+        run_stage(:count_based, :exception_groups)          { cleanup_exception_groups_by_count }
+        run_stage(:count_based, :orphaned_exception_groups) { cleanup_orphaned_exception_groups }
       end
       if deployments_table_exists?
-        @stats[:count_based][:deployments] = cleanup_deployments_by_count
+        run_stage(:count_based, :deployments) { cleanup_deployments_by_count }
       end
     end
 
@@ -101,55 +156,76 @@ module RailsPulse
       return 0 unless max_records
 
       relation = scope || model_class
-      current_count = relation.count
-      return 0 if current_count <= max_records
+      overage = relation.count - max_records
+      return 0 if overage <= 0
 
-      records_to_delete = current_count - max_records
-      ids_to_delete = relation.order(order_column => :asc).limit(records_to_delete).pluck(:id)
-      model_class.where(id: ids_to_delete).delete_all
-      records_to_delete
+      delete_in_batches(relation, order_column: order_column, limit: overage)
     end
 
     # Time-based cleanup methods
 
     def cleanup_operations_by_time(cutoff_time)
-      RailsPulse::Operation.where("occurred_at < ?", cutoff_time).delete_all
+      delete_in_batches(RailsPulse::Operation.where("occurred_at < ?", cutoff_time), order_column: :occurred_at)
     end
 
     def cleanup_requests_by_time(cutoff_time)
-      request_subquery = RailsPulse::Request.where("occurred_at < ?", cutoff_time).select(:id)
-      RailsPulse::Operation.where(request_id: request_subquery).delete_all
-      RailsPulse::Request.where("occurred_at < ?", cutoff_time).delete_all
+      delete_parents_in_batches(
+        RailsPulse::Request.where("occurred_at < ?", cutoff_time),
+        order_column: :occurred_at,
+        children: RailsPulse::Operation,
+        foreign_key: :request_id
+      )
     end
 
     def cleanup_queries_by_time(cutoff_time)
-      RailsPulse::Query
-        .where("created_at < ?", cutoff_time)
-        .where("NOT EXISTS (SELECT 1 FROM rails_pulse_operations WHERE rails_pulse_operations.query_id = rails_pulse_queries.id)")
-        .delete_all
+      delete_in_batches(
+        RailsPulse::Query
+          .where("created_at < ?", cutoff_time)
+          .where("NOT EXISTS (SELECT 1 FROM rails_pulse_operations WHERE rails_pulse_operations.query_id = rails_pulse_queries.id)")
+      )
     end
 
     def cleanup_routes_by_time(cutoff_time)
-      RailsPulse::Route
-        .where("created_at < ?", cutoff_time)
-        .where("NOT EXISTS (SELECT 1 FROM rails_pulse_requests WHERE rails_pulse_requests.route_id = rails_pulse_routes.id)")
-        .delete_all
+      delete_in_batches(
+        RailsPulse::Route
+          .where("created_at < ?", cutoff_time)
+          .where("NOT EXISTS (SELECT 1 FROM rails_pulse_requests WHERE rails_pulse_requests.route_id = rails_pulse_routes.id)")
+      )
     end
 
     def cleanup_job_runs_by_time(cutoff_time)
-      job_run_subquery = RailsPulse::JobRun.where("occurred_at < ?", cutoff_time).select(:id)
-      RailsPulse::Operation.where(job_run_id: job_run_subquery).delete_all
-      RailsPulse::JobRun.where("occurred_at < ?", cutoff_time).delete_all
+      delete_parents_in_batches(
+        RailsPulse::JobRun.where("occurred_at < ?", cutoff_time),
+        order_column: :occurred_at,
+        children: RailsPulse::Operation,
+        foreign_key: :job_run_id
+      )
     end
 
     def cleanup_jobs_by_time(cutoff_time)
-      RailsPulse::Job
-        .where("created_at < ?", cutoff_time)
-        .where("NOT EXISTS (SELECT 1 FROM rails_pulse_job_runs WHERE rails_pulse_job_runs.job_id = rails_pulse_jobs.id)")
-        .delete_all
+      delete_in_batches(
+        RailsPulse::Job
+          .where("created_at < ?", cutoff_time)
+          .where("NOT EXISTS (SELECT 1 FROM rails_pulse_job_runs WHERE rails_pulse_job_runs.job_id = rails_pulse_jobs.id)")
+      )
     end
 
     # Count-based cleanup methods (complex cases that need custom scoping)
+
+    # Only operations from periods that have already been summarized are
+    # deleted, so count-based cleanup never removes data the summary job has
+    # not yet aggregated.
+    def cleanup_operations_by_count
+      cutoff = summarized_cutoff
+      return 0 unless cutoff
+
+      cleanup_by_count(
+        RailsPulse::Operation,
+        :rails_pulse_operations,
+        order_column: :occurred_at,
+        scope: RailsPulse::Operation.where("occurred_at < ?", cutoff)
+      )
+    end
 
     def cleanup_requests_by_count
       max_records = @config.max_table_records[:rails_pulse_requests]
@@ -159,36 +235,32 @@ module RailsPulse
       cutoff = summarized_cutoff
       return 0 unless cutoff
 
-      current_count = RailsPulse::Request.count
-      return 0 if current_count <= max_records
+      overage = RailsPulse::Request.count - max_records
+      return 0 if overage <= 0
 
-      records_to_delete = current_count - max_records
-      ids_to_delete = RailsPulse::Request
-        .where("occurred_at < ?", cutoff)
-        .order(occurred_at: :asc)
-        .limit(records_to_delete)
-        .pluck(:id)
-      return 0 if ids_to_delete.empty?
-
-      RailsPulse::Operation.where(request_id: ids_to_delete).delete_all
-      RailsPulse::Request.where(id: ids_to_delete).delete_all
-      ids_to_delete.size
+      delete_parents_in_batches(
+        RailsPulse::Request.where("occurred_at < ?", cutoff),
+        order_column: :occurred_at,
+        children: RailsPulse::Operation,
+        foreign_key: :request_id,
+        limit: overage
+      )
     end
 
     def cleanup_job_runs_by_count
       max_records = @config.max_table_records[:rails_pulse_job_runs]
       return 0 unless max_records
 
-      current_count = RailsPulse::JobRun.count
-      return 0 if current_count <= max_records
+      overage = RailsPulse::JobRun.count - max_records
+      return 0 if overage <= 0
 
-      records_to_delete = current_count - max_records
-      ids_to_delete = RailsPulse::JobRun.order(occurred_at: :asc).limit(records_to_delete).pluck(:id)
-      return 0 if ids_to_delete.empty?
-
-      RailsPulse::Operation.where(job_run_id: ids_to_delete).delete_all
-      RailsPulse::JobRun.where(id: ids_to_delete).delete_all
-      ids_to_delete.size
+      delete_parents_in_batches(
+        RailsPulse::JobRun,
+        order_column: :occurred_at,
+        children: RailsPulse::Operation,
+        foreign_key: :job_run_id,
+        limit: overage
+      )
     end
 
     def cleanup_queries_by_count
@@ -219,7 +291,10 @@ module RailsPulse
     end
 
     def cleanup_exception_occurrences_by_time(cutoff_time)
-      exception_occurrences_cleanup_scope.where("occurred_at < ?", cutoff_time).delete_all
+      delete_in_batches(
+        exception_occurrences_cleanup_scope.where("occurred_at < ?", cutoff_time),
+        order_column: :occurred_at
+      )
     end
 
     def cleanup_exception_occurrences_by_count
@@ -255,29 +330,33 @@ module RailsPulse
       records_to_delete = [ overage, deletable_count ].min
       return 0 if records_to_delete <= 0
 
-      ids_to_delete = scope.order(last_seen_at: :asc).limit(records_to_delete).pluck(:id)
-      return 0 if ids_to_delete.empty?
-
-      RailsPulse::ExceptionOccurrence.where(exception_group_id: ids_to_delete).delete_all
-      RailsPulse::ExceptionGroup.where(id: ids_to_delete).delete_all
+      deleted = delete_parents_in_batches(
+        scope,
+        order_column: :last_seen_at,
+        children: RailsPulse::ExceptionOccurrence,
+        foreign_key: :exception_group_id,
+        limit: records_to_delete
+      )
 
       if overage > deletable_count
         RailsPulse.logger.warn("[RailsPulse] Exception group cap #{max_records} cannot be met: " \
-          "#{current_count - ids_to_delete.size} remain (#{current_count - deletable_count} are preserved/ignored)")
+          "#{current_count - deleted} remain (#{current_count - deletable_count} are preserved/ignored)")
       end
 
-      ids_to_delete.size
+      deleted
     end
 
-    # Delete groups whose last occurrence was removed — uses an atomic subquery
-    # so no orphan can be deleted while a concurrent occurrence is being inserted.
+    # Delete groups whose last occurrence was removed — the orphan check and
+    # the delete are one statement per batch, so no orphan can be deleted while
+    # a concurrent occurrence is being inserted.
     # preserve: true and ignored groups are never deleted automatically.
     def cleanup_orphaned_exception_groups
-      RailsPulse::ExceptionGroup
-        .where(preserve: false)
-        .where.not(status: "ignored")
-        .where("NOT EXISTS (SELECT 1 FROM rails_pulse_exception_occurrences WHERE rails_pulse_exception_occurrences.exception_group_id = rails_pulse_exception_groups.id)")
-        .delete_all
+      delete_in_batches(
+        RailsPulse::ExceptionGroup
+          .where(preserve: false)
+          .where.not(status: "ignored")
+          .where("NOT EXISTS (SELECT 1 FROM rails_pulse_exception_occurrences WHERE rails_pulse_exception_occurrences.exception_group_id = rails_pulse_exception_groups.id)")
+      )
     end
 
     def perform_summary_cleanup
@@ -287,8 +366,12 @@ module RailsPulse
       # buys hour-accurate change points further back — at the cost of summary
       # table growth. Day, week and month summaries are never pruned.
       cutoff = @config.hourly_summary_retention.ago
-      deleted = RailsPulse::Summary.where(period_type: "hour").where("period_start < ?", cutoff).delete_all
-      @stats[:time_based][:hourly_summaries] = deleted
+      run_stage(:time_based, :hourly_summaries) do
+        delete_in_batches(
+          RailsPulse::Summary.where(period_type: "hour").where("period_start < ?", cutoff),
+          order_column: :period_start
+        )
+      end
     end
 
     # Returns the period_end of the most recent completed hourly overall-request
@@ -304,6 +387,10 @@ module RailsPulse
       total_time_based = @stats[:time_based].values.sum
       total_count_based = @stats[:count_based].values.sum
       @stats[:total_deleted] = total_time_based + total_count_based
+
+      if @failures.any?
+        RailsPulse.logger.error "Cleanup finished with #{@failures.size} failed stage(s): #{@failures.map { |failure| failure[:stage] }.join(', ')}"
+      end
 
       RailsPulse.logger.info "Cleanup completed:"
       RailsPulse.logger.info "  Time-based: #{total_time_based} records deleted"

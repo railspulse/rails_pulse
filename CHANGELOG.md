@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Patch releases can be cut from a stable branch (`0-4-stable` for 0.4.x) while `main` carries the next release; `bin/release` and CI accept those branches.
 
+### Fixed
+
+- **Cleanup deletes in bounded batches.** A table far over its limit was trimmed with one statement whose size grew with the overage, which could exhaust the database server's memory on a busy app; every delete now removes at most 5,000 rows per statement. (#322)
+- **One failed cleanup stage no longer stops the rest.** The remaining tables are still cleaned and the error is raised once they have finished. (#322)
+
 ## [0.4.1] - 2026-09-23
 
 ### Added
