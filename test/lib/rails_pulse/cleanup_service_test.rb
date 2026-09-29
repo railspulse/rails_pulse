@@ -667,7 +667,187 @@ module RailsPulse
       assert_equal 1, RailsPulse::ExceptionOccurrence.where(exception_group_id: preserved.id).count
     end
 
+    # Batching Tests
+
+    test "count-based cleanup removes the overage in statements no larger than the batch size" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = { rails_pulse_operations: 2 }
+      create_overall_hourly_summary(period_end: 2.hours.ago)
+      run = create_job_run(create_job("BatchedCountJob"), occurred_at: 1.day.ago)
+      operations = 7.downto(1).map { |hours| create_operation(job_run: run, occurred_at: (hours + 2).hours.ago) }
+
+      stats = nil
+      statements = capture_deletes(:rails_pulse_operations) do
+        stub_const(CleanupService, :BATCH_SIZE, 2) { stats = CleanupService.perform }
+      end
+
+      assert_equal 5, stats[:count_based][:operations]
+      assert_equal operations.last(2).map(&:id).sort, RailsPulse::Operation.pluck(:id).sort
+      assert_equal 3, statements.size
+      assert statements.none? { |sql| sql.match?(/IN \(\d/) }, "ids must be selected in the database, not sent from Ruby"
+    end
+
+    test "time-based cleanup deletes old rows across several batches and keeps recent ones" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      RailsPulse.configuration.max_table_records = { rails_pulse_operations: 10_000 }
+      run = create_job_run(create_job("BatchedTimeJob"), occurred_at: 1.day.ago)
+      5.times { |days| create_operation(job_run: run, occurred_at: (31 + days).days.ago) }
+      recent = create_operation(job_run: run, occurred_at: 5.days.ago)
+
+      stats = nil
+      statements = capture_deletes(:rails_pulse_operations) do
+        stub_const(CleanupService, :BATCH_SIZE, 2) { stats = CleanupService.perform }
+      end
+
+      assert_equal 5, stats[:time_based][:operations]
+      assert_equal [ recent.id ], RailsPulse::Operation.pluck(:id)
+      assert_equal 3, statements.size
+    end
+
+    test "count-based request cleanup deletes requests and their operations across parent batches" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = { rails_pulse_operations: 10_000, rails_pulse_requests: 1 }
+      create_overall_hourly_summary(period_end: 2.hours.ago)
+      route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/batched-parents", tags: "[]")
+      requests = 5.downto(1).map do |hours|
+        create_request(route, occurred_at: (hours + 2).hours.ago).tap do |request|
+          3.times { create_request_operation(request) }
+        end
+      end
+
+      stats = nil
+      stub_const(CleanupService, :PARENT_BATCH_SIZE, 2) do
+        stub_const(CleanupService, :BATCH_SIZE, 2) { stats = CleanupService.perform }
+      end
+
+      assert_equal 4, stats[:count_based][:requests]
+      assert_equal [ requests.last.id ], RailsPulse::Request.pluck(:id)
+      assert_equal [ requests.last.id ], RailsPulse::Operation.distinct.pluck(:request_id)
+      assert_equal 3, RailsPulse::Operation.count
+    end
+
+    test "time-based cleanup deletes old job runs and their newer operations across parent batches" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      job = create_job("BatchedParentJob")
+      5.times do |days|
+        run = create_job_run(job, occurred_at: (31 + days).days.ago)
+        create_operation(job_run: run, occurred_at: 5.days.ago)
+      end
+      recent_run = create_job_run(job, occurred_at: 5.days.ago)
+      create_operation(job_run: recent_run, occurred_at: 5.days.ago)
+
+      stats = nil
+      stub_const(CleanupService, :PARENT_BATCH_SIZE, 2) { stats = CleanupService.perform }
+
+      assert_equal 5, stats[:time_based][:job_runs]
+      assert_equal [ recent_run.id ], RailsPulse::JobRun.pluck(:id)
+      assert_equal [ recent_run.id ], RailsPulse::Operation.pluck(:job_run_id)
+    end
+
+    test "count-based cleanup deletes exception groups and their occurrences across parent batches" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = { rails_pulse_exception_groups: 1 }
+      groups = 5.downto(1).map do |days|
+        create_exception_group.tap do |group|
+          group.update!(last_seen_at: days.days.ago)
+          2.times { create_exception_occurrence(group, occurred_at: days.days.ago) }
+        end
+      end
+
+      stats = nil
+      stub_const(CleanupService, :PARENT_BATCH_SIZE, 2) { stats = CleanupService.perform }
+
+      assert_equal 4, stats[:count_based][:exception_groups]
+      assert_equal [ groups.last.id ], RailsPulse::ExceptionGroup.pluck(:id)
+      assert_equal [ groups.last.id ], RailsPulse::ExceptionOccurrence.distinct.pluck(:exception_group_id)
+    end
+
+    # Stage Isolation Tests
+
+    test "a failing stage does not stop later stages and its error is raised at the end" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      old_run = create_job_run(create_job("IsolatedJob"), occurred_at: 40.days.ago)
+      old_summary = create_overall_hourly_summary(period_end: 10.days.ago)
+      CleanupService.any_instance.stubs(:cleanup_operations_by_time).raises(ActiveRecord::StatementTimeout, "canceling statement")
+
+      error = assert_raises(ActiveRecord::StatementTimeout) { CleanupService.perform }
+
+      assert_equal "canceling statement", error.message
+      assert_not RailsPulse::JobRun.exists?(old_run.id)
+      assert_not RailsPulse::Summary.exists?(old_summary.id)
+    end
+
+    test "when several stages fail the first failure is raised" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      CleanupService.any_instance.stubs(:cleanup_operations_by_time).raises(ActiveRecord::StatementTimeout, "first")
+      CleanupService.any_instance.stubs(:cleanup_routes_by_count).raises(ActiveRecord::Deadlocked, "second")
+
+      error = assert_raises(ActiveRecord::StatementTimeout) { CleanupService.perform }
+
+      assert_equal "first", error.message
+    end
+
+    test "a failing stage is logged by name" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      errors = []
+      logger = Object.new
+      logger.define_singleton_method(:info) { |_message| }
+      logger.define_singleton_method(:error) { |message| errors << message }
+      RailsPulse.stubs(:logger).returns(logger)
+      CleanupService.any_instance.stubs(:cleanup_queries_by_time).raises(ActiveRecord::StatementTimeout, "canceling statement")
+
+      assert_raises(ActiveRecord::StatementTimeout) { CleanupService.perform }
+
+      assert_includes errors, "Cleanup stage queries (time_based) failed: ActiveRecord::StatementTimeout: canceling statement"
+      assert_includes errors, "Cleanup finished with 1 failed stage(s): queries (time_based)"
+    end
+
     # Edge Cases
+
+    test "count-based cleanup deletes nothing when a table is exactly at its limit" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = { rails_pulse_operations: 3 }
+      create_overall_hourly_summary(period_end: 2.hours.ago)
+      run = create_job_run(create_job("AtLimitJob"), occurred_at: 1.day.ago)
+      3.times { create_operation(job_run: run, occurred_at: 3.hours.ago) }
+
+      stats = nil
+      assert_no_difference -> { RailsPulse::Operation.count } do
+        stats = CleanupService.perform
+      end
+
+      assert_equal 0, stats[:count_based][:operations]
+    end
+
+    test "count-based cleanup stops at the limit when the overage is a multiple of the batch size" do
+      RailsPulse.configuration.instance_variable_set(:@full_retention_period, nil)
+      RailsPulse.configuration.max_table_records = { rails_pulse_operations: 2 }
+      create_overall_hourly_summary(period_end: 2.hours.ago)
+      run = create_job_run(create_job("MultipleJob"), occurred_at: 1.day.ago)
+      6.times { |hours| create_operation(job_run: run, occurred_at: (hours + 3).hours.ago) }
+
+      stats = nil
+      statements = capture_deletes(:rails_pulse_operations) do
+        stub_const(CleanupService, :BATCH_SIZE, 2) { stats = CleanupService.perform }
+      end
+
+      assert_equal 4, stats[:count_based][:operations]
+      assert_equal 2, RailsPulse::Operation.count
+      assert_equal 2, statements.size
+    end
+
+    test "time-based cleanup deletes every old row when they exactly fill the batches" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      RailsPulse.configuration.max_table_records = { rails_pulse_operations: 10_000 }
+      run = create_job_run(create_job("ExactFillJob"), occurred_at: 1.day.ago)
+      4.times { |days| create_operation(job_run: run, occurred_at: (31 + days).days.ago) }
+
+      stats = nil
+      stub_const(CleanupService, :BATCH_SIZE, 2) { stats = CleanupService.perform }
+
+      assert_equal 4, stats[:time_based][:operations]
+      assert_equal 0, RailsPulse::Operation.count
+    end
 
     test "handles empty tables gracefully" do
       result = CleanupService.perform
@@ -689,6 +869,35 @@ module RailsPulse
         period_end:        period_end,
         count:             1,
         avg_duration:      100.0
+      )
+    end
+
+    def capture_deletes(table)
+      statements = []
+      subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+        statements << payload[:sql] if payload[:sql].match?(/\ADELETE FROM [`"]?#{table}\b/)
+      end
+      yield
+      statements
+    ensure
+      ActiveSupport::Notifications.unsubscribe(subscriber)
+    end
+
+    def create_request(route, occurred_at:)
+      RailsPulse::Request.create!(
+        route: route, duration: 100.0, status: 200, is_error: false,
+        request_uuid: SecureRandom.uuid, occurred_at: occurred_at
+      )
+    end
+
+    def create_request_operation(request)
+      RailsPulse::Operation.create!(
+        request: request,
+        operation_type: "sql",
+        label: "SELECT 1",
+        duration: 1.0,
+        occurred_at: request.occurred_at,
+        start_time: 0.0
       )
     end
 
