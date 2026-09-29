@@ -27,6 +27,17 @@ module RailsPulse
           assert_response :unauthorized
         end
 
+        # The deployment credential writes releases; it must not also read
+        # telemetry, or splitting the two buys nothing.
+        test "returns 401 for the deployment token" do
+          RailsPulse.configuration.deployment_token = "deploy-token"
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => "deploy-token" }
+
+          assert_response :unauthorized
+        ensure
+          RailsPulse.configuration.deployment_token = nil
+        end
+
         test "returns 401 when token is unconfigured" do
           RailsPulse.configuration.api_token = nil
           get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }

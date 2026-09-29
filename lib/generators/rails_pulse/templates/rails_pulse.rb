@@ -327,17 +327,26 @@ RailsPulse.configure do |config|
   # }
 
   # ====================================================================================================
-  #                                    API TOKEN AND DEPLOYMENT TRACKING
+  #                                    API TOKENS AND DEPLOYMENT TRACKING
   # ====================================================================================================
-  # One token authenticates everything that is not the dashboard: the read-only JSON API under
-  # /rails_pulse/api/v1 (what the `rails-pulse` CLI and the MCP server your coding agent uses talk
-  # to) and the POST /rails_pulse/deployments endpoint your CI calls to record a release. Requests
-  # send it as an `X-Rails-Pulse-Token` header. Keep it in credentials or an environment variable:
+  # Two tokens authenticate what is not the dashboard, so a credential given to a coding agent
+  # cannot write anything. Both are sent as an `X-Rails-Pulse-Token` header.
+  #
+  # api_token reads the JSON API under /rails_pulse/api/v1 — what the `rails-pulse` CLI and the
+  # MCP server your coding agent uses talk to. Every endpoint under it is read-only.
   #   config.api_token = Rails.application.credentials.dig(:rails_pulse, :api_token)
   #   config.api_token = ENV["RAILS_PULSE_API_TOKEN"]
   #
-  # With no token the API refuses every request; the deployments endpoint alone falls back to the
-  # dashboard authentication above. (Called deployment_api_token before 0.5; the old name still works.)
+  # deployment_token records a release through POST /rails_pulse/deployments, which your CI calls.
+  # It is the only credential that endpoint accepts: api_token is refused there.
+  #   config.deployment_token = Rails.application.credentials.dig(:rails_pulse, :deployment_token)
+  #   config.deployment_token = ENV["RAILS_PULSE_DEPLOYMENT_TOKEN"]
+  #
+  # Set both to the same value if you would rather run one credential for both.
+  #
+  # With no api_token the JSON API refuses every request. With no deployment_token the deployments
+  # endpoint falls back to the dashboard authentication above. (deployment_api_token is the pre-0.5
+  # name for deployment_token and still works.)
   #
   # Point the CLI and MCP server at this app with `rails-pulse configure`, or set RAILS_PULSE_URL
   # and RAILS_PULSE_TOKEN in the agent's environment. The MCP server needs `gem "mcp"` in this
@@ -350,7 +359,7 @@ RailsPulse.configure do |config|
   #
   # Record a deployment from your CI/CD pipeline:
   #   curl -X POST https://yourapp.com/rails_pulse/deployments \
-  #     -H "X-Rails-Pulse-Token: $RAILS_PULSE_API_TOKEN" \
+  #     -H "X-Rails-Pulse-Token: $RAILS_PULSE_DEPLOYMENT_TOKEN" \
   #     -H "Content-Type: application/json" \
   #     -d '{"deployment": {"revision": "abc1234", "metadata": {"environment": "production"}}}'
   #
@@ -361,6 +370,7 @@ RailsPulse.configure do |config|
   #   RAILS_PULSE_DEPLOYMENT_METADATA='{"environment":"production"}' rake rails_pulse:record_deployment[abc1234]
 
   # config.api_token = ENV["RAILS_PULSE_API_TOKEN"]
+  # config.deployment_token = ENV["RAILS_PULSE_DEPLOYMENT_TOKEN"]
 
   # ====================================================================================================
   #                                               DATA CLEANUP

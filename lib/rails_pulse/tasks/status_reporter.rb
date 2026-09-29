@@ -150,7 +150,8 @@ module RailsPulse
         output.puts "Tracking:   enabled=#{config.enabled} requests=#{config.enabled} jobs=#{config.track_jobs} " \
                     "exceptions=#{config.track_exceptions} async=#{config.async}"
         output.puts "Dashboard:  mount_dashboard=#{config.mount_dashboard} authentication=#{auth}"
-        output.puts "API:        token #{config.api_token.to_s.empty? ? 'NOT set (rails-pulse CLI, MCP server and deployment recording refuse every request)' : 'set'}"
+        output.puts "API:        api_token #{config.api_token.to_s.empty? ? 'NOT set (rails-pulse CLI and MCP server refuse every request)' : 'set'}, " \
+                    "deployment_token #{config.deployment_token.to_s.empty? ? 'NOT set (deployment recording falls back to dashboard authentication)' : 'set'}"
       end
 
       # This process has no writer of its own; read every process's heartbeats

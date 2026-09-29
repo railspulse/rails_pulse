@@ -53,8 +53,11 @@ module RailsPulse
 
     private
 
+    # Only config.deployment_token authorizes a write here. config.api_token
+    # reads the JSON API and is the credential given to CLI callers and coding
+    # agents, so accepting it would let any of them record a release.
     def authenticate_deployment_request!
-      token = RailsPulse.configuration.api_token
+      token = RailsPulse.configuration.deployment_token
       if token.present?
         provided = request.headers["X-Rails-Pulse-Token"].to_s
         unless ActiveSupport::SecurityUtils.secure_compare(provided, token)
@@ -65,7 +68,7 @@ module RailsPulse
       else
         # No token configured and authentication disabled — fail closed.
         # Without a token there is no way to verify the caller.
-        render json: { error: "Unauthorized — set config.api_token or enable authentication" }, status: :unauthorized
+        render json: { error: "Unauthorized — set config.deployment_token or enable authentication" }, status: :unauthorized
       end
     end
 

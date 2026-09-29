@@ -24,7 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- **`config.deployment_api_token` is now `config.api_token`.** One token authenticates the JSON API and the deployments endpoint; the old name still works as an alias, and the install template documents the new one.
+- **Separate read and deployment-write tokens.** `config.api_token` reads the JSON API and `config.deployment_token` records deployment markers, so a token handed to a coding agent can no longer create a release. `deployment_api_token` remains an alias for the deployment credential. Set both to the same value to keep one token for everything. (#309)
 - **All timestamps display in the app's `config.time_zone`.** Chart axes and tooltips are formatted in that zone rather than the browser's, so a daily point no longer lands on the wrong calendar day for viewers in another zone. Request, job, exception and operation timestamps also use it instead of the server's OS zone; on a host whose server runs in UTC with a different `config.time_zone`, those pages now show the configured zone. (#303)
 
 - **Dashboard health bar badges omit zero counts.** "26 healthy · 0 slow · 0 critical" now reads "26 healthy"; the Storage badge is shown only under warning or critical pressure.
@@ -33,6 +33,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **API searches match underscores and percent signs literally.** A `route` or `search` term containing one returned nothing on SQLite, because the LIKE pattern was escaped without an accompanying `ESCAPE` clause. (#309)
+- **`min_requests` no longer hides qualifying endpoints.** The slow-requests tool applied the threshold to the page the API had already returned, so a busy endpoint ranked below the limit was dropped and the tool reported no data. The routes endpoint now applies it before its limit and reports how many routes had traffic. (#309)
 - **The exception-group row cap no longer counts preserved and ignored groups.** Once those exempt groups approached the cap, every cleanup run deleted the oldest deletable groups without ever getting under it. The cap now applies to deletable groups only. (#285)
 
 ## [0.4.1] - 2026-09-23

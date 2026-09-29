@@ -306,6 +306,40 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     RailsPulse.configuration.deployment_api_token = DEPLOY_TOKEN
   end
 
+  # The read token is what a coding agent and the CLI are given. Accepting it
+  # here would let either record a release.
+  test "create returns 401 for the read-only api_token" do
+    original_api_token = RailsPulse.configuration.api_token
+    RailsPulse.configuration.api_token = "read-only-token"
+    RailsPulse.configuration.deployment_token = "deploy-token"
+
+    post rails_pulse.deployments_path,
+         params: { deployment: { revision: "tokensha3" } },
+         headers: { "X-Rails-Pulse-Token" => "read-only-token" },
+         as: :json
+
+    assert_response :unauthorized
+  ensure
+    RailsPulse.configuration.api_token = original_api_token
+    RailsPulse.configuration.deployment_token = DEPLOY_TOKEN
+  end
+
+  test "create succeeds with the deployment token while a different api_token is set" do
+    original_api_token = RailsPulse.configuration.api_token
+    RailsPulse.configuration.api_token = "read-only-token"
+    RailsPulse.configuration.deployment_token = "deploy-token"
+
+    post rails_pulse.deployments_path,
+         params: { deployment: { revision: "tokensha4" } },
+         headers: { "X-Rails-Pulse-Token" => "deploy-token" },
+         as: :json
+
+    assert_response :created
+  ensure
+    RailsPulse.configuration.api_token = original_api_token
+    RailsPulse.configuration.deployment_token = DEPLOY_TOKEN
+  end
+
   test "create returns 401 with wrong token" do
     RailsPulse.configuration.deployment_api_token = "secret-token"
 
