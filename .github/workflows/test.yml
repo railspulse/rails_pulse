@@ -2,9 +2,9 @@ name: Test Suite
 
 on:
   push:
-    branches: [ main ]
+    branches: [ main, '*-stable' ]
   pull_request:
-    branches: [ main ]
+    branches: [ main, '*-stable' ]
   workflow_dispatch:
   schedule:
     - cron: '0 6 * * 1'  # Every Monday at 6am UTC

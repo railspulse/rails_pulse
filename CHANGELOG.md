@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Patch releases can be cut from a stable branch (`0-4-stable` for 0.4.x) while `main` carries the next release; `bin/release` and CI accept those branches.
+
 ## [0.4.1] - 2026-09-23
 
 ### Added

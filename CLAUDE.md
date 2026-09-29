@@ -102,6 +102,8 @@ To rebuild assets: `npm run build` (or `npm run build:dev` for source maps).
 
 Run `rake test_release` before any release — it validates git status, RuboCop, Brakeman, asset build, gem build, generator tests, and the full test matrix. See `docs/releasing.md` for the full process.
 
+`main` carries the next release. A patch to an earlier series is cut from its `X-Y-stable` branch (`0-4-stable` releases 0.4.x), then that branch is merged into `main`.
+
 ## Docs
 
 `docs/README.md` lists each file and when to read it. `docs/architecture.md` is the map of the runtime; `docs/decisions/` holds one record per design decision. Rewrite a decision when it changes; do not add historical notes.
