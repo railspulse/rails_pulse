@@ -65,6 +65,9 @@ module RailsPulse
 
           profile = {
             endpoint: requests.first["controller_action"] || endpoint,
+            # The handle for the next hop: rails_pulse_queries takes it to show
+            # the SQL that ran inside this endpoint.
+            route_id: requests.first["route_id"],
             window: window,
             request_count: total || requests.size,
             sampled_requests: requests.size,
@@ -136,6 +139,9 @@ module RailsPulse
             steps << "Error rate is above 5% — check recent_errors and investigate the failure pattern."
           end
           steps << "Use rails_pulse_errors to see error details for this endpoint." if profile[:errors][:count] > 0
+          if profile[:route_id]
+            steps << "Call rails_pulse_queries with route: #{profile[:route_id]} for the SQL that ran inside this endpoint and the file and line each query came from."
+          end
           steps << "Inspect the controller source code and associated SQL queries for optimization opportunities."
           steps
         end

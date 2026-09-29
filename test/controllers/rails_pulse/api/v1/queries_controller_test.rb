@@ -141,6 +141,87 @@ module RailsPulse
           assert_equal 2, body["meta"]["total"]
         end
 
+        # Drilldown
+        #
+        # Knowing a query is slow is only half an investigation; these let a
+        # caller reach the endpoint it ran inside and the line that issued it.
+
+        test "stats name where each query was issued from, most frequent first" do
+          seed_operations
+
+          get rails_pulse.api_v1_queries_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { since: 1.day.ago.iso8601 }
+          body = JSON.parse(response.body)
+          orders = body["data"].find { |q| q["id"] == @orders.id }
+
+          assert_equal [ { "location" => "app/models/order.rb:12", "count" => 2 } ], orders["stats"]["source_locations"]
+        end
+
+        test "source_locations is empty rather than absent when nothing was recorded" do
+          seed_operations
+          RailsPulse::Operation.update_all(codebase_location: nil)
+
+          get rails_pulse.api_v1_queries_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { since: 1.day.ago.iso8601 }
+          body = JSON.parse(response.body)
+
+          assert_empty body["data"].first["stats"]["source_locations"]
+        end
+
+        test "route restricts queries to the SQL issued while serving that endpoint" do
+          seed_operations
+          other_route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/other", controller_action: "other#index")
+          other_request = RailsPulse::Request.create!(route: other_route, duration: 10.0, status: 200, is_error: false,
+            request_uuid: "drilldown-other", controller_action: "other#index", occurred_at: 1.hour.ago)
+          RailsPulse::Operation.insert_all!([ op(other_request, @users, 50.0, 1.hour.ago) ])
+
+          get rails_pulse.api_v1_queries_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { since: 1.day.ago.iso8601, route: other_route.id }
+          body = JSON.parse(response.body)
+
+          assert_equal [ @users.id ], body["data"].map { |q| q["id"] }
+          assert_equal 1, body["meta"]["total"]
+          assert_equal 1, body["data"].first["stats"]["executions"]
+        end
+
+        test "route also accepts a controller action rather than an id" do
+          seed_operations
+
+          get rails_pulse.api_v1_queries_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { since: 1.day.ago.iso8601, route: "api/users" }
+          body = JSON.parse(response.body)
+
+          assert_equal 2, body["meta"]["total"]
+        end
+
+        test "route implies a window so it works without since" do
+          seed_operations
+
+          get rails_pulse.api_v1_queries_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { route: rails_pulse_routes(:api_users).id }
+          body = JSON.parse(response.body)
+
+          assert_equal 2, body["meta"]["total"]
+          refute_nil body["data"].first["stats"]
+        end
+
+        test "route with no match returns an empty page" do
+          seed_operations
+
+          get rails_pulse.api_v1_queries_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { since: 1.day.ago.iso8601, route: "NoSuchController" }
+          body = JSON.parse(response.body)
+
+          assert_empty body["data"]
+          assert_equal 0, body["meta"]["total"]
+        end
+
         private
 
         def seed_operations
@@ -151,18 +232,18 @@ module RailsPulse
           RailsPulse::Operation.delete_all
 
           RailsPulse::Operation.insert_all!([
-            op(request, @orders, 100.0, now - 2.hours, repetition_count: 5),
-            op(request, @orders, 200.0, now - 1.hour),
-            op(request, @users, 180.0, now - 3.hours),
+            op(request, @orders, 100.0, now - 2.hours, repetition_count: 5, codebase_location: "app/models/order.rb:12"),
+            op(request, @orders, 200.0, now - 1.hour, codebase_location: "app/models/order.rb:12"),
+            op(request, @users, 180.0, now - 3.hours, codebase_location: "app/models/user.rb:7"),
             op(request, @users, 999.0, now - 3.days)
           ])
         end
 
-        def op(request, query, duration, occurred_at, repetition_count: nil)
+        def op(request, query, duration, occurred_at, repetition_count: nil, codebase_location: nil)
           {
             request_id: request.id, query_id: query.id, operation_type: "sql", label: query.normalized_sql,
             duration: duration, occurred_at: occurred_at, start_time: 0.0, repetition_count: repetition_count,
-            created_at: occurred_at, updated_at: occurred_at
+            codebase_location: codebase_location, created_at: occurred_at, updated_at: occurred_at
           }
         end
       end

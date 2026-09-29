@@ -51,6 +51,10 @@ module RailsPulse
               request_count = stats["request_count"].to_i
               error_count = stats["error_count"].to_i
               {
+                # The stable handle for a follow-up call: passing it to
+                # rails_pulse_queries avoids a name lookup that a path
+                # containing a LIKE metacharacter could get wrong.
+                route_id: route["id"],
                 endpoint: route["controller_action"] || route["path"],
                 path: route["path"],
                 http_methods: route["http_methods"],
@@ -103,6 +107,7 @@ module RailsPulse
           end
 
           steps = [ "Pass an endpoint's controller_action to rails_pulse_endpoint for percentiles and recent errors." ]
+          steps << "Pass an endpoint's route_id to rails_pulse_queries to see the SQL that ran inside it and where it was issued from."
           steps << "Low-volume endpoints at the top may be one slow hit; raise min_requests to rank by sustained latency." if endpoints.any? { |e| e[:request_count] < 5 }
           steps << "Use rails_pulse_queries with the same period to see whether SQL accounts for the time."
           steps

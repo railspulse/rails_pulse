@@ -97,7 +97,15 @@ rails-pulse job_runs list --status failed --json
 
 ### 6. Correlate with source code
 
-Use the `controller#action` name to find the code. Look for N+1 queries, missing indexes, expensive work in the request path, unnecessary serialization and missing caching.
+Pass the endpoint's `route_id` to `rails_pulse_queries` to see only the SQL that ran inside it,
+with `source_locations` naming the file and line each query was issued from.
+
+```
+rails_pulse_queries(route: 42, period: "last_24_hours")
+```
+
+Start at those locations rather than searching for the SQL. Look for N+1 queries, missing
+indexes, expensive work in the request path, unnecessary serialization and missing caching.
 
 ### 7. Fix, then validate
 

@@ -143,6 +143,17 @@ module RailsPulse
         assert_equal 2, data["routes_with_traffic"]
       end
 
+      # Without the id a follow-up call has to find the route by name, which
+      # is the lookup a path containing a LIKE metacharacter can get wrong.
+      test "slow_requests carries the route id for a follow-up call" do
+        ctx = server_context("/routes" => ROUTES_RESPONSE)
+        result = Tools::SlowRequests.call(server_context: ctx)
+        data = JSON.parse(result.content.first[:text])
+
+        assert_equal [ 2, 1 ], data["endpoints"].map { |e| e["route_id"] }
+        assert data["next_steps"].any? { |s| s.include?("route_id to rails_pulse_queries") }
+      end
+
       test "slow_requests calculates error rate per endpoint" do
         ctx = server_context("/routes" => ROUTES_RESPONSE)
         result = Tools::SlowRequests.call(server_context: ctx)

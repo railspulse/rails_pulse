@@ -14,7 +14,9 @@ module RailsPulse
             return render json: { error: "Invalid sort. Valid values: #{SORT_COLUMNS.join(', ')}" }, status: :bad_request
           end
 
-          if since_start || until_end || sort
+          # A route filter is answered from operations, which only the stats
+          # path reads, so it implies a window the same way a sort does.
+          if since_start || until_end || sort || params[:route].present?
             since_start ||= 24.hours.ago if until_end.nil?
             render_with_stats(since_start..until_end, sort || "total_duration")
           else
@@ -27,14 +29,19 @@ module RailsPulse
 
         def render_with_stats(range, sort)
           base = RailsPulse::Operation.where.not(query_id: nil).where(occurred_at: range)
+          base = apply_route_filter(base)
           total = base.distinct.count(:query_id)
 
           rows = base
             .group(:query_id)
+            # Qualified: the route filter joins requests, which has its own
+            # duration column.
             .select(
-              "query_id, COUNT(*) AS executions, AVG(duration) AS avg_duration, " \
-              "MAX(duration) AS max_duration, SUM(duration) AS total_duration, " \
-              "MAX(repetition_count) AS max_repetition_count"
+              "rails_pulse_operations.query_id, COUNT(*) AS executions, " \
+              "AVG(rails_pulse_operations.duration) AS avg_duration, " \
+              "MAX(rails_pulse_operations.duration) AS max_duration, " \
+              "SUM(rails_pulse_operations.duration) AS total_duration, " \
+              "MAX(rails_pulse_operations.repetition_count) AS max_repetition_count"
             )
             .order(Arel.sql("#{sort} DESC"))
             .limit(limit)
@@ -42,21 +49,60 @@ module RailsPulse
             .to_a
 
           queries = RailsPulse::Query.where(id: rows.map(&:query_id)).index_by(&:id)
+          locations = source_locations(rows.map(&:query_id), range)
           data = rows.filter_map do |row|
             query = queries[row.query_id]
-            QuerySerializer.serialize(query, stats: stats_for(row)) if query
+            QuerySerializer.serialize(query, stats: stats_for(row, locations[row.query_id])) if query
           end
 
           render json: { data: data, meta: { total: total, limit: limit, offset: offset } }
         end
 
-        def stats_for(row)
+        # Restricts the operations to those issued while serving one route, so
+        # "what is slow inside this endpoint" is one call rather than a guess.
+        # A bare integer is a route id; anything else matches the controller
+        # action or path the way the routes endpoint's search does.
+        def apply_route_filter(scope)
+          route = params[:route].to_s
+          return scope if route.blank?
+
+          scope = scope.joins(request: :route)
+          return scope.where(rails_pulse_routes: { id: route.to_i }) if route.match?(/\A\d+\z/)
+
+          term = RailsPulse::LikePattern.containing(route.downcase)
+          scope.where(
+            "LOWER(rails_pulse_routes.controller_action) LIKE :term #{RailsPulse::LikePattern::CLAUSE} " \
+            "OR LOWER(rails_pulse_routes.path) LIKE :term #{RailsPulse::LikePattern::CLAUSE}",
+            term: term
+          )
+        end
+
+        # Where each query was issued from, most frequent first. Without this a
+        # caller knows a query is slow but not which line of code runs it.
+        def source_locations(query_ids, range, per_query: 3)
+          return {} if query_ids.empty?
+
+          counts = RailsPulse::Operation
+            .where(query_id: query_ids, occurred_at: range)
+            .where.not(codebase_location: nil)
+            .group(:query_id, :codebase_location)
+            .count
+
+          counts.group_by { |(query_id, _), _| query_id }.transform_values do |entries|
+            entries.sort_by { |_, count| -count }
+              .first(per_query)
+              .map { |(_, location), count| { location: location, count: count } }
+          end
+        end
+
+        def stats_for(row, locations)
           {
             executions:           row.executions.to_i,
             avg_duration_ms:      row.avg_duration.to_f.round(1),
             max_duration_ms:      row.max_duration.to_f.round(1),
             total_duration_ms:    row.total_duration.to_f.round(1),
-            max_repetition_count: row.max_repetition_count&.to_i
+            max_repetition_count: row.max_repetition_count&.to_i,
+            source_locations:     locations || []
           }
         end
       end

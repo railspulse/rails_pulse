@@ -315,6 +315,41 @@ module RailsPulse
         assert_predicate result, :error?
       end
 
+      # --- Queries drilldown ---
+
+      test "queries forwards a route to scope the SQL to one endpoint" do
+        c = client("/queries" => QUERIES_RESPONSE)
+        _, data = call(Tools::Queries, c, route: 42)
+
+        _path, params = c.calls.first
+
+        assert_equal 42, params[:route]
+        assert_equal 42, data["route"]
+      end
+
+      test "queries omits the route key when unscoped" do
+        _, data = call(Tools::Queries, client("/queries" => QUERIES_RESPONSE))
+
+        refute_includes data.keys, "route"
+      end
+
+      test "queries reports where each query was issued from" do
+        located = {
+          "data" => [
+            { "id" => 1, "normalized_sql" => "SELECT * FROM orders WHERE user_id = ?", "issues" => [], "suggestions" => [],
+              "n_plus_one" => { "likely" => false, "confidence" => 0 },
+              "stats" => { "executions" => 10, "avg_duration_ms" => 5.0, "max_duration_ms" => 9.0,
+                           "total_duration_ms" => 50.0, "max_repetition_count" => nil,
+                           "source_locations" => [ { "location" => "app/models/order.rb:12", "count" => 10 } ] } }
+          ],
+          "meta" => { "total" => 1 }
+        }
+        _, data = call(Tools::Queries, client("/queries" => located))
+
+        assert_equal "app/models/order.rb:12", data["queries"].first["source_locations"].first["location"]
+        assert data["next_steps"].any? { |s| s.include?("source_locations names the file and line") }
+      end
+
       # --- Coverage ---
 
       COVERAGE_RESPONSE = {

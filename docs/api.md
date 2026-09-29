@@ -56,6 +56,11 @@ header.
   `404`. An
   unrecognised `sort`, `status`, `since` or `until` is a `400` with the accepted values.
   Substring filters match `_`, `%` and `!` literally.
+- `queries` takes `route` — a route id, or a controller action or path to match on — and
+  restricts the SQL to operations issued while serving that endpoint, which is how a caller
+  gets from "this endpoint is slow" to "this is the SQL inside it". It implies a window the
+  way `sort` does. Each query's `stats.source_locations` names the file and line it was issued
+  from, most frequent first.
 - `GET coverage` answers whether the data is there rather than a question about the data:
   the oldest and newest request, job run and exception held with their counts, how far hourly
   summaries have been generated and whether they are stale, what retention keeps, and the

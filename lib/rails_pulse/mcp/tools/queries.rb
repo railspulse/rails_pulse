@@ -34,23 +34,30 @@ module RailsPulse
               type: "boolean",
               description: "Only return queries flagged as likely N+1",
               default: false
+            },
+            route: {
+              type: "string",
+              description: "Restrict to SQL issued while serving one endpoint. A route_id from rails_pulse_routes " \
+                           "or rails_pulse_slow_requests, or a controller action or path to match on."
             }
           }
         )
 
-        def self.call(period: "last_24_hours", limit: 10, sort: "total_duration", n_plus_one_only: false, server_context:, **options)
+        def self.call(period: "last_24_hours", limit: 10, sort: "total_duration", n_plus_one_only: false, route: nil, server_context:, **options)
           respond(server_context) do |client|
             window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 50)
             # The N+1 flag is filtered here, not by the API, so fetch the
             # largest page it allows and keep the first `limit` matches.
             page = n_plus_one_only ? MAX_PAGE : limit
-            result = client.get("/queries", window_params(window).merge(sort: sort, limit: page))
+            params = window_params(window).merge(sort: sort, limit: page)
+            params[:route] = route if route
+            result = client.get("/queries", params)
 
             queries = (result["data"] || []).map { |q| format_query(q) }
             queries = queries.select { |q| q[:n_plus_one][:likely] }.first(limit) if n_plus_one_only
 
-            {
+            payload = {
               window: window,
               sort: sort,
               total_queries: result.dig("meta", "total") || queries.size,
@@ -58,6 +65,8 @@ module RailsPulse
               summary: build_summary(queries),
               next_steps: build_next_steps(queries)
             }
+            payload[:route] = route if route
+            payload
           end
         end
 
@@ -85,7 +94,10 @@ module RailsPulse
               max_repetition_count: repetition > 0 ? repetition : nil
             },
             issue_count: Array(query["issues"]).size,
-            suggestions: Array(query["suggestions"])
+            suggestions: Array(query["suggestions"]),
+            # Where the query was issued from, most frequent first, so the
+            # investigation reaches the code rather than stopping at the SQL.
+            source_locations: Array(stats["source_locations"])
           }
         end
 
@@ -109,6 +121,9 @@ module RailsPulse
           end
           if queries.any? { |q| q[:executions].to_i > 1000 && q[:avg_duration_ms].to_f < 5 }
             steps << "Very frequent fast queries add up — consider caching or reducing calls per request."
+          end
+          if queries.any? { |q| q[:source_locations].any? }
+            steps << "source_locations names the file and line each query was issued from — start there rather than searching for the SQL."
           end
           steps << "Use rails_pulse_endpoint to see which endpoints are slow and correlate with these queries."
           steps
