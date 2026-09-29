@@ -17,11 +17,7 @@ module RailsPulse
 
         input_schema(
           properties: {
-            period: {
-              type: "string",
-              description: "Time period: 'last_hour', 'last_24_hours', 'last_7_days', or ISO 8601 timestamp for 'since'",
-              default: "last_7_days"
-            },
+            **Helpers.window_properties("last_7_days"),
             limit: {
               type: "integer",
               description: "Maximum number of deployments (1-100)",
@@ -30,14 +26,15 @@ module RailsPulse
           }
         )
 
-        def self.call(period: "last_7_days", limit: 10, server_context:)
+        def self.call(period: "last_7_days", limit: 10, server_context:, **options)
           respond(server_context) do |client|
+            window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 100)
-            result = client.get("/deployments", { since: resolve_since(period), limit: limit })
+            result = client.get("/deployments", window_params(window).merge(limit: limit))
             deployments = (result["data"] || []).map { |d| format_deployment(d) }
 
             {
-              period: period,
+              window: window,
               total_deployments: result.dig("meta", "total") || deployments.size,
               deployments: deployments,
               summary: build_summary(deployments),

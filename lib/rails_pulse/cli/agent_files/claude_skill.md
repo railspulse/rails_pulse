@@ -107,6 +107,18 @@ rails_pulse_deployments(period: "last_24_hours")
 rails_pulse_endpoint(endpoint: "CheckoutController#create", period: "last_hour")
 ```
 
+To show a change rather than a snapshot, measure the same endpoint over two fixed windows
+either side of the release. Every windowed tool takes `since` and `until` as ISO 8601
+timestamps, read as UTC when no zone is given, and echoes the bounds it used back as `window`.
+
+```
+rails_pulse_endpoint(endpoint: "CheckoutController#create", since: "2026-09-24T12:00:00Z", until: "2026-09-25T12:00:00Z")
+rails_pulse_endpoint(endpoint: "CheckoutController#create", since: "2026-09-25T12:00:00Z", until: "2026-09-26T12:00:00Z")
+```
+
+Use the deploy time as the boundary, and exclude the minutes around it when a rolling deploy
+makes them a mix of both versions.
+
 ## Guidelines
 
 - **SQL is not always the cause.** External API calls, serialization, view rendering and application logic slow requests too.
@@ -115,10 +127,11 @@ rails_pulse_endpoint(endpoint: "CheckoutController#create", period: "last_hour")
 - **Read percentiles, not just averages.** A low average with a high p95 or p99 means intermittent trouble.
 - **Weigh request volume.** A slow endpoint nobody calls may not be worth the work.
 - **Job aggregates are all-time.** `rails_pulse_jobs` counts and percentiles cover the job's whole history; only `recent_failures` is scoped to the period.
+- **Check what the percentiles covered.** `rails_pulse_endpoint` computes them over the most recent requests it sampled, not the whole window. When `sampled_requests` is below `request_count` it says so in `latency.computed_over`; narrow the window until the two match before comparing percentiles across windows.
 
 ## Authentication
 
-The CLI and MCP server read credentials from environment variables or `~/.rails-pulse`. The token is `config.api_token` in the application's Rails Pulse initializer.
+The CLI and MCP server read credentials from environment variables or `~/.rails-pulse`. The token is `config.api_token` in the application's Rails Pulse initializer. It is read-only: recording a deployment needs `config.deployment_token`, which these tools do not carry.
 
 ```
 RAILS_PULSE_URL=https://myapp.com

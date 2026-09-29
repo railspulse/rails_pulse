@@ -19,11 +19,7 @@ module RailsPulse
 
         input_schema(
           properties: {
-            period: {
-              type: "string",
-              description: "Time period: 'last_hour', 'last_24_hours', 'last_7_days', or ISO 8601 timestamp for 'since'",
-              default: "last_24_hours"
-            },
+            **Helpers.window_properties("last_24_hours"),
             limit: {
               type: "integer",
               description: "Maximum number of endpoints (1-100)",
@@ -40,12 +36,13 @@ module RailsPulse
         # The routes endpoint aggregates every request in the window on the
         # server, so the ranking covers the whole period rather than a page
         # of the most recent requests.
-        def self.call(period: "last_24_hours", limit: 10, min_requests: 1, server_context:)
+        def self.call(period: "last_24_hours", limit: 10, min_requests: 1, server_context:, **options)
           respond(server_context) do |client|
+            window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 100)
             min_requests = min_requests.to_i.clamp(1, 1_000_000)
 
-            result = client.get("/routes", { since: resolve_since(period), sort: "avg_duration", limit: limit, min_requests: min_requests })
+            result = client.get("/routes", window_params(window).merge(sort: "avg_duration", limit: limit, min_requests: min_requests))
             routes = result["data"] || []
             routes_with_traffic = result.dig("meta", "routes_with_traffic") || result.dig("meta", "total") || 0
 
@@ -65,7 +62,7 @@ module RailsPulse
             end
 
             {
-              period: period,
+              window: window,
               routes_with_traffic: routes_with_traffic,
               min_requests: min_requests,
               endpoints: endpoints,

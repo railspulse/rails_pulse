@@ -91,6 +91,13 @@ own Gemfile, and without it the command exits 1 saying so. All nine tools are re
 (`read_only_hint: true`) and named `rails_pulse_<resource>`: `routes`, `endpoint`, `queries`,
 `errors`, `exceptions`, `exception`, `jobs`, `slow_requests`, and `deployments`.
 
+Every tool that takes a `period` also takes `since` and `until` as ISO 8601 timestamps, so a
+window can be pinned rather than measured relative to now — what makes a before/after-deploy
+comparison repeatable. A timestamp with no zone is read as UTC. Explicit bounds win over
+`period`, and each tool echoes what it measured as `window: { since:, until:, period: }`.
+An unparseable timestamp, or an `until` at or before `since`, is an error naming the
+correction rather than a query.
+
 ## Operations — regression detection
 
 `RailsPulse::Operations` is the interface anything built on top of Rails Pulse (dashboards,

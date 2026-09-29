@@ -63,6 +63,58 @@ module RailsPulse
         { client: StubClient.new(responses) }
       end
 
+      # --- Time windows ---
+
+      # Explicit bounds are what make a before/after-deploy comparison
+      # repeatable, so they must reach the API rather than be reduced to a
+      # relative period on the way.
+      test "a tool forwards explicit bounds to the API" do
+        ctx = server_context("/routes" => ROUTES_RESPONSE)
+        Tools::Routes.call(since: "2026-09-24T12:00:00Z", until: "2026-09-25T12:00:00Z", server_context: ctx)
+
+        _path, params = ctx[:client].calls.first
+
+        assert_equal "2026-09-24T12:00:00Z", params[:since]
+        assert_equal "2026-09-25T12:00:00Z", params[:until]
+      end
+
+      test "a tool omits until when the window runs to now" do
+        ctx = server_context("/routes" => ROUTES_RESPONSE)
+        Tools::Routes.call(period: "last_hour", server_context: ctx)
+
+        _path, params = ctx[:client].calls.first
+
+        refute_includes params.keys, :until
+      end
+
+      test "a tool echoes the window it measured" do
+        ctx = server_context("/routes" => ROUTES_RESPONSE)
+        result = Tools::Routes.call(since: "2026-09-24T12:00:00Z", until: "2026-09-25T12:00:00Z", server_context: ctx)
+        data = JSON.parse(result.content.first[:text])
+
+        assert_equal "2026-09-24T12:00:00Z", data["window"]["since"]
+        assert_equal "2026-09-25T12:00:00Z", data["window"]["until"]
+        assert_equal "custom", data["window"]["period"]
+      end
+
+      test "a tool resolves a relative period to a concrete start" do
+        ctx = server_context("/routes" => ROUTES_RESPONSE)
+        result = Tools::Routes.call(period: "last_hour", server_context: ctx)
+        data = JSON.parse(result.content.first[:text])
+
+        assert_in_delta Time.now - 3600, Time.iso8601(data["window"]["since"]), 5
+        assert_equal "last_hour", data["window"]["period"]
+      end
+
+      test "a tool reports an unusable timestamp instead of querying" do
+        ctx = server_context("/routes" => ROUTES_RESPONSE)
+        result = Tools::Routes.call(since: "the day before the deploy", server_context: ctx)
+
+        assert_predicate result, :error?
+        assert_includes result.content.first[:text], "Invalid since"
+        assert_empty ctx[:client].calls
+      end
+
       # --- SlowRequests ---
 
       test "slow_requests asks the routes endpoint for the window sorted by average duration" do
@@ -381,6 +433,28 @@ module RailsPulse
         assert_equal 120, data["request_count"]
         assert_equal 2, data["sampled_requests"]
         assert_operator data["latency"]["avg_ms"], :>, 0
+      end
+
+      # Percentiles over a partial sample describe the sample, not the window.
+      # An agent comparing two windows has to be able to tell which it got.
+      test "endpoint says when percentiles cover only part of the window" do
+        home_only = { "data" => REQUESTS_RESPONSE["data"].first(2), "meta" => { "total" => 120, "limit" => 200, "offset" => 0 } }
+        ctx = server_context("/requests" => home_only)
+        result = Tools::Endpoint.call(endpoint: "HomeController#index", server_context: ctx)
+        data = JSON.parse(result.content.first[:text])
+
+        assert_includes data["latency"]["computed_over"], "2 most recent"
+        assert_includes data["latency"]["computed_over"], "120"
+        assert_includes data["next_steps"].join, "since/until"
+      end
+
+      test "endpoint omits the sampling note when the window is fully covered" do
+        complete = { "data" => REQUESTS_RESPONSE["data"].first(2), "meta" => { "total" => 2, "limit" => 200, "offset" => 0 } }
+        ctx = server_context("/requests" => complete)
+        result = Tools::Endpoint.call(endpoint: "HomeController#index", server_context: ctx)
+        data = JSON.parse(result.content.first[:text])
+
+        refute_includes data["latency"].keys, "computed_over"
       end
 
       test "endpoint includes latency percentiles" do

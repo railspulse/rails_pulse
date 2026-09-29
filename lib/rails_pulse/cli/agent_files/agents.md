@@ -51,6 +51,8 @@ All tools are read-only. Each returns a `summary` and `next_steps`.
 | `rails_pulse_jobs` | Background job health and recent failures |
 | `rails_pulse_deployments` | Recent deployments with revision, timing and metadata |
 
+Every tool that takes a `period` also takes `since` and `until` as ISO 8601 timestamps, read as UTC when no zone is given, and echoes the bounds it measured back as `window`. Use them to compare two fixed windows — the 24 hours before a release against the 24 hours after — rather than a relative period that moves between calls.
+
 ## CLI
 
 The `rails-pulse` CLI works without MCP. Append `--json` for structured output.
@@ -70,7 +72,7 @@ Common flags: `--limit N` (1 to 500, default 25), `--offset N`, `--json`, `--sin
 
 ## Authentication
 
-Set `RAILS_PULSE_URL` and `RAILS_PULSE_TOKEN` (the application's `config.api_token`), or run `rails-pulse configure` to write `~/.rails-pulse`.
+Set `RAILS_PULSE_URL` and `RAILS_PULSE_TOKEN` (the application's `config.api_token`), or run `rails-pulse configure` to write `~/.rails-pulse`. That token is read-only; recording a deployment needs `config.deployment_token`, which these tools do not carry.
 
 ## Investigation pattern
 

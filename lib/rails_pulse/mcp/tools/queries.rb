@@ -19,11 +19,7 @@ module RailsPulse
 
         input_schema(
           properties: {
-            period: {
-              type: "string",
-              description: "Time period: 'last_hour', 'last_24_hours', 'last_7_days', or ISO 8601 timestamp for 'since'",
-              default: "last_24_hours"
-            },
+            **Helpers.window_properties("last_24_hours"),
             limit: {
               type: "integer",
               description: "Maximum number of queries (1-50)",
@@ -42,19 +38,20 @@ module RailsPulse
           }
         )
 
-        def self.call(period: "last_24_hours", limit: 10, sort: "total_duration", n_plus_one_only: false, server_context:)
+        def self.call(period: "last_24_hours", limit: 10, sort: "total_duration", n_plus_one_only: false, server_context:, **options)
           respond(server_context) do |client|
+            window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 50)
             # The N+1 flag is filtered here, not by the API, so fetch the
             # largest page it allows and keep the first `limit` matches.
             page = n_plus_one_only ? MAX_PAGE : limit
-            result = client.get("/queries", { since: resolve_since(period), sort: sort, limit: page })
+            result = client.get("/queries", window_params(window).merge(sort: sort, limit: page))
 
             queries = (result["data"] || []).map { |q| format_query(q) }
             queries = queries.select { |q| q[:n_plus_one][:likely] }.first(limit) if n_plus_one_only
 
             {
-              period: period,
+              window: window,
               sort: sort,
               total_queries: result.dig("meta", "total") || queries.size,
               queries: queries,

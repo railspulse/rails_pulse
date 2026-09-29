@@ -24,11 +24,7 @@ module RailsPulse
               description: "Controller action (e.g. 'CheckoutController#create') or path (e.g. '/checkout'); " \
                            "case-insensitive substring match. If unknown, use rails_pulse_routes first."
             },
-            period: {
-              type: "string",
-              description: "Time period: 'last_hour', 'last_24_hours', 'last_7_days', or ISO 8601 timestamp for 'since'",
-              default: "last_7_days"
-            },
+            **Helpers.window_properties("last_7_days"),
             limit: {
               type: "integer",
               description: "Most recent requests of this endpoint to analyze (1-500). More data = more accurate percentiles.",
@@ -38,29 +34,30 @@ module RailsPulse
           required: [ "endpoint" ]
         )
 
-        def self.call(endpoint:, period: "last_7_days", limit: 200, server_context:)
+        def self.call(endpoint:, period: "last_7_days", limit: 200, server_context:, **options)
           respond(server_context) do |client|
+            window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 500)
 
             # The API matches the endpoint against the request's controller
             # action and its route's path, so the page holds only this
             # endpoint's requests rather than the newest across the app.
-            result = client.get("/requests", { route: endpoint, since: resolve_since(period), limit: limit, offset: 0 })
+            result = client.get("/requests", window_params(window).merge(route: endpoint, limit: limit, offset: 0))
             matching = result["data"] || []
 
             if matching.empty?
               {
                 endpoint: endpoint,
-                period: period,
+                window: window,
                 error: "No requests found matching '#{endpoint}'. Use rails_pulse_routes to see available endpoints."
               }
             else
-              build_profile(endpoint, period, matching, result.dig("meta", "total"))
+              build_profile(endpoint, window, matching, result.dig("meta", "total"))
             end
           end
         end
 
-        private_class_method def self.build_profile(endpoint, period, requests, total)
+        private_class_method def self.build_profile(endpoint, window, requests, total)
           durations = requests.map { |r| r["duration"].to_f }.sort
           errors = requests.select { |r| r["is_error"] }
           statuses = requests.map { |r| r["status"] }.tally.sort_by { |_, c| -c }
@@ -68,7 +65,7 @@ module RailsPulse
 
           profile = {
             endpoint: requests.first["controller_action"] || endpoint,
-            period: period,
+            window: window,
             request_count: total || requests.size,
             sampled_requests: requests.size,
             latency: {
@@ -89,6 +86,15 @@ module RailsPulse
               last_request: sorted_by_time.last&.dig("occurred_at")
             }
           }
+
+          # Percentiles are computed over the sampled page, which is the most
+          # recent requests rather than the whole window. Said beside the
+          # numbers so they are not read as the window's own statistics: a
+          # window whose older half was slow reports a much lower p95 here.
+          if profile[:sampled_requests] < profile[:request_count]
+            profile[:latency][:computed_over] =
+              "the #{profile[:sampled_requests]} most recent requests, not all #{profile[:request_count]} in the window"
+          end
 
           # Add recent errors detail if any
           if errors.any?
@@ -116,6 +122,10 @@ module RailsPulse
 
         private_class_method def self.build_next_steps(profile)
           steps = []
+          if profile[:latency][:computed_over]
+            steps << "Percentiles cover only the sampled requests. Narrow the window with since/until until " \
+                     "sampled_requests equals request_count for statistics over the whole window."
+          end
           if profile[:latency][:p95_ms] > 1000
             steps << "P95 latency is over 1s — investigate slow database queries or N+1s in the controller."
           end

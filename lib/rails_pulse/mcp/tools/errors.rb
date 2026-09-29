@@ -18,11 +18,7 @@ module RailsPulse
 
         input_schema(
           properties: {
-            period: {
-              type: "string",
-              description: "Time period: 'last_hour', 'last_24_hours', 'last_7_days', or ISO 8601 timestamp for 'since'",
-              default: "last_24_hours"
-            },
+            **Helpers.window_properties("last_24_hours"),
             limit: {
               type: "integer",
               description: "Maximum number of error requests to fetch (1-500)",
@@ -36,12 +32,13 @@ module RailsPulse
           }
         )
 
-        def self.call(period: "last_24_hours", limit: 100, status: "5xx", server_context:)
+        def self.call(period: "last_24_hours", limit: 100, status: "5xx", server_context:, **options)
           respond(server_context) do |client|
+            window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 500)
 
             params = { limit: limit, offset: 0 }
-            params[:since] = resolve_since(period)
+            params.merge!(window_params(window))
             params[:status] = status
 
             result = client.get("/requests", params)
@@ -67,7 +64,7 @@ module RailsPulse
             error_groups.sort_by! { |g| -g[:count] }
 
             {
-              period: period,
+              window: window,
               status_filter: status,
               total_errors: total,
               errors_returned: requests.size,

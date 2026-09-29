@@ -16,11 +16,7 @@ module RailsPulse
 
         input_schema(
           properties: {
-            period: {
-              type: "string",
-              description: "Time period: 'last_hour', 'last_24_hours', 'last_7_days', or ISO 8601 timestamp for 'since'",
-              default: "last_7_days"
-            },
+            **Helpers.window_properties("last_7_days"),
             search: {
               type: "string",
               description: "Case-insensitive substring match on path or controller action (e.g. 'checkout')"
@@ -38,11 +34,12 @@ module RailsPulse
           }
         )
 
-        def self.call(period: "last_7_days", search: nil, limit: 50, sort: "request_count", server_context:)
+        def self.call(period: "last_7_days", search: nil, limit: 50, sort: "request_count", server_context:, **options)
           respond(server_context) do |client|
+            window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 100)
 
-            params = { since: resolve_since(period), sort: sort, limit: limit }
+            params = window_params(window).merge(sort: sort, limit: limit)
             params[:search] = search if search
             result = client.get("/routes", params)
 
@@ -50,7 +47,7 @@ module RailsPulse
             routes.select! { |r| matches?(r, search) } if search
 
             {
-              period: period,
+              window: window,
               sort: sort,
               total_routes: result.dig("meta", "total") || routes.size,
               routes: routes,

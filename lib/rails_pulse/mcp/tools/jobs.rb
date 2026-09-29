@@ -18,11 +18,7 @@ module RailsPulse
 
         input_schema(
           properties: {
-            period: {
-              type: "string",
-              description: "Time period for recent failures: 'last_hour', 'last_24_hours', 'last_7_days', or ISO 8601 timestamp",
-              default: "last_24_hours"
-            },
+            **Helpers.window_properties("last_24_hours"),
             limit: {
               type: "integer",
               description: "Maximum number of jobs to return (1-50)",
@@ -35,15 +31,16 @@ module RailsPulse
           }
         )
 
-        def self.call(period: "last_24_hours", limit: 10, job: nil, server_context:)
+        def self.call(period: "last_24_hours", limit: 10, job: nil, server_context:, **options)
           respond(server_context) do |client|
+            window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 50)
 
             job_params = { limit: 100 }
             job_params[:job] = job if job
             jobs = client.get("/jobs", job_params)["data"] || []
 
-            run_params = { since: resolve_since(period), status: "failed", limit: 100 }
+            run_params = window_params(window).merge(status: "failed", limit: 100)
             run_params[:job] = job if job
             failed_runs = client.get("/job_runs", run_params)["data"] || []
 
@@ -52,7 +49,7 @@ module RailsPulse
               .first(limit)
 
             {
-              period: period,
+              window: window,
               jobs: formatted,
               recent_failures: format_failures(failed_runs),
               note: "Job counts and durations are all-time aggregates; recent_failures is limited to the period.",
