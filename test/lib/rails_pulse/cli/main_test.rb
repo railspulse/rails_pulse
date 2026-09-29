@@ -15,7 +15,7 @@ module RailsPulse
 
         assert_includes out, "Examples:"
         assert_includes out, "rails-pulse configure"
-        assert_includes out, "rails-pulse summary show"
+        assert_includes out, "rails-pulse deployments list"
       end
 
       test "help with a specific command does not output examples section" do
@@ -31,7 +31,7 @@ module RailsPulse
       test "all expected subcommands are registered" do
         registered = Main.all_tasks.keys
 
-        %w[configure install routes requests queries jobs alerts job_runs alert_rules deployments thresholds summary mcp].each do |name|
+        %w[configure install routes requests queries jobs job_runs exceptions deployments mcp].each do |name|
           assert_includes registered, name, "Expected '#{name}' to be registered"
         end
       end

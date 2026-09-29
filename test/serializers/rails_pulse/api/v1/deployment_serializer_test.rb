@@ -20,13 +20,12 @@ module RailsPulse
           assert_in_delta 75.5, result[:duration_seconds]
           assert_not result[:in_progress]
           assert_equal({ "branch" => "main" }, result[:metadata])
-          assert_nil result[:regression]
         end
 
         test "returns a hash with exactly the expected keys" do
           result = DeploymentSerializer.serialize(@deployment)
 
-          assert_equal %i[id revision short_revision started_at finished_at duration_seconds in_progress metadata regression], result.keys
+          assert_equal %i[id revision short_revision started_at finished_at duration_seconds in_progress metadata], result.keys
         end
 
         test "serializes an in-progress deployment" do
@@ -35,13 +34,6 @@ module RailsPulse
 
           assert result[:in_progress]
           assert_nil result[:duration_seconds]
-        end
-
-        test "passes an attached regression check through untouched" do
-          regression = { outcome: "triggered", results: [ { metric: "error_rate" } ] }
-          result = DeploymentSerializer.serialize(@deployment, regression: regression)
-
-          assert_equal regression, result[:regression]
         end
       end
     end

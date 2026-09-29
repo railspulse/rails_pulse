@@ -2,8 +2,8 @@
 
 Rails Pulse follows [Semantic Versioning](https://semver.org/) starting at 1.0. This page
 lists the public surface: what a host application, the `rails-pulse` CLI, the MCP server, and
-the Pro gem are meant to depend on, and what contract each entry carries between minor
-releases.
+anything built on top of the gem are meant to depend on, and what contract each entry carries
+between minor releases.
 
 Everything not listed here is internal — `RailsPulse::Cards::*`, `Charts::*`, `Tables::*`,
 controllers, concerns, `Tracker` internals below `.stats`/`.flush!`, and any other class or
@@ -30,14 +30,9 @@ what each key does and its default; this page does not duplicate it.
 ## Navigation
 
 - `RailsPulse.register_nav_item(label:, path_helper:, icon:, position: 100)` — adds an entry
-  to the dashboard sidebar, sorted by `position` ascending. Intended for the Pro gem and other
-  extensions to add pages without forking the layout.
+  to the dashboard sidebar, sorted by `position` ascending. Intended for a host or plugin to
+  add pages without forking the layout.
 - `RailsPulse.nav_items` — the registered items in sort order.
-
-## Pro detection
-
-- `RailsPulse.pro?` — `true` when `RailsPulse::Pro` is defined, `false` otherwise. This is the
-  documented way to branch on whether Pro is installed; do not check `defined?` directly.
 
 ## JSON API
 
@@ -47,22 +42,24 @@ dashboard. It never consults the dashboard session — only `config.api_token` �
 token configured every request is refused (`401`). Send the token as an `X-Rails-Pulse-Token`
 header.
 
-- `GET routes`, `GET requests`, `GET queries`, `GET jobs`, `GET job_runs`, `GET deployments` —
+- `GET routes`, `GET requests`, `GET queries`, `GET jobs`, `GET job_runs`, `GET exceptions`,
+  `GET deployments` —
   index-only, paginated (`limit`, default 25, max 500; `offset`) and filterable by `since`/
   `until` (ISO 8601). Response shape is `{ data: [...], meta: { total:, limit:, offset: } }`.
   `requests` also takes `route` (substring of the controller action or route path) and
-  `status` (`500` or `5xx`); `jobs` and `job_runs` take `job` (exact class name). An
+  `status` (`500` or `5xx`); `jobs` and `job_runs` take `job` (exact class name); `exceptions`
+  lists exception groups filtered by `status` (`open`, `resolved`, `ignored`), `search` (substring of
+  the class or location), and `sort` (`last_seen_at`, `first_seen_at`, `occurrence_count`), with
+  `since`/`until` applied to when the group was last seen. `GET exceptions/:id` is the one show
+  action: the group plus its most recent occurrences (`occurrences`, default 5, max 20), each with
+  backtrace, request method, URL, filtered params, environment and deploy SHA; an unknown id is a
+  `404`. An
   unrecognised `sort`, `status`, `since` or `until` is a `400` with the accepted values.
 - `POST deployments` and `PUT deployments/:id/finish` are the existing endpoints CI calls to
   record a release (the same action as the `rails_pulse:record_deployment` and
   `rails_pulse:finish_deployment` rake tasks below). They sit outside the `api/v1` read-only
   scope; they accept `config.api_token` when it is set and fall back to the dashboard
   authentication only when it is not.
-- Five endpoints (`alerts`, `alert_rules`, `summary`, `threshold_suggestions`, `setup`) answer
-  `402 Payment Required` with `{ error: "requires_extension", feature:, message: }` unless an
-  extension engine is installed and draws the real routes in their place. A new one needs a
-  stub in `Api::V1::ExtensionController::FEATURES`, the route in `config/routes.rb`'s `api/v1`
-  scope, and the same route appended by the extension engine.
 - `deployment_api_token` is the pre-0.5 name for `config.api_token`; the alias still works.
 
 ## CLI
@@ -72,26 +69,23 @@ over HTTP — it never loads the Rails app or the engine, so nothing under `lib/
 may reference Rails, models, or configuration directly. `rails-pulse configure` prompts for a
 URL and token and writes `~/.rails-pulse`; credentials otherwise come from `RAILS_PULSE_URL`
 and `RAILS_PULSE_TOKEN`. Each API resource above has a matching subcommand
-(`routes`, `requests`, `queries`, `jobs`, `job_runs`, `deployments`, plus the extension-served
-`alerts`, `alert_rules`, `summary`, `thresholds`, `setup`); a `402` from the API is turned into
-a plain "provided by an extension" message rather than an error. `rails-pulse install claude`
-writes an agent skill file to `~/.claude/skills/rails-pulse/SKILL.md`.
+(`routes`, `requests`, `queries`, `jobs`, `job_runs`, `exceptions`, `deployments`).
+`rails-pulse install claude` writes an agent skill file to
+`~/.claude/skills/rails-pulse/SKILL.md`.
 
 ## MCP server
 
 `rails-pulse mcp` (`lib/rails_pulse/mcp/`) starts an MCP server over stdio for AI coding
 agents, built on the same HTTP client as the CLI. It needs the `mcp` gem, which is a
 development dependency of this gem and not a runtime one: the host adds `gem "mcp"` to its
-own Gemfile, and without it the command exits 1 saying so. All twelve tools are read-only
+own Gemfile, and without it the command exits 1 saying so. All nine tools are read-only
 (`read_only_hint: true`) and named `rails_pulse_<resource>`: `routes`, `endpoint`, `queries`,
-`errors`, `jobs`, `slow_requests`, and `deployments` work with this gem alone; `alerts`,
-`alert_rules`, `suggested_thresholds`, `setup`, and `request_stats` are served by an extension
-and otherwise return the same "provided by an extension" message the CLI does.
+`errors`, `exceptions`, `exception`, `jobs`, `slow_requests`, and `deployments`.
 
 ## Operations — regression detection
 
 `RailsPulse::Operations` is the interface anything built on top of Rails Pulse (dashboards,
-findings, Pro tooling) should use to answer "did this get worse?" and "when did it change?".
+findings, agent tooling) should use to answer "did this get worse?" and "when did it change?".
 It reads only from summaries, so it stays available long after raw requests have aged out of
 retention.
 

@@ -5,23 +5,21 @@ module RailsPulse
   module CLI
     class Deployments < BaseCommand
       COLUMNS = [
-        [ "Revision",   14, :short_revision ],
-        [ "Started",    25, :started_at ],
-        [ "Finished",   25, :finished_at ],
-        [ "Regression", 18, :regression_outcome ]
+        [ "Revision", 14, :short_revision ],
+        [ "Started",  25, :started_at ],
+        [ "Finished", 25, :finished_at ]
       ].freeze
 
       desc "list", "List recorded deployments"
       long_desc <<~DESC
-        Returns deployments ordered by most recent first. With the regression extension each row
-        also shows the outcome of the automatic regression check: triggered, clean,
-        insufficient_data, or unchecked (not evaluated yet, or the extension not installed).
+        Returns deployments ordered by most recent first. A deployment still in progress has
+        no finish time.
 
         Filter by time window (ISO 8601):
           --since 2026-06-01T00:00:00Z
           --until 2026-06-01T23:59:59Z
 
-        Use --json to get per-metric regression results and deployment metadata.
+        Use --json to get the full revision, duration and deployment metadata.
       DESC
       option :limit,  type: :numeric, default: 25,    desc: "Max records to return (1–500)"
       option :offset, type: :numeric, default: 0,     desc: "Number of records to skip (for pagination)"
@@ -34,10 +32,7 @@ module RailsPulse
           params[:since] = options[:since] if options[:since]
           params[:until] = options[:until] if options[:until]
           result = client.get("/deployments", params)
-          rows = result["data"].map do |d|
-            d.merge("regression_outcome" => d["regression"] ? d["regression"]["outcome"] : "unchecked")
-          end
-          Formatter.render(result.merge("data" => rows), json: options[:json], columns: COLUMNS)
+          Formatter.render(result, json: options[:json], columns: COLUMNS)
         end
       end
     end

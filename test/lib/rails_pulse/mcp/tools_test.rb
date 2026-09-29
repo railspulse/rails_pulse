@@ -59,30 +59,6 @@ module RailsPulse
         "meta" => { "total" => 2, "limit" => 10, "offset" => 0 }
       }.freeze
 
-      # The shape the extension's summary endpoint returns from GET summary.
-      SUMMARY_RESPONSE = {
-        "period" => {
-          "type" => "week", "start" => "2026-05-26", "end" => "2026-06-01",
-          "label" => "May 26 – Jun 1, 2026"
-        },
-        "overview" => {
-          "p95_ms" => 800, "avg_ms" => 200, "total_requests" => 1000, "error_count" => 15, "error_rate_pct" => 1.5,
-          "vs_previous" => {
-            "p95_ms" => 700, "total_requests" => 900, "error_rate_pct" => 1.1,
-            "p95_delta_pct" => 14.3, "total_delta_pct" => 11.1, "error_rate_delta_pct" => 36.4
-          }
-        },
-        "slowest_routes" => [
-          { "route" => "CheckoutController#create", "requests" => 50, "avg_ms" => 450, "p95_ms" => 900,
-            "error_count" => 3, "prev_p95_delta_pct" => 12.5 }
-        ],
-        "slowest_queries" => [],
-        "job_summaries" => [],
-        "insights" => [],
-        "alert_events" => [],
-        "recommendations" => []
-      }.freeze
-
       def server_context(responses = {})
         { client: StubClient.new(responses) }
       end
@@ -173,101 +149,6 @@ module RailsPulse
         assert_includes result.content.first[:text], "401 Unauthorized"
       end
 
-      # --- RequestStats ---
-
-      test "request_stats returns aggregate stats" do
-        ctx = server_context("/summary" => SUMMARY_RESPONSE)
-        result = Tools::RequestStats.call(server_context: ctx)
-
-        assert_not result.error?
-        data = JSON.parse(result.content.first[:text])
-
-        assert_equal 1000, data["stats"]["total_requests"]
-        assert_equal 200, data["stats"]["avg_duration_ms"]
-        assert_equal 800, data["stats"]["p95_duration_ms"]
-        assert_equal 15, data["stats"]["error_count"]
-        assert_in_delta(1.5, data["stats"]["error_rate"])
-      end
-
-      test "request_stats includes period comparison" do
-        ctx = server_context("/summary" => SUMMARY_RESPONSE)
-        result = Tools::RequestStats.call(server_context: ctx)
-        data = JSON.parse(result.content.first[:text])
-
-        assert_equal 900, data["previous_period"]["total_requests"]
-        assert_equal 700, data["previous_period"]["p95_duration_ms"]
-        assert_in_delta(14.3, data["changes"]["p95_duration_change_pct"])
-        assert_equal "degrading", data["changes"]["p95_duration_trend"]
-        assert_in_delta(11.1, data["changes"]["total_requests_change_pct"])
-        assert_equal "degrading", data["changes"]["error_rate_trend"]
-      end
-
-      test "request_stats explains a period with no summaries instead of returning blank numbers" do
-        empty = SUMMARY_RESPONSE.deep_dup
-        empty["overview"] = {
-          "p95_ms" => nil, "avg_ms" => nil, "total_requests" => nil, "error_count" => 0, "error_rate_pct" => nil,
-          "vs_previous" => { "p95_ms" => nil, "total_requests" => nil, "error_rate_pct" => nil,
-                             "p95_delta_pct" => nil, "total_delta_pct" => nil, "error_rate_delta_pct" => nil }
-        }
-        empty["slowest_routes"] = []
-        ctx = server_context("/summary" => empty)
-        result = Tools::RequestStats.call(server_context: ctx)
-        data = JSON.parse(result.content.first[:text])
-
-        assert_not result.error?
-        assert_includes data["summary"], "No summary data for May 26 – Jun 1, 2026"
-        assert_includes data["summary"], "rails_pulse_slow_requests"
-        assert_nil data["changes"]
-      end
-
-      test "request_stats omits the comparison when there is no previous period" do
-        first_week = SUMMARY_RESPONSE.deep_dup
-        first_week["overview"]["vs_previous"] = { "p95_ms" => nil, "total_requests" => nil, "error_rate_pct" => nil,
-                                                  "p95_delta_pct" => nil, "total_delta_pct" => nil, "error_rate_delta_pct" => nil }
-        ctx = server_context("/summary" => first_week)
-        result = Tools::RequestStats.call(server_context: ctx)
-        data = JSON.parse(result.content.first[:text])
-
-        assert_nil data["previous_period"]
-        assert_nil data["changes"]
-      end
-
-      test "request_stats includes slowest routes" do
-        ctx = server_context("/summary" => SUMMARY_RESPONSE)
-        result = Tools::RequestStats.call(server_context: ctx)
-        data = JSON.parse(result.content.first[:text])
-
-        assert_equal 1, data["slowest_routes"].size
-        route = data["slowest_routes"].first
-
-        assert_equal "CheckoutController#create", route["endpoint"]
-        assert_equal 450, route["avg_duration_ms"]
-        assert_equal 900, route["p95_duration_ms"]
-        assert_equal 50, route["request_count"]
-        assert_in_delta(12.5, route["p95_delta_pct"])
-      end
-
-      test "request_stats includes summary text" do
-        ctx = server_context("/summary" => SUMMARY_RESPONSE)
-        result = Tools::RequestStats.call(server_context: ctx)
-        data = JSON.parse(result.content.first[:text])
-
-        assert_includes data["summary"], "1000 requests"
-        assert_includes data["summary"], "p95 800ms"
-        assert_includes data["summary"], "p95 degrading vs previous period"
-      end
-
-      test "request_stats handles API error" do
-        error_client = Object.new
-        def error_client.get(*, **)
-          raise CLI::Client::ApiError, "500 Internal Server Error"
-        end
-        ctx = { client: error_client }
-        result = Tools::RequestStats.call(server_context: ctx)
-
-        assert_predicate result, :error?
-      end
-
       # --- Errors ---
 
       test "errors returns error requests grouped by endpoint" do
@@ -314,6 +195,127 @@ module RailsPulse
         data = JSON.parse(result.content.first[:text])
 
         assert_includes data["summary"], "No 5xx errors found"
+      end
+
+      # --- Exceptions ---
+
+      EXCEPTIONS_RESPONSE = {
+        "data" => [
+          {
+            "id" => 1, "fingerprint" => "abc", "exception_class" => "ActiveRecord::RecordNotFound",
+            "location" => "app/models/post.rb#find", "message" => "Couldn't find Post with 'id'=999",
+            "status" => "open", "occurrence_count" => 5, "first_seen_at" => "2026-06-01T10:00:00Z",
+            "last_seen_at" => "2026-06-01T12:00:00Z", "resolved_at" => nil, "preserve" => false
+          },
+          {
+            "id" => 2, "fingerprint" => "def", "exception_class" => "ZeroDivisionError",
+            "location" => "app/services/calculator.rb#divide", "message" => "divided by 0",
+            "status" => "open", "occurrence_count" => 1, "first_seen_at" => "2026-06-01T12:30:00Z",
+            "last_seen_at" => "2026-06-01T12:30:00Z", "resolved_at" => nil, "preserve" => false
+          }
+        ],
+        "meta" => { "total" => 2, "limit" => 25, "offset" => 0 }
+      }.freeze
+
+      test "exceptions asks for open groups in the period by default" do
+        ctx = server_context("/exceptions" => EXCEPTIONS_RESPONSE)
+        Tools::Exceptions.call(server_context: ctx)
+        path, params = ctx[:client].calls.first
+
+        assert_equal "/exceptions", path
+        assert_equal "open", params[:status]
+        assert_predicate params[:since], :present?
+        assert_nil params[:search]
+      end
+
+      test "exceptions drops the status and time filters for 'all'" do
+        ctx = server_context("/exceptions" => EXCEPTIONS_RESPONSE)
+        Tools::Exceptions.call(period: "all", status: "all", search: "post", server_context: ctx)
+        _path, params = ctx[:client].calls.first
+
+        assert_nil params[:status]
+        assert_nil params[:since]
+        assert_equal "post", params[:search]
+      end
+
+      test "exceptions returns the groups with a summary and next steps" do
+        ctx = server_context("/exceptions" => EXCEPTIONS_RESPONSE)
+        result = Tools::Exceptions.call(server_context: ctx)
+
+        assert_not result.error?
+        data = JSON.parse(result.content.first[:text])
+
+        assert_equal 2, data["total_groups"]
+        assert_equal %w[ActiveRecord::RecordNotFound ZeroDivisionError], data["groups"].map { |g| g["exception_class"] }
+        assert_includes data["summary"], "2 open exception group(s)"
+        assert_includes data["summary"], "Most frequent: ActiveRecord::RecordNotFound"
+        assert_includes data["next_steps"].first, "ZeroDivisionError"
+      end
+
+      test "exceptions clamps limit" do
+        ctx = server_context("/exceptions" => EXCEPTIONS_RESPONSE)
+        Tools::Exceptions.call(limit: 1000, server_context: ctx)
+        _path, params = ctx[:client].calls.first
+
+        assert_equal 100, params[:limit]
+      end
+
+      test "exceptions handles no groups" do
+        empty = { "data" => [], "meta" => { "total" => 0, "limit" => 25, "offset" => 0 } }
+        ctx = server_context("/exceptions" => empty)
+        data = JSON.parse(Tools::Exceptions.call(server_context: ctx).content.first[:text])
+
+        assert_includes data["summary"], "No open exception groups found"
+      end
+
+      # --- Exception (detail) ---
+
+      EXCEPTION_DETAIL_RESPONSE = {
+        "data" => {
+          "id" => 1, "exception_class" => "ActiveRecord::RecordNotFound", "location" => "app/models/post.rb#find",
+          "message" => "Couldn't find Post with 'id'=999", "status" => "open", "occurrence_count" => 5,
+          "first_seen_at" => "2026-06-01T10:00:00Z", "last_seen_at" => "2026-06-01T12:00:00Z", "resolved_at" => nil,
+          "occurrences" => [
+            { "id" => 11, "occurred_at" => "2026-06-01T12:00:00Z", "message" => "Couldn't find Post with 'id'=999",
+              "request_method" => "GET", "request_url" => "/posts/999", "request_params" => { "id" => "999" },
+              "environment" => "production", "deploy_sha" => "abc1234",
+              "backtrace" => [ { "file" => "gems/activerecord/core.rb", "line" => 1, "method" => "find" },
+                               { "file" => "app/controllers/posts_controller.rb", "line" => 42, "method" => "show" } ] }
+          ]
+        }
+      }.freeze
+
+      test "exception fetches one group by id with the requested occurrence count" do
+        ctx = server_context("/exceptions/1" => EXCEPTION_DETAIL_RESPONSE)
+        Tools::ExceptionDetail.call(id: 1, occurrences: 50, server_context: ctx)
+        path, params = ctx[:client].calls.first
+
+        assert_equal "/exceptions/1", path
+        assert_equal 20, params[:occurrences]
+      end
+
+      test "exception returns backtraces, app frames, a summary and next steps" do
+        ctx = server_context("/exceptions/1" => EXCEPTION_DETAIL_RESPONSE)
+        result = Tools::ExceptionDetail.call(id: 1, server_context: ctx)
+
+        assert_not result.error?
+        data = JSON.parse(result.content.first[:text])
+
+        assert_equal "ActiveRecord::RecordNotFound", data["exception_class"]
+        assert_equal [ { "location" => "app/controllers/posts_controller.rb:42", "method" => "show" } ], data["app_frames"]
+        assert_equal "GET /posts/999", data["occurrences"].first["request"]
+        assert_equal 2, data["occurrences"].first["backtrace"].size
+        assert_includes data["summary"], "First app frame: app/controllers/posts_controller.rb:42 in show"
+        assert_includes data["next_steps"].first, "posts_controller.rb:42"
+      end
+
+      test "exception relays an API 404 as a tool error" do
+        client = StubClient.new
+        client.define_singleton_method(:get) { |*_| raise RailsPulse::CLI::Client::ApiError, "404 Not Found: No exception group with id 9" }
+        result = Tools::ExceptionDetail.call(id: 9, server_context: { client: client })
+
+        assert_predicate result, :error?
+        assert_includes result.content.first[:text], "No exception group with id 9"
       end
 
       # --- Endpoint ---

@@ -11,10 +11,6 @@ module RailsPulse
         rescue RailsPulse::CLI::Config::ConfigError => e
           say "Error: #{e.message}.", :red
           exit 1
-        rescue RailsPulse::CLI::Client::ExtensionRequiredError => e
-          say e.message, :yellow
-          say "See #{e.url}" if e.url
-          exit 1
         rescue RailsPulse::CLI::Client::ApiError => e
           say "API error: #{e.message}", :red
           exit 1

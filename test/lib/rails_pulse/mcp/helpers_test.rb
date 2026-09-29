@@ -51,19 +51,6 @@ module RailsPulse
         assert_predicate result, :error?
         assert_includes result.content.first[:text], "503 Service Unavailable"
       end
-
-      test "respond answers an extension-required 402 as data the agent can relay, not as an error" do
-        error = CLI::Client::ExtensionRequiredError.new("Alert history is provided by an extension.", feature: "alerts", url: "https://example.com/extensions")
-        result = Host.respond({ client: nil }) { raise error }
-
-        assert_not result.error?
-        data = JSON.parse(result.content.first[:text])
-
-        assert data["requires_extension"]
-        assert_equal "alerts", data["feature"]
-        assert_equal "https://example.com/extensions", data["url"]
-        assert_includes data["next_steps"].join, "rails_pulse_routes"
-      end
     end
   end
 end

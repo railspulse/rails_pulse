@@ -9,18 +9,6 @@ module RailsPulse
     class Client
       class ApiError < StandardError; end
 
-      # The endpoint exists but is served by an extension the application
-      # does not have. The API answers 402 with the feature name.
-      class ExtensionRequiredError < ApiError
-        attr_reader :feature, :url
-
-        def initialize(message, feature: nil, url: nil)
-          super(message)
-          @feature = feature
-          @url = url
-        end
-      end
-
       def initialize(config = nil)
         @config = config || Config.load
       end
@@ -49,13 +37,6 @@ module RailsPulse
           {}
         end
         body = {} unless body.is_a?(Hash)
-
-        if response.code == "402"
-          raise ExtensionRequiredError.new(
-            body["message"] || "This endpoint is provided by an extension that is not installed",
-            feature: body["feature"], url: body["url"]
-          )
-        end
 
         # The API explains a 400 or 401 in the body ("Invalid sort. Valid
         # values: ..."); relay it rather than only the status line.

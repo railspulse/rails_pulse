@@ -26,15 +26,9 @@ module RailsPulse
           rails_pulse_endpoint              — Deep profile of a single endpoint
           rails_pulse_queries               — Expensive and N+1 SQL queries
           rails_pulse_jobs                  — Background job health and recent failures
-          rails_pulse_deployments           — Deployments, with regression outcomes from an extension
-          rails_pulse_request_stats         — Period stats with comparison (extension)
-          rails_pulse_alerts                — Recent alert triggers grouped by rule (extension)
-          rails_pulse_alert_rules           — Configured rules, cooldown state, quiet hours (extension)
-          rails_pulse_suggested_thresholds  — Backtested alert threshold suggestions (extension)
-          rails_pulse_setup                 — Setup and tuning checklist (extension)
-
-        Tools marked extension need an extension the application may not have;
-        without it they explain what is missing instead of failing.
+          rails_pulse_exceptions            — Exception groups with status, count, and latest message
+          rails_pulse_exception             — One group's recent occurrences with backtraces and params
+          rails_pulse_deployments           — Recent deployments with revision, timing and metadata
       DESC
       def start
         require_relative "../mcp/server"

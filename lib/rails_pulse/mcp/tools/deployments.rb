@@ -5,9 +5,9 @@ module RailsPulse
         extend Helpers
 
         tool_name "rails_pulse_deployments"
-        description "Recent deployments, with the automatic regression-check outcome (triggered, clean, " \
-                    "insufficient_data, or unchecked) when the regression extension is installed. Use this to pin an " \
-                    "investigation to a deploy time or to see whether a release made things worse."
+        description "Recent deployments with revision, start and finish time, and metadata. Use this to pin an " \
+                    "investigation to a deploy time, then compare the other tools before and after it to see " \
+                    "whether a release made things worse."
 
         annotations(
           read_only_hint: true,
@@ -47,7 +47,6 @@ module RailsPulse
         end
 
         private_class_method def self.format_deployment(deployment)
-          regression = deployment["regression"]
           {
             revision: deployment["revision"],
             short_revision: deployment["short_revision"],
@@ -55,8 +54,6 @@ module RailsPulse
             finished_at: deployment["finished_at"],
             duration_seconds: deployment["duration_seconds"],
             in_progress: deployment["in_progress"] == true,
-            regression_outcome: regression ? regression["outcome"] : "unchecked",
-            regression: regression,
             metadata: deployment["metadata"]
           }
         end
@@ -64,35 +61,21 @@ module RailsPulse
         private_class_method def self.build_summary(deployments)
           return "No deployments recorded in this period." if deployments.empty?
 
-          regressed = deployments.count { |d| d[:regression_outcome] == "triggered" }
           latest = deployments.first
-          parts = [ "#{deployments.size} deployment(s), #{regressed} with a detected regression" ]
-          parts << "Latest: #{latest[:short_revision]} at #{latest[:started_at]} (#{latest[:regression_outcome]})"
-          parts.join(". ") + "."
+          state = latest[:in_progress] ? " (in progress)" : ""
+          "#{deployments.size} deployment(s). Latest: #{latest[:short_revision]} at #{latest[:started_at]}#{state}."
         end
 
         private_class_method def self.build_next_steps(deployments)
-          steps = []
           if deployments.empty?
-            steps << "Record deployments via `rails_pulse:record_deployment` or POST /deployments so regressions can be checked."
-            return steps
+            return [ "Record deployments via `rails_pulse:record_deployment` or POST /deployments so an investigation can be pinned to a release." ]
           end
 
-          deployments.select { |d| d[:regression_outcome] == "triggered" }.each do |d|
-            metrics = Array(d.dig(:regression, "results")).select { |r| r["outcome"] == "triggered" }.map { |r| r["metric"] }
-            steps << "#{d[:short_revision]} regressed (#{metrics.join(', ')}): call rails_pulse_slow_requests and rails_pulse_errors " \
-                     "with period: \"#{d[:started_at]}\" and compare against the previous deploy."
-          end
-          if deployments.any? { |d| d[:regression_outcome] == "insufficient_data" }
-            steps << "Some deploys had insufficient traffic for a regression check — compare manually with rails_pulse_request_stats."
-          end
-          if deployments.all? { |d| d[:regression_outcome] == "unchecked" }
-            steps << "No regression checks recorded: deployment regression detection comes from an extension. " \
-                     "Compare rails_pulse_slow_requests and rails_pulse_errors before and after a deploy's started_at instead."
-          elsif deployments.any? { |d| d[:regression_outcome] == "unchecked" }
-            steps << "Unchecked deploys are evaluated by RailsPulseProJob once the post-deploy window elapses."
-          end
-          steps
+          latest = deployments.first
+          [
+            "To see what #{latest[:short_revision]} changed, call rails_pulse_slow_requests and rails_pulse_errors " \
+            "with period: \"#{latest[:started_at]}\" and compare against the period before it."
+          ]
         end
       end
     end

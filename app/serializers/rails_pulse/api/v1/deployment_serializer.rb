@@ -2,9 +2,7 @@ module RailsPulse
   module Api
     module V1
       class DeploymentSerializer
-        # `regression` is the already-serialized regression check that
-        # an extension attaches, or nil.
-        def self.serialize(deployment, regression: nil)
+        def self.serialize(deployment)
           {
             id:               deployment.id,
             revision:         deployment.revision,
@@ -13,8 +11,7 @@ module RailsPulse
             finished_at:      deployment.finished_at,
             duration_seconds: deployment.duration&.round(1),
             in_progress:      deployment.in_progress?,
-            metadata:         deployment.metadata_hash,
-            regression:       regression
+            metadata:         deployment.metadata_hash
           }
         end
       end

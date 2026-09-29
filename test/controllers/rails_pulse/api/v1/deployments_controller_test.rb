@@ -37,13 +37,6 @@ module RailsPulse
           assert_equal({ "branch" => "main" }, body["data"].last["metadata"])
         end
 
-        test "regression is nil for every deployment without the regression extension" do
-          get rails_pulse.api_v1_deployments_path, headers: HEADERS
-          body = JSON.parse(response.body)
-
-          assert body["data"].all? { |d| d.key?("regression") && d["regression"].nil? }
-        end
-
         test "serializes in-progress deployments" do
           get rails_pulse.api_v1_deployments_path, headers: HEADERS
           running = JSON.parse(response.body)["data"].first

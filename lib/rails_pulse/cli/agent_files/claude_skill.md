@@ -15,7 +15,6 @@ Rails Pulse records every request, SQL query, background job and exception of a 
 - Investigating an increased error rate
 - Analysing background job failures or slowness
 - Validating whether a performance fix worked
-- Reviewing or tuning alerting (extension)
 
 ## Interfaces
 
@@ -28,17 +27,12 @@ All tools are read-only. Each returns a `summary` and `next_steps`.
 | `rails_pulse_routes` | Discover endpoints: request volume, latency and errors per route |
 | `rails_pulse_slow_requests` | The slowest endpoints for a period |
 | `rails_pulse_errors` | Recent 4xx/5xx responses grouped by endpoint |
+| `rails_pulse_exceptions` | Exception groups with status, occurrence count, location and latest message |
+| `rails_pulse_exception` | One group's recent occurrences with full backtraces, request, params and deploy SHA |
 | `rails_pulse_endpoint` | Deep profile of one endpoint |
 | `rails_pulse_queries` | Most expensive SQL queries, with N+1 detection |
 | `rails_pulse_jobs` | Background job health and recent failures with error classes |
-| `rails_pulse_deployments` | Recent deployments; with the extension, each one's regression check outcome |
-| `rails_pulse_request_stats` | Weekly or monthly stats with the change against the previous period (extension) |
-| `rails_pulse_alerts` | Recent alert triggers grouped by rule (extension) |
-| `rails_pulse_alert_rules` | Configured alert rules, cooldown state, quiet hours (extension) |
-| `rails_pulse_suggested_thresholds` | Backtested threshold suggestions for new alert rules (extension) |
-| `rails_pulse_setup` | Setup and tuning checklist with paste-ready config snippets (extension) |
-
-Tools marked extension need an extension the application may not have. Without it they return `requires_extension: true` with a message. Relay that to the user once and carry on with the other tools; do not retry.
+| `rails_pulse_deployments` | Recent deployments with revision, start and finish time, and metadata |
 
 ### CLI
 
@@ -51,12 +45,9 @@ The `rails-pulse` executable ships with the gem. Add `--json` for structured out
 | `rails-pulse queries list --json` | SQL queries (add `--since` for timing stats) |
 | `rails-pulse jobs list --json` | Background jobs with lifetime stats |
 | `rails-pulse job_runs list --json` | Individual job runs with error class and message |
-| `rails-pulse deployments list --json` | Deployments (regression outcomes with the extension) |
-| `rails-pulse alerts list --json` | Fired alert events (extension) |
-| `rails-pulse alert_rules list --json` | Configured alert rules (extension) |
-| `rails-pulse thresholds show --json` | Suggested alert thresholds (extension) |
-| `rails-pulse summary show --json` | Weekly or monthly performance summary (extension) |
-| `rails-pulse setup check --json` | Setup and tuning checklist (extension) |
+| `rails-pulse exceptions list --json` | Exception groups with status, count, location and message |
+| `rails-pulse exceptions show ID --json` | One group with backtraces, request, params and deploy SHA |
+| `rails-pulse deployments list --json` | Recorded deployments, most recent first |
 
 ## Investigation workflow
 
@@ -69,7 +60,7 @@ rails_pulse_deployments(period: "last_7_days")
 rails-pulse deployments list --json
 ```
 
-With the regression extension, a deployment with `regression_outcome: "triggered"` names the metric that moved and when.
+Use a deployment's `started_at` as the `period` for the tools below, then compare against the period before it.
 
 ### 2. Identify affected endpoints
 
@@ -115,14 +106,6 @@ After the fix is deployed, re-check the same endpoint over the period since the 
 rails_pulse_deployments(period: "last_24_hours")
 rails_pulse_endpoint(endpoint: "CheckoutController#create", period: "last_hour")
 ```
-
-## Alerting and setup workflows (extension)
-
-Only when these tools answer with data rather than `requires_extension`.
-
-**Alerting.** `rails_pulse_alert_rules` shows what is configured, disabled, noisy (high `trigger_count_7d`) or silent. `rails_pulse_alerts(period: "last_7_days")` shows what fired. `rails_pulse_suggested_thresholds(days: 14)` proposes strict, balanced and relaxed thresholds backtested against real traffic; `would_have_fired` is the number of hours in the window that would have triggered. Check `existing_rules` before proposing a rule for a metric that is already covered. Rules live in Ruby config, not the database.
-
-**Setup and tuning.** Run `rails_pulse_setup` (or `rails-pulse setup check --json`) about a week after install and every few months after. It returns ordered `findings`, each with a `status`, a `reason` and where relevant a `snippet` and the `file` it belongs in. If `phase` is `install` there is not enough data yet: fix any `missing` data-flow findings, report `next_check`, and stop; do not guess thresholds. Apply `missing`, `needs_attention` and `suggested` snippets to the file each finding names. Snippets use `REPLACE_WITH_EMAIL` and `REPLACE_WITH_HOST` placeholders because the API never returns delivery targets; ask the user for real values and never invent them. `pending` findings are configured but have not had time to run; report them as not verified yet, not as problems.
 
 ## Guidelines
 

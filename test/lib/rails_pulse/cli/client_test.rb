@@ -93,25 +93,6 @@ module RailsPulse
         assert_raises(Client::ApiError) { @client.get("/routes") }
       end
 
-      test "get raises ExtensionRequiredError with the feature and link on 402" do
-        stub_http_response(402, { "error" => "requires_extension", "feature" => "alerts",
-                                  "message" => "Alert history is provided by an extension.", "url" => "https://example.com/extensions" }.to_json)
-        err = assert_raises(Client::ExtensionRequiredError) { @client.get("/alerts") }
-
-        assert_kind_of Client::ApiError, err
-        assert_equal "Alert history is provided by an extension.", err.message
-        assert_equal "alerts", err.feature
-        assert_equal "https://example.com/extensions", err.url
-      end
-
-      test "get raises ExtensionRequiredError with a default message when the 402 body is not JSON" do
-        stub_http_response(402, "Payment Required")
-        err = assert_raises(Client::ExtensionRequiredError) { @client.get("/alerts") }
-
-        assert_match(/provided by an extension/, err.message)
-        assert_nil err.feature
-      end
-
       test "get turns a refused connection into an ApiError naming the host" do
         stub_http_failure(Errno::ECONNREFUSED)
         err = assert_raises(Client::ApiError) { @client.get("/routes") }

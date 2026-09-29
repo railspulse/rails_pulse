@@ -380,13 +380,12 @@ RailsPulse.configure do |config|
   # Time-based retention - delete records older than this period
   config.full_retention_period = 30.days
 
-  # How long rows in rails_pulse_events are kept: the background writer's heartbeats
-  # (pruned after a day regardless) and, with Rails Pulse Pro, alert triggers,
-  # regression checks and exception alerts.
+  # How long rows in rails_pulse_events are kept. The background writer's
+  # heartbeats are pruned after a day regardless.
   config.event_retention_period = 90.days
 
   # Event kinds exempt from event_retention_period — for rows a writer updates
-  # in place rather than appends, such as Rails Pulse Pro's job heartbeats.
+  # in place rather than appends.
   config.event_retention_exempt_kinds = []
 
   # Count-based retention - maximum records to keep per table

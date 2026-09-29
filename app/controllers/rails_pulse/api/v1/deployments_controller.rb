@@ -12,22 +12,11 @@ module RailsPulse
           collection = collection.where(started_at: ..until_end) if until_end
 
           data, meta = paginated(collection)
-          deployments = data.to_a
-          regressions = deployment_regressions(deployments)
 
           render json: {
-            data: deployments.map { |deployment| DeploymentSerializer.serialize(deployment, regression: regressions[deployment.id]) },
+            data: data.map { |deployment| DeploymentSerializer.serialize(deployment) },
             meta: meta
           }
-        end
-
-        private
-
-        # Extension point. An extension overrides this to return each
-        # deployment's regression check, keyed by deployment id, already
-        # serialized; this gem has no regression data to attach.
-        def deployment_regressions(_deployments)
-          {}
         end
       end
     end

@@ -120,7 +120,7 @@ rails-pulse routes list --since 2026-06-01T00:00:00Z
 rails-pulse install claude     # Claude Code skill: when and how to use the tools
 ```
 
-Add `gem "mcp"` to your Gemfile (a development group is enough), register `rails-pulse mcp` as an MCP server, and the agent gets twelve read-only tools: routes, slow requests, errors, one endpoint in depth, expensive and N+1 queries, job health, deployments. Nothing the agent can call changes production. [Agent tooling](https://railspulse.com/documentation/mcp)
+Add `gem "mcp"` to your Gemfile (a development group is enough), register `rails-pulse mcp` as an MCP server, and the agent gets nine read-only tools: routes, slow requests, errors, exception groups and their backtraces, one endpoint in depth, expensive and N+1 queries, job health, deployments. Nothing the agent can call changes production. [Agent tooling](https://railspulse.com/documentation/mcp)
 
 **Keep it in its own database.** `rails generate rails_pulse:install --database=separate` puts the tables somewhere your primary never has to vacuum. [Database setup](https://railspulse.com/documentation/database)
 
@@ -137,7 +137,7 @@ Upgrading from 0.3.x to 0.4? **Back up first**, run `rails rails_pulse:migrate_r
 
 ## Contributing
 
-Bug reports and pull requests are welcome on [GitHub](https://github.com/railspulse/rails_pulse). `docs/` explains how the pieces fit and why they are built the way they are. Building on top of Rails Pulse (the Pro gem, a plugin, scripting the CLI)? [`docs/api.md`](docs/api.md) states what's public and stable across minor releases.
+Bug reports and pull requests are welcome on [GitHub](https://github.com/railspulse/rails_pulse). `docs/` explains how the pieces fit and why they are built the way they are. Building on top of Rails Pulse (a plugin, scripting the CLI)? [`docs/api.md`](docs/api.md) states what's public and stable across minor releases.
 
 ```bash
 git config core.hooksPath .githooks   # once, after cloning

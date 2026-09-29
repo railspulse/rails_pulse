@@ -249,7 +249,7 @@ RailsPulse::Schema = lambda do |connection|
       t.string   :request_url,     comment: "Nullable — web requests only"
       t.string   :request_method,  comment: "GET, POST, etc."
       t.string   :environment,     comment: "production, staging, etc."
-      t.string   :deploy_sha,       comment: "Captured now even though Pro uses it — cannot backfill later"
+      t.string   :deploy_sha,       comment: "Captured at occurrence time — cannot backfill later"
       t.text     :request_params,   comment: "JSON hash of filtered request params — web requests only"
       t.datetime :occurred_at,      null: false
       t.timestamps
@@ -261,7 +261,7 @@ RailsPulse::Schema = lambda do |connection|
 
   unless connection.table_exists?(:rails_pulse_events)
     connection.create_table :rails_pulse_events do |t|
-      t.string   :kind,        null: false, comment: "What noticed it: writer_heartbeat; rails_pulse_pro adds alert_rule, deployment_regression, exception_alert, job_heartbeat"
+      t.string   :kind,        null: false, comment: "What noticed it, e.g. writer_heartbeat"
       t.string   :subject,                  comment: "Who it is about: host:pid, rule name, job name, exception class"
       t.string   :outcome,     null: false, comment: "sampled, triggered, clean, insufficient_data, ran"
       t.decimal  :value,       precision: 15, scale: 6, comment: "The number behind it: requests dropped since the last sample, or the triggered metric value"

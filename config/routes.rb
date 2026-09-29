@@ -46,15 +46,7 @@ RailsPulse::Engine.routes.draw do
     resources :jobs,        only: :index
     resources :job_runs,    only: :index
     resources :deployments, only: :index
-
-    # An extension engine appends the real routes for these. Without one they
-    # answer 402 with what is missing, so the CLI and MCP tools can say so
-    # instead of 404ing. Keep the list in step with ExtensionController::FEATURES.
-    unless RailsPulse.pro?
-      %w[alerts alert_rules summary threshold_suggestions setup].each do |feature|
-        get feature, to: "extension#show", defaults: { feature: feature }, as: feature
-      end
-    end
+    resources :exceptions,  only: %i[index show]
   end
 
   # CSP compliance testing (development/test only)

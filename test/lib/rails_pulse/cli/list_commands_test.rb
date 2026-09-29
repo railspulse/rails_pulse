@@ -3,15 +3,13 @@ require "rails_pulse/cli/routes"
 require "rails_pulse/cli/requests"
 require "rails_pulse/cli/queries"
 require "rails_pulse/cli/jobs"
-require "rails_pulse/cli/alerts"
 require "rails_pulse/cli/job_runs"
-require "rails_pulse/cli/alert_rules"
+require "rails_pulse/cli/exceptions"
 require "rails_pulse/cli/deployments"
-require "rails_pulse/cli/thresholds"
 
 module RailsPulse
   module CLI
-    # Shared behaviour for all simple list commands (routes, requests, queries, jobs, alerts).
+    # Shared behaviour for all simple list commands (routes, requests, queries, jobs, deployments).
     # Each command calls client.get(endpoint, params) and renders via Formatter.render.
     class ListCommandsTest < ActiveSupport::TestCase
       include ApiClientTestHelpers
@@ -207,37 +205,6 @@ module RailsPulse
         refute_includes captured_params.keys, "status"
       end
 
-      # --- Alerts ---
-
-      test "alerts list calls /alerts endpoint" do
-        stub_list
-        run_cmd(Alerts)
-
-        assert_includes @captured_uri.path, "/alerts"
-      end
-
-      test "alerts list passes rule when provided" do
-        stub_list
-        run_cmd(Alerts, rule: "High P95")
-
-        assert_equal "High P95", captured_params["rule"]
-      end
-
-      test "alerts list omits rule when not provided" do
-        stub_list
-        run_cmd(Alerts)
-
-        refute_includes captured_params.keys, "rule"
-      end
-
-      test "alerts list passes since and until when provided" do
-        stub_list
-        run_cmd(Alerts, since: "2026-06-01T00:00:00Z", until: "2026-06-07T23:59:59Z")
-
-        assert_equal "2026-06-01T00:00:00Z", captured_params["since"]
-        assert_equal "2026-06-07T23:59:59Z", captured_params["until"]
-      end
-
       # --- JobRuns ---
 
       test "job_runs list calls /job_runs with status, job, and time filters" do
@@ -261,56 +228,75 @@ module RailsPulse
         assert_includes out, "Boom"
       end
 
-      # --- AlertRules ---
+      # --- Exceptions ---
 
-      test "alert_rules list calls /alert_rules and flattens state into the table" do
-        stub_list("data" => [ { "name" => "High P95", "type" => "threshold", "metric" => "p95_response_time", "operator" => "gt",
-                                "threshold" => 800.0, "enabled" => true, "state" => { "trigger_count_7d" => 4, "in_cooldown" => true } } ],
-                  "config" => {}, "meta" => { "total" => 1 })
-        out, _err = run_cmd(AlertRules)
+      test "exceptions list calls /exceptions with every filter" do
+        stub_list("data" => [
+          { "id" => 7, "exception_class" => "ActiveRecord::RecordNotFound", "location" => "app/models/post.rb#find",
+            "status" => "open", "occurrence_count" => 5, "last_seen_at" => "2026-06-01T12:00:00Z" }
+        ], "meta" => { "total" => 1 })
+        out, _err = run_cmd(Exceptions, status: "open", search: "RecordNotFound", sort: "occurrence_count",
+                                        since: "2026-06-01T00:00:00Z", until: "2026-06-07T23:59:59Z")
 
-        assert_includes @captured_uri.path, "/alert_rules"
-        assert_includes out, "High P95"
-        assert_match(/4\s+true/, out)
+        assert_includes @captured_uri.path, "/exceptions"
+        assert_equal "open", captured_params["status"]
+        assert_equal "RecordNotFound", captured_params["search"]
+        assert_equal "occurrence_count", captured_params["sort"]
+        assert_equal "2026-06-01T00:00:00Z", captured_params["since"]
+        assert_equal "2026-06-07T23:59:59Z", captured_params["until"]
+        assert_match(/RecordNotFound.*post\.rb#find.*open.*5/, out)
       end
 
-      test "alert_rules list renders JSON with config when json: true" do
-        stub_list("data" => [], "config" => { "quiet_hours" => nil }, "meta" => { "total" => 0 })
-        out, _err = run_cmd(AlertRules, json: true)
+      test "exceptions show fetches one group and prints its occurrences and backtrace" do
+        stub_list("data" => {
+          "id" => 42, "exception_class" => "ZeroDivisionError", "location" => "app/services/calc.rb#divide",
+          "status" => "open", "occurrence_count" => 2, "message" => "divided by 0",
+          "first_seen_at" => "t0", "last_seen_at" => "t1",
+          "occurrences" => [ { "occurred_at" => "t1", "request_method" => "POST", "request_url" => "/calc",
+                               "environment" => "production", "request_params" => { "n" => "0" },
+                               "backtrace" => [ { "file" => "app/services/calc.rb", "line" => 7, "method" => "divide" },
+                                                { "file" => "gems/x.rb", "line" => 1, "method" => "call" } ] } ]
+        })
+        cmd = Exceptions.new([], { "occurrences" => 3, "json" => false })
+        out, _err = capture_io { cmd.show("42") }
 
-        assert_includes JSON.parse(out).keys, "config"
+        assert_includes @captured_uri.path, "/exceptions/42"
+        assert_equal "3", captured_params["occurrences"]
+        assert_includes out, "ZeroDivisionError  #42"
+        assert_includes out, "POST /calc"
+        assert_includes out, "app/services/calc.rb:7 in divide"
+        assert_includes out, "gems/x.rb:1"
+      end
+
+      test "exceptions show prints JSON when asked" do
+        stub_list("data" => { "id" => 42, "occurrences" => [] })
+        cmd = Exceptions.new([], { "occurrences" => 3, "json" => true })
+        out, _err = capture_io { cmd.show("42") }
+
+        assert_equal 42, JSON.parse(out)["data"]["id"]
+      end
+
+      test "exceptions list omits filters when not provided" do
+        stub_list
+        run_cmd(Exceptions)
+
+        assert_equal %w[limit offset], captured_params.keys
       end
 
       # --- Deployments ---
 
-      test "deployments list calls /deployments with time filters and shows regression outcome" do
+      test "deployments list calls /deployments with time filters and renders a table" do
         stub_list("data" => [
-          { "short_revision" => "abc123", "started_at" => "t1", "finished_at" => "t2", "regression" => { "outcome" => "triggered" } },
-          { "short_revision" => "def456", "started_at" => "t3", "finished_at" => nil, "regression" => nil }
+          { "short_revision" => "abc123", "started_at" => "t1", "finished_at" => "t2" },
+          { "short_revision" => "def456", "started_at" => "t3", "finished_at" => nil }
         ], "meta" => { "total" => 2 })
         out, _err = run_cmd(Deployments, since: "2026-06-01T00:00:00Z", until: "2026-06-07T23:59:59Z")
 
         assert_includes @captured_uri.path, "/deployments"
         assert_equal "2026-06-01T00:00:00Z", captured_params["since"]
         assert_equal "2026-06-07T23:59:59Z", captured_params["until"]
-        assert_match(/abc123.*triggered/, out)
-        assert_match(/def456.*unchecked/, out)
-      end
-
-      test "an extension command explains what is missing when the app answers 402" do
-        stub_http_response(402, { "error" => "requires_extension", "feature" => "alerts",
-                                  "message" => "Alert history is provided by an extension that is not installed in this application.",
-                                  "url" => "https://example.com/extensions" }.to_json)
-
-        cmd = Alerts.new([], { "limit" => 25, "offset" => 0, "json" => false })
-        out, _err = capture_io do
-          err = assert_raises(SystemExit) { cmd.list }
-          assert_equal 1, err.status
-        end
-
-        assert_includes out, "provided by an extension"
-        assert_includes out, "https://example.com/extensions"
-        assert_not_includes out, "API error"
+        assert_match(/abc123\s+t1\s+t2/, out)
+        assert_match(/def456\s+t3/, out)
       end
 
       test "deployments list omits since and until when not provided" do
@@ -318,55 +304,6 @@ module RailsPulse
         run_cmd(Deployments)
 
         assert_equal %w[limit offset], captured_params.keys
-      end
-
-      # --- Thresholds ---
-
-      THRESHOLDS_RESPONSE = {
-        "window" => { "days" => 7, "hours_with_data" => 100, "expected_hours" => 168, "total_requests" => 5000 },
-        "scope" => { "resource_identifier" => "POST /checkout", "route_count" => 1 },
-        "metrics" => [
-          { "metric" => "p95_response_time", "unit" => "ms", "insufficient_data" => false, "hours_with_data" => 100,
-            "observed" => { "median" => 400.0, "p95" => 800.0, "max" => 1500.0 },
-            "tiers" => [ { "name" => "balanced", "threshold" => 850, "would_have_fired" => 5, "fires_per_week" => 5.0 } ] },
-          { "metric" => "error_rate", "unit" => "%", "insufficient_data" => true, "hours_with_data" => 3, "observed" => nil, "tiers" => [] }
-        ]
-      }.freeze
-
-      def run_thresholds(options = {})
-        cmd = Thresholds.new([], { "days" => 7, "json" => false }.merge(options.transform_keys(&:to_s)))
-        capture_io { cmd.show }
-      end
-
-      test "thresholds show calls /threshold_suggestions with days, route, and metric" do
-        stub_list(THRESHOLDS_RESPONSE)
-        out, _err = run_thresholds(days: 14, route: "POST /checkout", metric: "p95_response_time")
-
-        assert_includes @captured_uri.path, "/threshold_suggestions"
-        assert_equal "14", captured_params["days"]
-        assert_equal "POST /checkout", captured_params["route"]
-        assert_equal "p95_response_time", captured_params["metric"]
-        assert_includes out, "for POST /checkout"
-        assert_includes out, "P95_RESPONSE_TIME"
-        assert_includes out, "balanced  > 850"
-        assert_includes out, "would have fired 5 times"
-        assert_includes out, "insufficient data (3 hours)"
-      end
-
-      test "thresholds show omits optional params and renders JSON when json: true" do
-        stub_list(THRESHOLDS_RESPONSE)
-        out, _err = run_thresholds(json: true)
-
-        assert_equal [ "days" ], captured_params.keys
-        assert_equal 7, JSON.parse(out)["window"]["days"]
-      end
-
-      test "thresholds show exits with error on API error" do
-        stub_http_response(500, '{"error":"boom"}')
-
-        err = assert_raises(SystemExit) { run_thresholds }
-
-        assert_equal 1, err.status
       end
     end
   end
