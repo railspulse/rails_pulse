@@ -56,6 +56,13 @@ header.
   `404`. An
   unrecognised `sort`, `status`, `since` or `until` is a `400` with the accepted values.
   Substring filters match `_`, `%` and `!` literally.
+- `jobs` answers a `since`/`until` window from the per-job summaries rather than the lifetime
+  counters cached on the job row. Windowed figures are in each row's `stats`; the top-level
+  counters stay lifetime totals. `meta.window` reports the bounds actually read and the summary
+  granularity, since a window is widened to the period boundaries it touches and falls back
+  from hourly to daily rows once hourly summaries have been pruned. Percentiles appear only
+  when one period covers the window — they cannot be combined across periods — and
+  `stats.percentiles_note` says so otherwise.
 - `routes` takes `min_requests` when a time window is given: routes with fewer requests in
   the window are excluded in SQL, before `limit`, so a busy route ranked below the limit is
   still returned. When it is above 1 the response's `meta` carries `min_requests` and

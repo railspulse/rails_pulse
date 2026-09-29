@@ -110,6 +110,98 @@ module RailsPulse
 
           assert_empty body["data"]
         end
+
+        # Windowed Statistics
+        #
+        # The job row's counters are lifetime totals, so a window is answered
+        # from the per-job summaries instead. Returning the lifetime numbers
+        # would answer a different question without saying so.
+
+        test "a window is answered from summaries, not the lifetime counters" do
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: 2.hours.ago.iso8601, until: Time.current.iso8601 }
+          body = JSON.parse(response.body)
+          report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
+
+          assert_equal 140, report["stats"]["runs_count"]
+          assert_equal 14, report["stats"]["failures_count"]
+          assert_in_delta(10.0, report["stats"]["failure_rate"])
+          # Summed duration over summed runs, not the mean of each period's mean.
+          assert_in_delta(471.43, report["stats"]["avg_duration"], 0.01)
+        end
+
+        test "a window reports the bounds and granularity it read" do
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: 2.hours.ago.iso8601, until: Time.current.iso8601 }
+          body = JSON.parse(response.body)
+
+          assert_equal "hour", body["meta"]["window"]["period_type"]
+          assert_operator Time.parse(body["meta"]["window"]["since"]), :<=, 2.hours.ago
+          assert_operator Time.parse(body["meta"]["window"]["until"]), :>=, Time.current
+        end
+
+        test "lifetime counters are still returned alongside the window" do
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: 2.hours.ago.iso8601 }
+          body = JSON.parse(response.body)
+          report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
+
+          assert_equal rails_pulse_jobs(:report_job).runs_count, report["runs_count"]
+          refute_equal report["runs_count"], report["stats"]["runs_count"]
+        end
+
+        # Percentiles are a property of a distribution, and the distribution
+        # behind each period is not kept, so several periods cannot be combined.
+        test "percentiles are reported when one period covers the window" do
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: 1.hour.ago.beginning_of_hour.iso8601, until: 1.hour.ago.end_of_hour.iso8601 }
+          body = JSON.parse(response.body)
+          report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
+
+          assert_in_delta(800.0, report["stats"]["p95_duration"])
+          assert_in_delta(880.0, report["stats"]["p99_duration"])
+          refute_includes report["stats"].keys, "percentiles_note"
+        end
+
+        test "percentiles are withheld with a reason across several periods" do
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: 3.hours.ago.iso8601, until: Time.current.iso8601 }
+          body = JSON.parse(response.body)
+          report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
+
+          refute_includes report["stats"].keys, "p95_duration"
+          assert_includes report["stats"]["percentiles_note"], "cannot be combined"
+        end
+
+        test "a window with no summaries returns no rows rather than lifetime totals" do
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: "2099-01-01T00:00:00Z", until: "2099-01-02T00:00:00Z" }
+          body = JSON.parse(response.body)
+
+          assert_empty body["data"]
+          assert_equal 0, body["meta"]["total"]
+        end
+
+        # Hourly summaries are pruned before daily ones, so a window older than
+        # hourly retention is answered from daily rows rather than reported as
+        # empty.
+        test "a window older than hourly retention falls back to daily summaries" do
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: 1.day.ago.beginning_of_day.iso8601, until: 1.day.ago.end_of_day.iso8601 }
+          body = JSON.parse(response.body)
+          report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
+
+          assert_equal "day", body["meta"]["window"]["period_type"]
+          assert_equal 200, report["stats"]["runs_count"]
+        end
+
+        test "without a window the counters stay lifetime totals and stats is absent" do
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }
+          body = JSON.parse(response.body)
+
+          assert_nil body["data"].first["stats"]
+          refute_includes body["meta"].keys, "window"
+        end
       end
     end
   end

@@ -205,6 +205,55 @@ module RailsPulse
         assert_equal 1, data["jobs"].size
       end
 
+      # The job row's counters are lifetime totals. Asking the API for a window
+      # is what makes them cover the same period as recent_failures.
+      test "jobs asks for job aggregates over the window" do
+        c = client("/jobs" => JOBS_RESPONSE, "/job_runs" => JOB_RUNS_RESPONSE)
+        call(Tools::Jobs, c, since: "2026-09-24T12:00:00Z", until: "2026-09-25T12:00:00Z")
+
+        jobs_call = c.calls.find { |path, _| path == "/jobs" }
+
+        assert_equal "2026-09-24T12:00:00Z", jobs_call[1][:since]
+        assert_equal "2026-09-25T12:00:00Z", jobs_call[1][:until]
+      end
+
+      test "jobs prefers the window's figures over the lifetime counters" do
+        windowed = {
+          "data" => [
+            { "id" => 2, "name" => "GenerateReportJob", "queue_name" => "default", "runs_count" => 50,
+              "failures_count" => 5, "avg_duration" => 45_000.0, "p95_duration" => 70_000.0,
+              "p99_duration" => 90_000.0, "failure_rate" => 10.0,
+              "stats" => { "runs_count" => 8, "failures_count" => 4, "failure_rate" => 50.0,
+                           "avg_duration" => 900.0, "p95_duration" => 1_200.0, "p99_duration" => 1_500.0 } }
+          ],
+          "meta" => { "total" => 1, "window" => { "period_type" => "hour" } }
+        }
+        c = client("/jobs" => windowed, "/job_runs" => JOB_RUNS_RESPONSE)
+        _, data = call(Tools::Jobs, c, since: "2026-09-24T12:00:00Z")
+        job = data["jobs"].first
+
+        assert_equal 8, job["runs"]
+        assert_in_delta 50.0, job["failure_rate"]
+        assert_in_delta 900.0, job["avg_ms"]
+        assert_equal "hour", data["window"]["summary_period"]
+      end
+
+      test "jobs relays why percentiles were withheld for a multi-period window" do
+        withheld = {
+          "data" => [
+            { "id" => 2, "name" => "GenerateReportJob", "queue_name" => "default", "runs_count" => 50,
+              "failures_count" => 5, "avg_duration" => 45_000.0, "failure_rate" => 10.0,
+              "stats" => { "runs_count" => 8, "failures_count" => 4, "failure_rate" => 50.0,
+                           "avg_duration" => 900.0,
+                           "percentiles_note" => "Omitted: the window spans 3 summary periods, which cannot be combined into one percentile." } }
+          ],
+          "meta" => { "total" => 1, "window" => { "period_type" => "hour" } }
+        }
+        _, data = call(Tools::Jobs, client("/jobs" => withheld, "/job_runs" => JOB_RUNS_RESPONSE), since: "2026-09-24T12:00:00Z")
+
+        assert_includes data["note"], "cannot be combined"
+      end
+
       test "jobs next_steps flag failure rates, slow jobs, and errors" do
         _, data = call(Tools::Jobs, client("/jobs" => JOBS_RESPONSE, "/job_runs" => JOB_RUNS_RESPONSE))
 

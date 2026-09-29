@@ -36,9 +36,13 @@ module RailsPulse
             window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 50)
 
-            job_params = { limit: 100 }
+            # Windowed: the API answers these from summaries so the counts and
+            # durations cover the same period as recent_failures.
+            job_params = window_params(window).merge(limit: 100)
             job_params[:job] = job if job
-            jobs = client.get("/jobs", job_params)["data"] || []
+            result = client.get("/jobs", job_params)
+            jobs = result["data"] || []
+            granularity = result.dig("meta", "window", "period_type")
 
             run_params = window_params(window).merge(status: "failed", limit: 100)
             run_params[:job] = job if job
@@ -48,28 +52,35 @@ module RailsPulse
               .sort_by { |j| [ -j[:failure_rate].to_f, -j[:p95_ms].to_f ] }
               .first(limit)
 
-            {
-              window: window,
+            payload = {
+              window: window.merge(granularity ? { summary_period: granularity } : {}),
               jobs: formatted,
               recent_failures: format_failures(failed_runs),
-              note: "Job counts and durations are all-time aggregates; recent_failures is limited to the period.",
               summary: build_summary(formatted, failed_runs),
               next_steps: build_next_steps(formatted, failed_runs)
             }
+            note = formatted.filter_map { |j| j[:percentiles_note] }.first
+            payload[:note] = note if note
+            payload
           end
         end
 
+        # Prefers the window's figures and falls back to the job's lifetime
+        # counters, so the tool still answers when the API predates windowing.
         private_class_method def self.format_job(job)
-          {
+          stats = job["stats"] || {}
+          formatted = {
             name: job["name"],
             queue: job["queue_name"],
-            runs: job["runs_count"],
-            failures: job["failures_count"],
-            failure_rate: job["failure_rate"].to_f.round(1),
-            avg_ms: job["avg_duration"].to_f.round(1),
-            p95_ms: job["p95_duration"].to_f.round(1),
-            p99_ms: job["p99_duration"].to_f.round(1)
+            runs: stats.fetch("runs_count", job["runs_count"]),
+            failures: stats.fetch("failures_count", job["failures_count"]),
+            failure_rate: stats.fetch("failure_rate", job["failure_rate"]).to_f.round(1),
+            avg_ms: stats.fetch("avg_duration", job["avg_duration"]).to_f.round(1),
+            p95_ms: stats.fetch("p95_duration", job["p95_duration"]).to_f.round(1),
+            p99_ms: stats.fetch("p99_duration", job["p99_duration"]).to_f.round(1)
           }
+          formatted[:percentiles_note] = stats["percentiles_note"] if stats["percentiles_note"]
+          formatted
         end
 
         private_class_method def self.format_failures(runs)
