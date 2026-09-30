@@ -43,13 +43,14 @@ module RailsPulse
               "SUM(rails_pulse_operations.duration) AS total_duration, " \
               "MAX(rails_pulse_operations.repetition_count) AS max_repetition_count"
             )
-            .order(Arel.sql("#{sort} DESC"))
+            # query_id breaks ties so offset pages neither repeat nor skip rows.
+            .order(Arel.sql("#{sort} DESC, rails_pulse_operations.query_id ASC"))
             .limit(limit)
             .offset(offset)
             .to_a
 
           queries = RailsPulse::Query.where(id: rows.map(&:query_id)).index_by(&:id)
-          locations = source_locations(rows.map(&:query_id), range)
+          locations = source_locations(base, rows.map(&:query_id))
           data = rows.filter_map do |row|
             query = queries[row.query_id]
             QuerySerializer.serialize(query, stats: stats_for(row, locations[row.query_id])) if query
@@ -79,17 +80,19 @@ module RailsPulse
 
         # Where each query was issued from, most frequent first. Without this a
         # caller knows a query is slow but not which line of code runs it.
-        def source_locations(query_ids, range, per_query: 3)
+        # Counted over the same operations as the stats, so with a route filter
+        # a query shared across the app names the call sites in that endpoint.
+        def source_locations(operations, query_ids, per_query: 3)
           return {} if query_ids.empty?
 
-          counts = RailsPulse::Operation
-            .where(query_id: query_ids, occurred_at: range)
+          counts = operations
+            .where(query_id: query_ids)
             .where.not(codebase_location: nil)
-            .group(:query_id, :codebase_location)
+            .group("rails_pulse_operations.query_id", "rails_pulse_operations.codebase_location")
             .count
 
           counts.group_by { |(query_id, _), _| query_id }.transform_values do |entries|
-            entries.sort_by { |_, count| -count }
+            entries.sort_by { |(_, location), count| [ -count, location ] }
               .first(per_query)
               .map { |(_, location), count| { location: location, count: count } }
           end

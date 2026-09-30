@@ -187,6 +187,27 @@ module RailsPulse
           assert_equal 1, body["data"].first["stats"]["executions"]
         end
 
+        # A query shared across the app is issued from many places; filtered to
+        # one endpoint, the locations must be that endpoint's call sites or the
+        # drilldown points at the wrong file.
+        test "route restricts source_locations to the call sites inside that endpoint" do
+          seed_operations
+          other_route = RailsPulse::Route.create!(http_methods: '["GET"]', path: "/other", controller_action: "other#index")
+          other_request = RailsPulse::Request.create!(route: other_route, duration: 10.0, status: 200, is_error: false,
+            request_uuid: "drilldown-locations", controller_action: "other#index", occurred_at: 1.hour.ago)
+          RailsPulse::Operation.insert_all!([
+            op(other_request, @users, 50.0, 1.hour.ago, codebase_location: "app/controllers/other_controller.rb:4")
+          ])
+
+          get rails_pulse.api_v1_queries_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { since: 1.day.ago.iso8601, route: other_route.id }
+          body = JSON.parse(response.body)
+
+          assert_equal [ { "location" => "app/controllers/other_controller.rb:4", "count" => 1 } ],
+                       body["data"].first["stats"]["source_locations"]
+        end
+
         test "route also accepts a controller action rather than an id" do
           seed_operations
 
