@@ -20,6 +20,12 @@ module RailsPulse
         # which of its parameters were refused.
         before_action :validate_params!
 
+        # Every action is a GET read from the query string. Rails would
+        # otherwise copy a JSON request's parameters into a hash named after
+        # the controller (`route`, `job`), which collides with the filters of
+        # the same name whenever a client sends Content-Type: application/json.
+        wrap_parameters false
+
         # Parameters every endpoint reads as one string. A repeated or nested
         # one (`search[]=x`) is refused rather than reaching a String method.
         SCALAR_PARAMS = %i[limit offset min_requests occurrences since until search route status sort job].freeze

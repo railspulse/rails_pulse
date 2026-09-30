@@ -160,6 +160,15 @@ module RailsPulse
         # than as a wildcard. SQLite has no default escape character, so
         # without the clause these searches silently return nothing.
 
+        # Many HTTP clients send Content-Type: application/json on every
+        # request. Rails' parameter wrapping would then add a `route` hash,
+        # which the endpoint must not mistake for its own filter.
+        test "a GET sent as JSON is answered like any other" do
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, as: :json
+
+          assert_response :success
+        end
+
         test "returns 400 for a repeated search rather than failing" do
           get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { search: [ "a" ] }
 

@@ -66,6 +66,12 @@ module RailsPulse
           body["data"].each { |j| assert_operator j["failures_count"], :>, 0 }
         end
 
+        test "a GET sent as JSON is answered like any other" do
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, as: :json
+
+          assert_response :success
+        end
+
         test "returns 400 for an unknown status" do
           get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { status: "slow" }
 
