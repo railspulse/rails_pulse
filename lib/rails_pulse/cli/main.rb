@@ -14,6 +14,10 @@ require_relative "mcp"
 module RailsPulse
   module CLI
     class Main < Thor
+      def self.exit_on_failure?
+        true
+      end
+
       register(Configure, "configure", "configure",
                "Prompt for URL and API token, test the connection, and write ~/.rails-pulse")
       register(Install,   "install",   "install [INTEGRATION]",

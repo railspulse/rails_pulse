@@ -99,6 +99,38 @@ module RailsPulse
 
         assert_match(/could not connect to example.com:443/, err.message)
       end
+
+      # A wrong mount path is usually answered by the host app itself, with a
+      # login page or a catch-all route, and a 200.
+      test "get turns a 200 that is not JSON into an ApiError pointing at the mount path" do
+        stub_http_response(200, "<html>Sign in</html>")
+        err = assert_raises(Client::ApiError) { @client.get("/routes") }
+
+        assert_includes err.message, "rather than JSON"
+        assert_includes err.message, "mount path"
+      end
+
+      test "get turns a TLS failure into an ApiError" do
+        stub_http_failure(OpenSSL::SSL::SSLError.new("certificate verify failed"))
+        err = assert_raises(Client::ApiError) { @client.get("/routes") }
+
+        assert_includes err.message, "TLS failed"
+      end
+
+      test "get turns a mount path that cannot form a URL into an ApiError" do
+        client = Client.new(Config.new(url: "https://example.com", token: "t", mount_path: "/my pulse"))
+        err = assert_raises(Client::ApiError) { client.get("/routes") }
+
+        assert_includes err.message, "valid URL"
+      end
+
+      test "a root mount path does not double the slash" do
+        captured_uri = nil
+        stub_http_response(200, '{"data":[]}') { |_req, uri| captured_uri = uri }
+        Client.new(Config.new(url: "https://example.com", token: "t", mount_path: "/")).get("/routes")
+
+        assert_equal "/api/v1/routes", captured_uri.path
+      end
     end
   end
 end

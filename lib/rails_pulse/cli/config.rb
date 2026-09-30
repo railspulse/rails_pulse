@@ -20,9 +20,16 @@ module RailsPulse
       def initialize(url:, token:, mount_path: DEFAULT_MOUNT_PATH)
         @url        = url.to_s.chomp("/")
         @token      = token.to_s
-        @mount_path = "/#{mount_path.to_s.delete_prefix("/").chomp("/")}"
+        # A root mount is an empty prefix, not "/", or every path gains "//".
+        trimmed     = mount_path.to_s.delete_prefix("/").chomp("/")
+        @mount_path = trimmed.empty? ? "" : "/#{trimmed}"
 
         raise ConfigError, "RAILS_PULSE_URL must start with http:// or https:// (got #{@url.inspect})" unless @url.match?(URL_SCHEMES)
+        # The API path is appended to the URL, so anything after the host
+        # belongs in the mount path instead.
+        if @url.match?(/[?#]/)
+          raise ConfigError, "RAILS_PULSE_URL must not contain a query string or fragment (got #{@url.inspect})"
+        end
       end
 
       def self.path
@@ -34,7 +41,9 @@ module RailsPulse
         token      = ENV["RAILS_PULSE_TOKEN"]
         mount_path = ENV["RAILS_PULSE_MOUNT_PATH"]
 
-        if url.nil? || token.nil? || mount_path.nil?
+        # Complete credentials in the environment never touch the file, so a
+        # broken ~/.rails-pulse cannot block a setup that does not use it.
+        if url.nil? || token.nil?
           data       = read_file
           url        ||= data["url"]
           token      ||= data["token"]
@@ -52,6 +61,9 @@ module RailsPulse
       def self.write!(url:, token:, mount_path: nil)
         data = { "url" => url.to_s.chomp("/"), "token" => token.to_s }
         data["mount_path"] = mount_path if mount_path && mount_path != DEFAULT_MOUNT_PATH
+        # perm: applies only when the file is created, so an existing file is
+        # narrowed before the token is written into it.
+        File.chmod(FILE_MODE, path) if File.exist?(path)
         File.write(path, YAML.dump(data), perm: FILE_MODE)
         File.chmod(FILE_MODE, path)
       end
@@ -64,6 +76,8 @@ module RailsPulse
         data || {}
       rescue Errno::ENOENT
         {}
+      rescue Errno::EACCES, Errno::EISDIR => e
+        raise ConfigError, "#{path} cannot be read (#{e.message}). Fix its permissions or run 'rails-pulse configure'"
       rescue Psych::SyntaxError => e
         raise ConfigError, "#{path} is not valid YAML (#{e.message}). Fix it or run 'rails-pulse configure'"
       end

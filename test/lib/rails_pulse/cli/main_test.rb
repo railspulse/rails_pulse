@@ -26,6 +26,25 @@ module RailsPulse
         refute_includes out, "Examples:"
       end
 
+      # --- exit status ---
+      #
+      # A script or CI step can only tell a usage error from success by the
+      # exit status.
+
+      test "an unknown command exits 1" do
+        _out, err = capture_subprocess_io { system(RbConfig.ruby, "-Ilib", "exe/rails-pulse", "bogus") }
+
+        assert_equal 1, $?.exitstatus
+        refute_includes err, "Deprecation warning"
+      end
+
+      test "an unknown flag on a subcommand exits 1" do
+        _out, err = capture_subprocess_io { system(RbConfig.ruby, "-Ilib", "exe/rails-pulse", "routes", "list", "--nope") }
+
+        assert_equal 1, $?.exitstatus
+        assert_includes err, "Unknown switches"
+      end
+
       # --- subcommand registration ---
 
       test "all expected subcommands are registered" do

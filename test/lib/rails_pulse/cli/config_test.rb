@@ -81,6 +81,28 @@ module RailsPulse
         assert_equal "env-token", config.token
       end
 
+      # A broken or unreadable file must not block a setup that never uses it.
+      test "complete credentials in the environment do not read the file" do
+        File.write(@config_path, "url: [unclosed")
+        ENV["RAILS_PULSE_URL"]   = "https://env-url.com"
+        ENV["RAILS_PULSE_TOKEN"] = "env-token"
+
+        assert_equal "https://env-url.com", Config.load.url
+      end
+
+      test "load raises ConfigError when the config file cannot be read" do
+        FileUtils.mkdir_p(@config_path)
+        err = assert_raises(Config::ConfigError) { Config.load }
+
+        assert_includes err.message, "cannot be read"
+      end
+
+      test "new rejects a url with a query string" do
+        err = assert_raises(Config::ConfigError) { Config.new(url: "https://example.com/?x=1", token: "t") }
+
+        assert_includes err.message, "query string"
+      end
+
       test "defaults mount_path to /rails_pulse" do
         ENV["RAILS_PULSE_URL"]   = "https://example.com"
         ENV["RAILS_PULSE_TOKEN"] = "token"

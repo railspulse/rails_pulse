@@ -43,7 +43,7 @@ module RailsPulse
           Client.new(test_config).get("/routes", { limit: 1 })
         rescue Config::ConfigError, Client::ApiError => e
           say "Connection failed: #{e.message}", :red
-          return
+          exit 1
         end
 
         Config.write!(url: url, token: token, mount_path: test_config.mount_path)
@@ -60,9 +60,15 @@ module RailsPulse
         else
           "#{label} [#{mask ? 'keep current' : default}]:"
         end
-        answer = ask(prompt, echo: echo)
-        say "" unless echo
+        # Hiding input needs a terminal; piped input has nothing to hide from.
+        hide = !echo && terminal?
+        answer = ask(prompt, echo: !hide)
+        say "" if hide
         answer.to_s.empty? ? default.to_s : answer
+      end
+
+      def terminal?
+        $stdin.tty?
       end
     end
   end

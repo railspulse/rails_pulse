@@ -15,6 +15,15 @@ module RailsPulse
 
       # Answers the URL, token and mount path prompts in turn and records
       # each prompt with the options it was asked with.
+      # A failed connection exits 1 so a scripted setup can tell it failed.
+      def setup_expecting_failure(cmd)
+        error = nil
+        out, _err = capture_io { error = assert_raises(SystemExit) { cmd.setup } }
+
+        assert_equal 1, error.status
+        out
+      end
+
       def make_cmd(url_input, token_input, mount_input = "")
         cmd = Configure.new([])
         inputs = [ url_input, token_input, mount_input ]
@@ -70,11 +79,25 @@ module RailsPulse
         stub_http_response(200, SUCCESS_BODY)
         cmd = make_cmd("https://example.com", "my-token")
 
+        cmd.define_singleton_method(:terminal?) { true }
         capture_io { cmd.setup }
 
         token_prompt = cmd.prompts.find { |prompt, _opts| prompt.start_with?("API token") }
 
         assert_equal({ echo: false }, token_prompt.last)
+      end
+
+      # Hiding input needs a terminal; with piped input Thor's noecho raises.
+      test "reads the token normally when input is piped" do
+        stub_http_response(200, SUCCESS_BODY)
+        cmd = make_cmd("https://example.com", "my-token")
+
+        cmd.define_singleton_method(:terminal?) { false }
+        capture_io { cmd.setup }
+
+        token_prompt = cmd.prompts.find { |prompt, _opts| prompt.start_with?("API token") }
+
+        assert_equal({ echo: true }, token_prompt.last)
       end
 
       # --- mount path ---
@@ -107,7 +130,7 @@ module RailsPulse
         stub_http_response(401, '{"error":"Unauthorized"}')
         cmd = make_cmd("https://example.com", "bad-token")
 
-        capture_io { cmd.setup }
+        setup_expecting_failure(cmd)
 
         refute_path_exists @config_path
       end
@@ -116,7 +139,7 @@ module RailsPulse
         stub_http_response(401, '{"error":"Unauthorized"}')
         cmd = make_cmd("https://example.com", "bad-token")
 
-        out, _err = capture_io { cmd.setup }
+        out = setup_expecting_failure(cmd)
 
         assert_includes out, "Connection failed: 401: Unauthorized"
       end
@@ -125,7 +148,7 @@ module RailsPulse
         stub_http_response(500, "Internal Server Error")
         cmd = make_cmd("https://example.com", "token")
 
-        capture_io { cmd.setup }
+        setup_expecting_failure(cmd)
 
         refute_path_exists @config_path
       end
@@ -133,7 +156,7 @@ module RailsPulse
       test "rejects a url without a scheme before making a request" do
         cmd = make_cmd("localhost:3000", "token")
 
-        out, _err = capture_io { cmd.setup }
+        out = setup_expecting_failure(cmd)
 
         assert_includes out, "Connection failed"
         assert_includes out, "must start with http:// or https://"
