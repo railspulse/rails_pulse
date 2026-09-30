@@ -345,8 +345,9 @@ RailsPulse.configure do |config|
   # Set both to the same value if you would rather run one credential for both.
   #
   # With no api_token the JSON API refuses every request. With no deployment_token the deployments
-  # endpoint falls back to the dashboard authentication above. (deployment_api_token is the pre-0.5
-  # name for deployment_token and still works.)
+  # endpoint refuses every request too; a dashboard login is never accepted in its place. The
+  # rails_pulse:record_deployment and finish_deployment rake tasks need no token. (deployment_api_token
+  # is the pre-0.5 name for deployment_token and still works.)
   #
   # Point the CLI and MCP server at this app with `rails-pulse configure`, or set RAILS_PULSE_URL
   # and RAILS_PULSE_TOKEN in the agent's environment. The MCP server needs `gem "mcp"` in this

@@ -59,19 +59,23 @@ module RailsPulse
     # Only config.deployment_token authorizes a write here. config.api_token
     # reads the JSON API and is the credential given to CLI callers and coding
     # agents, so accepting it would let any of them record a release.
+    #
+    # The dashboard login is never accepted instead. CSRF protection is off for
+    # these actions so CI can post, and a browser attaches a saved login (HTTP
+    # Basic in particular) to a request another site triggers, so a login
+    # fallback would let any page an admin visits record a release. A header
+    # token cannot be sent cross-site. The rake tasks run inside the app and
+    # need no token.
     def authenticate_deployment_request!
-      token = RailsPulse.configuration.deployment_token
-      if token.present?
-        provided = request.headers["X-Rails-Pulse-Token"].to_s
-        unless ActiveSupport::SecurityUtils.secure_compare(provided, token)
-          render json: { error: "Unauthorized" }, status: :unauthorized
-        end
-      elsif RailsPulse.configuration.authentication_enabled
-        authenticate_rails_pulse_user!
-      else
-        # No token configured and authentication disabled — fail closed.
-        # Without a token there is no way to verify the caller.
-        render json: { error: "Unauthorized — set config.deployment_token or enable authentication" }, status: :unauthorized
+      token = RailsPulse.configuration.deployment_token.to_s
+      if token.empty?
+        render json: { error: "Unauthorized — set config.deployment_token to record deployments over HTTP" }, status: :unauthorized
+        return
+      end
+
+      provided = request.headers["X-Rails-Pulse-Token"].to_s
+      unless ActiveSupport::SecurityUtils.secure_compare(provided, token)
+        render json: { error: "Unauthorized" }, status: :unauthorized
       end
     end
 

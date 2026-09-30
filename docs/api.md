@@ -98,8 +98,10 @@ header.
   record a release (the same action as the `rails_pulse:record_deployment` and
   `rails_pulse:finish_deployment` rake tasks below). They sit outside the `api/v1` read-only
   scope and are the only writes in the API. They accept `config.deployment_token` alone and
-  fall back to the dashboard authentication only when it is unset; `config.api_token` is
-  refused, so a token handed to a coding agent cannot record a release.
+  refuse every request when it is unset. The dashboard login is never accepted instead: CSRF
+  protection is off for these actions so CI can post, and a browser would attach a saved login
+  to a request another site triggered. `config.api_token` is refused too, so a token handed to
+  a coding agent cannot record a release.
 - `deployment_api_token` is the pre-0.5 name for `config.deployment_token`; the alias still
   works and still authorizes deployment writes only, which is all it ever granted. A host that
   wants one credential for both sets `api_token` and `deployment_token` to the same value.
