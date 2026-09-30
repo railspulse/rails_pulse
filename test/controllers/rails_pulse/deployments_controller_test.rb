@@ -82,6 +82,19 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     assert_response :created
   end
 
+  test "an anonymous write gets 401, not the schema report, when the schema is outdated" do
+    RailsPulse::SchemaCheck.stubs(:current?).returns(false)
+    RailsPulse::SchemaCheck.stubs(:missing).returns({ "rails_pulse_events" => [ "table" ] })
+    RailsPulse::SchemaCheck.stubs(:warn_once!)
+
+    post rails_pulse.deployments_path,
+      params: { deployment: { revision: "anon" } },
+      headers: { "X-Rails-Pulse-Token" => "wrong" }
+
+    assert_response :unauthorized
+    assert_equal({ "error" => "Unauthorized" }, JSON.parse(response.body))
+  end
+
   test "the API falls back to the authorize predicate when no token is configured" do
     RailsPulse.configuration.deployment_api_token = nil
     RailsPulse.configuration.stubs(:authentication_enabled).returns(true)

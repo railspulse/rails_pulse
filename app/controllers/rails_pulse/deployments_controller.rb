@@ -6,7 +6,10 @@ module RailsPulse
     # widen the hole the 0.4.0 audit closed.
     skip_before_action :authenticate_rails_pulse_user!, only: %i[create finish]
     skip_before_action :verify_authenticity_token, only: %i[create finish]
-    before_action :authenticate_deployment_request!, only: %i[create finish]
+    # Prepended so the token is checked before the inherited callbacks run:
+    # the schema check would otherwise show an anonymous caller the list of
+    # missing tables, and the dashboard callbacks would query on its behalf.
+    prepend_before_action :authenticate_deployment_request!, only: %i[create finish]
 
     def index
       @ransack_query = Deployment.ransack(ransack_params)
