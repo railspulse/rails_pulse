@@ -55,6 +55,10 @@ header.
   backtrace, request method, URL, filtered params, environment and deploy SHA; an unknown id is a
   `404`. An
   unrecognised `sort`, `status`, `since` or `until` is a `400` with the accepted values.
+  `since`/`until` must be ISO 8601 (a date or a date and time; one with no zone is read as
+  UTC), and an `until` not later than `since` is a `400`, as is a repeated parameter or a
+  paging value that is not a whole number. Every listing breaks ties on id, so offset pages are
+  stable.
   Substring filters match `_`, `%` and `!` literally.
 - `queries` takes `route` — a route id, or a controller action or path to match on — and
   restricts the SQL to operations issued while serving that endpoint, which is how a caller

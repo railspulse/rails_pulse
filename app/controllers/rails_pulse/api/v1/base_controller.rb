@@ -16,6 +16,23 @@ module RailsPulse
         # served to anonymous callers.
         prepend_before_action :authenticate_api_token!
 
+        # After authentication, so an anonymous caller learns nothing from
+        # which of its parameters were refused.
+        before_action :validate_params!
+
+        # Parameters every endpoint reads as one string. A repeated or nested
+        # one (`search[]=x`) is refused rather than reaching a String method.
+        SCALAR_PARAMS = %i[limit offset min_requests occurrences since until search route status sort job].freeze
+        INTEGER_PARAMS = %i[limit offset min_requests occurrences].freeze
+
+        # Past any real table, and inside a 64-bit integer on every adapter.
+        MAX_INTEGER = 1_000_000_000
+
+        # A date, optionally a time, optionally a zone. Time.parse would also
+        # take "10" as the 10th of this month, which is not a window anyone
+        # asked for.
+        ISO8601 = /\A\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?(?:Z|[+-]\d{2}:?\d{2})?\z/i
+
         private
 
         def authenticate_api_token!
@@ -33,35 +50,67 @@ module RailsPulse
           super
         end
 
+        def validate_params!
+          SCALAR_PARAMS.each do |name|
+            value = params[name]
+            next if value.nil? || value.is_a?(String)
+
+            return render_bad_request("'#{name}' must be a single value")
+          end
+
+          INTEGER_PARAMS.each do |name|
+            value = params[name]
+            next if value.blank? || value.match?(/\A\d+\z/)
+
+            return render_bad_request("'#{name}' must be a whole number")
+          end
+
+          @since_time = parse_time_param(:since)
+          return if performed?
+          @until_time = parse_time_param(:until)
+          return if performed?
+
+          if @since_time && @until_time && @until_time <= @since_time
+            render_bad_request("'until' must be later than 'since'")
+          end
+        end
+
+        def render_bad_request(message)
+          render json: { error: message }, status: :bad_request
+        end
+
         def limit
-          params.fetch(:limit, 25).to_i.clamp(1, 500)
+          integer_param(:limit, 25, 1..500)
         end
 
         def offset
-          params.fetch(:offset, 0).to_i.clamp(0, Float::INFINITY)
+          integer_param(:offset, 0, 0..MAX_INTEGER)
         end
 
-        def since_time
-          parse_time_param(:since)
+        def integer_param(name, default, range)
+          params[name].blank? ? default : params[name].to_i.clamp(range)
         end
 
-        def until_time
-          parse_time_param(:until)
-        end
-
-        # TypeError covers a non-string value such as `since[]=x`.
+        # A time with no zone is read as UTC, so a window means the same thing
+        # wherever the caller and the server are.
         def parse_time_param(name)
-          Time.parse(params[name]) if params[name].present?
-        rescue ArgumentError, TypeError
-          render json: { error: "Invalid time format for '#{name}'" }, status: :bad_request
+          value = params[name]
+          return if value.blank?
+
+          string = value.strip
+          raise ArgumentError unless string.match?(ISO8601)
+
+          ActiveSupport::TimeZone["UTC"].parse(string)
+        rescue ArgumentError
+          render_bad_request(
+            "Invalid time format for '#{name}'. Use ISO 8601, such as 2026-09-24T12:00:00Z; " \
+            "a time with no zone is read as UTC."
+          )
         end
 
+        # Parsed and checked by validate_params! before the action runs.
         def time_range
-          since_start = since_time
-          return if performed?
-          until_end = until_time
-          return if performed?
-          [ since_start, until_end ]
+          [ @since_time, @until_time ]
         end
 
         def paginated(collection)

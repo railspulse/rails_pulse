@@ -166,21 +166,74 @@ module RailsPulse
           get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { since: [ "2026-01-01" ] }
 
           assert_response :bad_request
-          assert_equal "Invalid time format for 'since'", JSON.parse(response.body)["error"]
+          assert_equal "'since' must be a single value", JSON.parse(response.body)["error"]
         end
 
         test "returns 400 for invalid since time" do
           get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { since: "not-a-date" }
 
           assert_response :bad_request
-          assert_equal "Invalid time format for 'since'", JSON.parse(response.body)["error"]
+          assert_includes JSON.parse(response.body)["error"], "Invalid time format for 'since'"
         end
 
         test "returns 400 for invalid until time" do
           get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { until: "not-a-date" }
 
           assert_response :bad_request
-          assert_equal "Invalid time format for 'until'", JSON.parse(response.body)["error"]
+          assert_includes JSON.parse(response.body)["error"], "Invalid time format for 'until'"
+        end
+
+        # Parameter Validation
+        #
+        # Shared by every endpoint through BaseController; exercised here.
+
+        test "reads a time with no zone as UTC" do
+          RailsPulse::Request.update_all(occurred_at: Time.utc(2026, 9, 24, 11, 30))
+          at_noon = RailsPulse::Request.first
+          at_noon.update_columns(occurred_at: Time.utc(2026, 9, 24, 12, 30))
+
+          get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: "2026-09-24T12:00:00" }
+
+          assert_equal [ at_noon.id ], JSON.parse(response.body)["data"].map { |r| r["id"] }
+        end
+
+        test "refuses a time that is not ISO 8601 rather than guessing" do
+          %w[10 yesterday 2026-09-24T12:00:00PST].each do |since|
+            get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { since: since }
+
+            assert_response :bad_request, "since=#{since} was accepted"
+          end
+        end
+
+        test "returns 400 when until is not later than since" do
+          get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: "2026-09-25T00:00:00Z", until: "2026-09-24T00:00:00Z" }
+
+          assert_response :bad_request
+          assert_equal "'until' must be later than 'since'", JSON.parse(response.body)["error"]
+        end
+
+        test "returns 400 for a repeated or non-numeric paging value" do
+          [ { limit: [ 1, 2 ] }, { offset: { a: 1 } }, { limit: "ten" }, { offset: "-5" } ].each do |params|
+            get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: params
+
+            assert_response :bad_request, "#{params} was accepted"
+          end
+        end
+
+        test "an offset past any table returns an empty page rather than an error" do
+          get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { offset: "9" * 30 }
+
+          assert_response :success
+          assert_empty JSON.parse(response.body)["data"]
+        end
+
+        test "accepts a status class in either case" do
+          get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { status: "5XX" }
+
+          assert_response :success
         end
 
         test "respects limit parameter" do

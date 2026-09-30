@@ -6,7 +6,7 @@ module RailsPulse
         STATUS_CODE  = /\A\d{3}\z/
 
         def index
-          collection = RailsPulse::Request.all.order(occurred_at: :desc)
+          collection = RailsPulse::Request.all.order(occurred_at: :desc, id: :desc)
 
           parsed_range = time_range
           return unless parsed_range
@@ -41,7 +41,7 @@ module RailsPulse
         def apply_status_filter(scope)
           return scope unless params[:status].present?
 
-          status = params[:status].to_s
+          status = params[:status].to_s.downcase
           if (match = status.match(STATUS_CLASS))
             digit = match[1].to_i
             scope.where(status: (digit * 100)...((digit + 1) * 100))

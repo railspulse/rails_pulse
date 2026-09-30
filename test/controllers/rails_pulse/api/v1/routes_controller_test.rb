@@ -160,6 +160,12 @@ module RailsPulse
         # than as a wildcard. SQLite has no default escape character, so
         # without the clause these searches silently return nothing.
 
+        test "returns 400 for a repeated search rather than failing" do
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { search: [ "a" ] }
+
+          assert_response :bad_request
+        end
+
         test "search matches an underscore literally" do
           RailsPulse::Route.create!(http_methods: '["PATCH"]', path: "/evaluation/work_orders", controller_action: "evaluation/work_orders#update")
           RailsPulse::Route.create!(http_methods: '["PATCH"]', path: "/evaluation/workXorders", controller_action: "evaluation/workXorders#update")

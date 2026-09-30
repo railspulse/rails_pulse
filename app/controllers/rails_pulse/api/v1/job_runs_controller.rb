@@ -7,7 +7,7 @@ module RailsPulse
           return unless parsed_range
           since_start, until_end = parsed_range
 
-          collection = RailsPulse::JobRun.includes(:job).order(occurred_at: :desc)
+          collection = RailsPulse::JobRun.includes(:job).order(occurred_at: :desc, id: :desc)
           collection = collection.where(occurred_at: since_start..) if since_start
           collection = collection.where(occurred_at: ..until_end) if until_end
 

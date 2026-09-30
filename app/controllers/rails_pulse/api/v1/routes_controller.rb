@@ -28,7 +28,7 @@ module RailsPulse
             since_start ||= 24.hours.ago if until_end.nil?
             render_with_stats(scope, since_start..until_end, sort || "request_count")
           else
-            data, meta = paginated(scope.order(:path))
+            data, meta = paginated(scope.order(:path, :id))
             render json: { data: data.map { |route| RouteSerializer.serialize(route) }, meta: meta }
           end
         end
@@ -57,7 +57,8 @@ module RailsPulse
               "route_id, COUNT(*) AS request_count, AVG(duration) AS avg_duration, " \
               "SUM(CASE WHEN is_error THEN 1 ELSE 0 END) AS error_count"
             )
-            .order(Arel.sql("#{sort} DESC"))
+            # route_id breaks ties so offset pages neither repeat nor skip rows.
+            .order(Arel.sql("#{sort} DESC, route_id ASC"))
             .limit(limit)
             .offset(offset)
             .to_a
@@ -81,7 +82,7 @@ module RailsPulse
         end
 
         def min_requests
-          params.fetch(:min_requests, 1).to_i.clamp(1, Float::INFINITY)
+          integer_param(:min_requests, 1, 1..MAX_INTEGER)
         end
 
         def stats_for(row)

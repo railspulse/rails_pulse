@@ -46,7 +46,7 @@ module RailsPulse
         # so it carries everything the dashboard's exception page shows.
         def show
           group = RailsPulse::ExceptionGroup.find(params[:id])
-          count = params.fetch(:occurrences, DEFAULT_OCCURRENCES).to_i.clamp(1, MAX_OCCURRENCES)
+          count = integer_param(:occurrences, DEFAULT_OCCURRENCES, 1..MAX_OCCURRENCES)
           occurrences = group.occurrences.order(occurred_at: :desc, id: :desc).limit(count)
 
           render json: {
