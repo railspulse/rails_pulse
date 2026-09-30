@@ -28,11 +28,16 @@ module RailsPulse
         # The newest and oldest record of each kind. An empty pair means
         # nothing of that kind has been recorded — not that nothing happened.
         def telemetry
+          config = RailsPulse.configuration
           {
-            requests:   span(RailsPulse::Request, :occurred_at),
-            job_runs:   span(RailsPulse::JobRun, :occurred_at),
+            requests:   config.enabled ? span(RailsPulse::Request, :occurred_at) : untracked("config.enabled is false"),
+            job_runs:   config.track_jobs ? span(RailsPulse::JobRun, :occurred_at) : untracked("config.track_jobs is false"),
             exceptions: exception_span
           }
+        end
+
+        def untracked(reason)
+          { tracked: false, reason: reason }
         end
 
         def span(model, column)
@@ -47,8 +52,8 @@ module RailsPulse
         end
 
         def exception_span
-          return { tracked: false, reason: "config.track_exceptions is false" } unless RailsPulse.configuration.track_exceptions
-          return { tracked: false, reason: "the exception tables are missing; run the upgrade generator" } unless RailsPulse::ExceptionOccurrence.table_exists?
+          return untracked("config.track_exceptions is false") unless RailsPulse.configuration.track_exceptions
+          return untracked("the exception tables are missing; run the upgrade generator") unless RailsPulse::ExceptionOccurrence.table_exists?
 
           span(RailsPulse::ExceptionOccurrence, :occurred_at)
         end
@@ -98,6 +103,17 @@ module RailsPulse
         # Gaps: a writer that stopped, or one dropping requests because its
         # queue is full. Either means the numbers understate what happened.
         def collection
+          # Written inline, requests have no queue to be dropped from and no
+          # writer to report a heartbeat, so a missing heartbeat is no gap.
+          unless RailsPulse.configuration.async
+            return {
+              known: false,
+              gap_suspected: false,
+              reason: "config.async is false, so requests are written inline: nothing is queued or dropped, " \
+                      "and no writer heartbeat is recorded"
+            }
+          end
+
           unless RailsPulse::Event.table_available?
             return { known: false, reason: "the events table is missing, so writer heartbeats are not recorded" }
           end

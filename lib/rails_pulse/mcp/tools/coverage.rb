@@ -50,7 +50,9 @@ module RailsPulse
           requests = data.dig("telemetry", "requests") || {}
           parts = []
 
-          parts << if requests["newest"]
+          parts << if requests["tracked"] == false
+            "Requests are not being recorded."
+          elsif requests["newest"]
             "Requests recorded #{requests['oldest']} to #{requests['newest']} (#{requests['count']} rows)."
           else
             "No requests have been recorded."
@@ -77,9 +79,12 @@ module RailsPulse
                      "retention has removed them. Summaries may still cover the window."
           end
 
-          exceptions = data.dig("telemetry", "exceptions") || {}
-          if exceptions["tracked"] == false
-            steps << "Exceptions are not being recorded (#{exceptions['reason']}), so an empty error result says nothing about whether exceptions occurred."
+          (data["telemetry"] || {}).each do |kind, info|
+            next unless info.is_a?(Hash) && info["tracked"] == false
+
+            label = kind.tr("_", " ").capitalize
+            steps << "#{label} are not being recorded (#{info['reason']}), so an empty #{kind.tr('_', ' ')} result " \
+                     "says nothing about whether any occurred."
           end
 
           steps << "Treat an empty result from another tool as 'not recorded' rather than 'did not happen' whenever a caveat above applies."

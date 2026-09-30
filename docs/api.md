@@ -74,7 +74,9 @@ header.
   summaries have been generated and whether they are stale, what retention keeps, and the
   writer's live count, queue depth and requests dropped in the last hour with
   `collection.gap_suspected`. It is what distinguishes "no failures recorded" from "no data
-  captured"; a kind that is not being tracked says so instead of reporting zero.
+  captured"; a kind that is not being tracked (`config.enabled`, `track_jobs`,
+  `track_exceptions`) says so instead of reporting zero, and with `config.async = false` the
+  collection section says there is no writer to report rather than suspecting a gap.
 - `jobs` answers a `since`/`until` window from the per-job summaries rather than the lifetime
   counters cached on the job row, plus the raw runs recorded since the last summarized period.
   Windowed figures are in each row's `stats`; the top-level counters stay lifetime totals, and

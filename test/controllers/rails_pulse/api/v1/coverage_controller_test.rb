@@ -6,12 +6,17 @@ module RailsPulse
       class CoverageControllerTest < ActionDispatch::IntegrationTest
         VALID_TOKEN = "test-api-token"
 
+        # Heartbeats come from the background writer, which only exists with
+        # config.async; the suite itself writes inline.
         setup do
           RailsPulse.configuration.api_token = VALID_TOKEN
+          @original_async = RailsPulse.configuration.async
+          RailsPulse.configuration.async = true
         end
 
         teardown do
           RailsPulse.configuration.api_token = nil
+          RailsPulse.configuration.async = @original_async
         end
 
         def get_coverage
@@ -62,6 +67,18 @@ module RailsPulse
           assert_includes body["telemetry"]["exceptions"]["reason"], "track_exceptions"
         ensure
           RailsPulse.configuration.track_exceptions = original
+        end
+
+        test "says when job runs are not tracked rather than reporting zero" do
+          original = RailsPulse.configuration.track_jobs
+          RailsPulse.configuration.track_jobs = false
+
+          body = get_coverage
+
+          refute body["telemetry"]["job_runs"]["tracked"]
+          assert_includes body["telemetry"]["job_runs"]["reason"], "track_jobs"
+        ensure
+          RailsPulse.configuration.track_jobs = original
         end
 
         # Summary Tests
@@ -128,6 +145,18 @@ module RailsPulse
 
           assert body["collection"]["gap_suspected"]
           assert_includes body["collection"]["note"], "No writer has ever reported"
+        end
+
+        # A synchronous host records no heartbeat because it has no writer,
+        # which must not read as a writer that stopped.
+        test "does not suspect a gap when requests are written inline" do
+          RailsPulse.configuration.async = false
+          RailsPulse::WriterHeartbeat.events.delete_all
+
+          body = get_coverage
+
+          refute body["collection"]["gap_suspected"]
+          assert_includes body["collection"]["reason"], "config.async is false"
         end
 
         test "reports nothing recorded rather than failing on an empty table" do

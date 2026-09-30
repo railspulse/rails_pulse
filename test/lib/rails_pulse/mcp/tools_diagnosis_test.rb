@@ -451,6 +451,17 @@ module RailsPulse
         assert data["next_steps"].any? { |s| s.include?("Exceptions are not being recorded") }
       end
 
+      test "coverage warns about untracked job runs the same way" do
+        untracked = COVERAGE_RESPONSE.merge(
+          "telemetry" => COVERAGE_RESPONSE["telemetry"].merge(
+            "job_runs" => { "tracked" => false, "reason" => "config.track_jobs is false" }
+          )
+        )
+        _, data = call(Tools::Coverage, coverage_client(coverage: untracked))
+
+        assert data["next_steps"].any? { |s| s.include?("Job runs are not being recorded (config.track_jobs is false)") }
+      end
+
       test "coverage relays a collection gap as a next step" do
         gapped = COVERAGE_RESPONSE.merge(
           "collection" => { "known" => true, "live_writers" => 0, "dropped_last_hour" => 12, "gap_suspected" => true,
