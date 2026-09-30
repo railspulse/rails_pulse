@@ -69,6 +69,18 @@ module RailsPulse
           assert_equal [ "ZeroDivisionError" ], JSON.parse(response.body)["data"].map { |g| g["exception_class"] }
         end
 
+        test "search matches an underscore literally" do
+          get rails_pulse.api_v1_exceptions_path, headers: HEADERS, params: { search: "http_client", status: "ignored" }
+
+          assert_equal [ "Net::ReadTimeout" ], JSON.parse(response.body)["data"].map { |g| g["exception_class"] }
+        end
+
+        test "search does not treat a percent sign as a wildcard" do
+          get rails_pulse.api_v1_exceptions_path, headers: HEADERS, params: { search: "http%client" }
+
+          assert_empty JSON.parse(response.body)["data"]
+        end
+
         test "sorts by occurrence count" do
           get rails_pulse.api_v1_exceptions_path, headers: HEADERS, params: { sort: "occurrence_count" }
 

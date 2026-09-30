@@ -63,8 +63,12 @@ module RailsPulse
         def apply_search(scope)
           return scope unless params[:search].present?
 
-          term = "%#{RailsPulse::ExceptionGroup.sanitize_sql_like(params[:search].to_s.downcase)}%"
-          scope.where("LOWER(exception_class) LIKE :term OR LOWER(location) LIKE :term", term: term)
+          term = RailsPulse::LikePattern.containing(params[:search].to_s.downcase)
+          scope.where(
+            "LOWER(exception_class) LIKE :term #{RailsPulse::LikePattern::CLAUSE} " \
+            "OR LOWER(location) LIKE :term #{RailsPulse::LikePattern::CLAUSE}",
+            term: term
+          )
         end
       end
     end
