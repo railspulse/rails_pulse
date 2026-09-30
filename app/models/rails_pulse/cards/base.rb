@@ -84,8 +84,13 @@ module RailsPulse
         @subject&.id
       end
 
-      def quote(time)
-        RailsPulse::Summary.connection.quote(time)
+      # A SELECT fragment comparing against the card's window, with the
+      # bounds bound as values (:current_start, :range_start) rather than
+      # interpolated into the SQL string.
+      def window_sql(fragment)
+        Arel.sql(
+          RailsPulse::Summary.sanitize_sql_array([ fragment, { current_start: current_window_start, range_start: range_start } ])
+        )
       end
 
       # Enhanced sparkline generation (support hour and day)
