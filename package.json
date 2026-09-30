@@ -63,8 +63,8 @@
   "author": "Rails Pulse",
   "license": "MIT",
   "optionalDependencies": {
-    "@rolldown/binding-linux-arm64-gnu": "1.0.0-rc.17",
-    "@rolldown/binding-linux-x64-gnu": "1.0.0-rc.17"
+    "@rolldown/binding-linux-arm64-gnu": "1.2.12",
+    "@rolldown/binding-linux-x64-gnu": "1.2.12"
   },
   "dependencies": {
     "@floating-ui/dom": "^1.7.2",
