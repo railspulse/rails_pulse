@@ -72,12 +72,15 @@ header.
   `collection.gap_suspected`. It is what distinguishes "no failures recorded" from "no data
   captured"; a kind that is not being tracked says so instead of reporting zero.
 - `jobs` answers a `since`/`until` window from the per-job summaries rather than the lifetime
-  counters cached on the job row. Windowed figures are in each row's `stats`; the top-level
-  counters stay lifetime totals. `meta.window` reports the bounds actually read and the summary
-  granularity, since a window is widened to the period boundaries it touches and falls back
-  from hourly to daily rows once hourly summaries have been pruned. Percentiles appear only
-  when one period covers the window — they cannot be combined across periods — and
-  `stats.percentiles_note` says so otherwise.
+  counters cached on the job row, plus the raw runs recorded since the last summarized period.
+  Windowed figures are in each row's `stats`; the top-level counters stay lifetime totals, and
+  `status=failed` keeps jobs that failed inside the window. `meta.window` reports the bounds
+  actually read (widened to the period boundaries it touches, in `config.time_zone`), the
+  summary granularity, `summarized_through`, and `live_from` when recent runs were counted raw.
+  A window that starts before `config.hourly_summary_retention` is read from daily rows for its
+  whole length. Percentiles appear only when one summarized period holds every run in the
+  window — they cannot be combined across periods — and `stats.percentiles_note` says so
+  otherwise.
 - `routes` takes `min_requests` when a time window is given: routes with fewer requests in
   the window are excluded in SQL, before `limit`, so a busy route ranked below the limit is
   still returned. When it is above 1 the response's `meta` carries `min_requests` and

@@ -201,23 +201,71 @@ module RailsPulse
           assert_equal 0, body["meta"]["total"]
         end
 
-        # Hourly summaries are pruned before daily ones, so a window older than
-        # hourly retention is answered from daily rows rather than reported as
-        # empty.
-        test "a window older than hourly retention falls back to daily summaries" do
-          # Retention has removed the hourly rows for that window; only the
-          # daily ones are left to answer from.
-          RailsPulse::Summary.for_jobs.for_period_type("hour").delete_all
+        # Hourly summaries are pruned before daily ones, so a window reaching
+        # past hourly retention is read from daily rows for its whole length.
+        # Reading whichever hourly rows survive would count only the retained
+        # part of the window while reporting the whole of it.
+        test "a window reaching past hourly retention is read from daily summaries throughout" do
+          original = RailsPulse.configuration.hourly_summary_retention
+          RailsPulse.configuration.hourly_summary_retention = 1.hour
           daily = RailsPulse::Summary.for_jobs.for_period_type("day")
             .where(summarizable_id: rails_pulse_jobs(:report_job).id).order(:period_start).last
 
           get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
-            params: { since: daily.period_start.iso8601, until: daily.period_end.iso8601 }
+            params: { since: daily.period_start.iso8601, until: (daily.period_end + 1.second).iso8601 }
           body = JSON.parse(response.body)
           report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
 
           assert_equal "day", body["meta"]["window"]["period_type"]
           assert_equal 200, report["stats"]["runs_count"]
+        ensure
+          RailsPulse.configuration.hourly_summary_retention = original
+        end
+
+        test "a window is widened to the application's period boundaries, not UTC ones" do
+          Time.use_zone("Asia/Tokyo") do
+            day_start = 3.days.ago.in_time_zone.beginning_of_day
+
+            get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { since: (day_start + 5.hours).utc.iso8601, until: (day_start + 20.hours).utc.iso8601 }
+          end
+          body = JSON.parse(response.body)
+
+          assert_equal "day", body["meta"]["window"]["period_type"]
+          assert_equal Time.use_zone("Asia/Tokyo") { 3.days.ago.in_time_zone.beginning_of_day }.utc.iso8601,
+                       body["meta"]["window"]["since"]
+        end
+
+        # Summaries are written after each period ends, so the most recent runs
+        # are in no summary yet. They are counted from the raw rows rather than
+        # left out of a window that ends now.
+        test "runs after the last summarized period are counted from the raw rows" do
+          latest = hourly_job_summaries.maximum(:period_start)
+          RailsPulse::JobRun.create!(
+            job: rails_pulse_jobs(:report_job), run_id: "live-run", status: "failed", duration: 120.0,
+            attempts: 1, adapter: "active_job", occurred_at: latest + 90.minutes
+          )
+
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: { since: latest.iso8601, until: (latest + 2.hours).iso8601 }
+          body = JSON.parse(response.body)
+          report = body["data"].find { |j| j["name"] == "GenerateReportJob" }
+
+          assert_equal 101, report["stats"]["runs_count"]
+          assert_equal 11, report["stats"]["failures_count"]
+          assert_equal (latest + 1.hour).utc.iso8601, body["meta"]["window"]["live_from"]
+          assert_includes report["stats"]["percentiles_note"], "not yet summarized"
+        end
+
+        test "failed filters on failures inside the window, not lifetime failures" do
+          rails_pulse_jobs(:mailer_job).update_columns(failures_count: 5)
+
+          get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+            params: window_over_all_hours.merge(status: "failed")
+          body = JSON.parse(response.body)
+
+          assert_equal [ "GenerateReportJob" ], body["data"].map { |j| j["name"] }
+          assert_equal 1, body["meta"]["total"]
         end
 
         test "without a window the counters stay lifetime totals and stats is absent" do
