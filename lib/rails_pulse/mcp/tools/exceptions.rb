@@ -18,10 +18,11 @@ module RailsPulse
 
         input_schema(
           properties: {
+            **Helpers.window_properties("last_7_days"),
             period: {
               type: "string",
-              description: "Only groups last seen in this period: 'last_hour', 'last_24_hours', 'last_7_days', " \
-                           "an ISO 8601 timestamp for 'since', or 'all' for no time filter",
+              description: "Only groups last seen in this window: 'last_hour', 'last_24_hours', 'last_7_days', " \
+                           "or 'all' for no time filter. Ignored when 'since' or 'until' is given.",
               default: "last_7_days"
             },
             status: {
@@ -41,12 +42,16 @@ module RailsPulse
           }
         )
 
-        def self.call(period: "last_7_days", status: "open", search: nil, limit: 25, server_context:)
+        # `period: "all"` drops the time filter; groups are otherwise limited to
+        # those last seen inside the window.
+        def self.call(period: "last_7_days", status: "open", search: nil, limit: 25, server_context:, **options)
           respond(server_context) do |client|
             limit = limit.to_i.clamp(1, 100)
+            all_time = period.to_s == "all" && options[:since].nil? && options[:until].nil?
+            window = all_time ? nil : resolve_window(period: period, since: options[:since], until_time: options[:until])
 
             params = { limit: limit, offset: 0 }
-            params[:since]  = resolve_since(period) unless period.to_s == "all"
+            params.merge!(window_params(window)) if window
             params[:status] = status unless status.to_s == "all"
             params[:search] = search if search.to_s != ""
 
@@ -55,7 +60,7 @@ module RailsPulse
             total  = result.dig("meta", "total") || groups.size
 
             {
-              period: period,
+              window: window || { period: "all" },
               status_filter: status,
               total_groups: total,
               groups_returned: groups.size,

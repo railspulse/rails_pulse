@@ -123,8 +123,11 @@ Every tool that takes a `period` also takes `since` and `until` as ISO 8601 time
 window can be pinned rather than measured relative to now — what makes a before/after-deploy
 comparison repeatable. A timestamp with no zone is read as UTC. Explicit bounds win over
 `period`, and each tool echoes what it measured as `window: { since:, until:, period: }`.
-An unparseable timestamp, or an `until` at or before `since`, is an error naming the
-correction rather than a query.
+`period` takes only `last_hour`, `last_24_hours` or `last_7_days` (and `all` on
+`rails_pulse_exceptions`); any other window is `since`/`until`. A timestamp that is not ISO
+8601, an unknown period, a `since` in the future, or an `until` at or before `since` is an
+error naming the correction rather than a query. `rails_pulse_queries` takes `route` as the
+integer `route_id` the endpoint and slow-requests tools return, or as a string.
 
 ## Operations — regression detection
 

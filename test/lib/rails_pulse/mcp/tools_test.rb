@@ -338,6 +338,16 @@ module RailsPulse
         assert_equal "post", params[:search]
       end
 
+      test "exceptions pins an explicit window" do
+        ctx = server_context("/exceptions" => EXCEPTIONS_RESPONSE)
+        result = Tools::Exceptions.call(since: "2026-09-24T12:00:00Z", until: "2026-09-25T12:00:00Z", server_context: ctx)
+        _path, params = ctx[:client].calls.first
+
+        assert_equal "2026-09-24T12:00:00Z", params[:since]
+        assert_equal "2026-09-25T12:00:00Z", params[:until]
+        assert_equal "custom", JSON.parse(result.content.first[:text])["window"]["period"]
+      end
+
       test "exceptions returns the groups with a summary and next steps" do
         ctx = server_context("/exceptions" => EXCEPTIONS_RESPONSE)
         result = Tools::Exceptions.call(server_context: ctx)

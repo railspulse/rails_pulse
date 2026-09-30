@@ -33,7 +33,7 @@ module RailsPulse
           required: [ "id" ]
         )
 
-        def self.call(id:, occurrences: 3, server_context:)
+        def self.call(id:, occurrences: 3, server_context:, **_options)
           respond(server_context) do |client|
             count = occurrences.to_i.clamp(1, 20)
             result = client.get("/exceptions/#{id.to_i}", { occurrences: count })

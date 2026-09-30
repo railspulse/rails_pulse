@@ -19,6 +19,11 @@ module RailsPulse
         # A trailing Z or ±HH:MM offset.
         ZONED = /(?:Z|[+-]\d{2}:?\d{2})\z/i
 
+        # ISO 8601: a date, optionally a time, optionally a zone. Anything else
+        # is refused rather than handed to Time.parse, which reads
+        # "last_30_days" as the 30th of this month and "24h" as midnight.
+        ISO8601 = /\A\d{4}-\d{2}-\d{2}(?:[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?)?(?:Z|[+-]\d{2}:?\d{2})?\z/i
+
         # The default window when a tool is given neither a period nor bounds.
         DEFAULT_PERIOD = "last_24_hours".freeze
 
@@ -28,8 +33,8 @@ module RailsPulse
           {
             period: {
               type: "string",
-              description: "Relative window: 'last_hour', 'last_24_hours', 'last_7_days', or an ISO 8601 " \
-                           "timestamp to measure from. Ignored when 'since' or 'until' is given.",
+              description: "Relative window: 'last_hour', 'last_24_hours' or 'last_7_days'. For any other " \
+                           "window pass 'since' and 'until'. Ignored when either is given.",
               default: default_period
             },
             since: {
@@ -42,11 +47,6 @@ module RailsPulse
               description: "End of the window, ISO 8601. Read as UTC when no zone is given. Omit to measure up to now."
             }
           }
-        end
-
-        def resolve_since(period)
-          seconds = PERIODS[period]
-          seconds ? (Time.now - seconds).iso8601 : period
         end
 
         # Turns a tool's time arguments into explicit UTC bounds.
@@ -67,6 +67,9 @@ module RailsPulse
           if to && from >= to
             raise WindowError, "'since' (#{from.iso8601}) must be earlier than 'until' (#{to.iso8601})."
           end
+          if from > Time.now.utc
+            raise WindowError, "'since' (#{from.iso8601}) is in the future, so nothing can have been recorded yet."
+          end
 
           {
             since: from.iso8601,
@@ -79,6 +82,8 @@ module RailsPulse
         # thing on the agent's machine as on the server.
         def parse_time(value, name)
           string = value.to_s.strip
+          raise ArgumentError unless string.match?(ISO8601)
+
           parsed = Time.parse(string)
           return parsed.utc if string.match?(ZONED)
 
@@ -102,7 +107,13 @@ module RailsPulse
           seconds = PERIODS[period || DEFAULT_PERIOD]
           return (Time.now.utc - seconds) if seconds
 
-          parse_time(period, "period")
+          # An ISO 8601 period was the documented way to pin a start before
+          # `since` existed, so it is still read as one.
+          return parse_time(period, "period") if period.to_s.strip.match?(ISO8601)
+
+          raise WindowError,
+            "Unknown period #{period.inspect}. Use #{PERIODS.keys.join(', ')}, or pass 'since' and 'until' " \
+            "as ISO 8601 timestamps for any other window."
         end
 
         # Every row of a paginated endpoint, for a tool that ranks the rows

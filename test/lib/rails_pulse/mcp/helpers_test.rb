@@ -10,21 +10,6 @@ module RailsPulse
         extend Tools::Helpers
       end
 
-      test "resolve_since maps named periods to ISO timestamps" do
-        now = Time.now
-        hour = Time.iso8601(Host.resolve_since("last_hour"))
-        day = Time.iso8601(Host.resolve_since("last_24_hours"))
-        week = Time.iso8601(Host.resolve_since("last_7_days"))
-
-        assert_in_delta now - 3600, hour, 5
-        assert_in_delta now - 86_400, day, 5
-        assert_in_delta now - 604_800, week, 5
-      end
-
-      test "resolve_since passes unknown values through as timestamps" do
-        assert_equal "2026-06-01T00:00:00Z", Host.resolve_since("2026-06-01T00:00:00Z")
-      end
-
       test "percentile returns 0 for empty input and nearest rank otherwise" do
         assert_equal 0, Host.percentile([], 95)
         assert_equal 10, Host.percentile([ 10 ], 95)
@@ -113,6 +98,50 @@ module RailsPulse
 
         assert_includes error.message, "Invalid since"
         assert_includes error.message, "ISO 8601"
+      end
+
+      # Time.parse is lenient: "last_30_days" reads as the 30th of this month
+      # and "24h" as midnight, both silently wrong windows that return
+      # nothing and look like "no data".
+      test "resolve_window rejects a period it does not know rather than guessing" do
+        %w[last_30_days last_2_hours 24h].each do |period|
+          error = assert_raises(Tools::Helpers::WindowError) { Host.resolve_window(period: period) }
+
+          assert_includes error.message, "Unknown period"
+          assert_includes error.message, "last_7_days"
+        end
+      end
+
+      test "resolve_window rejects a named zone rather than reading it as UTC" do
+        error = assert_raises(Tools::Helpers::WindowError) { Host.resolve_window(since: "2026-09-24T12:00:00 PST") }
+
+        assert_includes error.message, "Invalid since"
+      end
+
+      test "resolve_window accepts a bare date as midnight UTC" do
+        assert_equal "2026-09-24T00:00:00Z", Host.resolve_window(since: "2026-09-24")[:since]
+      end
+
+      test "resolve_window rejects a start in the future" do
+        error = assert_raises(Tools::Helpers::WindowError) do
+          Host.resolve_window(since: (Time.now.utc + 86_400).strftime("%Y-%m-%dT%H:%M:%SZ"))
+        end
+
+        assert_includes error.message, "in the future"
+      end
+
+      test "fetch_all pages until the total is reached" do
+        client = Object.new
+        offsets = []
+        client.define_singleton_method(:get) do |_path, params|
+          offsets << params[:offset]
+          rows = params[:offset] < 4 ? [ { "n" => params[:offset] }, { "n" => params[:offset] + 1 } ] : []
+          { "data" => rows, "meta" => { "total" => 5 } }
+        end
+        rows, = Host.fetch_all(client, "/jobs", {}, page_size: 2)
+
+        assert_equal [ 0, 2, 4 ], offsets
+        assert_equal 4, rows.size
       end
 
       test "resolve_window rejects a window that ends before it starts" do

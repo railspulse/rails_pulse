@@ -35,8 +35,10 @@ module RailsPulse
               description: "Only return queries flagged as likely N+1",
               default: false
             },
+            # rails_pulse_endpoint and rails_pulse_slow_requests hand back an
+            # integer route_id, so the next call passes a number.
             route: {
-              type: "string",
+              type: %w[integer string],
               description: "Restrict to SQL issued while serving one endpoint. A route_id from rails_pulse_routes " \
                            "or rails_pulse_slow_requests, or a controller action or path to match on."
             }
