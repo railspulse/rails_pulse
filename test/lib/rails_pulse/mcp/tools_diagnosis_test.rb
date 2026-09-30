@@ -45,11 +45,15 @@ module RailsPulse
       JOBS_RESPONSE = {
         "data" => [
           { "id" => 1, "name" => "UserMailerJob", "queue_name" => "mailers", "runs_count" => 100, "failures_count" => 0,
-            "avg_duration" => 150.0, "p95_duration" => 200.0, "p99_duration" => 220.0, "failure_rate" => 0.0 },
+            "avg_duration" => 150.0, "p95_duration" => 200.0, "p99_duration" => 220.0, "failure_rate" => 0.0,
+            "stats" => { "runs_count" => 100, "failures_count" => 0, "failure_rate" => 0.0, "avg_duration" => 150.0,
+                         "max_duration" => 240.0, "p95_duration" => 200.0, "p99_duration" => 220.0 } },
           { "id" => 2, "name" => "GenerateReportJob", "queue_name" => "default", "runs_count" => 50, "failures_count" => 5,
-            "avg_duration" => 45_000.0, "p95_duration" => 70_000.0, "p99_duration" => 90_000.0, "failure_rate" => 10.0 }
+            "avg_duration" => 45_000.0, "p95_duration" => 70_000.0, "p99_duration" => 90_000.0, "failure_rate" => 10.0,
+            "stats" => { "runs_count" => 50, "failures_count" => 5, "failure_rate" => 10.0, "avg_duration" => 45_000.0,
+                         "max_duration" => 95_000.0, "p95_duration" => 70_000.0, "p99_duration" => 90_000.0 } }
         ],
-        "meta" => { "total" => 2, "limit" => 100, "offset" => 0 }
+        "meta" => { "total" => 2, "limit" => 500, "offset" => 0, "window" => { "period_type" => "hour" } }
       }.freeze
 
       JOB_RUNS_RESPONSE = {
@@ -238,6 +242,54 @@ module RailsPulse
         assert_equal "hour", data["window"]["summary_period"]
       end
 
+      # The job row's p95 is a lifetime figure. When the window's is withheld
+      # it must stay absent rather than be replaced by that one, or an all-time
+      # number is reported as the window's beside a note saying there is none.
+      test "jobs never substitutes lifetime percentiles for withheld ones" do
+        withheld = {
+          "data" => [
+            { "id" => 2, "name" => "GenerateReportJob", "queue_name" => "default", "runs_count" => 50,
+              "failures_count" => 5, "avg_duration" => 45_000.0, "p95_duration" => 999_999.0,
+              "p99_duration" => 999_999.0, "failure_rate" => 10.0,
+              "stats" => { "runs_count" => 8, "failures_count" => 4, "failure_rate" => 50.0, "avg_duration" => 900.0,
+                           "percentiles_note" => "Omitted: the window spans 25 summary periods." } }
+          ],
+          "meta" => { "total" => 1, "window" => { "period_type" => "hour" } }
+        }
+        _, data = call(Tools::Jobs, client("/jobs" => withheld, "/job_runs" => JOB_RUNS_RESPONSE))
+        job = data["jobs"].first
+
+        assert_nil job["p95_ms"]
+        assert_nil job["p99_ms"]
+        assert_includes data["summary"], "Slowest: GenerateReportJob (avg 900.0ms)"
+      end
+
+      test "jobs ranks every job, not the first page the API returns" do
+        c = client
+        pages = [
+          { "data" => Array.new(500) { |i| { "name" => "Job#{i}", "stats" => { "runs_count" => 1, "failure_rate" => 0.0 } } },
+            "meta" => { "total" => 501 } },
+          { "data" => [ { "name" => "ZzzFailingJob", "stats" => { "runs_count" => 4, "failures_count" => 4, "failure_rate" => 100.0 } } ],
+            "meta" => { "total" => 501 } }
+        ]
+        c.define_singleton_method(:get) do |path, params = {}|
+          @calls << [ path, params ]
+          path == "/jobs" ? pages[params[:offset] / 500] : { "data" => [], "meta" => { "total" => 0 } }
+        end
+        _, data = call(Tools::Jobs, c, limit: 1)
+
+        assert_equal [ "ZzzFailingJob" ], data["jobs"].map { |j| j["name"] }
+        assert_includes data["summary"], "501 job(s) ran"
+      end
+
+      test "jobs reports the API's failed run total, not the sample it grouped" do
+        runs = JOB_RUNS_RESPONSE.merge("meta" => { "total" => 340 })
+        _, data = call(Tools::Jobs, client("/jobs" => JOBS_RESPONSE, "/job_runs" => runs))
+
+        assert_equal 340, data["failed_runs"]
+        assert_includes data["summary"], "340 failed run(s) in period (latest 3 grouped in recent_failures)"
+      end
+
       test "jobs relays why percentiles were withheld for a multi-period window" do
         withheld = {
           "data" => [
@@ -258,7 +310,7 @@ module RailsPulse
         _, data = call(Tools::Jobs, client("/jobs" => JOBS_RESPONSE, "/job_runs" => JOB_RUNS_RESPONSE))
 
         assert data["next_steps"].any? { |s| s.include?("failure rate above 5%") }
-        assert data["next_steps"].any? { |s| s.include?("p95 over 60s") }
+        assert data["next_steps"].any? { |s| s.include?("over 60s") }
         assert data["next_steps"].any? { |s| s.include?("error_class") }
       end
 

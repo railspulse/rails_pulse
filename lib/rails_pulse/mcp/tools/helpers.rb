@@ -105,6 +105,25 @@ module RailsPulse
           parse_time(period, "period")
         end
 
+        # Every row of a paginated endpoint, for a tool that ranks the rows
+        # itself. Bounded so an unexpectedly large table cannot keep the tool
+        # paging forever.
+        #
+        # @return [Array(Array<Hash>, Hash)] the rows and the first page's response
+        def fetch_all(client, path, params, page_size: 500, max_pages: 20)
+          rows = []
+          first = nil
+          max_pages.times do |page|
+            result = client.get(path, params.merge(limit: page_size, offset: page * page_size))
+            first ||= result
+            batch = result["data"] || []
+            rows.concat(batch)
+            total = result.dig("meta", "total")
+            break if batch.size < page_size || (total && rows.size >= total)
+          end
+          [ rows, first ]
+        end
+
         def percentile(sorted, pct)
           return 0 if sorted.empty?
           k = ((pct / 100.0) * (sorted.size - 1)).ceil
