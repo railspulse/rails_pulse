@@ -16,7 +16,9 @@ module RailsPulse
       # run wrote, leaving everything a project put around it untouched.
       SECTION_START = "<!-- rails-pulse:start -->".freeze
       SECTION_END = "<!-- rails-pulse:end -->".freeze
-      SECTION_PATTERN = /^#{Regexp.escape(SECTION_START)}\n.*?^#{Regexp.escape(SECTION_END)}\n?/m
+      # Tolerates CRLF line endings and trailing spaces after a marker, which
+      # an editor or git's autocrlf can introduce between runs.
+      SECTION_PATTERN = /^#{Regexp.escape(SECTION_START)}[ \t]*\r?\n.*?^#{Regexp.escape(SECTION_END)}[ \t]*(?:\r?\n)?/m
 
       INTEGRATIONS = {
         "claude" => {
@@ -92,8 +94,10 @@ module RailsPulse
           exit 1
         end
 
+        # Written as a delimited section from the start, so a later --append
+        # recognises it and replaces it rather than adding a second copy.
         dest = File.join(Dir.pwd, AGENTS_FILE)
-        FileUtils.cp(source, dest)
+        File.write(dest, section(source, "\n"))
         say "Installed agent descriptor to #{dest}", :green
       end
 
@@ -102,16 +106,39 @@ module RailsPulse
       # everything around it is left exactly as the project wrote it.
       def append_to_agents(dest, source)
         existing = File.read(dest)
-        section = "#{SECTION_START}\n#{File.read(source).strip}\n#{SECTION_END}\n"
+        newline = existing.include?("\r\n") ? "\r\n" : "\n"
+        section = section(source, newline)
 
         if existing.match?(SECTION_PATTERN)
-          File.write(dest, existing.sub(SECTION_PATTERN, section))
+          File.write(dest, existing.sub(SECTION_PATTERN) { section })
           say "Updated the Rails Pulse section in #{dest}", :green
+        elsif existing.lstrip.start_with?(descriptor_title(source))
+          # A copy written before the section markers existed. Its end cannot
+          # be told from anything the project added after it, so it is left
+          # for a person to replace rather than guessed at or duplicated.
+          say "#{dest} starts with a Rails Pulse descriptor that has no section markers; not appending a second copy.", :yellow
+          say "Delete the Rails Pulse part of it (or the file, if nothing else is in it) and run this again."
+          exit 1
         else
-          separator = existing.end_with?("\n\n") ? "" : (existing.end_with?("\n") ? "\n" : "\n\n")
+          separator = if existing.empty? || existing.end_with?("#{newline}#{newline}")
+            ""
+          elsif existing.end_with?(newline)
+            newline
+          else
+            newline * 2
+          end
           File.write(dest, "#{existing}#{separator}#{section}")
           say "Appended a Rails Pulse section to #{dest}", :green
         end
+      end
+
+      def section(source, newline)
+        body = File.read(source).strip.gsub(/\r?\n/, newline)
+        "#{SECTION_START}#{newline}#{body}#{newline}#{SECTION_END}#{newline}"
+      end
+
+      def descriptor_title(source)
+        File.foreach(source).first.to_s.strip
       end
     end
   end

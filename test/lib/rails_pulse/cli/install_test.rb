@@ -173,6 +173,62 @@ module RailsPulse
         end
       end
 
+      # The advice for an existing file is to run --append, so a file this
+      # command wrote itself must be recognised by it.
+      test "append after a plain install replaces the section rather than duplicating it" do
+        Dir.chdir(@tmpdir) do
+          run_install("agents")
+          first = File.read("agents.md")
+
+          out, _err = run_install("agents", append: true)
+
+          assert_includes out, "Updated the Rails Pulse section"
+          assert_equal first, File.read("agents.md")
+          assert_equal 1, first.scan("# Rails Pulse — Agent Integration").size
+        end
+      end
+
+      test "a second append to a CRLF file replaces the section and keeps its line endings" do
+        Dir.chdir(@tmpdir) do
+          File.write("AGENTS.md", "# Project instructions\r\n")
+          run_install("agents", append: true)
+          first = File.read("AGENTS.md")
+
+          run_install("agents", append: true)
+          second = File.read("AGENTS.md")
+
+          assert_equal first, second
+          assert_equal 1, second.scan("<!-- rails-pulse:start -->").size
+          assert_no_match(/(?<!\r)\n/, second)
+        end
+      end
+
+      test "append tolerates trailing spaces after a marker" do
+        Dir.chdir(@tmpdir) do
+          File.write("AGENTS.md", "# Project instructions\n")
+          run_install("agents", append: true)
+          File.write("AGENTS.md", File.read("AGENTS.md").sub("<!-- rails-pulse:start -->", "<!-- rails-pulse:start -->  "))
+
+          run_install("agents", append: true)
+
+          assert_equal 1, File.read("AGENTS.md").scan("<!-- rails-pulse:start -->").size
+        end
+      end
+
+      test "append refuses a descriptor copied in before sections were delimited" do
+        Dir.chdir(@tmpdir) do
+          legacy = File.read(File.join(Install::AGENT_FILES_DIR, "agents.md"))
+          File.write("AGENTS.md", legacy)
+
+          out, _err = capture_io do
+            assert_raises(SystemExit) { Install.new([], { "list" => false, "append" => true }).perform("agents") }
+          end
+
+          assert_equal legacy, File.read("AGENTS.md")
+          assert_includes out, "no section markers"
+        end
+      end
+
       # --- unknown integration ---
 
       test "unknown integration shows usage hint" do
