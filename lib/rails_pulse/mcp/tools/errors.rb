@@ -69,16 +69,22 @@ module RailsPulse
               total_errors: total,
               errors_returned: requests.size,
               by_endpoint: error_groups,
-              summary: build_summary(error_groups, total, status)
+              summary: build_summary(error_groups, total, requests.size, status)
             }
           end
         end
 
-        private_class_method def self.build_summary(groups, total, status)
+        # by_endpoint groups only the requests fetched, so when that is fewer
+        # than the total the endpoint count is said to cover the sample.
+        private_class_method def self.build_summary(groups, total, sampled, status)
           return "No #{status} errors found for this period." if groups.empty?
 
           worst = groups.first
-          parts = [ "#{total} total #{status} errors across #{groups.size} endpoint(s)" ]
+          parts = if sampled < total
+            [ "#{total} total #{status} errors; the latest #{sampled} span #{groups.size} endpoint(s)" ]
+          else
+            [ "#{total} total #{status} errors across #{groups.size} endpoint(s)" ]
+          end
           parts << "Most errors: #{worst[:endpoint]} (#{worst[:count]} occurrences)"
 
           parts.join(". ") + "."

@@ -288,6 +288,15 @@ module RailsPulse
         assert_includes data["summary"], "1 total 5xx errors"
       end
 
+      test "errors says the endpoint count covers only the sample when more errors exist" do
+        sampled = { "data" => REQUESTS_RESPONSE["data"].select { |r| r["status"].to_i >= 500 },
+                    "meta" => { "total" => 900 } }
+        result = Tools::Errors.call(server_context: server_context("/requests" => sampled))
+        data = JSON.parse(result.content.first[:text])
+
+        assert_match(/900 total 5xx errors; the latest \d+ span \d+ endpoint/, data["summary"])
+      end
+
       test "errors handles no errors" do
         empty = { "data" => [], "meta" => { "total" => 0, "limit" => 25, "offset" => 0 } }
         ctx = server_context("/requests" => empty)
@@ -476,6 +485,39 @@ module RailsPulse
         data = JSON.parse(result.content.first[:text])
 
         refute_includes data["latency"].keys, "computed_over"
+      end
+
+      # A substring such as '/users' also matches '/admin/users', and the
+      # figures then mix both; they must not be labelled as one route's.
+      test "endpoint says when the name matched several routes" do
+        mixed = {
+          "data" => [
+            { "id" => 1, "route_id" => 7, "controller_action" => "UsersController#index", "duration" => 100.0,
+              "status" => 200, "is_error" => false, "occurred_at" => "2026-06-01T12:00:00Z" },
+            { "id" => 2, "route_id" => 7, "controller_action" => "UsersController#index", "duration" => 120.0,
+              "status" => 200, "is_error" => false, "occurred_at" => "2026-06-01T12:01:00Z" },
+            { "id" => 3, "route_id" => 9, "controller_action" => "Admin::UsersController#index", "duration" => 900.0,
+              "status" => 200, "is_error" => false, "occurred_at" => "2026-06-01T12:02:00Z" }
+          ],
+          "meta" => { "total" => 3 }
+        }
+        result = Tools::Endpoint.call(endpoint: "/users", server_context: server_context("/requests" => mixed))
+        data = JSON.parse(result.content.first[:text])
+
+        assert_equal "2 routes matching '/users'", data["endpoint"]
+        assert_nil data["route_id"]
+        assert_equal [ 7, 9 ], data["matched_routes"].map { |r| r["route_id"] }
+        assert_includes data["next_steps"].first, "matched_routes"
+      end
+
+      test "endpoint offers the route_id when the name matched one route" do
+        one = { "data" => [ { "id" => 1, "route_id" => 7, "controller_action" => "UsersController#index", "duration" => 100.0,
+                              "status" => 200, "is_error" => false, "occurred_at" => "2026-06-01T12:00:00Z" } ],
+                "meta" => { "total" => 1 } }
+        data = JSON.parse(Tools::Endpoint.call(endpoint: "UsersController#index", server_context: server_context("/requests" => one)).content.first[:text])
+
+        assert_equal 7, data["route_id"]
+        refute_includes data.keys, "matched_routes"
       end
 
       test "endpoint includes latency percentiles" do

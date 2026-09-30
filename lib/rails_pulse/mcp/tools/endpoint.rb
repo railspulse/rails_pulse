@@ -63,11 +63,17 @@ module RailsPulse
           statuses = requests.map { |r| r["status"] }.tally.sort_by { |_, c| -c }
           sorted_by_time = requests.sort_by { |r| r["occurred_at"].to_s }
 
+          # A substring can match several routes ('/users' also matches
+          # '/admin/users'). The figures then cover all of them, so the profile
+          # is labelled as such and offers no single route_id to drill into.
+          routes = requests.group_by { |r| r["route_id"] }
+          single = routes.size == 1
+
           profile = {
-            endpoint: requests.first["controller_action"] || endpoint,
+            endpoint: single ? (requests.first["controller_action"] || endpoint) : "#{routes.size} routes matching '#{endpoint}'",
             # The handle for the next hop: rails_pulse_queries takes it to show
             # the SQL that ran inside this endpoint.
-            route_id: requests.first["route_id"],
+            route_id: single ? requests.first["route_id"] : nil,
             window: window,
             request_count: total || requests.size,
             sampled_requests: requests.size,
@@ -89,6 +95,12 @@ module RailsPulse
               last_request: sorted_by_time.last&.dig("occurred_at")
             }
           }
+
+          unless single
+            profile[:matched_routes] = routes.map do |route_id, reqs|
+              { route_id: route_id, controller_action: reqs.first["controller_action"], sampled_requests: reqs.size }
+            end.sort_by { |r| -r[:sampled_requests] }
+          end
 
           # Percentiles are computed over the sampled page, which is the most
           # recent requests rather than the whole window. Said beside the
@@ -125,6 +137,10 @@ module RailsPulse
 
         private_class_method def self.build_next_steps(profile)
           steps = []
+          if profile[:matched_routes]
+            steps << "'#{profile[:endpoint]}' covers several routes, so these figures mix them. Call rails_pulse_endpoint " \
+                     "again with one controller_action from matched_routes, or pass a route_id from it to rails_pulse_queries."
+          end
           if profile[:latency][:computed_over]
             steps << "Percentiles cover only the sampled requests. Narrow the window with since/until until " \
                      "sampled_requests equals request_count for statistics over the whole window."
