@@ -92,7 +92,7 @@ header.
   still returned. When it is above 1 the response's `meta` carries `min_requests` and
   `routes_with_traffic`, which separate "nothing ran in this window" from "nothing ran often
   enough".
-- `POST deployments` and `PUT deployments/:id/finish` are the existing endpoints CI calls to
+- `POST deployments` and `PUT deployments/finish` are the existing endpoints CI calls to
   record a release (the same action as the `rails_pulse:record_deployment` and
   `rails_pulse:finish_deployment` rake tasks below). They sit outside the `api/v1` read-only
   scope and are the only writes in the API. They accept `config.deployment_token` alone and

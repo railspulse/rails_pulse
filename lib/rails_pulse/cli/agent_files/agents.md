@@ -52,7 +52,7 @@ All tools are read-only. Each returns a `summary` and `next_steps`.
 | `rails_pulse_jobs` | Background job health and recent failures |
 | `rails_pulse_deployments` | Recent deployments with revision, timing and metadata |
 
-Every tool that takes a `period` also takes `since` and `until` as ISO 8601 timestamps, read as UTC when no zone is given, and echoes the bounds it measured back as `window`. Use them to compare two fixed windows — the 24 hours before a release against the 24 hours after — rather than a relative period that moves between calls.
+Every tool that takes a `period` also takes `since` and `until` as ISO 8601 timestamps, read as UTC when no zone is given, and echoes the bounds it measured back as `window`. `period` itself is only `last_hour`, `last_24_hours` or `last_7_days` (plus `all` on `rails_pulse_exceptions`); any other window is `since`/`until`. Use them to compare two fixed windows — the 24 hours before a release against the 24 hours after — rather than a relative period that moves between calls.
 
 ## CLI
 
@@ -63,13 +63,14 @@ The `rails-pulse` CLI works without MCP. Append `--json` for structured output.
 | `rails-pulse routes list` | Tracked routes (`--since` adds request stats) |
 | `rails-pulse requests list` | Recorded requests with status and time filters |
 | `rails-pulse queries list` | SQL queries (`--since` adds timing stats) |
-| `rails-pulse jobs list` | Background jobs with performance stats |
+| `rails-pulse jobs list` | Background jobs: lifetime stats, or one window's with `--since` / `--until` |
 | `rails-pulse job_runs list` | Individual job runs with errors |
 | `rails-pulse exceptions list` | Exception groups with status and occurrence counts |
 | `rails-pulse exceptions show ID` | One group with backtraces and recent occurrences |
 | `rails-pulse deployments list` | Recorded deployments, most recent first |
+| `rails-pulse coverage show` | What has been recorded, how recently, and any collection gaps |
 
-Common flags: `--limit N` (1 to 500, default 25), `--offset N`, `--json`, `--since TIME` / `--until TIME` (ISO 8601).
+Common flags on every list command: `--limit N` (1 to 500, default 25), `--offset N`, `--json`, `--since TIME` / `--until TIME` (ISO 8601; no zone means UTC).
 
 ## Authentication
 
@@ -82,5 +83,5 @@ Set `RAILS_PULSE_URL` and `RAILS_PULSE_TOKEN` (the application's `config.api_tok
 3. Profile the suspect endpoint (`rails_pulse_endpoint`)
 4. Check errors (`rails_pulse_errors`)
 5. Inspect SQL and jobs (`rails_pulse_queries`, `rails_pulse_jobs`)
-6. Correlate with source code
+6. Correlate with source code: pass the endpoint's `route_id` to `rails_pulse_queries` for the SQL inside it and the file and line each query came from
 7. Fix, deploy, and re-check the same endpoint

@@ -29,6 +29,7 @@ module RailsPulse
           rails_pulse_exceptions            — Exception groups with status, count, and latest message
           rails_pulse_exception             — One group's recent occurrences with backtraces and params
           rails_pulse_deployments           — Recent deployments with revision, timing and metadata
+          rails_pulse_coverage              — What has been recorded, how recently, and any collection gaps
       DESC
       def start
         require_relative "../mcp/server"

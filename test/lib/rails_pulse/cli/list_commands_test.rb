@@ -206,6 +206,31 @@ module RailsPulse
         refute_includes captured_params.keys, "status"
       end
 
+      test "jobs list passes a window and job, and shows the window's figures" do
+        windowed = { "data" => [ { "name" => "ReportJob", "queue_name" => "default", "runs_count" => 5000,
+                                   "stats" => { "runs_count" => 12, "failures_count" => 3, "failure_rate" => 25.0,
+                                                "avg_duration" => 40.0, "max_duration" => 90.0 } } ],
+                     "meta" => { "total" => 1 } }
+        stub_list(windowed)
+        out, _err = run_cmd(Jobs, since: "2026-06-01T00:00:00Z", until: "2026-06-02T00:00:00Z", job: "ReportJob")
+
+        assert_equal "2026-06-01T00:00:00Z", captured_params["since"]
+        assert_equal "2026-06-02T00:00:00Z", captured_params["until"]
+        assert_equal "ReportJob", captured_params["job"]
+        assert_includes out, "MAX (MS)"
+        assert_match(/ReportJob\s+default\s+12\s+3/, out)
+      end
+
+      test "jobs list --json keeps lifetime counters and window stats apart" do
+        windowed = { "data" => [ { "name" => "ReportJob", "runs_count" => 5000, "stats" => { "runs_count" => 12 } } ], "meta" => {} }
+        stub_list(windowed)
+        out, _err = run_cmd(Jobs, since: "2026-06-01T00:00:00Z", json: true)
+        row = JSON.parse(out)["data"].first
+
+        assert_equal 5000, row["runs_count"]
+        assert_equal 12, row["stats"]["runs_count"]
+      end
+
       # --- JobRuns ---
 
       test "job_runs list calls /job_runs with status, job, and time filters" do

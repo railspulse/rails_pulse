@@ -67,8 +67,12 @@ _Avoid_: release, deploy marker (the marker is how a Deployment is drawn, not th
 ### Collection
 
 **API token**:
-`config.api_token`, the one shared secret outside the dashboard: it authenticates the read-only JSON API under `api/v1` and the deployments endpoint, sent as `X-Rails-Pulse-Token`. Was `deployment_api_token` before 0.5; the alias remains.
-_Avoid_: deployment token, dashboard token, license key
+`config.api_token`, the read credential: it authenticates the read-only JSON API under `api/v1` that the CLI and MCP server use, sent as `X-Rails-Pulse-Token`. It cannot record a deployment.
+_Avoid_: dashboard token, license key
+
+**Deployment token**:
+`config.deployment_token`, the write credential: the only token the deployments endpoint accepts for recording a release, sent the same way. `deployment_api_token` is its pre-0.5 name and still works. Setting it to the same value as the API token restores one credential for both.
+_Avoid_: API token (a different credential), deploy key
 
 **CLI and MCP server**:
 `rails-pulse`, the Thor executable in the gem, and its `mcp` subcommand, which serves the same data to coding agents over stdio. Both run outside the application and read it only through the JSON API.

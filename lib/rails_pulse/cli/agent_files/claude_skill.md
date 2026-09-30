@@ -44,11 +44,12 @@ The `rails-pulse` executable ships with the gem. Add `--json` for structured out
 | `rails-pulse routes list --json` | Tracked routes (add `--since` for stats) |
 | `rails-pulse requests list --json` | Recorded requests with status and time filters |
 | `rails-pulse queries list --json` | SQL queries (add `--since` for timing stats) |
-| `rails-pulse jobs list --json` | Background jobs with lifetime stats |
+| `rails-pulse jobs list --json` | Background jobs: lifetime stats, or one window's with `--since` / `--until` |
 | `rails-pulse job_runs list --json` | Individual job runs with error class and message |
 | `rails-pulse exceptions list --json` | Exception groups with status, count, location and message |
 | `rails-pulse exceptions show ID --json` | One group with backtraces, request, params and deploy SHA |
 | `rails-pulse deployments list --json` | Recorded deployments, most recent first |
+| `rails-pulse coverage show --json` | What has been recorded, how recently, and any collection gaps |
 
 ## Investigation workflow
 
@@ -61,7 +62,7 @@ rails_pulse_deployments(period: "last_7_days")
 rails-pulse deployments list --json
 ```
 
-Use a deployment's `started_at` as the `period` for the tools below, then compare against the period before it.
+Use a deployment's `started_at` as `since` for the tools below, then compare against the same length of time before it.
 
 ### 2. Identify affected endpoints
 
@@ -137,7 +138,7 @@ makes them a mix of both versions.
 - **Check the error rate.** A fast endpoint with a high error rate may be failing early rather than performing well.
 - **Read percentiles, not just averages.** A low average with a high p95 or p99 means intermittent trouble.
 - **Weigh request volume.** A slow endpoint nobody calls may not be worth the work.
-- **Job aggregates are all-time.** `rails_pulse_jobs` counts and percentiles cover the job's whole history; only `recent_failures` is scoped to the period.
+- **Job figures cover the window.** `rails_pulse_jobs` reads them from summaries plus the runs not yet summarized. p95 and p99 are given only when one summary period holds the whole window; otherwise they are null and `note` says why, so compare averages and failure rates instead.
 - **Check what the percentiles covered.** `rails_pulse_endpoint` computes them over the most recent requests it sampled, not the whole window. When `sampled_requests` is below `request_count` it says so in `latency.computed_over`; narrow the window until the two match before comparing percentiles across windows.
 
 ## Authentication
@@ -161,4 +162,4 @@ Interactive setup: `rails-pulse configure`.
 
 ## CLI reference
 
-List commands accept `--limit N` (1 to 500, default 25), `--offset N` and `--json`. Time-based commands also accept `--since TIME` and `--until TIME` as ISO 8601. JSON output is `{ "data": [...], "meta": { "total", "limit", "offset" } }`; page with `--offset`.
+List commands accept `--limit N` (1 to 500, default 25), `--offset N` and `--json`. Every list command also accepts `--since TIME` and `--until TIME` as ISO 8601; a time with no zone is read as UTC. JSON output is `{ "data": [...], "meta": { "total", "limit", "offset" } }`; page with `--offset`.
