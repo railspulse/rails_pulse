@@ -138,17 +138,33 @@ module RailsPulse
 
         # Edge Cases
 
-        test "suspects a gap when no writer has ever reported" do
+        # A writer starts with a process's first tracked request, so a quiet
+        # writer means nothing was queued, not that anything was lost. An idle
+        # app, or one whose only traffic is ignored health checks, must not be
+        # reported as losing data.
+        test "does not suspect a gap when no writer has reported" do
           RailsPulse::WriterHeartbeat.events.delete_all
 
           body = get_coverage
 
-          assert body["collection"]["gap_suspected"]
-          assert_includes body["collection"]["note"], "No writer has ever reported"
+          refute body["collection"]["gap_suspected"]
+          assert_includes body["collection"]["note"], "no tracked web traffic"
         end
 
-        # A synchronous host records no heartbeat because it has no writer,
-        # which must not read as a writer that stopped.
+        test "describes a writer that has gone quiet without suspecting a gap" do
+          RailsPulse::WriterHeartbeat.events.delete_all
+          travel_to 10.minutes.ago do
+            RailsPulse::WriterHeartbeat.record!(hostname: "web1", pid: 1, queue_size: 100,
+              queue_depth: 0, dropped: 0, dropped_total: 0)
+          end
+
+          body = get_coverage
+
+          refute body["collection"]["gap_suspected"]
+          assert_equal 0, body["collection"]["live_writers"]
+          assert_includes body["collection"]["note"], "no request has been queued since"
+        end
+
         test "does not suspect a gap when requests are written inline" do
           RailsPulse.configuration.async = false
           RailsPulse::WriterHeartbeat.events.delete_all

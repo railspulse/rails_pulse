@@ -100,11 +100,12 @@ module RailsPulse
           seconds ? { seconds: seconds, days: (seconds / 86_400.0).round(2) } : nil
         end
 
-        # Gaps: a writer that stopped, or one dropping requests because its
-        # queue is full. Either means the numbers understate what happened.
+        # Gaps: requests a writer dropped because its queue was full, which
+        # means the numbers understate what happened. A writer that has gone
+        # quiet is not one: it starts with a process's first tracked request
+        # and a new one starts on the next, so a missing heartbeat means
+        # nothing has been queued, not that something was lost.
         def collection
-          # Written inline, requests have no queue to be dropped from and no
-          # writer to report a heartbeat, so a missing heartbeat is no gap.
           unless RailsPulse.configuration.async
             return {
               known: false,
@@ -133,16 +134,18 @@ module RailsPulse
           }
         end
 
-        def gap_suspected?(stats, last_seen)
-          stats[:dropped].positive? || last_seen.nil? || (Time.current - last_seen) > LIVE_WINDOW
+        def gap_suspected?(stats, _last_seen)
+          stats[:dropped].positive?
         end
 
         def collection_note(stats, last_seen)
-          return "No writer has ever reported. Tracking may be disabled, or nothing has been recorded yet." if last_seen.nil?
-
           notes = []
-          if (Time.current - last_seen) > LIVE_WINDOW
-            notes << "No writer has reported for over #{(LIVE_WINDOW / 60).to_i} minutes; recent data may be missing."
+          if last_seen.nil?
+            notes << "No writer heartbeat is on record. A writer starts with a process's first tracked request, " \
+                     "so the app has had no tracked web traffic, or its web processes are not running."
+          elsif (Time.current - last_seen) > LIVE_WINDOW
+            notes << "No writer has reported since #{last_seen.utc.iso8601}, so no request has been queued since " \
+                     "then: the app has had no tracked web traffic, or its web processes are not running."
           end
           if stats[:dropped].positive?
             notes << "#{stats[:dropped]} request(s) were dropped in the last hour because the writer queue was full, so counts understate traffic."

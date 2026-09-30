@@ -73,7 +73,9 @@ header.
   the oldest and newest request, job run and exception held with their counts, how far hourly
   summaries have been generated and whether they are stale, what retention keeps, and the
   writer's live count, queue depth and requests dropped in the last hour with
-  `collection.gap_suspected`. It is what distinguishes "no failures recorded" from "no data
+  `collection.gap_suspected`, which is set by dropped requests alone: a writer starts with a
+  process's first tracked request, so one that has gone quiet means nothing was queued, and
+  the note says so rather than reporting a gap. It is what distinguishes "no failures recorded" from "no data
   captured"; a kind that is not being tracked (`config.enabled`, `track_jobs`,
   `track_exceptions`) says so instead of reporting zero, and with `config.async = false` the
   collection section says there is no writer to report rather than suspecting a gap.
