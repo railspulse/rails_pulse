@@ -29,9 +29,32 @@ module RailsPulse
     test "acronym-safe inflections resolve to the constants the files define" do
       inflector = Rails.autoloaders.main.inflector
 
+      engine_app = RailsPulse::Engine.root.join("app", "controllers", "rails_pulse").to_s
+
       RailsPulse::Engine::ACRONYM_SAFE_INFLECTIONS.each do |basename, constant|
-        assert_equal constant, inflector.camelize(basename, nil)
+        assert_equal constant, inflector.camelize(basename, File.join(engine_app, basename))
       end
+    end
+
+    test "acronym-safe inflections leave the host's files to the host's inflector" do
+      fallback = Object.new
+      def fallback.camelize(basename, _abspath) = "Host#{basename}"
+      inflector = RailsPulse::ScopedInflector.new(fallback, root: "/gems/rails_pulse/app", overrides: { "api" => "Api" })
+
+      assert_equal "Api", inflector.camelize("api", "/gems/rails_pulse/app/controllers/rails_pulse/api")
+      assert_equal "Hostapi", inflector.camelize("api", "/srv/host/app/controllers/api")
+      assert_equal "Hostapi", inflector.camelize("api", "/gems/rails_pulse/application/api")
+    end
+
+    test "host inflections registered after boot reach the host's inflector" do
+      received = nil
+      fallback = Object.new
+      fallback.define_singleton_method(:inflect) { |overrides| received = overrides }
+      inflector = RailsPulse::ScopedInflector.new(fallback, root: "/gems/rails_pulse/app", overrides: {})
+
+      inflector.inflect("html_parser" => "HTMLParser")
+
+      assert_equal({ "html_parser" => "HTMLParser" }, received)
     end
   end
 end
