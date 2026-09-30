@@ -7,40 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added
-
-- **Exceptions in the JSON API, CLI and MCP server.** `GET /api/v1/exceptions`, `rails-pulse exceptions list` and the `rails_pulse_exceptions` tool list exception groups; `GET /api/v1/exceptions/:id`, `rails-pulse exceptions show ID` and `rails_pulse_exception` return one group with its recent occurrences and backtraces.
-
 ## [0.5.0] - 2026-09-24
 
 ### Added
 
-- **JSON API, `rails-pulse` CLI and MCP server.** A read-only, token-authenticated API under `/rails_pulse/api/v1`, a `rails-pulse` executable for the terminal and CI, and an MCP server (`rails-pulse mcp`; add `gem "mcp"` to your Gemfile) for Claude Code, Codex, Cursor and other clients. Every command and tool reads data this gem records: routes, requests, queries, jobs, job runs and deployments.
-- `rails rails_pulse:status` reports whether the API token is set.
+- **JSON API, `rails-pulse` CLI and MCP server.** A read-only API under `/rails_pulse/api/v1`, a `rails-pulse` executable and an MCP server (`rails-pulse mcp`; add `gem "mcp"` to your Gemfile) give scripts, CI and coding agents what the dashboard shows: routes, requests, queries, jobs, job runs, exceptions and deployments. (#309)
+- **Coverage reporting for agents.** `rails-pulse coverage show` and the `rails_pulse_coverage` tool report what has been recorded, how recently, any collection gaps, and which application and environment answered, so missing data is not mistaken for an all-clear. (#309)
+- **Fixed windows and drilldown.** Every windowed command and tool takes ISO 8601 `since`/`until` and reports the window it measured, and `rails_pulse_queries` takes an endpoint's `route_id` to show the SQL inside it with the file and line each query came from. (#309)
+- **Agent instructions.** `rails-pulse install claude` installs a Claude Code skill, and `rails-pulse install agents` writes a Rails Pulse section into `AGENTS.md`, alongside a project's own instructions with `--append`. (#309)
+- `rails rails_pulse:status` reports whether the API and deployment tokens are set. (#309)
 - **Dropped requests are now visible.** Each background writer records a heartbeat once a minute (queue depth and requests dropped since the last one), pruned after a day. The dashboard's health bar gains a Tracking badge, shown only when a writer is backlogged or dropping requests; the Storage page lists every live writer with its queue and drops; and `rails rails_pulse:status` reports the totals and exits 1 when anything was dropped in the last hour. (#281)
 - **A `rails_pulse_events` table** for what Rails Pulse notices rather than measures, starting with the writer heartbeats above. `config.event_retention_period` (default 90 days) prunes it. Run `rails generate rails_pulse:upgrade` and migrate; tracking pauses until the table exists.
 - CI now exercises the separate-database upgrade path (`bin/test_separate_database_upgrade`, SQLite and PostgreSQL), and the migration regression suite gains a 0.3.2 baseline. (#284)
-- **Drilldown from a slow endpoint to the SQL inside it.** `GET queries` takes a `route` filter and reports where each query was issued from, and the MCP tools now carry route ids so a follow-up call has a stable handle instead of a name lookup. An investigation reaches the file and line rather than stopping at "something is slow". (#309)
-- **`rails-pulse install agents --append`.** A project that already has an `AGENTS.md` (Codex and other frameworks read it) can add a delimited Rails Pulse section to it instead of copying the file in by hand. Re-running replaces that section in place, leaving everything the project wrote around it untouched. (#309)
-- **Installation identification.** A `GET capabilities` endpoint reports the Rails Pulse version, application name and environment that answered, and `rails_pulse_coverage` and `rails-pulse coverage show` fold it into their own output. Numbers gathered against staging can no longer be mistaken for production. (#309)
-- **Freshness and coverage reporting.** A new `GET coverage` endpoint, `rails-pulse coverage show` and `rails_pulse_coverage` MCP tool report what has been recorded and how recently: the span of requests, job runs and exceptions held, how far summaries have been generated, what retention keeps, and whether the writer has dropped anything. This is what lets a caller tell "no failures recorded" from "no data captured" before reporting an all-clear. (#309)
-- **Job statistics for a time window.** `GET jobs` and `rails_pulse_jobs` previously ignored `since`/`until` and returned lifetime counters, so a windowed question got an unwindowed answer without saying so. Both now read the per-job summaries for the window and report the bounds and granularity used. Percentiles are reported only when a single summary period covers the window, since they cannot be combined across periods. (#309)
-- **Explicit time windows for every MCP tool.** Each tool that took a relative `period` now also takes ISO 8601 `since` and `until` (read as UTC when no zone is given) and echoes the bounds it measured back as `window`, so the same question — the 24 hours before a release against the 24 hours after — can be asked twice and compared. `rails_pulse_endpoint` also states when its percentiles cover only the sampled requests rather than the whole window. (#309)
 - **Charts say which time zone they are in.** Every chart carries a zone badge (hover for the full zone name and the exact window shown), chart tooltips end with the zone, and the custom date range picker states the zone its inputs are read in. (#303)
 
 ### Changed
 
-- **Separate read and deployment-write tokens.** `config.api_token` reads the JSON API and `config.deployment_token` records deployment markers, so a token handed to a coding agent can no longer create a release. `deployment_api_token` remains an alias for the deployment credential. Set both to the same value to keep one token for everything. (#309)
+- **`config.deployment_api_token` is now `config.deployment_token`.** The old name still works and still only records deployments; the JSON API reads a separate `config.api_token`, so a token given to a coding agent cannot record a release. (#309)
 - **All timestamps display in the app's `config.time_zone`.** Chart axes and tooltips are formatted in that zone rather than the browser's, so a daily point no longer lands on the wrong calendar day for viewers in another zone. Request, job, exception and operation timestamps also use it instead of the server's OS zone; on a host whose server runs in UTC with a different `config.time_zone`, those pages now show the configured zone. (#303)
-
 - **Dashboard health bar badges omit zero counts.** "26 healthy · 0 slow · 0 critical" now reads "26 healthy"; the Storage badge is shown only under warning or critical pressure.
 - **Dropped the `request_store` runtime dependency.** Per-request tracking state now goes through `RailsPulse::Current`, built on Rails' own `ActiveSupport::CurrentAttributes`. No configuration or behavior change; a host that read `RequestStore.store[:rails_pulse_request_id]` directly (undocumented, but reachable) needs to switch to `RailsPulse::Current.rails_pulse_request_id`. (#277)
 - **Requires Ruby 3.2+ and Rails 7.2+.** The gemspec advertised Ruby 3.1 and Rails 7.1 but CI never ran them; the floors now match what is tested, and the untested Rails 7.1 and Ruby 3.1 code paths are gone. (#270)
 
 ### Fixed
 
-- **API searches match underscores and percent signs literally.** A `route` or `search` term containing one returned nothing on SQLite, because the LIKE pattern was escaped without an accompanying `ESCAPE` clause. (#309)
-- **`min_requests` no longer hides qualifying endpoints.** The slow-requests tool applied the threshold to the page the API had already returned, so a busy endpoint ranked below the limit was dropped and the tool reported no data. The routes endpoint now applies it before its limit and reports how many routes had traffic. (#309)
 - **The exception-group row cap no longer counts preserved and ignored groups.** Once those exempt groups approached the cap, every cleanup run deleted the oldest deletable groups without ever getting under it. The cap now applies to deletable groups only. (#285)
 
 ## [0.4.1] - 2026-09-23
