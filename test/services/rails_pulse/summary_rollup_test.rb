@@ -136,6 +136,48 @@ module RailsPulse
       ActiveSupport::Notifications.unsubscribe(subscriber)
     end
 
+    test "a day combines its hours in a single query however many routes and hours it has" do
+      other_route = rails_pulse_routes(:api_posts)
+      [ 1, 5, 9 ].each do |hour|
+        request_at(@day + hour.hours, 100)
+        request_at(@day + hour.hours, 200, route: other_route)
+      end
+      24.times { |hour| summarize("hour", @day + hour.hours) }
+      combining_queries = 0
+      subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+        combining_queries += 1 if payload[:sql] =~ /FROM .rails_pulse_summaries..*GROUP BY/m
+      end
+
+      summarize("day", @day)
+
+      assert_equal 1, combining_queries
+      assert_equal 3, summary("RailsPulse::Route", other_route.id, "day", @day).count
+    ensure
+      ActiveSupport::Notifications.unsubscribe(subscriber)
+    end
+
+    test "an hour reads each kind of raw row with one query however many routes it has" do
+      other_route = rails_pulse_routes(:api_posts)
+      request_at(@day, 100)
+      request_at(@day, 300, route: other_route)
+      request_at(@day, 200, route: other_route)
+      request_reads = 0
+      subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+        request_reads += 1 if payload[:sql] =~ /FROM .rails_pulse_requests./
+      end
+
+      summarize("hour", @day)
+
+      # One for the overall row, one for every route together.
+      assert_equal 2, request_reads
+      route_summary = summary("RailsPulse::Route", other_route.id, "hour", @day)
+
+      assert_in_delta 200.0, route_summary.min_duration
+      assert_in_delta 300.0, route_summary.max_duration
+    ensure
+      ActiveSupport::Notifications.unsubscribe(subscriber)
+    end
+
     test "a day stays correct after its raw rows have been pruned" do
       request_at(@day + 1.hour, 100)
       request_at(@day + 2.hours, 200)
@@ -222,9 +264,9 @@ module RailsPulse
       )
     end
 
-    def request_at(time, duration, status: 200)
+    def request_at(time, duration, status: 200, route: @route)
       RailsPulse::Request.create!(
-        route: @route, duration: duration, status: status,
+        route: route, duration: duration, status: status,
         request_uuid: SecureRandom.uuid, occurred_at: time + 1.minute
       )
     end

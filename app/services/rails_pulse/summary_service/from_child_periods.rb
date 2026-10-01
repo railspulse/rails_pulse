@@ -4,63 +4,84 @@ module RailsPulse
     # its child periods (hours for a day, days for a week or month) without
     # reading raw rows.
     #
-    # Counts, totals, averages, min, max, status counts and the standard
-    # deviation combine exactly. P50/P95/P99 are the count-weighted average of
-    # the children's, the same weighting Tables::Base applies when a
-    # dashboard range spans several periods.
+    # The database combines the children in one GROUP BY, so Ruby receives
+    # one row per summarizable however many child periods there are. Counts,
+    # totals, averages, min, max, status counts and the standard deviation
+    # combine exactly. P50/P95/P99 are the count-weighted average of the
+    # children's, the same weighting Tables::Base applies when a dashboard
+    # range spans several periods.
+    #
+    # Only plain SUM, MIN, MAX and arithmetic are used, so the query runs
+    # unchanged on SQLite (which has no STDDEV or, without its math
+    # extension, POWER), PostgreSQL and MySQL. Divisions happen in Ruby,
+    # where integer sums cannot truncate them.
     #
     # Rows carry the summarizable and its metrics; SummaryService adds the
     # period columns.
     class FromChildPeriods
-      COLUMNS = %i[
-        summarizable_type summarizable_id count avg_duration min_duration max_duration
-        total_duration p50_duration p95_duration p99_duration stddev_duration
-        error_count success_count status_2xx status_3xx status_4xx status_5xx
-      ].freeze
+      TABLE = "rails_pulse_summaries".freeze
+      PERCENTILES = %i[p50_duration p95_duration p99_duration].freeze
       STATUS_COLUMNS = %i[error_count success_count status_2xx status_3xx status_4xx status_5xx].freeze
+
+      AGGREGATES = {
+        count: "SUM(#{TABLE}.count)",
+        total_duration: "SUM(#{TABLE}.total_duration)",
+        min_duration: "MIN(#{TABLE}.min_duration)",
+        max_duration: "MAX(#{TABLE}.max_duration)",
+        **PERCENTILES.flat_map { |column|
+          [
+            [ :"#{column}_weighted", "SUM(#{TABLE}.#{column} * #{TABLE}.count)" ],
+            [ :"#{column}_weight", "SUM(CASE WHEN #{TABLE}.#{column} IS NOT NULL THEN #{TABLE}.count ELSE 0 END)" ]
+          ]
+        }.to_h,
+        # The three sums Statistics.pooled_stddev needs.
+        stddev_within_sum: "SUM((#{TABLE}.count - 1) * COALESCE(#{TABLE}.stddev_duration, 0) * COALESCE(#{TABLE}.stddev_duration, 0))",
+        weighted_mean_sum: "SUM(#{TABLE}.count * #{TABLE}.avg_duration)",
+        weighted_square_sum: "SUM(#{TABLE}.count * #{TABLE}.avg_duration * #{TABLE}.avg_duration)",
+        **STATUS_COLUMNS.to_h { |column| [ column, "SUM(#{TABLE}.#{column})" ] }
+      }.freeze
 
       # `child_starts` are the boundaries the children must start on. Rows in
       # the range that start elsewhere were written under a different
       # aggregation time zone; they overlap these and would be counted twice.
-      def initialize(child_period_type, child_starts, time_range)
+      def initialize(child_period_type, child_starts)
         @child_period_type = child_period_type
-        @child_starts = child_starts.to_set(&:to_i)
-        @time_range = time_range
+        @child_starts = child_starts
       end
 
       # Always exactly one row, even for an empty period (see SummaryService).
       def request_rows
-        children = children_by_summarizable.fetch([ "RailsPulse::Request", 0 ], [])
+        combined = combined_children.fetch([ "RailsPulse::Request", 0 ], nil)
 
-        [ row("RailsPulse::Request", 0).merge(duration_metrics(children), status_metrics(children)) ]
+        [ row("RailsPulse::Request", 0).merge(duration_metrics(combined), status_metrics(combined)) ]
       end
 
       def route_rows
-        children_of("RailsPulse::Route").map do |route_id, children|
-          row("RailsPulse::Route", route_id).merge(duration_metrics(children), status_metrics(children))
+        combined_of("RailsPulse::Route").map do |route_id, combined|
+          row("RailsPulse::Route", route_id).merge(duration_metrics(combined), status_metrics(combined))
         end
       end
 
       def query_rows
-        children_of("RailsPulse::Query").map do |query_id, children|
-          row("RailsPulse::Query", query_id).merge(duration_metrics(children))
+        combined_of("RailsPulse::Query").map do |query_id, combined|
+          row("RailsPulse::Query", query_id).merge(duration_metrics(combined))
         end
       end
 
       def job_rows
-        children_by_job = children_of("RailsPulse::Job")
-        return [] if children_by_job.empty?
+        combined_by_job = combined_of("RailsPulse::Job")
+        return [] if combined_by_job.empty?
 
         # A job whose row has gone (count-based cleanup) has nothing to
         # summarize against.
-        known_job_ids = Job.where(id: children_by_job.keys).pluck(:id).to_set
+        known_job_ids = Job.where(id: combined_by_job.keys).pluck(:id).to_set
 
-        children_by_job.filter_map do |job_id, children|
+        combined_by_job.filter_map do |job_id, combined|
           next unless known_job_ids.include?(job_id)
 
           row("RailsPulse::Job", job_id).merge(
-            duration_metrics(children),
-            status_metrics(children).slice(:error_count, :success_count)
+            duration_metrics(combined),
+            status_metrics(combined).slice(:error_count, :success_count)
           )
         end
       end
@@ -68,8 +89,8 @@ module RailsPulse
       # The children already carry the all-groups row (id 0), which sums like
       # any other group.
       def exception_rows
-        children_of("RailsPulse::ExceptionGroup").map do |group_id, children|
-          row("RailsPulse::ExceptionGroup", group_id).merge(count: children.sum { |child| child[:count].to_i })
+        combined_of("RailsPulse::ExceptionGroup").map do |group_id, combined|
+          row("RailsPulse::ExceptionGroup", group_id).merge(count: combined[:count].to_i)
         end
       end
 
@@ -79,45 +100,56 @@ module RailsPulse
         { summarizable_type: summarizable_type, summarizable_id: summarizable_id }
       end
 
-      def children_by_summarizable
-        @children_by_summarizable ||= Summary
-          .where(period_type: @child_period_type, period_start: @time_range)
-          .pluck(:period_start, *COLUMNS)
-          .select { |period_start, *| @child_starts.include?(period_start.to_i) }
-          .map { |_, *values| COLUMNS.zip(values).to_h }
-          .group_by { |child| [ child[:summarizable_type], child[:summarizable_id] ] }
+      # { [summarizable_type, summarizable_id] => { aggregate => value } }.
+      # Empty children (an idle hour's count-0 heartbeat) are left out; they
+      # add nothing, and an idle period falls back to empty metrics.
+      def combined_children
+        @combined_children ||= Summary
+          .where(period_type: @child_period_type, period_start: @child_starts)
+          .where(count: 1..)
+          .group(:summarizable_type, :summarizable_id)
+          .pluck(:summarizable_type, :summarizable_id, *AGGREGATES.values.map { |sql| Arel.sql(sql) })
+          .to_h { |type, id, *values| [ [ type, id ], AGGREGATES.keys.zip(values).to_h ] }
       end
 
-      # { summarizable_id => [child rows] } for one summarizable type.
-      def children_of(summarizable_type)
-        children_by_summarizable.each_with_object({}) do |((type, id), children), by_id|
-          by_id[id] = children if type == summarizable_type
+      # { summarizable_id => combined } for one summarizable type.
+      def combined_of(summarizable_type)
+        combined_children.each_with_object({}) do |((type, id), combined), by_id|
+          by_id[id] = combined if type == summarizable_type
         end
       end
 
-      def duration_metrics(children)
-        children = children.select { |child| child[:count].to_i.positive? }
-        count = children.sum { |child| child[:count] }
-        return Metrics.duration([]) if count.zero?
+      def duration_metrics(combined)
+        return Metrics.duration([]) unless combined
 
-        total = children.sum { |child| child[:total_duration].to_f }
-        weighted = ->(column) { Statistics.weighted_mean(children.map { |child| [ child[column], child[:count] ] }) }
+        count = combined[:count].to_i
+        total = combined[:total_duration].to_f
 
         {
           count: count,
           avg_duration: total / count,
-          min_duration: children.filter_map { |child| child[:min_duration] }.min,
-          max_duration: children.filter_map { |child| child[:max_duration] }.max,
+          min_duration: combined[:min_duration]&.to_f,
+          max_duration: combined[:max_duration]&.to_f,
           total_duration: total,
-          p50_duration: weighted.call(:p50_duration),
-          p95_duration: weighted.call(:p95_duration),
-          p99_duration: weighted.call(:p99_duration),
-          stddev_duration: Statistics.pooled_stddev(children.map { |child| [ child[:count], child[:avg_duration], child[:stddev_duration] ] })
+          **PERCENTILES.to_h { |column| [ column, weighted_percentile(combined, column) ] },
+          stddev_duration: Statistics.pooled_stddev(
+            count: count,
+            within_sum: combined[:stddev_within_sum],
+            weighted_mean_sum: combined[:weighted_mean_sum],
+            weighted_square_sum: combined[:weighted_square_sum]
+          )
         }
       end
 
-      def status_metrics(children)
-        STATUS_COLUMNS.index_with { |column| children.sum { |child| child[column].to_i } }
+      def weighted_percentile(combined, column)
+        weight = combined[:"#{column}_weight"].to_f
+        return nil if weight.zero?
+
+        combined[:"#{column}_weighted"].to_f / weight
+      end
+
+      def status_metrics(combined)
+        STATUS_COLUMNS.index_with { |column| combined ? combined[column].to_i : 0 }
       end
     end
   end

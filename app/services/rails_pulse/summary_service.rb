@@ -72,7 +72,7 @@ module RailsPulse
     def source
       @source ||=
         if rollup?
-          FromChildPeriods.new(child_period_type, child_period_starts, start_time..end_time)
+          FromChildPeriods.new(child_period_type, child_period_starts)
         else
           FromRawRows.new(start_time...end_time)
         end
