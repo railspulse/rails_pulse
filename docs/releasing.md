@@ -18,6 +18,29 @@ bin/release-log   # requires aha: brew install aha / sudo pacman -S aha / apt in
 
 Output is saved to `tmp/release-YYYYMMDD-HHMMSS.html` and opened automatically when the session ends.
 
+## Patch Release From a Stable Branch
+
+`main` carries the next release. When a fix has to ship for an earlier series and `main`
+already holds work that is not patch material (a new table, a raised Ruby or Rails floor),
+cut the patch from a stable branch instead.
+
+A stable branch is named `X-Y-stable` (`0-4-stable` releases 0.4.x) and starts at the
+series' latest tag. It is long-lived: the next patch in the series reuses it.
+
+```bash
+git switch -c 0-4-stable v0.4.1      # first patch in the series only
+git push -u origin 0-4-stable
+```
+
+1. Open the fix as a pull request against the stable branch. CI runs for pull requests
+   and pushes that target `main` or any `*-stable` branch.
+2. Once merged, run `bin/release` on the stable branch. It accepts `main` and
+   `X-Y-stable`, refuses a version outside the branch's series, and keeps a patch to an
+   older series from taking GitHub's "Latest" badge from a newer release.
+3. Merge the stable branch into `main`, so `main` carries the fix and the released
+   version's changelog section. Where `main` has diverged, resolve towards `main`'s
+   structure and keep `main`'s version number if it is already higher.
+
 ## Manual Release
 
 If you prefer to run steps individually:
