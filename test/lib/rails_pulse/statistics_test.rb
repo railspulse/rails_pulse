@@ -137,5 +137,51 @@ module RailsPulse
 
       assert_in_delta 79.06, result, 1.0
     end
+    # Weighted Mean Tests
+
+    test "weighted_mean weights each value by its weight" do
+      assert_in_delta 200.0, Statistics.weighted_mean([ [ 100, 3 ], [ 500, 1 ] ])
+    end
+
+    test "weighted_mean returns nil for empty input" do
+      assert_nil Statistics.weighted_mean([])
+    end
+
+    test "weighted_mean skips nil values and zero weights" do
+      assert_in_delta 100.0, Statistics.weighted_mean([ [ 100, 2 ], [ nil, 5 ], [ 900, 0 ] ])
+    end
+
+    test "weighted_mean returns nil when every pair is skipped" do
+      assert_nil Statistics.weighted_mean([ [ nil, 5 ], [ 900, 0 ] ])
+    end
+
+    # Pooled Standard Deviation Tests
+
+    test "pooled_stddev equals calculate_stddev over the groups' values combined" do
+      first = [ 10, 20, 30 ]
+      second = [ 100, 400 ]
+      combined = first + second
+      groups = [ first, second ].map do |values|
+        mean = values.sum.to_f / values.size
+        [ values.size, mean, Statistics.calculate_stddev(values, mean) ]
+      end
+
+      expected = Statistics.calculate_stddev(combined, combined.sum.to_f / combined.size)
+
+      assert_in_delta expected, Statistics.pooled_stddev(groups), 1e-9
+    end
+
+    test "pooled_stddev counts single-value groups by their distance from the mean" do
+      assert_in_delta Statistics.calculate_stddev([ 100, 200 ], 150.0), Statistics.pooled_stddev([ [ 1, 100, nil ], [ 1, 200, nil ] ]), 1e-9
+    end
+
+    test "pooled_stddev returns nil for fewer than two values in total" do
+      assert_nil Statistics.pooled_stddev([])
+      assert_nil Statistics.pooled_stddev([ [ 1, 100, nil ] ])
+    end
+
+    test "pooled_stddev ignores empty groups" do
+      assert_in_delta 0.0, Statistics.pooled_stddev([ [ 0, 0, nil ], [ 4, 100, 0.0 ] ])
+    end
   end
 end

@@ -169,7 +169,7 @@ module RailsPulse
 
         private
 
-        def query_summary_rows
+        def summary_rows
           @open_transactions_while_computing = RailsPulse::ApplicationRecord.connection.open_transactions
           super
         end
