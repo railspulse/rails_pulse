@@ -62,7 +62,7 @@ Controllers under `app/controllers/rails_pulse/` read summaries through `Tables:
 
 ## Retention
 
-`app/jobs/rails_pulse/cleanup_job.rb` calls `CleanupService` (`lib/rails_pulse/cleanup_service.rb`): age-based deletion by `full_retention_period`, then count-based by `max_table_records`, `rails_pulse_events` by `event_retention_period` except `event_retention_exempt_kinds`, hourly summaries by `hourly_summary_retention`, `preserve` exempting exception groups (decision 0017). `rake rails_pulse:cleanup` runs the same service; `cleanup_stats` reports sizes.
+`app/jobs/rails_pulse/cleanup_job.rb` calls `CleanupService` (`lib/rails_pulse/cleanup_service.rb`): age-based deletion by `full_retention_period`, then count-based by `max_table_records`, `rails_pulse_events` by `event_retention_period` except `event_retention_exempt_kinds`, hourly summaries by `hourly_summary_retention`, `preserve` exempting exception groups (decision 0017). Every delete runs in batches of at most 5,000 rows selected inside the database, and each table is a stage whose failure is held until the others have run. `rake rails_pulse:cleanup` runs the same service; `cleanup_stats` reports sizes.
 
 ## Schema check
 
