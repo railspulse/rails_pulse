@@ -37,6 +37,25 @@ RailsPulse::Engine.routes.draw do
     end
   end
 
+  # Read-only JSON API for the rails-pulse CLI, the MCP server and CI, all
+  # authenticated by config.api_token (app/controllers/rails_pulse/api/v1).
+  scope path: "api/v1", module: "api/v1", as: :api_v1 do
+    resources :routes,      only: :index
+    resources :requests,    only: :index
+    resources :queries,     only: :index
+    resources :jobs,        only: :index
+    resources :job_runs,    only: :index
+    resources :deployments, only: :index
+    resources :exceptions,  only: %i[index show]
+
+    # Whether the data is there, rather than a question about the data.
+    get "coverage", to: "coverage#show", as: :coverage
+
+    # Which application, environment and version answered, so results gathered
+    # against staging are not read as production.
+    get "capabilities", to: "capabilities#show", as: :capabilities
+  end
+
   # CSP compliance testing (development/test only)
   if Rails.env.local?
     get "csp_test", to: "csp_test#show", as: :csp_test

@@ -82,20 +82,55 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     assert_response :created
   end
 
-  test "the API falls back to the authorize predicate when no token is configured" do
+  test "an anonymous write gets 401, not the schema report, when the schema is outdated" do
+    RailsPulse::SchemaCheck.stubs(:current?).returns(false)
+    RailsPulse::SchemaCheck.stubs(:missing).returns({ "rails_pulse_events" => [ "table" ] })
+    RailsPulse::SchemaCheck.stubs(:warn_once!)
+
+    post rails_pulse.deployments_path,
+      params: { deployment: { revision: "anon" } },
+      headers: { "X-Rails-Pulse-Token" => "wrong" }
+
+    assert_response :unauthorized
+    assert_equal({ "error" => "Unauthorized" }, JSON.parse(response.body))
+  end
+
+  # A browser attaches a saved dashboard login to requests other sites
+  # trigger, and CSRF protection is off here, so a login must never stand in
+  # for the token.
+  test "without a deployment token, a signed-in dashboard user cannot record a deployment" do
     RailsPulse.configuration.deployment_api_token = nil
+    allow = proc { true }
     RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
-    RailsPulse.configuration.stubs(:authentication_method).returns(nil)
-    RailsPulse.configuration.stubs(:authorize).returns(->(_controller) { false })
+    RailsPulse.configuration.stubs(:authentication_method).returns(allow)
 
     assert_no_difference -> { RailsPulse::Deployment.count } do
-      post rails_pulse.deployments_path,
-        params: { deployment: { revision: "denied" } },
-        headers: {},
-        as: :json
+      post rails_pulse.deployments_path, params: { deployment: { revision: "session" } }, headers: {}
     end
 
-    assert_response :forbidden
+    assert_response :unauthorized
+    assert_includes JSON.parse(response.body)["error"], "config.deployment_token"
+  end
+
+  test "without a deployment token, finishing a deployment is refused too" do
+    RailsPulse.configuration.deployment_api_token = nil
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(true)
+    RailsPulse.configuration.stubs(:authentication_method).returns(proc { true })
+
+    put rails_pulse.finish_deployments_path, params: { deployment: { revision: "abc" } }, headers: {}
+
+    assert_response :unauthorized
+  end
+
+  test "without a deployment token or authentication, writes are refused" do
+    RailsPulse.configuration.deployment_api_token = nil
+    RailsPulse.configuration.stubs(:authentication_enabled).returns(false)
+
+    assert_no_difference -> { RailsPulse::Deployment.count } do
+      post rails_pulse.deployments_path, params: { deployment: { revision: "open" } }, headers: {}
+    end
+
+    assert_response :unauthorized
   end
 
   test "index renders deployment status" do
@@ -304,6 +339,40 @@ class RailsPulse::DeploymentsControllerTest < ActionDispatch::IntegrationTest
     assert_response :created
   ensure
     RailsPulse.configuration.deployment_api_token = DEPLOY_TOKEN
+  end
+
+  # The read token is what a coding agent and the CLI are given. Accepting it
+  # here would let either record a release.
+  test "create returns 401 for the read-only api_token" do
+    original_api_token = RailsPulse.configuration.api_token
+    RailsPulse.configuration.api_token = "read-only-token"
+    RailsPulse.configuration.deployment_token = "deploy-token"
+
+    post rails_pulse.deployments_path,
+         params: { deployment: { revision: "tokensha3" } },
+         headers: { "X-Rails-Pulse-Token" => "read-only-token" },
+         as: :json
+
+    assert_response :unauthorized
+  ensure
+    RailsPulse.configuration.api_token = original_api_token
+    RailsPulse.configuration.deployment_token = DEPLOY_TOKEN
+  end
+
+  test "create succeeds with the deployment token while a different api_token is set" do
+    original_api_token = RailsPulse.configuration.api_token
+    RailsPulse.configuration.api_token = "read-only-token"
+    RailsPulse.configuration.deployment_token = "deploy-token"
+
+    post rails_pulse.deployments_path,
+         params: { deployment: { revision: "tokensha4" } },
+         headers: { "X-Rails-Pulse-Token" => "deploy-token" },
+         as: :json
+
+    assert_response :created
+  ensure
+    RailsPulse.configuration.api_token = original_api_token
+    RailsPulse.configuration.deployment_token = DEPLOY_TOKEN
   end
 
   test "create returns 401 with wrong token" do

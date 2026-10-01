@@ -13,10 +13,10 @@ module RailsPulse
           metrics = base_query.select(
             "SUM(avg_duration * count) AS total_weighted_duration",
             "SUM(count) AS total_requests",
-            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN avg_duration * count ELSE 0 END) AS current_weighted_duration",
-            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN count ELSE 0 END) AS current_requests",
-            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN avg_duration * count ELSE 0 END) AS previous_weighted_duration",
-            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN count ELSE 0 END) AS previous_requests"
+            window_sql("SUM(CASE WHEN period_start >= :current_start THEN avg_duration * count ELSE 0 END) AS current_weighted_duration"),
+            window_sql("SUM(CASE WHEN period_start >= :current_start THEN count ELSE 0 END) AS current_requests"),
+            window_sql("SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN avg_duration * count ELSE 0 END) AS previous_weighted_duration"),
+            window_sql("SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN count ELSE 0 END) AS previous_requests")
           ).take
 
           # Calculate metrics from single query result

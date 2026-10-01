@@ -15,7 +15,7 @@ module RailsPulse
       assert_includes event.errors[:occurred_at], "can't be blank"
     end
 
-    test "any kind is accepted so rails_pulse_pro can add its own" do
+    test "any kind is accepted so a new one needs no migration" do
       event = Event.new(kind: "exception_alert", outcome: "triggered", occurred_at: Time.current, subject: "Boom", value: 3)
 
       assert_predicate event, :valid?

@@ -200,7 +200,9 @@ job_summary_mailer:
   period_type: "hour"
   count: 50
   avg_duration: 155.0
+  min_duration: 20.0
   max_duration: 300.0
+  total_duration: 7750.0
   p95_duration: 250.0
   p99_duration: 290.0
   error_count: 0
@@ -215,13 +217,32 @@ job_summary_report:
   period_type: "hour"
   count: 100
   avg_duration: 460.0
+  min_duration: 50.0
   max_duration: 900.0
+  total_duration: 46000.0
   p95_duration: 800.0
   p99_duration: 880.0
   error_count: 10
   success_count: 90
   created_at: <%= 1.hour.ago %>
   updated_at: <%= 1.hour.ago %>
+
+job_summary_report_earlier_hour:
+  summarizable: report_job (RailsPulse::Job)
+  period_start: <%= 2.hours.ago.beginning_of_hour %>
+  period_end: <%= 2.hours.ago.end_of_hour %>
+  period_type: "hour"
+  count: 40
+  avg_duration: 500.0
+  min_duration: 60.0
+  max_duration: 1000.0
+  total_duration: 20000.0
+  p95_duration: 900.0
+  p99_duration: 980.0
+  error_count: 4
+  success_count: 36
+  created_at: <%= 2.hours.ago %>
+  updated_at: <%= 2.hours.ago %>
 
 job_summary_report_day:
   summarizable: report_job (RailsPulse::Job)
@@ -230,7 +251,9 @@ job_summary_report_day:
   period_type: "day"
   count: 200
   avg_duration: 450.0
+  min_duration: 45.0
   max_duration: 950.0
+  total_duration: 90000.0
   p95_duration: 850.0
   p99_duration: 920.0
   error_count: 20

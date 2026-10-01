@@ -13,8 +13,8 @@ module RailsPulse
           metrics = base_query.select(
             "SUM(p95_duration * count) / NULLIF(SUM(count), 0) AS overall_p95",
             "SUM(count) AS total_count",
-            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN count ELSE 0 END), 0) AS current_p95",
-            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN count ELSE 0 END), 0) AS previous_p95"
+            window_sql("SUM(CASE WHEN period_start >= :current_start THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= :current_start THEN count ELSE 0 END), 0) AS current_p95"),
+            window_sql("SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN count ELSE 0 END), 0) AS previous_p95")
           ).take
 
           # Calculate metrics from single query result

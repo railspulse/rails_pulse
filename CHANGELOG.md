@@ -9,25 +9,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **JSON API, `rails-pulse` CLI and MCP server.** A read-only API under `/rails_pulse/api/v1`, a `rails-pulse` executable and an MCP server (`rails-pulse mcp`; add `gem "mcp"` to your Gemfile) give scripts, CI and coding agents what the dashboard shows: routes, requests, queries, jobs, job runs, exceptions and deployments. (#309)
+- **Coverage reporting for agents.** `rails-pulse coverage show` and the `rails_pulse_coverage` tool report what has been recorded, how recently, any collection gaps, and which application and environment answered, so missing data is not mistaken for an all-clear. (#309)
+- **Fixed windows and drilldown.** Every windowed command and tool takes ISO 8601 `since`/`until` and reports the window it measured, and `rails_pulse_queries` takes an endpoint's `route_id` to show the SQL inside it with the file and line each query came from. (#309)
+- **Agent instructions.** `rails-pulse install claude` installs a Claude Code skill, and `rails-pulse install agents` writes a Rails Pulse section into `AGENTS.md`, alongside a project's own instructions with `--append`. (#309)
+- `rails rails_pulse:status` reports whether the API and deployment tokens are set. (#309)
 - **Dropped requests are now visible.** Each background writer records a heartbeat once a minute (queue depth and requests dropped since the last one), pruned after a day. The dashboard's health bar gains a Tracking badge, shown only when a writer is backlogged or dropping requests; the Storage page lists every live writer with its queue and drops; and `rails rails_pulse:status` reports the totals and exits 1 when anything was dropped in the last hour. (#281)
-- **A `rails_pulse_events` table** for what Rails Pulse notices rather than measures: the writer heartbeats above, and Rails Pulse Pro's alert triggers, regression checks and exception alerts, so Pro no longer needs a migration of its own. `config.event_retention_period` (default 90 days) prunes it. Run `rails generate rails_pulse:upgrade` and migrate; tracking pauses until the table exists.
+- **A `rails_pulse_events` table** for what Rails Pulse notices rather than measures, starting with the writer heartbeats above. `config.event_retention_period` (default 90 days) prunes it. Run `rails generate rails_pulse:upgrade` and migrate; tracking pauses until the table exists.
 - CI now exercises the separate-database upgrade path (`bin/test_separate_database_upgrade`, SQLite and PostgreSQL), and the migration regression suite gains a 0.3.2 baseline. (#284)
 - **Charts say which time zone they are in.** Every chart carries a zone badge (hover for the full zone name and the exact window shown), chart tooltips end with the zone, and the custom date range picker states the zone its inputs are read in. (#303)
 
 ### Changed
 
 - Patch releases can be cut from a stable branch (`0-4-stable` for 0.4.x) while `main` carries the next release; `bin/release` and CI accept those branches.
+- **`config.deployment_api_token` is now `config.deployment_token`.** The old name still works and still only records deployments; the JSON API reads a separate `config.api_token`, so a token given to a coding agent cannot record a release. (#309)
+- **Recording a deployment over HTTP requires `config.deployment_token`.** The deployments endpoint no longer accepts a dashboard login in place of the token, which let any page a signed-in admin visited record a release; set the token for CI, or use the `rails_pulse:record_deployment` task, which needs none. (#309)
 - **All timestamps display in the app's `config.time_zone`.** Chart axes and tooltips are formatted in that zone rather than the browser's, so a daily point no longer lands on the wrong calendar day for viewers in another zone. Request, job, exception and operation timestamps also use it instead of the server's OS zone; on a host whose server runs in UTC with a different `config.time_zone`, those pages now show the configured zone. (#303)
-
 - **Dashboard health bar badges omit zero counts.** "26 healthy · 0 slow · 0 critical" now reads "26 healthy"; the Storage badge is shown only under warning or critical pressure.
 - **Dropped the `request_store` runtime dependency.** Per-request tracking state now goes through `RailsPulse::Current`, built on Rails' own `ActiveSupport::CurrentAttributes`. No configuration or behavior change; a host that read `RequestStore.store[:rails_pulse_request_id]` directly (undocumented, but reachable) needs to switch to `RailsPulse::Current.rails_pulse_request_id`. (#277)
+- **Requires Ruby 3.2+ and Rails 7.2+.** The gemspec advertised Ruby 3.1 and Rails 7.1 but CI never ran them; the floors now match what is tested, and the untested Rails 7.1 and Ruby 3.1 code paths are gone. (#270)
 
 ### Fixed
 
 - **The exception-group row cap no longer counts preserved and ignored groups.** Once those exempt groups approached the cap, every cleanup run deleted the oldest deletable groups without ever getting under it. The cap now applies to deletable groups only. (#285)
-### Changed
-
-- **Requires Ruby 3.2+ and Rails 7.2+.** The gemspec advertised Ruby 3.1 and Rails 7.1 but CI never ran them; the floors now match what is tested, and the untested Rails 7.1 and Ruby 3.1 code paths are gone. (#270)
 
 ## [0.4.1] - 2026-09-23
 
