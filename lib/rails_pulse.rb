@@ -22,10 +22,6 @@ module RailsPulse
       @nav_items || []
     end
 
-    def pro?
-      defined?(RailsPulse::Pro) == "constant"
-    end
-
     def configure
       self.configuration ||= Configuration.new
       yield(configuration)

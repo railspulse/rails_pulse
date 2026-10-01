@@ -327,22 +327,36 @@ RailsPulse.configure do |config|
   # }
 
   # ====================================================================================================
-  #                                             DEPLOYMENT TRACKING
+  #                                    API TOKENS AND DEPLOYMENT TRACKING
   # ====================================================================================================
-  # Record deployments to display vertical marker lines on performance charts, making it easy
-  # to correlate performance changes with specific releases.
+  # Two tokens authenticate what is not the dashboard, so a credential given to a coding agent
+  # cannot write anything. Both are sent as an `X-Rails-Pulse-Token` header.
   #
-  # API token for the POST /rails_pulse/deployments endpoint.
-  # When set, requests must include an `X-Rails-Pulse-Token` header matching this value.
-  # When nil, the endpoint falls back to the standard dashboard authentication.
+  # api_token reads the JSON API under /rails_pulse/api/v1 — what the `rails-pulse` CLI and the
+  # MCP server your coding agent uses talk to. Every endpoint under it is read-only.
+  #   config.api_token = Rails.application.credentials.dig(:rails_pulse, :api_token)
+  #   config.api_token = ENV["RAILS_PULSE_API_TOKEN"]
   #
-  # Set this in your CI/CD pipeline and store the value in credentials or an environment variable:
-  #   config.deployment_api_token = Rails.application.credentials.dig(:rails_pulse, :deployment_api_token)
-  #   config.deployment_api_token = ENV["RAILS_PULSE_DEPLOYMENT_TOKEN"]
+  # deployment_token records a release through POST /rails_pulse/deployments, which your CI calls.
+  # It is the only credential that endpoint accepts: api_token is refused there.
+  #   config.deployment_token = Rails.application.credentials.dig(:rails_pulse, :deployment_token)
+  #   config.deployment_token = ENV["RAILS_PULSE_DEPLOYMENT_TOKEN"]
   #
-  # Limits: revision ≤ 255 characters, metadata ≤ 4 KB serialized, started_at at most
-  # one hour in the future. Rows beyond max_table_records[:rails_pulse_deployments]
-  # are pruned oldest-first by the cleanup task.
+  # Set both to the same value if you would rather run one credential for both.
+  #
+  # With no api_token the JSON API refuses every request. With no deployment_token the deployments
+  # endpoint refuses every request too; a dashboard login is never accepted in its place. The
+  # rails_pulse:record_deployment and finish_deployment rake tasks need no token. (deployment_api_token
+  # is the pre-0.5 name for deployment_token and still works.)
+  #
+  # Point the CLI and MCP server at this app with `rails-pulse configure`, or set RAILS_PULSE_URL
+  # and RAILS_PULSE_TOKEN in the agent's environment. The MCP server needs `gem "mcp"` in this
+  # app's Gemfile (a development group is enough); Rails Pulse does not pull it into production.
+  #
+  # Deployments draw vertical markers on the charts so a change in performance can be lined up
+  # with the release that caused it. Limits: revision ≤ 255 characters, metadata ≤ 4 KB
+  # serialized, started_at at most one hour in the future. Rows beyond
+  # max_table_records[:rails_pulse_deployments] are pruned oldest-first by the cleanup task.
   #
   # Record a deployment from your CI/CD pipeline:
   #   curl -X POST https://yourapp.com/rails_pulse/deployments \
@@ -356,7 +370,8 @@ RailsPulse.configure do |config|
   # Metadata for the rake task comes from an environment variable, as a JSON object:
   #   RAILS_PULSE_DEPLOYMENT_METADATA='{"environment":"production"}' rake rails_pulse:record_deployment[abc1234]
 
-  # config.deployment_api_token = ENV["RAILS_PULSE_DEPLOYMENT_TOKEN"]
+  # config.api_token = ENV["RAILS_PULSE_API_TOKEN"]
+  # config.deployment_token = ENV["RAILS_PULSE_DEPLOYMENT_TOKEN"]
 
   # ====================================================================================================
   #                                               DATA CLEANUP
@@ -376,13 +391,12 @@ RailsPulse.configure do |config|
   # Time-based retention - delete records older than this period
   config.full_retention_period = 30.days
 
-  # How long rows in rails_pulse_events are kept: the background writer's heartbeats
-  # (pruned after a day regardless) and, with Rails Pulse Pro, alert triggers,
-  # regression checks and exception alerts.
+  # How long rows in rails_pulse_events are kept. The background writer's
+  # heartbeats are pruned after a day regardless.
   config.event_retention_period = 90.days
 
   # Event kinds exempt from event_retention_period — for rows a writer updates
-  # in place rather than appends, such as Rails Pulse Pro's job heartbeats.
+  # in place rather than appends.
   config.event_retention_exempt_kinds = []
 
   # Count-based retention - maximum records to keep per table

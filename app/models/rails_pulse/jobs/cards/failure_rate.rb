@@ -19,10 +19,10 @@ module RailsPulse
           metrics = base_query.select(
             "SUM(rails_pulse_summaries.count) AS total_count",
             "SUM(rails_pulse_summaries.error_count) AS total_errors",
-            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(current_window_start)} THEN rails_pulse_summaries.count ELSE 0 END) AS current_count",
-            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(current_window_start)} THEN rails_pulse_summaries.error_count ELSE 0 END) AS current_errors",
-            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(range_start)} AND rails_pulse_summaries.period_start < #{quote(current_window_start)} THEN rails_pulse_summaries.count ELSE 0 END) AS previous_count",
-            "SUM(CASE WHEN rails_pulse_summaries.period_start >= #{quote(range_start)} AND rails_pulse_summaries.period_start < #{quote(current_window_start)} THEN rails_pulse_summaries.error_count ELSE 0 END) AS previous_errors"
+            window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :current_start THEN rails_pulse_summaries.count ELSE 0 END) AS current_count"),
+            window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :current_start THEN rails_pulse_summaries.error_count ELSE 0 END) AS current_errors"),
+            window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :range_start AND rails_pulse_summaries.period_start < :current_start THEN rails_pulse_summaries.count ELSE 0 END) AS previous_count"),
+            window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :range_start AND rails_pulse_summaries.period_start < :current_start THEN rails_pulse_summaries.error_count ELSE 0 END) AS previous_errors")
           ).take
 
           total_runs = metrics&.total_count.to_i

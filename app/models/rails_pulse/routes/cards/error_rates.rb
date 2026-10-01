@@ -14,8 +14,8 @@ module RailsPulse
             "SUM(error_count) AS total_errors",
             "SUM(status_4xx) AS total_4xx",
             "SUM(count) AS total_requests",
-            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN error_count + status_4xx ELSE 0 END) AS current_total_errors",
-            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN error_count + status_4xx ELSE 0 END) AS previous_total_errors"
+            window_sql("SUM(CASE WHEN period_start >= :current_start THEN error_count + status_4xx ELSE 0 END) AS current_total_errors"),
+            window_sql("SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN error_count + status_4xx ELSE 0 END) AS previous_total_errors")
           ).take
 
           total_errors = metrics.total_errors || 0

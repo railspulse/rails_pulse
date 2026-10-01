@@ -21,6 +21,10 @@ module Dummy
       ActiveSupport::Inflector.inflections(:en) do |inflect|
         ENV["RAILS_PULSE_TEST_ACRONYMS"].split(",").each { |acronym| inflect.acronym(acronym.strip) }
       end
+
+      # A host directory named like one of the engine's pinned basenames. It
+      # must follow the host's inflections, not the engine's pins.
+      config.eager_load_paths << Rails.root.join("acronym_host").to_s
     end
 
     # For compatibility with applications that use this config

@@ -66,13 +66,25 @@ _Avoid_: release, deploy marker (the marker is how a Deployment is drawn, not th
 
 ### Collection
 
+**API token**:
+`config.api_token`, the read credential: it authenticates the read-only JSON API under `api/v1` that the CLI and MCP server use, sent as `X-Rails-Pulse-Token`. It cannot record a deployment.
+_Avoid_: dashboard token, license key
+
+**Deployment token**:
+`config.deployment_token`, the write credential: the only token the deployments endpoint accepts for recording a release, sent the same way. `deployment_api_token` is its pre-0.5 name and still works. Setting it to the same value as the API token restores one credential for both.
+_Avoid_: API token (a different credential), deploy key
+
+**CLI and MCP server**:
+`rails-pulse`, the Thor executable in the gem, and its `mcp` subcommand, which serves the same data to coding agents over stdio. Both run outside the application and read it only through the JSON API.
+_Avoid_: agent, plugin, integration (for the tooling itself)
+
 **Tracker**:
 The single background writer per process. The middleware pushes each request's collected data onto a bounded queue (`async_queue_size`, default 1000); the Tracker drains it on one connection and drops the newest request when the queue is full. With `config.async = false`, or on a transactional-test connection, it writes inline.
 _Avoid_: worker, collector (that is the middleware), reporter
 
 **Event**:
-A row in `rails_pulse_events`: something Rails Pulse noticed rather than measured, tagged by `kind` with a `subject`, a `value`, `occurred_at` and JSON `metadata`. The free gem writes writer heartbeats; Rails Pulse Pro writes its alert triggers, regression checks, exception alerts and job heartbeats into the same table. Pruned by `event_retention_period`, except kinds in `event_retention_exempt_kinds`.
-_Avoid_: log, audit row, notification (that is a Pro Delivery)
+A row in `rails_pulse_events`: something Rails Pulse noticed rather than measured, tagged by `kind` with a `subject`, a `value`, `occurred_at` and JSON `metadata`. Writer heartbeats are the one kind written today. Pruned by `event_retention_period`, except kinds in `event_retention_exempt_kinds`.
+_Avoid_: log, audit row, notification
 
 **Writer heartbeat**:
 The Event of kind `writer_heartbeat` each writer records once a minute: `host:pid` as subject, requests dropped since the previous heartbeat as value, queue depth and capacity in metadata. A writer silent for three minutes is treated as gone; heartbeats are pruned after a day. The dashboard's Tracking badge, the Storage page and `rails_pulse:status` add them up across processes.

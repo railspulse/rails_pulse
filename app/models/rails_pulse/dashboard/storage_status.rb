@@ -76,7 +76,7 @@ module RailsPulse
           name: :rails_pulse_events,
           model: "RailsPulse::Event",
           label: "Events",
-          description: "What Pulse noticed: writer heartbeats every minute (pruned after a day) and, with Rails Pulse Pro, alerts and regression checks kept for event_retention_period",
+          description: "What Pulse noticed: writer heartbeats every minute, pruned after a day; any other kind is kept for event_retention_period",
           time_column: :occurred_at
         }
       ].freeze

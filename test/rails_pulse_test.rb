@@ -27,12 +27,6 @@ class RailsPulseTest < ActiveSupport::TestCase
     assert_match(/\A\d+\.\d+\.\d+/, RailsPulse::VERSION)
   end
 
-  # Pro Detection
-
-  test "pro? returns false when RailsPulse::Pro is not defined" do
-    refute_predicate RailsPulse, :pro?
-  end
-
   # Nav Items
 
   test "nav_items returns empty array when nothing registered" do
