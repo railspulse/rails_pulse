@@ -26,6 +26,31 @@ module RailsPulse
       assert config.enabled
     end
 
+    test "api_token and deployment_token default to nil" do
+      config = Configuration.new
+
+      assert_nil config.api_token
+      assert_nil config.deployment_token
+    end
+
+    # deployment_api_token only ever authorized deployment writes, so the
+    # pre-0.5 name keeps doing that rather than granting API reads.
+    test "deployment_api_token is an alias for deployment_token" do
+      config = Configuration.new
+      config.deployment_api_token = "legacy-token"
+
+      assert_equal "legacy-token", config.deployment_token
+      assert_equal "legacy-token", config.deployment_api_token
+      assert_nil config.api_token
+    end
+
+    test "the read token does not authorize deployment writes" do
+      config = Configuration.new
+      config.api_token = "read-only"
+
+      assert_nil config.deployment_token
+    end
+
     test "track_jobs defaults to false" do
       config = Configuration.new
 

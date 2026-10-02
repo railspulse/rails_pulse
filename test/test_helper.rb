@@ -16,6 +16,12 @@ require "dotenv/load" if File.exist?(".env")
 
 require_relative "../test/dummy/config/environment"
 require "rails/test_help"
+
+# Rails 8 draws routes lazily, on first use, and config/routes.rb draws the
+# exception pages only while track_exceptions is on. Draw them now, under the
+# default configuration, so a test that turns tracking off cannot be the one
+# that decides which routes exist for every test after it.
+Rails.application.reload_routes_unless_loaded if Rails.application.respond_to?(:reload_routes_unless_loaded)
 require "shoulda-matchers"
 require "mocha/minitest"
 

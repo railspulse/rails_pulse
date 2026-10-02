@@ -59,7 +59,7 @@ Code comments describe the current code, not its history. Explain a non-obvious 
 
 **`app/` is Zeitwerk-managed; `lib/` is not.** Services, models, controllers and jobs under `app/` autoload and reload by file path like any Rails app. Code under `lib/rails_pulse/` (installers, stats, task runners, middleware, subscribers) is loaded with explicit `require` / `autoload` entries in `lib/rails_pulse/engine.rb`; a new file there needs an entry.
 
-**Zeitwerk uses the host's inflections.** A host with `inflect.acronym "SQL"` expects `sql_query_normalizer.rb` to define `SQLQueryNormalizer`. Any file under `app/` whose basename contains a common acronym (sql, csp, http, api, json, …) must be pinned in `ACRONYM_SAFE_INFLECTIONS` in `lib/rails_pulse/engine.rb`; `test/lib/rails_pulse/zeitwerk_test.rb` eager-loads with `SQL` and `CSP` declared to catch omissions.
+**Zeitwerk uses the host's inflections.** A host with `inflect.acronym "SQL"` expects `sql_query_normalizer.rb` to define `SQLQueryNormalizer`. Any file under `app/` whose basename contains a common acronym (sql, csp, http, api, json, …) must be pinned in `ACRONYM_SAFE_INFLECTIONS` in `lib/rails_pulse/engine.rb`. The pins go through `RailsPulse::ScopedInflector`, which applies them only under the engine's `app/`: Rails' own inflector is keyed on basename for the whole application, so pinning there would also rename a host's `app/controllers/api/`. `test/lib/rails_pulse/zeitwerk_test.rb` eager-loads with `SQL`, `CSP` and `API` declared, alongside a host `api/` directory, to catch both mistakes.
 
 **RequestStore is thread-local.** Operations are deep-copied before async tracking to prevent race conditions. The `skip_recording_rails_pulse_activity` flag prevents recursive tracking on Rails Pulse's own requests.
 
@@ -74,6 +74,8 @@ Code comments describe the current code, not its history. Explain a non-obvious 
 **Schema drift guard.** `RailsPulse::SchemaCheck` runs once per process and pauses tracking (dashboard answers 503) when a table or sentinel column is missing. A new column that older installs will lack must go in `SENTINEL_COLUMNS` or the guard will not protect it. `rails rails_pulse:status` reports schema, migrations, route backfill and initializer state and exits 1 when something needs action.
 
 **Standalone dashboard.** `exe/rails_pulse_server` boots the host's `config/environment.rb` and serves the engine at `/` with its own session middleware. It ignores `authentication_method` and `authorize` and uses `standalone_authentication_method` or HTTP Basic. `RailsPulse.standalone?` is true there, and links are generated root-relative. See `docs/architecture.md` and decision 0010.
+
+**The CLI and MCP server never load the engine.** `exe/rails-pulse` requires `lib/rails_pulse/cli/main.rb` only and talks to the app over the JSON API (`app/controllers/rails_pulse/api/v1/`), so nothing under `lib/rails_pulse/cli/` or `lib/rails_pulse/mcp/` may reference Rails, models or configuration. The `mcp` gem is a development dependency only; hosts add it to their own Gemfile, and `rails-pulse mcp` exits with instructions when it is missing. The API accepts only `config.api_token` and every action is read-only; deployment writes (`POST deployments`, outside `api/v1`) accept only `config.deployment_token`, of which `deployment_api_token` is the pre-0.5 alias. Every CLI command and MCP tool must be backed by an endpoint in this gem that returns data; do not ship one ahead of its endpoint. Tests for the CLI and MCP include `ApiClientTestHelpers` and must not nest `capture_io`. Decision 0018.
 
 **Nothing under `app/` branches on `Rails.env`.** A `Rails.env.test?` guard in app code is a path the suite cannot see; a screenshot fixture hid behind one for four pre-releases. Environment-dependent behaviour goes in `lib/rails_pulse/configuration.rb` defaults or the install template, which are legitimately environment-aware. `rake check_app_env_branching` enforces it in `rake test_release` and the CI lint job; recording the environment name (`Rails.env.to_s`) is allowed.
 
@@ -107,6 +109,8 @@ Use `.github/pull_request_template.md`'s structure when opening a PR (`gh pr cre
 ## Releases
 
 Run `rake test_release` before any release — it validates git status, RuboCop, Brakeman, asset build, gem build, generator tests, and the full test matrix. See `docs/releasing.md` for the full process.
+
+`main` carries the next release. A patch to an earlier series is cut from its `X-Y-stable` branch (`0-4-stable` releases 0.4.x), then that branch is merged into `main`.
 
 ## Docs
 

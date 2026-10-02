@@ -108,6 +108,16 @@ class RailsPulse::SummaryTest < ActiveSupport::TestCase
     assert_equal time.beginning_of_month, RailsPulse::Summary.normalize_period_start("month", time)
   end
 
+  test "reads a Date as midnight in Time.zone" do
+    Time.use_zone("Asia/Kolkata") do
+      date = Date.new(2024, 3, 4)
+
+      assert_equal Time.zone.local(2024, 3, 4), RailsPulse::Summary.normalize_period_start("week", date)
+      assert_equal Time.zone.local(2024, 3, 10).end_of_day, RailsPulse::Summary.calculate_period_end("week", date)
+      assert_equal Time.zone.local(2024, 3, 31).end_of_day, RailsPulse::Summary.calculate_period_end("month", date)
+    end
+  end
+
   test "should order by recent scope" do
     recent_summaries = RailsPulse::Summary.recent
 

@@ -6,8 +6,10 @@ module RailsPulse
     # @param period_types [Array<String>] Period types to backfill (default: ["hour", "day"])
     # @return [nil]
     def perform(start_date, end_date, period_types = [ "hour", "day" ])
-      start_date = start_date.to_datetime
-      end_date = end_date.to_datetime
+      # A Date or date string means midnight in the aggregation time zone, so
+      # backfilled periods land on the boundaries the scheduled job writes.
+      start_date = start_date.in_time_zone
+      end_date = end_date.in_time_zone
 
       period_types.each do |period_type|
         backfill_period(period_type, start_date, end_date)

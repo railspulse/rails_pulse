@@ -3,7 +3,7 @@ module RailsPulse
     # The result of measuring a recent window against a historical baseline.
     #
     # This is a value object on purpose. It is the shape callers outside this
-    # namespace — dashboards today, findings and Pro tooling later — are expected
+    # namespace — dashboards today, findings and agent tooling later — are expected
     # to depend on, so it carries every number needed to explain the verdict
     # rather than just the verdict.
     class Comparison

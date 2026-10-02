@@ -1,6 +1,20 @@
 module RailsPulse
-  # Aggregates one period (hour, day, week or month) of requests, operations,
-  # job runs and exception occurrences into rails_pulse_summaries rows.
+  # Aggregates one period (hour, day, week or month) into
+  # rails_pulse_summaries rows.
+  #
+  # Hours are computed from raw rows by FromRawRows. Days are rolled up from
+  # their hours, and weeks and months from their days, by FromChildPeriods,
+  # so a long period never re-reads raw rows: its cost does not grow with
+  # its length, and it stays correct after raw retention has pruned them.
+  #
+  # Every period gets one overall request row (type RailsPulse::Request,
+  # summarizable_id 0), written even when the period is empty (count: 0) so
+  # its timestamp keeps advancing every period — and only once the period
+  # has ended. It is the heartbeat several
+  # health checks use to detect whether SummaryJob is still running
+  # (dashboard banner, rails_pulse:status, StoragePressure staleness, and
+  # CleanupService's summarized_cutoff), and the marker this service uses to
+  # tell whether a child period has been summarized.
   #
   # Rows are written with upsert_all against the summaries table's unique
   # index, one statement per summarizable kind, so re-running a period (the
@@ -9,6 +23,11 @@ module RailsPulse
   # two per route.
   class SummaryService
     UNIQUE_INDEX = :idx_pulse_summaries_unique
+
+    # The period each longer period is rolled up from. Weeks and months build
+    # from days because weeks do not tile months.
+    CHILD_PERIOD_TYPES = { "day" => "hour", "week" => "day", "month" => "day" }.freeze
+    CHILD_PERIOD_STEPS = { "hour" => 1.hour, "day" => 1.day }.freeze
 
     attr_reader :period_type, :start_time, :end_time
 
@@ -19,26 +38,35 @@ module RailsPulse
     end
 
     def perform
+      # A period is summarized only once it has ended. The overall request
+      # row doubles as the heartbeat that CleanupService's summarized_cutoff
+      # and summarize_missing_child_periods trust to mean "fully aggregated";
+      # written mid-period, it would let cleanup delete raw rows that were
+      # never counted and let a later rollup bake the partial numbers in as
+      # final.
+      if end_time >= Time.current
+        RailsPulse.logger.info "Skipping #{period_type} summary for #{start_time}: period has not ended"
+        return
+      end
+
       RailsPulse.logger.info "Starting #{period_type} summary for #{start_time}"
 
-      # Rows are computed (queried, grouped, sorted, percentiles taken)
-      # before the transaction opens. A busy period's Ruby-side aggregation
-      # can take seconds; doing it with the transaction already open leaves
-      # it idle from the database's perspective and vulnerable to a
-      # configured idle_in_transaction_session_timeout on installs that set
+      summarize_missing_child_periods if rollup?
+
+      # Rows are computed before the transaction opens. A busy period's
+      # aggregation can take seconds; doing it with the transaction already
+      # open leaves it idle from the database's perspective and vulnerable to
+      # a configured idle_in_transaction_session_timeout on installs that set
       # one.
-      request_and_route_rows = request_summary_rows + route_summary_rows # Overall and per-route
-      query_rows = query_summary_rows                                    # Per-query
-      job_rows = job_summary_rows                                        # Per-job
-      exception_rows = exception_summary_rows                            # Per-exception-group frequency
+      rows = summary_rows
 
       # The engine's own connection: on a separate-database install
       # ActiveRecord::Base would open the transaction on the host's primary.
       RailsPulse::ApplicationRecord.transaction do
-        upsert_summaries(request_and_route_rows)
-        upsert_summaries(query_rows)
-        upsert_summaries(job_rows)
-        upsert_exception_summaries(exception_rows)
+        upsert_summaries(rows[:requests_and_routes])
+        upsert_summaries(rows[:queries])
+        upsert_summaries(rows[:jobs])
+        upsert_exception_summaries(rows[:exceptions])
       end
 
       RailsPulse.logger.info "Completed #{period_type} summary"
@@ -48,6 +76,32 @@ module RailsPulse
     end
 
     private
+
+    def rollup?
+      CHILD_PERIOD_TYPES.key?(period_type)
+    end
+
+    def source
+      @source ||=
+        if rollup?
+          FromChildPeriods.new(child_period_type, child_period_starts)
+        else
+          FromRawRows.new(start_time...end_time)
+        end
+    end
+
+    def summary_rows
+      {
+        requests_and_routes: with_period(source.request_rows + source.route_rows),
+        queries: with_period(source.query_rows),
+        jobs: with_period(source.job_rows),
+        exceptions: with_period(exception_rows)
+      }
+    end
+
+    def with_period(rows)
+      rows.map { |row| row.merge(period_type: period_type, period_start: start_time, period_end: end_time) }
+    end
 
     # Every row in one call must have the same keys, which is why the
     # summarizable kinds are upserted separately: request and route rows carry
@@ -59,116 +113,6 @@ module RailsPulse
       # explicit target.
       unique_by = Summary.connection.supports_insert_conflict_target? ? UNIQUE_INDEX : nil
       Summary.upsert_all(rows, unique_by: unique_by)
-    end
-
-    def summary_row(summarizable_type, summarizable_id)
-      {
-        summarizable_type: summarizable_type,
-        summarizable_id: summarizable_id,
-        period_type: period_type,
-        period_start: start_time,
-        period_end: end_time
-      }
-    end
-
-    # `durations` must be sorted. Empty input yields count 0 and nil
-    # percentiles, which is what an idle period should record.
-    def duration_metrics(durations)
-      avg = durations.any? ? durations.sum.to_f / durations.size : 0
-
-      {
-        count: durations.size,
-        avg_duration: avg,
-        min_duration: durations.first,
-        max_duration: durations.last,
-        total_duration: durations.sum,
-        p50_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.5),
-        p95_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.95),
-        p99_duration: RailsPulse::Statistics.calculate_percentile(durations, 0.99),
-        stddev_duration: RailsPulse::Statistics.calculate_stddev(durations, avg)
-      }
-    end
-
-    def status_metrics(statuses)
-      {
-        error_count: statuses.count { |s| s >= 500 },
-        success_count: statuses.count { |s| s < 500 },
-        status_2xx: statuses.count { |s| s.between?(200, 299) },
-        status_3xx: statuses.count { |s| s.between?(300, 399) },
-        status_4xx: statuses.count { |s| s.between?(400, 499) },
-        status_5xx: statuses.count { |s| s >= 500 }
-      }
-    end
-
-    # One row for ALL requests in the period, written even when the period is
-    # empty (count: 0) so its timestamp keeps advancing every period — it is
-    # the heartbeat several health checks use to detect whether SummaryJob is
-    # still running (dashboard banner, rails_pulse:status, StoragePressure
-    # staleness, and CleanupService's summarized_cutoff). summarizable_id 0
-    # marks the overall rollup.
-    def request_summary_rows
-      request_data = Request.where(occurred_at: start_time...end_time).pluck(:duration, :status)
-      durations = request_data.map(&:first).compact.sort
-      statuses = request_data.map(&:second)
-
-      [ summary_row("RailsPulse::Request", 0).merge(duration_metrics(durations), status_metrics(statuses)) ]
-    end
-
-    def route_summary_rows
-      all_rows = Request
-        .where(occurred_at: start_time...end_time)
-        .where.not(route_id: nil)
-        .pluck(:route_id, :duration, :status)
-
-      all_rows.group_by(&:first).map do |route_id, rows|
-        durations = rows.map { |_, d, _| d }.compact.sort
-        statuses = rows.map { |_, _, s| s }
-
-        summary_row("RailsPulse::Route", route_id)
-          .merge(duration_metrics(durations), status_metrics(statuses), count: rows.size)
-      end
-    end
-
-    def query_summary_rows
-      all_rows = Operation
-        .where(occurred_at: start_time...end_time)
-        .where.not(query_id: nil)
-        .pluck(:query_id, :duration)
-
-      all_rows.group_by(&:first).filter_map do |query_id, rows|
-        durations = rows.map(&:last).compact.sort
-        next if durations.empty?
-
-        summary_row("RailsPulse::Query", query_id).merge(duration_metrics(durations))
-      end
-    end
-
-    def job_summary_rows
-      all_rows = JobRun
-        .where(occurred_at: start_time...end_time)
-        .where(status: JobRun::FINAL_STATUSES)
-        .where.not(job_id: nil)
-        .pluck(:job_id, :duration, :status)
-      return [] if all_rows.empty?
-
-      # A run whose job row has gone (count-based cleanup) has nothing to
-      # summarize against.
-      known_job_ids = Job.where(id: all_rows.map(&:first).uniq).pluck(:id).to_set
-
-      all_rows.group_by(&:first).filter_map do |job_id, runs|
-        next unless known_job_ids.include?(job_id)
-
-        durations = runs.map { |_, d, _| d }.compact.map(&:to_f).sort
-        next if durations.empty?
-
-        statuses = runs.map { |_, _, s| s }
-        summary_row("RailsPulse::Job", job_id).merge(
-          duration_metrics(durations),
-          count: runs.size,
-          error_count: statuses.count { |s| s != "success" },
-          success_count: statuses.count { |s| s == "success" }
-        )
-      end
     end
 
     # Exception frequency, per group and overall.
@@ -183,22 +127,11 @@ module RailsPulse
     # both the query here and the upsert in upsert_exception_summaries are
     # individually rescued: a failure in either must not lose the route,
     # query and job summaries computed or written alongside it.
-    def exception_summary_rows
+    def exception_rows
       return [] unless RailsPulse.configuration.track_exceptions
       return [] unless ExceptionOccurrence.table_exists?
 
-      counts = ExceptionOccurrence
-        .where(occurred_at: start_time...end_time)
-        .group(:exception_group_id)
-        .count
-
-      return [] if counts.empty?
-
-      rows = counts.map { |group_id, occurrences| summary_row("RailsPulse::ExceptionGroup", group_id).merge(count: occurrences) }
-      # A rollup across every group, so the dashboard can chart total exception
-      # volume without loading one series per group.
-      rows << summary_row("RailsPulse::ExceptionGroup", 0).merge(count: counts.values.sum)
-      rows
+      source.exception_rows
     rescue ActiveRecord::ActiveRecordError => e
       RailsPulse.logger.error "Exception summary skipped: #{e.message}"
       []
@@ -208,6 +141,42 @@ module RailsPulse
       upsert_summaries(rows)
     rescue ActiveRecord::ActiveRecordError => e
       RailsPulse.logger.error "Exception summary skipped: #{e.message}"
+    end
+
+    def child_period_type
+      CHILD_PERIOD_TYPES.fetch(period_type)
+    end
+
+    # Every child boundary inside this period. perform refuses periods that
+    # have not ended, so a rollup's children have all ended too.
+    def child_period_starts
+      @child_period_starts ||= begin
+        step = CHILD_PERIOD_STEPS.fetch(child_period_type)
+        starts = []
+        current = start_time
+        while current <= end_time
+          starts << current
+          current += step
+        end
+        starts
+      end
+    end
+
+    # A child period without its heartbeat row was never summarized
+    # (SummaryJob was not running, or a backfill asked only for the longer
+    # period), so it is summarized now, recursively, before being rolled up.
+    def summarize_missing_child_periods
+      summarized = Summary
+        .where(summarizable_type: "RailsPulse::Request", summarizable_id: 0, period_type: child_period_type)
+        .where(period_start: start_time..end_time)
+        .pluck(:period_start)
+        .to_set(&:to_i)
+
+      child_period_starts.each do |child_start|
+        next if summarized.include?(child_start.to_i)
+
+        SummaryService.new(child_period_type, child_start).perform
+      end
     end
   end
 end

@@ -23,6 +23,10 @@ Interactive script to guide you through the release process.
 $(rp_bold "Usage:")
   bin/release
 
+$(rp_bold "Where to run it:")
+  main          for the next release
+  X-Y-stable    for a patch to an earlier series (0-4-stable releases 0.4.x only)
+
 $(rp_bold "What it does:")
   1. Pre-flight checks (git status, branch, etc.) — hard stop on failure
   2. Pre-release tests (npm run test:js + rake test_release — includes RuboCop, Brakeman, full matrix)
@@ -112,14 +116,19 @@ else
   rp_ok "git working directory is clean"
 fi
 
-# Check current branch
+# Releases are cut from main, or from an X-Y-stable branch when patching a
+# series that main has moved past. STABLE_SERIES is empty on main.
 CURRENT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
-if [ "$CURRENT_BRANCH" != "main" ]; then
-  rp_fail "on branch: $CURRENT_BRANCH (expected: main)"
-  echo "Aborted. Switch to main branch first."
-  exit 1
-else
+STABLE_SERIES=""
+if [ "$CURRENT_BRANCH" = "main" ]; then
   rp_ok "on main branch"
+elif [[ "$CURRENT_BRANCH" =~ ^([0-9]+)-([0-9]+)-stable$ ]]; then
+  STABLE_SERIES="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}"
+  rp_ok "on stable branch $CURRENT_BRANCH (releases $STABLE_SERIES.x)"
+else
+  rp_fail "on branch: $CURRENT_BRANCH (expected: main or an X-Y-stable branch)"
+  echo "Aborted. Switch to main, or to a stable branch for a patch release."
+  exit 1
 fi
 
 # Check if up to date with remote
@@ -127,7 +136,7 @@ git fetch origin --quiet
 LOCAL=$(git rev-parse @)
 if ! REMOTE=$(git rev-parse '@{u}' 2>/dev/null); then
   rp_fail "no upstream configured for $CURRENT_BRANCH"
-  echo "Aborted. Set an upstream first: git branch --set-upstream-to=origin/main"
+  echo "Aborted. Set an upstream first: git branch --set-upstream-to=origin/$CURRENT_BRANCH"
   exit 1
 fi
 BASE=$(git merge-base @ '@{u}')
@@ -270,6 +279,10 @@ while true; do
     echo "  Tag v$NEW_VERSION already exists."
     continue
   fi
+  if [ -n "$STABLE_SERIES" ] && [[ "$NEW_VERSION" != "$STABLE_SERIES".* ]]; then
+    echo "  Branch $CURRENT_BRANCH releases $STABLE_SERIES.x versions only."
+    continue
+  fi
   break
 done
 
@@ -406,11 +419,21 @@ if ask_yes_no "Is v$NEW_VERSION a pre-release?" "$PRERELEASE_DEFAULT"; then
 fi
 echo
 
+# A patch to an earlier series must not take GitHub's "Latest" badge from a
+# newer release. Pre-release tags are left out of the comparison.
+LATEST_FLAG=""
+HIGHEST_TAG=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
+if [ -n "$STABLE_SERIES" ] && [ -n "$HIGHEST_TAG" ] && [ "$HIGHEST_TAG" != "v$NEW_VERSION" ]; then
+  LATEST_FLAG="--latest=false"
+  rp_warn "$HIGHEST_TAG is newer, so v$NEW_VERSION will not be marked as the latest release"
+  echo
+fi
+
 RELEASE_PUBLISHED=false
 if command -v gh &> /dev/null; then
   if ask_yes_no "Publish the GitHub release now (using the tag's own notes)?" "y"; then
     TAG_NOTES=$(git for-each-ref "refs/tags/v$NEW_VERSION" --format='%(contents)')
-    if gh release create "v$NEW_VERSION" --repo "$REPO_SLUG" --title "v$NEW_VERSION" --notes "$TAG_NOTES" $PRERELEASE_FLAG; then
+    if gh release create "v$NEW_VERSION" --repo "$REPO_SLUG" --title "v$NEW_VERSION" --notes "$TAG_NOTES" $PRERELEASE_FLAG $LATEST_FLAG; then
       rp_ok "GitHub release published: $GITHUB_RELEASE_URL"
       RELEASE_PUBLISHED=true
     else
@@ -449,6 +472,10 @@ echo "  Links:"
 echo "    - RubyGems: https://rubygems.org/gems/rails_pulse/versions/$NEW_VERSION"
 echo "    - GitHub: $GITHUB_RELEASE_URL"
 echo
+if [ -n "$STABLE_SERIES" ]; then
+  echo "  $(rp_bold "Merge $CURRENT_BRANCH into main") so main carries these fixes and the v$NEW_VERSION changelog section."
+  echo
+fi
 echo "  Next steps:"
 if [ "$RELEASE_PUBLISHED" = false ]; then
   echo "    1. Create GitHub release: $GITHUB_RELEASE_NEW_URL"

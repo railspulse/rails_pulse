@@ -10,7 +10,8 @@ module RailsPulse
     def setup
       @group = rails_pulse_exception_groups(:record_not_found)
       @hour  = Time.utc(2026, 6, 15, 10, 0, 0)
-      travel_to @hour + 30.minutes
+      # Summaries only run for finished periods, so sit past the hour's end.
+      travel_to @hour + 90.minutes
       RailsPulse::Summary.delete_all
       RailsPulse::ExceptionOccurrence.delete_all
       @original_tracking = RailsPulse.configuration.track_exceptions

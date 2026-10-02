@@ -8,7 +8,7 @@ How a request, a job, and an hour of data move through Rails Pulse. Read before 
 
 | Initializer | Does |
 |---|---|
-| `rails_pulse.inflections` | pins acronym-prone file names so a host's `inflect.acronym` cannot rename constants (`ACRONYM_SAFE_INFLECTIONS`) |
+| `rails_pulse.inflections` | pins acronym-prone file names so a host's `inflect.acronym` cannot rename constants (`ACRONYM_SAFE_INFLECTIONS`), through `ScopedInflector` so the pins apply only to the engine's own files |
 | `rails_pulse.assets` | inserts `Middleware::AssetServer` after `Rack::Runtime` unless `config.mount_dashboard` is false |
 | `rails_pulse.middleware` | appends `Middleware::RequestCollector` to the host stack |
 | `rails_pulse.operation_notifications` | `Subscribers::OperationSubscriber.subscribe!` |
@@ -48,7 +48,7 @@ The per-event subscriber cost is not in this table because the pass-through app 
 
 ## Aggregation
 
-`app/jobs/rails_pulse/summary_job.rb` runs hourly (the host schedules it). It calls `SummaryService` (`app/services/rails_pulse/summary_service.rb`) for the previous hour, and at day, week and month boundaries for those periods. The service computes count, average, min, max, P50, P95, P99 and status buckets per Route, Query and Job, plus the overall request rollup, and upserts all rows in one statement against the summaries unique index (decision 0013). The overall row is written even for an empty period; its timestamp is the heartbeat that the stale banner, `rails_pulse:status`, `Dashboard::StoragePressure` and `CleanupService` read. `BackfillSummariesJob` rebuilds from raw rows.
+`app/jobs/rails_pulse/summary_job.rb` runs hourly (the host schedules it). It calls `SummaryService` (`app/services/rails_pulse/summary_service.rb`) for the previous hour, and at day, week and month boundaries for those periods. The service computes count, average, min, max, P50, P95, P99 and status buckets per Route, Query and Job, plus the overall request rollup, and upserts all rows in one statement against the summaries unique index (decision 0013). Only hours read raw rows (`SummaryService::FromRawRows`, one query per kind, so memory is bounded by an hour); days are rolled up from hours and weeks and months from days (`SummaryService::FromChildPeriods`, one `GROUP BY` over the child summaries), and the service refuses periods that have not ended and first summarizes any child period that has no heartbeat row. The overall row is written even for an empty period; its timestamp is the heartbeat that the stale banner, `rails_pulse:status`, `Dashboard::StoragePressure` and `CleanupService` read. `BackfillSummariesJob` rebuilds hours from raw rows and longer periods from those.
 
 `app/services/rails_pulse/operations/` (`Series`, `Metric`, `Compare`, `ChangePoint`) is the historical comparison layer over summaries: baseline window against comparison window, regression thresholds, change-point placement from hourly rows.
 
@@ -62,7 +62,7 @@ Controllers under `app/controllers/rails_pulse/` read summaries through `Tables:
 
 ## Retention
 
-`app/jobs/rails_pulse/cleanup_job.rb` calls `CleanupService` (`lib/rails_pulse/cleanup_service.rb`): age-based deletion by `full_retention_period`, then count-based by `max_table_records`, `rails_pulse_events` by `event_retention_period` except `event_retention_exempt_kinds`, hourly summaries by `hourly_summary_retention`, `preserve` exempting exception groups (decision 0017). `rake rails_pulse:cleanup` runs the same service; `cleanup_stats` reports sizes.
+`app/jobs/rails_pulse/cleanup_job.rb` calls `CleanupService` (`lib/rails_pulse/cleanup_service.rb`): age-based deletion by `full_retention_period`, then count-based by `max_table_records`, `rails_pulse_events` by `event_retention_period` except `event_retention_exempt_kinds`, hourly summaries by `hourly_summary_retention`, `preserve` exempting exception groups (decision 0017). Every delete runs in batches of at most 5,000 rows selected inside the database, and each table is a stage whose failure is held until the others have run. `rake rails_pulse:cleanup` runs the same service; `cleanup_stats` reports sizes.
 
 ## Schema check
 
@@ -78,8 +78,14 @@ Built by `npm run build` into `public/rails-pulse-assets/` and committed. Served
 
 ## Events
 
-`rails_pulse_events` (`app/models/rails_pulse/event.rb`) holds what Pulse noticed rather than measured, one row per outcome or sample tagged by `kind`, with `subject`, `value`, `occurred_at`, `message` and JSON `metadata`. The free gem writes `writer_heartbeat` rows; `rails_pulse_pro` writes `alert_rule`, `deployment_regression`, `exception_alert` and `job_heartbeat` rows into the same table and registers `job_heartbeat` in `config.event_retention_exempt_kinds`, so a Pro install needs no migration. Decision 0019.
+`rails_pulse_events` (`app/models/rails_pulse/event.rb`) holds what Pulse noticed rather than measured, one row per outcome or sample tagged by `kind`, with `subject`, `value`, `occurred_at`, `message` and JSON `metadata`. The one kind written today is `writer_heartbeat`; the table is generic so a new kind needs no migration, and a kind whose rows are updated in place is registered in `config.event_retention_exempt_kinds`. Decision 0019.
 
 ## Deployments
 
-`Deployment` rows come from `rake rails_pulse:record_deployment[rev]` / `finish_deployment[rev]` (`lib/tasks/rails_pulse.rake`) or `POST /rails_pulse/deployments` (`DeploymentsController`, token in `X-Rails-Pulse-Token` compared with `secure_compare`). Controllers assign `@deployment_markers` and `render_stimulus_chart` merges them into time-axis charts.
+`Deployment` rows come from `rake rails_pulse:record_deployment[rev]` / `finish_deployment[rev]` (`lib/tasks/rails_pulse.rake`) or `POST /rails_pulse/deployments` (`DeploymentsController`, `config.deployment_token` in `X-Rails-Pulse-Token` compared with `secure_compare`, checked before any other callback). Controllers assign `@deployment_markers` and `render_stimulus_chart` merges them into time-axis charts.
+
+## JSON API, CLI and MCP server
+
+`app/controllers/rails_pulse/api/v1/` serves read-only JSON under the engine mount at `api/v1/`: routes, requests, queries, jobs, job_runs, exceptions and deployments, each an index with `limit`/`offset`/`since`/`until` and a `{ data, meta }` envelope built by the serializers in `app/serializers/rails_pulse/api/v1/`. Exceptions is the one resource with a show action: `GET exceptions/:id` returns the exception group with its most recent occurrences and their backtraces. `GET coverage` and `GET capabilities` report what has been recorded and which installation answered. `Api::V1::BaseController` skips the dashboard authentication and accepts only `config.api_token` (`secure_compare`; no token means 401 for everything), then validates parameters once for every endpoint.
+
+`exe/rails-pulse` requires only `lib/rails_pulse/cli/main.rb`, never the engine: the CLI (`RailsPulse::CLI`, Thor) and the MCP server (`RailsPulse::Mcp::Server`, stdio, `lib/rails_pulse/mcp/`; needs the host's Gemfile to add the `mcp` gem, which is only a development dependency here) run on a developer's machine and reach the app through `CLI::Client` over HTTP, with the URL and token from `RAILS_PULSE_URL`/`RAILS_PULSE_TOKEN` or `~/.rails-pulse` (`CLI::Config`, `RAILS_PULSE_CONFIG` to relocate). An API error becomes `CLI::Client::ApiError`; the CLI prints it and exits 1, `Mcp::Tools::Helpers#respond` returns it as a tool error. `rails-pulse install claude` copies `lib/rails_pulse/cli/agent_files/claude_skill.md` to `~/.claude/skills/rails-pulse/SKILL.md`. Decision 0018.

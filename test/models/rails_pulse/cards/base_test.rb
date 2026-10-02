@@ -395,16 +395,18 @@ module RailsPulse
         assert_nil card.send(:subject_id)
       end
 
-      # Quote Helper Tests
+      # Window SQL Tests
 
-      test "quote returns quoted SQL string" do
-        card = TestCard.new
-        time = Time.current
+      test "window_sql binds the window bounds as quoted values" do
+        card = ranged_card
+        connection = RailsPulse::Summary.connection
 
-        quoted = card.send(:quote, time)
+        sql = card.send(:window_sql, "period_start >= :range_start AND period_start < :current_start")
 
-        assert_kind_of String, quoted
-        refute_equal time.to_s, quoted
+        assert_includes sql, connection.quote(card.send(:range_start))
+        assert_includes sql, connection.quote(card.send(:current_window_start))
+        refute_includes sql, ":range_start"
+        refute_includes sql, ":current_start"
       end
 
       # Edge Cases

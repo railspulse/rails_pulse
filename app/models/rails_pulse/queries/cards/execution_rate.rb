@@ -12,8 +12,8 @@ module RailsPulse
 
           metrics = base_query.select(
             "SUM(count) AS total_count",
-            "SUM(CASE WHEN period_start >= #{quote(current_window_start)} THEN count ELSE 0 END) AS current_count",
-            "SUM(CASE WHEN period_start >= #{quote(range_start)} AND period_start < #{quote(current_window_start)} THEN count ELSE 0 END) AS previous_count"
+            window_sql("SUM(CASE WHEN period_start >= :current_start THEN count ELSE 0 END) AS current_count"),
+            window_sql("SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN count ELSE 0 END) AS previous_count")
           ).take
 
           # Calculate metrics from single query result

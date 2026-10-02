@@ -1155,9 +1155,12 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     @route = rails_pulse_routes(:api_test)
     @route2 = rails_pulse_routes(:api_other)
 
-    # Generate summary data for the current hour (where fixtures exist)
-    service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
-    service.perform
+    # Generate summary data for the current hour (where fixtures exist); the
+    # service refuses unfinished periods, so run it from just past the hour.
+    hour = Time.current.beginning_of_hour
+    travel_to hour + 61.minutes do
+      RailsPulse::SummaryService.new("hour", hour).perform
+    end
   end
 
   def rails_pulse

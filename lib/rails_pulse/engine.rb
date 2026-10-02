@@ -8,6 +8,7 @@ require "rails_pulse/subscribers/exception_subscriber"
 require "rails_pulse/job_run_collector"
 require "rails_pulse/active_job_extensions"
 require "rails_pulse/current"
+require "rails_pulse/scoped_inflector"
 require "rack/static"
 require "ransack"
 
@@ -38,15 +39,23 @@ module RailsPulse
     # would expect sql_query_normalizer.rb to define SQLQueryNormalizer and
     # fail to eager load in production. Pin the names of the files whose
     # basenames contain a common acronym so the gem's constants do not depend
-    # on the host's inflections.
+    # on the host's inflections. Applied only to files under this engine's
+    # root (see ScopedInflector), so a host's own app/controllers/api/ keeps
+    # whatever its inflections say.
     ACRONYM_SAFE_INFLECTIONS = {
+      "api" => "Api",
       "sql_query_normalizer" => "SqlQueryNormalizer",
       "csp_helper" => "CspHelper",
       "csp_test_controller" => "CspTestController"
     }.freeze
 
     initializer "rails_pulse.inflections", before: :set_autoload_paths do
-      Rails.autoloaders.main.inflector.inflect(ACRONYM_SAFE_INFLECTIONS) if Rails.respond_to?(:autoloaders)
+      if Rails.respond_to?(:autoloaders)
+        loader = Rails.autoloaders.main
+        loader.inflector = RailsPulse::ScopedInflector.new(
+          loader.inflector, root: RailsPulse::Engine.root.join("app"), overrides: ACRONYM_SAFE_INFLECTIONS
+        )
+      end
     end
 
     # Load Rake tasks
