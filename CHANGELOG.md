@@ -21,6 +21,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Daily, weekly and monthly summaries are built from shorter periods instead of raw rows.** The summary job's memory no longer grows with the length of the period or with raised retention caps, and longer periods stay complete after raw data is pruned; their P50/P95/P99 are now traffic-weighted from the hours or days below them, as the dashboard already shows for multi-period ranges. A period is summarized only once it ends, so the backfill task no longer writes a partial row for the current day. (#279)
 - **`config.deployment_api_token` is now `config.deployment_token`.** The old name still works and still only records deployments; the JSON API reads a separate `config.api_token`, so a token given to a coding agent cannot record a release. (#309)
 - **Recording a deployment over HTTP requires `config.deployment_token`.** The deployments endpoint no longer accepts a dashboard login in place of the token, which let any page a signed-in admin visited record a release; set the token for CI, or use the `rails_pulse:record_deployment` task, which needs none. (#309)
 - **All timestamps display in the app's `config.time_zone`.** Chart axes and tooltips are formatted in that zone rather than the browser's, so a daily point no longer lands on the wrong calendar day for viewers in another zone. Request, job, exception and operation timestamps also use it instead of the server's OS zone; on a host whose server runs in UTC with a different `config.time_zone`, those pages now show the configured zone. (#303)
@@ -30,6 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Weekly and monthly summaries written by `SummaryJob` now include the period's last day. (#279)
+- Backfill date arguments are read in the app's time zone, so backfilled summaries land on the same period boundaries the scheduled job writes instead of UTC midnights. (#279)
 - **The exception-group row cap no longer counts preserved and ignored groups.** Once those exempt groups approached the cap, every cleanup run deleted the oldest deletable groups without ever getting under it. The cap now applies to deletable groups only. (#285)
 
 ## [0.4.2] - 2026-10-01

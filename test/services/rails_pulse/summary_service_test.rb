@@ -14,7 +14,8 @@ module RailsPulse
       RailsPulse::JobRun.delete_all
       RailsPulse::ExceptionOccurrence.delete_all
       @route = rails_pulse_routes(:api_users)
-      @hour_start = Time.current.beginning_of_hour
+      # The service only summarizes finished periods, so use the last full hour.
+      @hour_start = 1.hour.ago.beginning_of_hour
     end
 
     # ============================================================================
@@ -169,7 +170,7 @@ module RailsPulse
 
         private
 
-        def query_summary_rows
+        def summary_rows
           @open_transactions_while_computing = RailsPulse::ApplicationRecord.connection.open_transactions
           super
         end
@@ -220,6 +221,22 @@ module RailsPulse
       assert_nil summary.p99_duration
       assert_nil summary.stddev_duration
     end
+    # ============================================================================
+    # In-Progress Periods
+    # ============================================================================
+
+    test "a period that has not ended is not summarized" do
+      RailsPulse::Request.create!(
+        route: @route, duration: 50.0, status: 200,
+        request_uuid: SecureRandom.uuid, occurred_at: Time.current
+      )
+
+      SummaryService.new("hour", Time.current).perform
+      SummaryService.new("day", Time.current).perform
+
+      assert_equal 0, Summary.count
+    end
+
     private
 
     def create_request(duration:, status:, route: @route)

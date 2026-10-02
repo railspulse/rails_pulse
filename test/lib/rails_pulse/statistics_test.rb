@@ -137,5 +137,45 @@ module RailsPulse
 
       assert_in_delta 79.06, result, 1.0
     end
+    # Pooled Standard Deviation Tests
+
+    test "pooled_stddev equals calculate_stddev over the groups' values combined" do
+      groups = [ [ 10, 20, 30 ], [ 100, 400 ] ]
+      combined = groups.flatten
+
+      expected = Statistics.calculate_stddev(combined, combined.sum.to_f / combined.size)
+
+      assert_in_delta expected, pooled_stddev_of(groups), 1e-9
+    end
+
+    test "pooled_stddev counts single-value groups by their distance from the mean" do
+      assert_in_delta Statistics.calculate_stddev([ 100, 200 ], 150.0), pooled_stddev_of([ [ 100 ], [ 200 ] ]), 1e-9
+    end
+
+    test "pooled_stddev returns nil for fewer than two values in total" do
+      assert_nil pooled_stddev_of([])
+      assert_nil pooled_stddev_of([ [ 100 ] ])
+    end
+
+    test "pooled_stddev is zero, not NaN, when every value is equal" do
+      assert_in_delta 0.0, pooled_stddev_of([ [ 0.1, 0.1, 0.1 ], [ 0.1, 0.1 ] ])
+    end
+
+    private
+
+    # The sums a GROUP BY over per-group summaries produces.
+    def pooled_stddev_of(groups)
+      stats = groups.map do |values|
+        mean = values.sum.to_f / values.size
+        [ values.size, mean, Statistics.calculate_stddev(values, mean) ]
+      end
+
+      Statistics.pooled_stddev(
+        count: stats.sum { |n, _, _| n },
+        within_sum: stats.sum { |n, _, s| (n - 1) * (s || 0)**2 },
+        weighted_mean_sum: stats.sum { |n, m, _| n * m },
+        weighted_square_sum: stats.sum { |n, m, _| n * m * m }
+      )
+    end
   end
 end

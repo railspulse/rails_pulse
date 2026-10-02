@@ -171,7 +171,11 @@ module RailsPulse
     end
 
     class << self
+      # A Date is read as midnight in Time.zone, the aggregation zone, so
+      # boundaries are always times: Date#end_of_week is the last day itself,
+      # and a period ending there would drop that whole day.
       def calculate_period_end(period_type, start_time)
+        start_time = start_time.in_time_zone if start_time.is_a?(Date)
         case period_type
         when "hour"  then start_time.end_of_hour
         when "day"   then start_time.end_of_day
@@ -181,6 +185,7 @@ module RailsPulse
       end
 
       def normalize_period_start(period_type, time)
+        time = time.in_time_zone if time.is_a?(Date)
         case period_type
         when "hour"  then time.beginning_of_hour
         when "day"   then time.beginning_of_day

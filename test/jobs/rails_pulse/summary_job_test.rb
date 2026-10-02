@@ -165,8 +165,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to midnight
-
+      travel_to midnight + 65.minutes
       SummaryJob.new.perform(midnight)
 
       # Should have both hourly and daily summaries
@@ -184,8 +183,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to non_midnight
-
+      travel_to non_midnight + 65.minutes
       SummaryJob.new.perform(non_midnight)
 
       # Should only have hourly summary
@@ -204,8 +202,7 @@ module RailsPulse
         create_request_with_operation(duration: 150)
       end
 
-      travel_to midnight
-
+      travel_to midnight + 65.minutes
       SummaryJob.new.perform(midnight)
 
       # Daily summary should be for previous day (March 3)
@@ -232,8 +229,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to midnight
-
+      travel_to midnight + 65.minutes
       SummaryJob.new.perform(midnight)
 
       daily_summary = RailsPulse::Summary.where(period_type: "day").first
@@ -267,8 +263,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to monday_midnight
-
+      travel_to monday_midnight + 65.minutes
       SummaryJob.new.perform(monday_midnight)
 
       # Should have hourly, daily, and weekly summaries
@@ -291,8 +286,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to tuesday_midnight
-
+      travel_to tuesday_midnight + 65.minutes
       SummaryJob.new.perform(tuesday_midnight)
 
       # Should have hourly and daily, but not weekly
@@ -311,8 +305,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to monday_afternoon
-
+      travel_to monday_afternoon + 65.minutes
       SummaryJob.new.perform(monday_afternoon)
 
       # Should only have hourly (not daily or weekly)
@@ -339,8 +332,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to monday_midnight
-
+      travel_to monday_midnight + 65.minutes
       SummaryJob.new.perform(monday_midnight)
 
       # Weekly summary should start from previous week's Monday
@@ -370,8 +362,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to friday_midnight
-
+      travel_to friday_midnight + 65.minutes
       SummaryJob.new.perform(friday_midnight)
 
       assert RailsPulse::Summary.exists?(period_type: "day")
@@ -400,8 +391,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to first_day_midnight
-
+      travel_to first_day_midnight + 65.minutes
       SummaryJob.new.perform(first_day_midnight)
 
       # Should have hourly, daily, and monthly summaries
@@ -425,8 +415,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to second_day_midnight
-
+      travel_to second_day_midnight + 65.minutes
       SummaryJob.new.perform(second_day_midnight)
 
       # Should have hourly and daily, but not monthly
@@ -453,8 +442,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to first_day_midnight
-
+      travel_to first_day_midnight + 65.minutes
       SummaryJob.new.perform(first_day_midnight)
 
       # Monthly summary should be for February
@@ -479,8 +467,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to first_day_afternoon
-
+      travel_to first_day_afternoon + 65.minutes
       SummaryJob.new.perform(first_day_afternoon)
 
       assert RailsPulse::Summary.exists?(period_type: "hour")
@@ -515,8 +502,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to monday_first_midnight
-
+      travel_to monday_first_midnight + 65.minutes
       SummaryJob.new.perform(monday_first_midnight)
 
       # Should have all four summary types
@@ -537,8 +523,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to regular_time
-
+      travel_to regular_time + 65.minutes
       SummaryJob.new.perform(regular_time)
 
       # Should only have hourly
@@ -604,8 +589,7 @@ module RailsPulse
         create_request_with_operation(duration: 100)
       end
 
-      travel_to exact_midnight
-
+      travel_to exact_midnight + 65.minutes
       assert_nothing_raised do
         SummaryJob.new.perform(exact_midnight)
       end

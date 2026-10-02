@@ -30,7 +30,7 @@ module RailsPulse
     # Basic Functionality Tests
     # ============================================================================
 
-    test "perform converts string dates to datetime" do
+    test "perform accepts string dates" do
       start_str = "2024-01-01"
       end_str = "2024-01-02"
 
@@ -243,14 +243,37 @@ module RailsPulse
     end
 
     test "backfill handles multiple period types in one call" do
-      start_time = 1.day.ago.beginning_of_day
-      end_time = 1.day.ago.end_of_day
+      # A week containing yesterday is usually still in progress, and only
+      # finished periods are summarized, so use the last full week.
+      start_time = 2.weeks.ago.beginning_of_week
+      end_time = start_time.end_of_week
 
       BackfillSummariesJob.new.perform(start_time, end_time, [ "hour", "day", "week" ])
 
       assert RailsPulse::Summary.exists?(period_type: "hour")
       assert RailsPulse::Summary.exists?(period_type: "day")
       assert RailsPulse::Summary.exists?(period_type: "week")
+    end
+
+    test "date arguments mean local midnight, so the final day is summarized in zones behind UTC" do
+      Time.use_zone("America/New_York") do
+        travel_to Time.zone.parse("2024-03-08 12:00") do
+          RailsPulse::Request.create!(
+            route: rails_pulse_routes(:api_users), duration: 100, status: 200,
+            request_uuid: SecureRandom.uuid, occurred_at: Time.zone.parse("2024-03-04 10:00")
+          )
+
+          BackfillSummariesJob.new.perform(Date.new(2024, 3, 3), Date.new(2024, 3, 4), [ "day" ])
+
+          last_day = RailsPulse::Summary.find_by(
+            summarizable_type: "RailsPulse::Request", summarizable_id: 0,
+            period_type: "day", period_start: Time.zone.parse("2024-03-04 00:00")
+          )
+
+          assert_not_nil last_day, "the final requested day should be summarized"
+          assert_equal 1, last_day.count
+        end
+      end
     end
 
     # ============================================================================
