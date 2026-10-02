@@ -805,9 +805,12 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     @query1 = rails_pulse_queries(:simple_query)
     @query2 = rails_pulse_queries(:complex_query)
 
-    # Generate summary data for the current hour (where fixtures exist)
-    service = RailsPulse::SummaryService.new("hour", Time.current.beginning_of_hour)
-    service.perform
+    # Generate summary data for the current hour (where fixtures exist); the
+    # service refuses unfinished periods, so run it from just past the hour.
+    hour = Time.current.beginning_of_hour
+    travel_to hour + 61.minutes do
+      RailsPulse::SummaryService.new("hour", hour).perform
+    end
   end
 
   def create_test_query_with_operations

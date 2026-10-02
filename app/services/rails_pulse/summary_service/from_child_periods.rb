@@ -51,7 +51,7 @@ module RailsPulse
 
       # Always exactly one row, even for an empty period (see SummaryService).
       def request_rows
-        combined = combined_children.fetch([ "RailsPulse::Request", 0 ], nil)
+        combined = combined_of("RailsPulse::Request")[0]
 
         [ row("RailsPulse::Request", 0).merge(duration_metrics(combined), status_metrics(combined)) ]
       end
@@ -100,7 +100,7 @@ module RailsPulse
         { summarizable_type: summarizable_type, summarizable_id: summarizable_id }
       end
 
-      # { [summarizable_type, summarizable_id] => { aggregate => value } }.
+      # { summarizable_type => { summarizable_id => { aggregate => value } } }.
       # Empty children (an idle hour's count-0 heartbeat) are left out; they
       # add nothing, and an idle period falls back to empty metrics.
       def combined_children
@@ -109,14 +109,14 @@ module RailsPulse
           .where(count: 1..)
           .group(:summarizable_type, :summarizable_id)
           .pluck(:summarizable_type, :summarizable_id, *AGGREGATES.values.map { |sql| Arel.sql(sql) })
-          .to_h { |type, id, *values| [ [ type, id ], AGGREGATES.keys.zip(values).to_h ] }
+          .each_with_object({}) do |(type, id, *values), by_type|
+            (by_type[type] ||= {})[id] = AGGREGATES.keys.zip(values).to_h
+          end
       end
 
       # { summarizable_id => combined } for one summarizable type.
       def combined_of(summarizable_type)
-        combined_children.each_with_object({}) do |((type, id), combined), by_id|
-          by_id[id] = combined if type == summarizable_type
-        end
+        combined_children.fetch(summarizable_type, {})
       end
 
       def duration_metrics(combined)
@@ -127,7 +127,12 @@ module RailsPulse
 
         {
           count: count,
-          avg_duration: total / count,
+          # Count-weighted mean of the children's averages: identical to
+          # total / count where every row has a duration (requests, routes,
+          # queries), and consistent with the children for jobs, whose count
+          # includes runs with no recorded duration (discarded runs) that
+          # total / count would dilute the average with.
+          avg_duration: combined[:weighted_mean_sum].to_f / count,
           min_duration: combined[:min_duration]&.to_f,
           max_duration: combined[:max_duration]&.to_f,
           total_duration: total,

@@ -9,7 +9,8 @@ module RailsPulse
   #
   # Every period gets one overall request row (type RailsPulse::Request,
   # summarizable_id 0), written even when the period is empty (count: 0) so
-  # its timestamp keeps advancing every period. It is the heartbeat several
+  # its timestamp keeps advancing every period — and only once the period
+  # has ended. It is the heartbeat several
   # health checks use to detect whether SummaryJob is still running
   # (dashboard banner, rails_pulse:status, StoragePressure staleness, and
   # CleanupService's summarized_cutoff), and the marker this service uses to
@@ -37,6 +38,17 @@ module RailsPulse
     end
 
     def perform
+      # A period is summarized only once it has ended. The overall request
+      # row doubles as the heartbeat that CleanupService's summarized_cutoff
+      # and summarize_missing_child_periods trust to mean "fully aggregated";
+      # written mid-period, it would let cleanup delete raw rows that were
+      # never counted and let a later rollup bake the partial numbers in as
+      # final.
+      if end_time >= Time.current
+        RailsPulse.logger.info "Skipping #{period_type} summary for #{start_time}: period has not ended"
+        return
+      end
+
       RailsPulse.logger.info "Starting #{period_type} summary for #{start_time}"
 
       summarize_missing_child_periods if rollup?
@@ -135,16 +147,14 @@ module RailsPulse
       CHILD_PERIOD_TYPES.fetch(period_type)
     end
 
-    # The child periods that have finished. One still in progress (or in the
-    # future, when a backfill reaches today) is left out: writing its
-    # heartbeat row early would advance CleanupService's summarized_cutoff
-    # past rows that have not been summarized yet.
+    # Every child boundary inside this period. perform refuses periods that
+    # have not ended, so a rollup's children have all ended too.
     def child_period_starts
       @child_period_starts ||= begin
         step = CHILD_PERIOD_STEPS.fetch(child_period_type)
         starts = []
         current = start_time
-        while current <= end_time && Summary.calculate_period_end(child_period_type, current) < Time.current
+        while current <= end_time
           starts << current
           current += step
         end

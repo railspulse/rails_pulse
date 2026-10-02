@@ -88,6 +88,20 @@ module RailsPulse
       assert_equal 1, job_day.error_count
     end
 
+    test "a day's job metrics ignore runs without a recorded duration, as the hours do" do
+      job = rails_pulse_jobs(:report_job)
+      job_run_at(@day + 1.hour, 100, job, "success")
+      job_run_at(@day + 1.hour, nil, job, "discarded")
+
+      summarize("day", @day)
+      job_day = summary("RailsPulse::Job", job.id, "day", @day)
+
+      assert_equal 2, job_day.count
+      assert_equal 1, job_day.error_count
+      assert_in_delta 100.0, job_day.avg_duration
+      assert_in_delta 100.0, job_day.p95_duration
+    end
+
     test "a day's exception counts are the sums of its hours'" do
       with_exception_tracking do
         group = rails_pulse_exception_groups(:record_not_found)
@@ -168,8 +182,8 @@ module RailsPulse
 
       summarize("hour", @day)
 
-      # One for the overall row, one for every route together.
-      assert_equal 2, request_reads
+      # One read serves the overall row and every route's.
+      assert_equal 1, request_reads
       route_summary = summary("RailsPulse::Route", other_route.id, "hour", @day)
 
       assert_in_delta 200.0, route_summary.min_duration
@@ -212,18 +226,6 @@ module RailsPulse
     end
 
     # Edge Cases
-
-    test "a day still in progress leaves its unfinished hours unsummarized" do
-      today = Time.current.beginning_of_day
-      request_at(today + 1.hour, 100)
-
-      summarize("day", today)
-
-      hour_starts = RailsPulse::Summary.where(period_type: "hour", summarizable_type: "RailsPulse::Request", summarizable_id: 0).pluck(:period_start)
-
-      assert_equal 12, hour_starts.size
-      assert_operator hour_starts.max, :<, Time.current.beginning_of_hour
-    end
 
     test "an empty day still writes its overall heartbeat row with count 0" do
       summarize("day", @day)

@@ -5,9 +5,10 @@ module RailsPulse
     #
     # Each kind is read with one query, sorted by summarizable and then
     # duration so every summarizable's durations arrive as one consecutive,
-    # already-sorted run. Memory is bounded by one hour's rows, and the hour
-    # costs one query per kind however many routes, queries or jobs it saw.
-    # Percentiles are exact.
+    # already-sorted run; the overall request row and the per-route rows
+    # share a single read. Memory is bounded by one hour's rows, and the
+    # hour costs one query per kind however many routes, queries or jobs it
+    # saw. Percentiles are exact.
     #
     # Rows carry the summarizable and its metrics; SummaryService adds the
     # period columns.
@@ -18,19 +19,20 @@ module RailsPulse
 
       # Always exactly one row, even for an empty hour (see SummaryService).
       def request_rows
-        rows = Request.where(occurred_at: @time_range).order(:duration).pluck(:duration, :status)
+        durations = request_data.map { |_, duration, _| duration }.compact.sort
+        statuses = request_data.map { |_, _, status| status }
 
-        [
-          row("RailsPulse::Request", 0)
-            .merge(Metrics.duration(rows.map(&:first).compact), Metrics.status(rows.map(&:second)))
-        ]
+        [ row("RailsPulse::Request", 0).merge(Metrics.duration(durations), Metrics.status(statuses)) ]
       end
 
       def route_rows
-        rows_by_summarizable(Request.where(occurred_at: @time_range), :route_id, :status).map do |route_id, rows|
-          row("RailsPulse::Route", route_id).merge(
-            Metrics.duration(rows.map(&:first).compact),
-            Metrics.status(rows.map(&:second)),
+        request_data.slice_when { |previous, current| previous.first != current.first }.map do |rows|
+          durations = rows.map { |_, duration, _| duration }
+          statuses = rows.map { |_, _, status| status }
+
+          row("RailsPulse::Route", rows.first.first).merge(
+            Metrics.duration(durations),
+            Metrics.status(statuses),
             count: rows.size
           )
         end
@@ -84,6 +86,16 @@ module RailsPulse
 
       def row(summarizable_type, summarizable_id)
         { summarizable_type: summarizable_type, summarizable_id: summarizable_id }
+      end
+
+      # One read serves the overall request row and every route's. route_id
+      # and duration are NOT NULL on requests, so ordering by (route_id,
+      # duration) hands each route its durations already sorted.
+      def request_data
+        @request_data ||= Request
+          .where(occurred_at: @time_range)
+          .order(:route_id, :duration)
+          .pluck(:route_id, :duration, :status)
       end
 
       # [[summarizable_id, [[duration, *extra_columns], ...]], ...], with
