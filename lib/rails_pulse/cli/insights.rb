@@ -39,7 +39,7 @@ module RailsPulse
 
       def print_period(period)
         say "#{period['type'].to_s.capitalize} from #{period['start']} to #{period['end']}"
-        say "  not summarized yet — nothing below can be read from it" unless period["summarized"]
+        say "  not fully summarized yet — what follows may be incomplete" unless period["summarized"]
         say ""
       end
 

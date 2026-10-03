@@ -425,7 +425,7 @@ module RailsPulse
         ))
         out, _err = run_insights
 
-        assert_includes out, "not summarized yet"
+        assert_includes out, "not fully summarized yet"
         assert_includes out, "nothing past its thresholds"
         assert_includes out, "none — the thresholds fit this period"
       end

@@ -112,6 +112,21 @@ module RailsPulse
                      "Degraded: bbb222 (p95_response_time, error_rate).", data["summary"]
       end
 
+      test "deployments next_steps skip a pending deployment for one that was compared" do
+        clean = COMPARED_RESPONSE["data"][1].merge("comparison" => COMPARED_RESPONSE["data"][1]["comparison"].merge("outcome" => "clean"))
+        response = COMPARED_RESPONSE.merge("data" => [ COMPARED_RESPONSE["data"][0], clean ])
+        _, data = call(Tools::Deployments, client("/deployments" => response))
+
+        assert_includes data["next_steps"].first, "bbb222"
+      end
+
+      test "deployments next_steps fall back to since when only a pending deployment is listed" do
+        response = COMPARED_RESPONSE.merge("data" => [ COMPARED_RESPONSE["data"][0] ])
+        _, data = call(Tools::Deployments, client("/deployments" => response))
+
+        assert_includes data["next_steps"].first, 'since: "2026-06-03T09:00:00Z"'
+      end
+
       test "deployments next_steps compare the hours either side of a degraded deployment" do
         _, data = call(Tools::Deployments, client("/deployments" => COMPARED_RESPONSE))
         step = data["next_steps"].first

@@ -76,11 +76,23 @@ module RailsPulse
       # Edge Cases
 
       test "a period not yet summarized says so" do
-        response = INSIGHTS_RESPONSE.merge("period" => INSIGHTS_RESPONSE["period"].merge("summarized" => false))
+        response = INSIGHTS_RESPONSE.merge(
+          "period" => INSIGHTS_RESPONSE["period"].merge("summarized" => false),
+          "needs_attention" => { "critical" => [], "warning" => [], "total" => 0 }
+        )
         _, data = call(StubClient.new(response))
 
         assert_includes data["summary"], "has not been summarized yet"
         assert_includes data["next_steps"].first, "rails_pulse_coverage"
+      end
+
+      test "items in a period without its overall row are listed with a caveat" do
+        response = INSIGHTS_RESPONSE.merge("period" => INSIGHTS_RESPONSE["period"].merge("summarized" => false))
+        _, data = call(StubClient.new(response))
+
+        assert_includes data["summary"], "1 critical, 1 warning"
+        assert_includes data["summary"], "may be incomplete"
+        assert_includes data["next_steps"].first, "rails_pulse_endpoint"
       end
 
       test "nothing past its thresholds suggests comparing an earlier period" do

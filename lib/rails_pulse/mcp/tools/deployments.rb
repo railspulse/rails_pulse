@@ -77,10 +77,14 @@ module RailsPulse
             return [ "Record deployments via `rails_pulse:record_deployment` or POST /deployments so an investigation can be pinned to a release." ]
           end
 
-          target = deployments.find { |d| outcome(d) == "degraded" } || deployments.first
+          # The hour after a pending deployment has not been summarized, so
+          # point at one that can be compared when there is one.
+          target = deployments.find { |d| outcome(d) == "degraded" } ||
+            deployments.find { |d| d[:comparison] && outcome(d) != "pending" } ||
+            deployments.first
           before = target.dig(:comparison, "before")
           after = target.dig(:comparison, "after")
-          unless before && after
+          unless before && after && outcome(target) != "pending"
             return [ "Call rails_pulse_slow_requests and rails_pulse_errors with since: \"#{target[:started_at]}\" " \
                      "and compare against the same length of time before it." ]
           end

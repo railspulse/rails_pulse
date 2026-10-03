@@ -60,22 +60,25 @@ module RailsPulse
         end
 
         private_class_method def self.build_summary(period, attention, recommendations)
-          return "The #{period['type']} starting #{period['start']} has not been summarized yet." unless period["summarized"]
-
           critical = Array(attention["critical"]).size
           warning = Array(attention["warning"]).size
+          if !period["summarized"] && critical.zero? && warning.zero?
+            return "The #{period['type']} starting #{period['start']} has not been summarized yet."
+          end
+
           parts = [ "#{period['type'].to_s.capitalize} starting #{period['start']}: #{critical} critical, #{warning} warning." ]
           parts << "#{recommendations.size} threshold change(s) suggested." if recommendations.any?
+          parts << "SummaryJob has not finished this period, so the list may be incomplete." unless period["summarized"]
           parts.join(" ")
         end
 
         private_class_method def self.build_next_steps(period, attention, recommendations)
-          unless period["summarized"]
+          items = Array(attention["critical"]) + Array(attention["warning"])
+          if !period["summarized"] && items.empty?
             return [ "Pass an earlier 'at', or call rails_pulse_coverage to see how far summaries reach." ]
           end
 
           steps = []
-          items = Array(attention["critical"]) + Array(attention["warning"])
           if (route = items.find { |i| i["type"] == "route" })
             steps << "Profile #{route['name']} with rails_pulse_endpoint, and pass route: #{route['id']} to " \
                      "rails_pulse_queries for the SQL inside it."
