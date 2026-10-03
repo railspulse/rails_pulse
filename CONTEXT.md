@@ -64,6 +64,10 @@ _Avoid_: label, category, flag
 A row recorded by the rake tasks or the deployments API with a revision, `started_at` and optional `finished_at` and metadata. Charts draw deployments as vertical markers so a change lines up with a release.
 _Avoid_: release, deploy marker (the marker is how a Deployment is drawn, not the row)
 
+**Deployment comparison**:
+A Deployment's hour before against its hour after, from the hourly overall request summaries, skipping the hour the deploy started in. A response-time metric is `degraded` past 1.5x and the error rate past 1.25x; under 10 requests in either hour is `insufficient_data`, and the comparison is `pending` until the hour after is summarized. Computed when asked for, never stored.
+_Avoid_: regression (reserved for the baseline comparison and its `regression_thresholds`), deploy check
+
 ### Collection
 
 **API token**:

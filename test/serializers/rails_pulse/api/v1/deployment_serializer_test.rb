@@ -25,7 +25,14 @@ module RailsPulse
         test "returns a hash with exactly the expected keys" do
           result = DeploymentSerializer.serialize(@deployment)
 
-          assert_equal %i[id revision short_revision started_at finished_at duration_seconds in_progress metadata], result.keys
+          assert_equal %i[id revision short_revision started_at finished_at duration_seconds in_progress metadata comparison], result.keys
+        end
+
+        test "includes the comparison it is given" do
+          comparison = { outcome: "clean" }
+          result = DeploymentSerializer.serialize(@deployment, comparison: comparison)
+
+          assert_equal comparison, result[:comparison]
         end
 
         test "serializes an in-progress deployment" do

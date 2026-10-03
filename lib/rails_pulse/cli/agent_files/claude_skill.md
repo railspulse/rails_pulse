@@ -33,7 +33,7 @@ All tools are read-only. Each returns a `summary` and `next_steps`.
 | `rails_pulse_endpoint` | Deep profile of one endpoint |
 | `rails_pulse_queries` | Most expensive SQL queries, with N+1 detection |
 | `rails_pulse_jobs` | Background job health and recent failures with error classes |
-| `rails_pulse_deployments` | Recent deployments with revision, start and finish time, and metadata |
+| `rails_pulse_deployments` | Recent deployments with timing, metadata, and whether each one degraded response time or error rate |
 
 ### CLI
 
@@ -48,7 +48,7 @@ The `rails-pulse` executable ships with the gem. Add `--json` for structured out
 | `rails-pulse job_runs list --json` | Individual job runs with error class and message |
 | `rails-pulse exceptions list --json` | Exception groups with status, count, location and message |
 | `rails-pulse exceptions show ID --json` | One group with backtraces, request, params and deploy SHA |
-| `rails-pulse deployments list --json` | Recorded deployments, most recent first |
+| `rails-pulse deployments list --json` | Recorded deployments, most recent first, each with its before/after comparison |
 | `rails-pulse coverage show --json` | What has been recorded, how recently, and any collection gaps |
 
 ## Investigation workflow
@@ -62,7 +62,12 @@ rails_pulse_deployments(period: "last_7_days")
 rails-pulse deployments list --json
 ```
 
-Use a deployment's `started_at` as `since` for the tools below, then compare against the same length of time before it.
+Each deployment carries a `comparison` of the hour before the deploy against the hour after it.
+`degraded` means average or p95 response time got more than 1.5x worse, or the error rate more
+than 1.25x worse; the `metrics` say which. `insufficient_data` means fewer than 10 requests in
+either hour, so it is not an all-clear, and `pending` means the hour after has not been
+summarized yet. Use the `before` and `after` bounds as `since`/`until` for the tools below to see
+which endpoints changed.
 
 ### 2. Identify affected endpoints
 

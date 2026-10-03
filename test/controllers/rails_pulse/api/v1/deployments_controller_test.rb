@@ -46,6 +46,29 @@ module RailsPulse
           assert_nil running["duration_seconds"]
         end
 
+        test "attaches the before and after comparison to each deployment" do
+          RailsPulse::Summary.delete_all
+          deploy_hour = @middle.started_at.beginning_of_hour
+          overall_row(deploy_hour - 1.hour, avg: 100.0)
+          overall_row(deploy_hour + 1.hour, avg: 200.0)
+
+          get rails_pulse.api_v1_deployments_path, headers: HEADERS
+          middle = JSON.parse(response.body)["data"].find { |d| d["revision"] == "bbb222" }
+          avg = middle["comparison"]["metrics"].find { |m| m["metric"] == "avg_response_time" }
+
+          assert_equal "degraded", middle["comparison"]["outcome"]
+          assert_equal 20, middle["comparison"]["before"]["requests"]
+          assert_in_delta 2.0, avg["ratio"]
+        end
+
+        test "a deployment whose hour after has not been summarized is pending" do
+          get rails_pulse.api_v1_deployments_path, headers: HEADERS
+          running = JSON.parse(response.body)["data"].first
+
+          assert_equal "pending", running["comparison"]["outcome"]
+          assert_predicate running["comparison"]["note"], :present?
+        end
+
         test "filters by since and until" do
           get rails_pulse.api_v1_deployments_path, headers: HEADERS,
               params: { since: 1.day.ago.iso8601, until: 1.hour.ago.iso8601 }
@@ -75,6 +98,16 @@ module RailsPulse
 
           assert_empty body["data"]
           assert_equal 0, body["meta"]["total"]
+        end
+
+        private
+
+        def overall_row(period_start, avg:)
+          RailsPulse::Summary.create!(
+            summarizable_type: "RailsPulse::Request", summarizable_id: 0, period_type: "hour",
+            period_start: period_start, period_end: period_start.end_of_hour,
+            count: 20, avg_duration: avg, p95_duration: avg, error_count: 0, success_count: 20
+          )
         end
       end
     end

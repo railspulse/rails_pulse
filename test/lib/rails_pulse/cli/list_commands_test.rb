@@ -394,6 +394,26 @@ module RailsPulse
         assert_match(/def456\s+t3/, out)
       end
 
+      test "deployments list shows each deployment's comparison outcome" do
+        stub_list("data" => [
+          { "short_revision" => "abc123", "started_at" => "t1", "finished_at" => "t2", "comparison" => { "outcome" => "degraded" } },
+          { "short_revision" => "def456", "started_at" => "t3", "finished_at" => "t4", "comparison" => { "outcome" => "pending" } }
+        ], "meta" => { "total" => 2 })
+        out, _err = run_cmd(Deployments)
+
+        assert_match(/COMPARED/, out)
+        assert_match(/abc123\s+t1\s+t2\s+degraded/, out)
+        assert_match(/def456\s+t3\s+t4\s+pending/, out)
+      end
+
+      test "deployments list --json passes the comparison through unchanged" do
+        response = { "data" => [ { "short_revision" => "abc123", "comparison" => { "outcome" => "clean" } } ], "meta" => { "total" => 1 } }
+        stub_list(response)
+        out, _err = run_cmd(Deployments, json: true)
+
+        assert_equal response, JSON.parse(out)
+      end
+
       test "deployments list omits since and until when not provided" do
         stub_list
         run_cmd(Deployments)

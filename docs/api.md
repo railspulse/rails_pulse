@@ -94,6 +94,17 @@ header.
   still returned. When it is above 1 the response's `meta` carries `min_requests` and
   `routes_with_traffic`, which separate "nothing ran in this window" from "nothing ran often
   enough".
+- `deployments` carries a `comparison` on every row: the hour before the hour the deploy
+  started in against the hour after it, read from the hourly overall request summaries (the
+  deploy hour itself mixes both versions and is skipped). Each of `avg_response_time`,
+  `p95_response_time` and `error_rate` is `degraded` when it is more than its `multiplier`
+  worse afterwards (1.5 for the two response times, 1.25 for the error rate; errors where there
+  were none is `degraded` with a `ratio` of null), `clean` otherwise, and `insufficient_data`
+  when either hour had fewer than 10 requests. The overall `outcome` is `degraded` if any
+  metric degraded, `pending` until the hour after has been summarized, and
+  `insufficient_data` when the hours were too quiet or have aged out of
+  `config.hourly_summary_retention`; `note` says which. It is computed on each request and
+  never stored or sent anywhere.
 - `POST deployments` and `PUT deployments/finish` are the existing endpoints CI calls to
   record a release (the same action as the `rails_pulse:record_deployment` and
   `rails_pulse:finish_deployment` rake tasks below). They sit outside the `api/v1` read-only
