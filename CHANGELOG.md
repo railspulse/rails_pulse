@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0.pre.1] - 2026-10-03
+
 ### Added
 
 - **JSON API, `rails-pulse` CLI and MCP server.** A read-only API under `/rails_pulse/api/v1`, a `rails-pulse` executable and an MCP server (`rails-pulse mcp`; add `gem "mcp"` to your Gemfile) give scripts, CI and coding agents what the dashboard shows: routes, requests, queries, jobs, job runs, exceptions and deployments. (#309)
