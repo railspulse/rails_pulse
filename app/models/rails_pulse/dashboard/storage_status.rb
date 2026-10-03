@@ -34,7 +34,7 @@ module RailsPulse
           name: :rails_pulse_summaries,
           model: "RailsPulse::Summary",
           label: "Summaries",
-          description: "Hourly and daily aggregates used by charts. Hourly rows older than 2 days are cleaned up",
+          description: "Hourly and daily aggregates used by charts. Hourly rows are cleaned up after 7 days by default (hourly_summary_retention)",
           time_column: :period_start
         },
         {

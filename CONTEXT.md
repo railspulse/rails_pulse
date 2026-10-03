@@ -43,7 +43,7 @@ A pre-aggregated row for one subject (a Route, Query, Job, or the overall reques
 _Avoid_: rollup, metric, stat
 
 **Period type**:
-The bucket size of a Summary: `hour`, `day`, `week` or `month`. Hourly summaries are pruned after `hourly_summary_retention` (default two days); the others follow the full retention period.
+The bucket size of a Summary: `hour`, `day`, `week` or `month`. Hourly summaries are pruned after `hourly_summary_retention` (default seven days); the others follow the full retention period.
 _Avoid_: granularity, interval, resolution
 
 **Baseline and comparison window**:

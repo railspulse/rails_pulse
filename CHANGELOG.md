@@ -13,6 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **What needs attention, and whether the thresholds fit.** `GET /rails_pulse/api/v1/insights`, `rails-pulse insights show` and the `rails_pulse_insights` tool list the routes, queries and jobs past their thresholds over one hour, day, week or month, and suggest an initializer line when `route_thresholds` or `query_thresholds` is too noisy or never fires.
 - **`rails rails_pulse:status` checks how the install is run.** It reports whether `SummaryJob` has skipped hours and whether `CleanupJob` is running, how long hourly summaries are kept, and whether jobs are tracked, and lists suggestions for each without changing the exit status. Each cleanup run is now recorded in `rails_pulse_events` so the task can tell.
 
+### Changed
+
+- **Hourly summaries are kept for 7 days instead of 2.** Deployment comparisons and hour-precise change points read them, so at 2 days a deploy from earlier in the week could no longer be compared. The summaries table holds about 3.5 times as many hourly rows; set `config.hourly_summary_retention = 2.days` to keep the old behaviour.
+
 ## [0.5.0.pre.1] - 2026-10-03
 
 ### Added

@@ -161,7 +161,7 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
 
   test "hourly summaries past retention are not counted as gaps" do
     assume_clean_install
-    overall_hours(5.days.ago, 2.hours.ago, 1.hour.ago)
+    overall_hours(10.days.ago, 2.hours.ago, 1.hour.ago)
 
     assert report
     assert_includes @output.string, "hourly: 2 consecutive hour(s) summarized"
