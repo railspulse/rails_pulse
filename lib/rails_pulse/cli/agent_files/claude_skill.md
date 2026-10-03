@@ -34,6 +34,7 @@ All tools are read-only. Each returns a `summary` and `next_steps`.
 | `rails_pulse_queries` | Most expensive SQL queries, with N+1 detection |
 | `rails_pulse_jobs` | Background job health and recent failures with error classes |
 | `rails_pulse_deployments` | Recent deployments with timing, metadata, and whether each one degraded response time or error rate |
+| `rails_pulse_insights` | What needs attention over one hour, day, week or month, and whether the thresholds fit it |
 
 ### CLI
 
@@ -50,6 +51,7 @@ The `rails-pulse` executable ships with the gem. Add `--json` for structured out
 | `rails-pulse exceptions show ID --json` | One group with backtraces, request, params and deploy SHA |
 | `rails-pulse deployments list --json` | Recorded deployments, most recent first, each with its before/after comparison |
 | `rails-pulse coverage show --json` | What has been recorded, how recently, and any collection gaps |
+| `rails-pulse insights show --period week --json` | What needs attention over one period, and suggested threshold changes |
 
 ## Investigation workflow
 
@@ -70,6 +72,14 @@ summarized yet. Use the `before` and `after` bounds as `since`/`until` for the t
 which endpoints changed.
 
 ### 2. Identify affected endpoints
+
+For "what should I look at", start with the needs-attention list for the last complete day or
+week; each item carries the route, query or job `id` to drill into.
+
+```
+rails_pulse_insights(period: "day")
+rails-pulse insights show --period week --json
+```
 
 ```
 rails_pulse_slow_requests(period: "last_24_hours", limit: 10)
@@ -144,6 +154,7 @@ makes them a mix of both versions.
 - **Read percentiles, not just averages.** A low average with a high p95 or p99 means intermittent trouble.
 - **Weigh request volume.** A slow endpoint nobody calls may not be worth the work.
 - **Job figures cover the window.** `rails_pulse_jobs` reads them from summaries plus the runs not yet summarized. p95 and p99 are given only when one summary period holds the whole window; otherwise they are null and `note` says why, so compare averages and failure rates instead.
+- **Threshold suggestions are a starting point.** `rails_pulse_insights` suggests a `config_snippet` from one period's data. Check the period was typical (not a deploy day or an incident) before proposing the change, and say which period it came from.
 - **Check what the percentiles covered.** `rails_pulse_endpoint` computes them over the most recent requests it sampled, not the whole window. When `sampled_requests` is below `request_count` it says so in `latency.computed_over`; narrow the window until the two match before comparing percentiles across windows.
 
 ## Authentication

@@ -89,6 +89,17 @@ header.
   whole length. Percentiles appear only when one summarized period holds every run in the
   window — they cannot be combined across periods — and `stats.percentiles_note` says so
   otherwise.
+- `GET insights` reads one summary period, `period` (`hour`, `day`, `week` or `month`, default
+  `week`), and `at` (ISO 8601) picks the period containing that time; without it, the last
+  complete period. One period rather than a window because a P95 cannot be combined across
+  periods. `needs_attention` lists the routes, queries and jobs past their slow or critical
+  thresholds by the dashboard's Needs Attention rules (`critical` first, ten at most, each with
+  its record `id`); `threshold_recommendations` checks `route_thresholds` and `query_thresholds`
+  against the period's ten slowest routes and ten most expensive queries and suggests a
+  `config_snippet` when a slow threshold is exceeded by at least three of them and 40% or more,
+  or nothing came within half of a critical threshold. `thresholds` echoes the current settings
+  and `period.summarized` says whether SummaryJob has written the period yet. An unknown
+  `period` or an invalid `at` is a `400`.
 - `routes` takes `min_requests` when a time window is given: routes with fewer requests in
   the window are excluded in SQL, before `limit`, so a busy route ranked below the limit is
   still returned. When it is above 1 the response's `meta` carries `min_requests` and
@@ -124,7 +135,8 @@ over HTTP — it never loads the Rails app or the engine, so nothing under `lib/
 may reference Rails, models, or configuration directly. `rails-pulse configure` prompts for a
 URL and token and writes `~/.rails-pulse`; credentials otherwise come from `RAILS_PULSE_URL`
 and `RAILS_PULSE_TOKEN`. Each API resource above has a matching subcommand
-(`routes`, `requests`, `queries`, `jobs`, `job_runs`, `exceptions`, `deployments`, `coverage`).
+(`routes`, `requests`, `queries`, `jobs`, `job_runs`, `exceptions`, `deployments`, `coverage`,
+`insights`).
 `rails-pulse install claude` writes an agent skill file to
 `~/.claude/skills/rails-pulse/SKILL.md`; `rails-pulse install agents` writes a
 framework-neutral descriptor to `./AGENTS.md`, and with `--append` adds a delimited Rails
@@ -136,9 +148,10 @@ duplicating.
 `rails-pulse mcp` (`lib/rails_pulse/mcp/`) starts an MCP server over stdio for AI coding
 agents, built on the same HTTP client as the CLI. It needs the `mcp` gem, which is a
 development dependency of this gem and not a runtime one: the host adds `gem "mcp"` to its
-own Gemfile, and without it the command exits 1 saying so. All ten tools are read-only
+own Gemfile, and without it the command exits 1 saying so. All eleven tools are read-only
 (`read_only_hint: true`) and named `rails_pulse_<resource>`: `routes`, `endpoint`, `queries`,
-`errors`, `exceptions`, `exception`, `jobs`, `slow_requests`, `deployments`, and `coverage`.
+`errors`, `exceptions`, `exception`, `jobs`, `slow_requests`, `deployments`, `coverage`, and
+`insights`.
 
 Every tool that takes a `period` also takes `since` and `until` as ISO 8601 timestamps, so a
 window can be pinned rather than measured relative to now — what makes a before/after-deploy
@@ -149,6 +162,8 @@ comparison repeatable. A timestamp with no zone is read as UTC. Explicit bounds 
 8601, an unknown period, a `since` in the future, or an `until` at or before `since` is an
 error naming the correction rather than a query. `rails_pulse_queries` takes `route` as the
 integer `route_id` the endpoint and slow-requests tools return, or as a string.
+`rails_pulse_insights` is the exception: it reads a whole summary period, chosen by `period`
+(`hour`, `day`, `week`, `month`) and `at`, rather than a window.
 
 ## Operations — regression detection
 

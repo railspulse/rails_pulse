@@ -29,7 +29,7 @@ module RailsPulse
         assert_equal RailsPulse::VERSION, server.version
       end
 
-      test "server registers all ten expected tools" do
+      test "server registers all eleven expected tools" do
         server = Server.build_server
         tool_names = server.tools.keys.sort
 
@@ -40,6 +40,7 @@ module RailsPulse
           rails_pulse_errors
           rails_pulse_exception
           rails_pulse_exceptions
+          rails_pulse_insights
           rails_pulse_jobs
           rails_pulse_queries
           rails_pulse_routes

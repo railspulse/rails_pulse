@@ -1,7 +1,7 @@
 module RailsPulse
   module Dashboard
     class NeedsAttention
-      include Concerns::ThresholdConstants
+      include Concerns::AttentionClassification
       include Concerns::TimeRangeHelper
 
       def initialize(disabled_tags: [], show_non_tagged: true, period: 7, window: nil)
@@ -70,7 +70,7 @@ module RailsPulse
           errors     = record.total_errors.to_i
           error_rate = total > 0 ? (errors * 100.0 / total).round(1) : 0.0
 
-          severity, reason, metric, metric_sub, sort_score = classify_route(p95, total, errors, error_rate)
+          severity, reason, metric, metric_sub, sort_score = classify_route(p95, total, errors, error_rate, "this week")
           next unless severity
 
           items << {
@@ -86,38 +86,6 @@ module RailsPulse
         end
 
         items
-      end
-
-      def classify_route(p95, total, errors, error_rate)
-        if p95 >= @route_thresholds[:critical] || error_rate >= CRITICAL_ERROR_RATE
-          if error_rate >= CRITICAL_ERROR_RATE
-            [ :critical,
-              "#{error_rate}% error rate · #{total} requests this week",
-              "#{errors} errors",
-              "P95 #{p95.round(0).to_i}ms",
-              errors * total.to_f ]
-          else
-            [ :critical,
-              "#{p95.round(0).to_i}ms P95 · exceeds #{@route_thresholds[:critical]}ms threshold",
-              "#{p95.round(0).to_i}ms P95",
-              "#{total} requests",
-              p95 ]
-          end
-        elsif p95 >= @route_thresholds[:slow] || error_rate >= WARNING_ERROR_RATE
-          if error_rate >= WARNING_ERROR_RATE && p95 < @route_thresholds[:slow]
-            [ :warning,
-              "#{error_rate}% error rate · #{total} requests this week",
-              "#{errors} errors",
-              "P95 #{p95.round(0).to_i}ms",
-              errors * total.to_f ]
-          else
-            [ :warning,
-              "#{p95.round(0).to_i}ms P95 · #{error_rate > 0 ? "#{error_rate}% error rate" : "above slow threshold"}",
-              "#{p95.round(0).to_i}ms P95",
-              "#{total} requests",
-              p95 ]
-          end
-        end
       end
 
       def query_items
@@ -142,26 +110,19 @@ module RailsPulse
           p95   = record.p95_duration.to_f
           count = record.total_count.to_i
 
-          if p95 >= @query_thresholds[:critical]
-            severity = :critical
-            reason   = "#{p95.round(0).to_i}ms P95 · exceeds #{@query_thresholds[:critical]}ms threshold"
-          elsif p95 >= @query_thresholds[:slow]
-            severity = :warning
-            reason   = "#{p95.round(0).to_i}ms P95 · above #{@query_thresholds[:slow]}ms slow threshold"
-          else
-            next
-          end
+          severity, reason, metric, metric_sub, sort_score = classify_query(p95, count)
+          next unless severity
 
           classified_ids << record.query_id
           items << {
             type:       "QUERY",
             name:       truncate_sql(record.normalized_sql),
             reason:     reason,
-            metric:     "#{p95.round(0).to_i}ms P95",
-            metric_sub: "#{count} execution#{count == 1 ? "" : "s"}",
+            metric:     metric,
+            metric_sub: metric_sub,
             link:       url_helpers.query_path(record.query_id),
             severity:   severity,
-            sort_score: p95,
+            sort_score: sort_score,
             monospace:  true
           }
         end
@@ -199,7 +160,9 @@ module RailsPulse
           failure_rate = job.failure_rate
           p95          = job.p95_duration.to_f
 
-          severity, reason, metric, metric_sub, sort_score = classify_job(job, failure_rate, p95)
+          severity, reason, metric, metric_sub, sort_score = classify_job(
+            failure_rate, p95, job.runs_count, job.failures_count, job.queue_name.presence || "default"
+          )
           next unless severity
 
           items << {
@@ -215,38 +178,6 @@ module RailsPulse
         end
 
         items
-      end
-
-      def classify_job(job, failure_rate, p95)
-        if failure_rate >= CRITICAL_JOB_FAILURE_RATE || p95 >= @job_thresholds[:critical]
-          if failure_rate >= CRITICAL_JOB_FAILURE_RATE
-            [ :critical,
-              "#{job.queue_name.presence || "default"} queue · #{failure_rate}% failure rate",
-              "#{job.failures_count} / #{job.runs_count} failed",
-              "P95 #{p95.round(0).to_i}ms",
-              job.failures_count * job.runs_count.to_f ]
-          else
-            [ :critical,
-              "P95 #{p95.round(0).to_i}ms · exceeds #{@job_thresholds[:critical]}ms threshold",
-              "#{p95.round(0).to_i}ms P95",
-              "#{job.runs_count} runs",
-              p95 ]
-          end
-        elsif failure_rate >= WARNING_JOB_FAILURE_RATE || p95 >= @job_thresholds[:slow]
-          if failure_rate >= WARNING_JOB_FAILURE_RATE
-            [ :warning,
-              "#{job.queue_name.presence || "default"} queue · #{failure_rate}% failure rate",
-              "#{job.failures_count} / #{job.runs_count} failed",
-              "P95 #{p95.round(0).to_i}ms",
-              job.failures_count * job.runs_count.to_f ]
-          else
-            [ :warning,
-              "P95 #{p95.round(0).to_i}ms · above slow threshold",
-              "#{p95.round(0).to_i}ms P95",
-              "#{job.runs_count} runs",
-              p95 ]
-          end
-        end
       end
 
       # Exception groups that fired often enough over the period to be worth
@@ -318,12 +249,6 @@ module RailsPulse
         RailsPulse::ExceptionGroup.table_exists?
       rescue ActiveRecord::ActiveRecordError
         false
-      end
-
-      def truncate_sql(sql)
-        return "" if sql.blank?
-        cleaned = sql.gsub(/\s+/, " ").strip
-        cleaned.length > 80 ? "#{cleaned[0..79]}..." : cleaned
       end
     end
   end
