@@ -33,6 +33,7 @@ module RailsPulse
       perform_summary_cleanup
 
       log_cleanup_summary
+      record_run
       raise @failures.first[:error] if @failures.any?
 
       @stats
@@ -378,6 +379,16 @@ module RailsPulse
           order_column: :period_start
         )
       end
+    end
+
+    # rails_pulse:status reads this to tell whether cleanup is scheduled. A
+    # failure to record must not turn a successful cleanup into a failed one.
+    def record_run
+      return unless RailsPulse::Event.table_available?
+
+      RailsPulse::CleanupRun.record!(stats: @stats, failed_stages: @failures.map { |failure| failure[:stage] })
+    rescue StandardError => e
+      RailsPulse.logger.error "Could not record the cleanup run: #{e.class}: #{e.message}"
     end
 
     # Returns the period_end of the most recent completed hourly overall-request

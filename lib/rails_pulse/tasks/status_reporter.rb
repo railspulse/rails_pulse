@@ -11,7 +11,20 @@ module RailsPulse
     # Anything that needs action is repeated in a closing "Action needed"
     # list, and `report` returns false in that case so release scripts can
     # stop on it.
+    #
+    # Below that, "Suggestions" covers how the install is run rather than
+    # whether it is current: SummaryJob or CleanupJob not running, hourly
+    # summaries kept too briefly, jobs not tracked. Development and test
+    # environments rarely schedule either job, so these never change the
+    # exit status.
     class StatusReporter
+      # Hourly summaries back deployment comparisons and hour-precise change
+      # points; below a week, last week's deploys can no longer be compared.
+      RECOMMENDED_HOURLY_RETENTION = 7.days
+
+      # CleanupJob is meant to run daily.
+      CLEANUP_STALE_AFTER = 2.days
+
       attr_reader :output, :config
 
       def self.report(output: $stdout)
@@ -22,6 +35,7 @@ module RailsPulse
         @output = output
         @config = RailsPulse.configuration
         @actions = []
+        @suggestions = []
       end
 
       # Returns true when nothing needs attention.
@@ -37,7 +51,11 @@ module RailsPulse
         print_tracking
         print_writer
         print_summaries
+        print_retention
+        print_cleanup
+        print_jobs
         print_actions
+        print_suggestions
 
         @actions.empty?
       end
@@ -46,6 +64,10 @@ module RailsPulse
 
       def action(text)
         @actions << text
+      end
+
+      def suggest(text)
+        @suggestions << text
       end
 
       # -- sections -----------------------------------------------------------
@@ -181,13 +203,108 @@ module RailsPulse
         last = RailsPulse::Summary.maximum(:updated_at)
         if last.nil?
           output.puts "Summaries:  none generated yet (schedule RailsPulse::SummaryJob hourly; backfill with rails rails_pulse:backfill_summaries)"
+          suggest "Schedule RailsPulse::SummaryJob hourly (see the README); the dashboard, the API and cleanup all read its summaries."
         elsif last < 2.hours.ago
           output.puts "Summaries:  last generated #{time_ago(last)} — stale (is RailsPulse::SummaryJob scheduled?)"
+          suggest "RailsPulse::SummaryJob last ran #{time_ago(last)}; check it is scheduled hourly and the worker is running."
         else
           output.puts "Summaries:  last generated #{time_ago(last)}"
         end
+        print_hourly_coverage
       rescue StandardError => e
         output.puts "Summaries:  could not check (#{e.class}: #{e.message})"
+      end
+
+      # Hours SummaryJob skipped inside the hourly retention window. It writes
+      # the overall request row for every hour, even an empty one, so a gap
+      # between the oldest and newest row is an hour it did not run.
+      def print_hourly_coverage
+        hours = RailsPulse::Summary.overall_requests
+          .where(period_type: "hour")
+          .where(period_start: config.hourly_summary_retention.ago..)
+          .distinct
+          .pluck(:period_start)
+        return if hours.empty?
+
+        span = ((hours.max - hours.min) / 1.hour).round + 1
+        missing = span - hours.size
+        if missing.zero?
+          output.puts "            hourly: #{hours.size} consecutive hour(s) summarized"
+        else
+          output.puts "            hourly: #{hours.size} of the last #{span} hours summarized, #{missing} missing"
+          suggest "RailsPulse::SummaryJob skipped #{missing} hour(s) in the last #{span}. Check its schedule; " \
+                  "rails rails_pulse:backfill_summaries fills the gaps."
+        end
+      end
+
+      def print_retention
+        hourly = config.hourly_summary_retention
+        raw = config.full_retention_period ? days(config.full_retention_period) : "no age limit"
+        output.puts "Retention:  raw data #{raw}, hourly summaries #{days(hourly)}"
+        return if hourly >= RECOMMENDED_HOURLY_RETENTION
+
+        suggest "Keep hourly summaries for #{days(RECOMMENDED_HOURLY_RETENTION)}: deployment comparisons and hour-precise " \
+                "change points read them, and at #{days(hourly)} a deploy from last week can no longer be compared. " \
+                "Add config.hourly_summary_retention = #{RECOMMENDED_HOURLY_RETENTION.in_days.to_i}.days to config/initializers/rails_pulse.rb."
+      end
+
+      def print_cleanup
+        unless config.archiving_enabled
+          output.puts "Cleanup:    off (config.archiving_enabled = false); nothing is pruned"
+          return
+        end
+        unless RailsPulse::Event.table_available?
+          output.puts "Cleanup:    (skipped — events table missing, schema is behind)"
+          return
+        end
+
+        run = RailsPulse::CleanupRun.latest
+        if run.nil?
+          print_cleanup_never_run
+        elsif run.outcome == "failed"
+          stages = run.metadata_hash["failed_stages"].to_a.join(", ")
+          output.puts "Cleanup:    last ran #{time_ago(run.occurred_at)} and failed (#{stages})"
+          suggest "The last cleanup failed in #{stages}; the log has the error. Run rails rails_pulse:cleanup to retry."
+        elsif run.occurred_at < CLEANUP_STALE_AFTER.ago
+          output.puts "Cleanup:    last ran #{time_ago(run.occurred_at)} — stale (is RailsPulse::CleanupJob scheduled?)"
+          suggest "Cleanup last ran #{time_ago(run.occurred_at)}; schedule RailsPulse::CleanupJob daily so retention is enforced."
+        else
+          output.puts "Cleanup:    last ran #{time_ago(run.occurred_at)}, #{run.value.to_i} row(s) deleted"
+        end
+      rescue StandardError => e
+        output.puts "Cleanup:    could not check (#{e.class}: #{e.message})"
+      end
+
+      # No run recorded is only a problem once there is something to prune.
+      def print_cleanup_never_run
+        overdue = config.full_retention_period &&
+          RailsPulse::Request.where(occurred_at: ...(config.full_retention_period + 1.day).ago).exists?
+
+        if overdue
+          output.puts "Cleanup:    no run recorded, and requests older than #{days(config.full_retention_period)} are still held"
+          suggest "Schedule RailsPulse::CleanupJob daily (see the README); data past retention is not being pruned."
+        else
+          output.puts "Cleanup:    no run recorded yet (schedule RailsPulse::CleanupJob daily)"
+        end
+      end
+
+      def print_jobs
+        unless config.track_jobs
+          output.puts "Jobs:       not tracked"
+          suggest "Track background jobs to see failures and slow jobs alongside requests: " \
+                  "config.track_jobs = true in config/initializers/rails_pulse.rb."
+          return
+        end
+
+        unless RailsPulse::SchemaCheck.current?
+          output.puts "Jobs:       tracked (count skipped — schema is behind)"
+          return
+        end
+
+        count = RailsPulse::Job.count
+        output.puts(count.zero? ? "Jobs:       tracked, none recorded yet" : "Jobs:       tracked, #{count} job class(es) recorded")
+      rescue StandardError => e
+        output.puts "Jobs:       could not check (#{e.class}: #{e.message})"
       end
 
       def print_actions
@@ -198,6 +315,14 @@ module RailsPulse
           output.puts "Action needed:"
           @actions.each { |text| output.puts "  - #{text}" }
         end
+      end
+
+      def print_suggestions
+        return if @suggestions.empty?
+
+        output.puts
+        output.puts "Suggestions:"
+        @suggestions.each { |text| output.puts "  - #{text}" }
       end
 
       # -- helpers ------------------------------------------------------------
@@ -228,6 +353,11 @@ module RailsPulse
 
       def migrate_command
         config.connects_to.present? ? "rails db:migrate:rails_pulse" : "rails db:migrate"
+      end
+
+      def days(duration)
+        value = (duration / 1.day.to_f).round(1)
+        "#{value == value.to_i ? value.to_i : value} day#{'s' unless value == 1}"
       end
 
       def time_ago(time)

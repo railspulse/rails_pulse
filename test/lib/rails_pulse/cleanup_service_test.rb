@@ -809,6 +809,43 @@ module RailsPulse
       assert_equal [ groups.last.id ], RailsPulse::ExceptionOccurrence.distinct.pluck(:exception_group_id)
     end
 
+    # Run Record Tests
+
+    test "each run is recorded as a cleanup_run event with what it deleted" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      create_job_run(create_job("RecordedJob"), occurred_at: 40.days.ago)
+
+      assert_difference -> { RailsPulse::CleanupRun.events.count }, 1 do
+        CleanupService.perform
+      end
+
+      run = RailsPulse::CleanupRun.latest
+
+      assert_equal "completed", run.outcome
+      assert_operator run.value, :>=, 1
+      assert_equal 1, run.metadata_hash.dig("time_based", "job_runs")
+      assert_empty run.metadata_hash["failed_stages"]
+    end
+
+    test "a run with a failing stage is recorded as failed, naming the stage" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      CleanupService.any_instance.stubs(:cleanup_operations_by_time).raises(ActiveRecord::StatementTimeout, "canceling statement")
+
+      assert_raises(ActiveRecord::StatementTimeout) { CleanupService.perform }
+      run = RailsPulse::CleanupRun.latest
+
+      assert_equal "failed", run.outcome
+      assert_equal [ "operations (time_based)" ], run.metadata_hash["failed_stages"]
+    end
+
+    test "no run is recorded when archiving is disabled" do
+      RailsPulse.configuration.archiving_enabled = false
+
+      assert_no_difference -> { RailsPulse::CleanupRun.events.count } do
+        CleanupService.perform
+      end
+    end
+
     # Stage Isolation Tests
 
     test "a failing stage does not stop later stages and its error is raised at the end" do

@@ -87,7 +87,7 @@ The single background writer per process. The middleware pushes each request's c
 _Avoid_: worker, collector (that is the middleware), reporter
 
 **Event**:
-A row in `rails_pulse_events`: something Rails Pulse noticed rather than measured, tagged by `kind` with a `subject`, a `value`, `occurred_at` and JSON `metadata`. Writer heartbeats are the one kind written today. Pruned by `event_retention_period`, except kinds in `event_retention_exempt_kinds`.
+A row in `rails_pulse_events`: something Rails Pulse noticed rather than measured, tagged by `kind` with a `subject`, a `value`, `occurred_at` and JSON `metadata`. Writer heartbeats and cleanup runs are the kinds written today. Pruned by `event_retention_period`, except kinds in `event_retention_exempt_kinds`.
 _Avoid_: log, audit row, notification
 
 **Writer heartbeat**:

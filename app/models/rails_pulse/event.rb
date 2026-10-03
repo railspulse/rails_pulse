@@ -3,8 +3,9 @@ module RailsPulse
   # outcome or sample, tagged by `kind`; `subject` names what it is about,
   # `value` carries its number and `metadata` the kind-specific detail as JSON.
   #
-  # The one kind written today is writer_heartbeat (see WriterHeartbeat). The
-  # table is generic so a new kind needs no migration. Decision 0019.
+  # Two kinds are written today: writer_heartbeat (see WriterHeartbeat) and
+  # cleanup_run (see CleanupRun). The table is generic so a new kind needs no
+  # migration. Decision 0019.
   #
   # CleanupService deletes rows older than config.event_retention_period,
   # except kinds listed in config.event_retention_exempt_kinds (rows a writer

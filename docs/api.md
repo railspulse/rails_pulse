@@ -207,7 +207,8 @@ Each is an `ActiveJob`; enqueue it the same way as any other job in the host app
   `target_hour` (default: the start of the hour one hour ago).
 - `RailsPulse::CleanupJob.perform_later` — runs retention-based cleanup when
   `config.archiving_enabled`; returns the stats hash from `CleanupService`, or `nil` if
-  archiving is disabled.
+  archiving is disabled. Each run is recorded as a `cleanup_run` event, which is how
+  `rails_pulse:status` tells whether cleanup is scheduled.
 - `RailsPulse::BackfillSummariesJob.perform_later(start_date, end_date, period_types = ["hour", "day"])`
   — backfills summaries for an existing date range.
 
@@ -215,7 +216,7 @@ Each is an `ActiveJob`; enqueue it the same way as any other job in the host app
 
 | Task | Purpose |
 |---|---|
-| `rails_pulse:status` | Reports schema, migration, route-backfill, and initializer state; exits 1 when something needs action. |
+| `rails_pulse:status` | Reports schema, migration, route-backfill, and initializer state; exits 1 when something needs action. Also reports whether `SummaryJob` and `CleanupJob` are running, hourly summary retention and job tracking, with suggestions that never change the exit status. |
 | `rails_pulse:migrate_routes` | Backfills controller actions, normalizes paths, and consolidates multi-verb routes on existing route rows. |
 | `rails_pulse:record_deployment[revision]` | Records a deployment event. |
 | `rails_pulse:finish_deployment[revision]` | Marks the latest deployment for a revision as finished. |
