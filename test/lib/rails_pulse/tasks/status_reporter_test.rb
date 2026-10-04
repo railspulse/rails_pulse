@@ -198,7 +198,7 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
 
   test "a cleanup run older than two days is a suggestion" do
     assume_clean_install
-    cleanup_run(3.days.ago)
+    cleanup_run(72.hours.ago)
 
     assert report
     assert_includes @output.string, "Cleanup:    last ran 3d ago — stale"
