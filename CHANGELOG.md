@@ -9,13 +9,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- **Before-and-after comparison for every deployment.** The deployments API, `rails-pulse deployments list` and the `rails_pulse_deployments` tool now say whether each release made things worse: response time more than 1.5x worse or error rate more than 1.25x worse in the hour after the deploy than the hour before, or too little traffic to tell.
+- **Before-and-after comparison for every deployment.** The deployments API, `rails-pulse deployments list` and the `rails_pulse_deployments` tool now say whether each release made things worse: response time or error rate materially worse in the hour after the deploy finished than in the hour before it started, or too little traffic to tell.
 - **What needs attention, and whether the thresholds fit.** `GET /rails_pulse/api/v1/insights`, `rails-pulse insights show` and the `rails_pulse_insights` tool list the routes, queries and jobs past their thresholds over one hour, day, week or month, and suggest an initializer line when `route_thresholds` or `query_thresholds` is too noisy or never fires.
 - **`rails rails_pulse:status` checks how the install is run.** It reports whether `SummaryJob` has skipped hours and whether `CleanupJob` is running, how long hourly summaries are kept, and whether jobs are tracked, and lists suggestions for each without changing the exit status. Each cleanup run is now recorded in `rails_pulse_events` so the task can tell.
 
 ### Changed
 
-- **Hourly summaries are kept for 7 days instead of 2.** Deployment comparisons and hour-precise change points read them, so at 2 days a deploy from earlier in the week could no longer be compared. The summaries table holds about 3.5 times as many hourly rows; set `config.hourly_summary_retention = 2.days` to keep the old behaviour.
+- **Hourly summaries are kept for 7 days instead of 2.** Deployment comparisons and hour-precise change points read them, so at 2 days a deploy from earlier in the week could no longer be compared; `config.hourly_summary_retention` tunes it.
 
 ## [0.5.0.pre.1] - 2026-10-03
 

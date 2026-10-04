@@ -7,10 +7,11 @@ module RailsPulse
         tool_name "rails_pulse_deployments"
         description "Recent deployments with revision, start and finish time, metadata, and whether each one made " \
                     "the application slower or more error-prone. Each deployment's `comparison` sets the hour " \
-                    "before the hour it started in against the hour after: `degraded` when average or p95 " \
-                    "response time is more than 1.5x worse or the error rate more than 1.25x worse, " \
-                    "`insufficient_data` under 10 requests in either hour, `pending` until the hour after has " \
-                    "been summarized. Use it to pin an investigation to a release."
+                    "before it started against the hour after it finished: `degraded` when average or p95 " \
+                    "response time is more than 1.5x and at least 50ms worse, or the error rate more than 1.25x " \
+                    "and at least a percentage point worse, `insufficient_data` under 10 requests in either hour, " \
+                    "`pending` until the hour after has been summarized, `unavailable` when it never will be " \
+                    "because SummaryJob is not running. Use it to pin an investigation to a release."
 
         annotations(
           read_only_hint: true,
@@ -77,14 +78,14 @@ module RailsPulse
             return [ "Record deployments via `rails_pulse:record_deployment` or POST /deployments so an investigation can be pinned to a release." ]
           end
 
-          # The hour after a pending deployment has not been summarized, so
-          # point at one that can be compared when there is one.
+          # The hour after a pending or unavailable deployment has not been
+          # summarized, so point at one that can be compared when there is one.
           target = deployments.find { |d| outcome(d) == "degraded" } ||
-            deployments.find { |d| d[:comparison] && outcome(d) != "pending" } ||
+            deployments.find { |d| d[:comparison] && !%w[pending unavailable].include?(outcome(d)) } ||
             deployments.first
           before = target.dig(:comparison, "before")
           after = target.dig(:comparison, "after")
-          unless before && after && outcome(target) != "pending"
+          unless before && after && !%w[pending unavailable].include?(outcome(target))
             return [ "Call rails_pulse_slow_requests and rails_pulse_errors with since: \"#{target[:started_at]}\" " \
                      "and compare against the same length of time before it." ]
           end

@@ -2,8 +2,9 @@ require "test_helper"
 
 module RailsPulse
   class DeploymentComparisonTest < ActiveSupport::TestCase
-    # A deploy at 14:28 compares the hour 13:00-14:00 with 15:00-16:00; the
-    # deploy hour itself mixes both versions and is skipped.
+    # A deploy at 14:28 with no recorded finish compares the hour 13:00-14:00
+    # with 15:00-16:00; every hour the deploy ran in mixes both versions and
+    # is skipped.
     NOW         = Time.zone.parse("2026-01-15 17:00:00").freeze
     DEPLOY_TIME = Time.zone.parse("2026-01-15 14:28:00").freeze
     BEFORE_HOUR = Time.zone.parse("2026-01-15 13:00:00").freeze
@@ -40,6 +41,28 @@ module RailsPulse
       assert_equal "clean", compare[:outcome]
     end
 
+    test "a deploy that finished in a later hour is compared after the hour it finished in" do
+      @deployment.update!(finished_at: Time.zone.parse("2026-01-15 15:40:00"))
+      seed(before: { avg: 200.0 })
+      overall_row(AFTER_HOUR, avg: 5_000.0) # 15:00 still mixes both versions
+      overall_row(Time.zone.parse("2026-01-15 16:00:00"), avg: 200.0)
+
+      result = compare
+
+      assert_equal "clean", result[:outcome]
+      assert_equal Time.zone.parse("2026-01-15 16:00:00"), result[:after][:from]
+    end
+
+    test "a deploy that finished within its start hour is compared from the next hour" do
+      @deployment.update!(finished_at: DEPLOY_TIME + 10.minutes)
+      seed(before: { avg: 200.0 }, after: { avg: 200.0 })
+
+      result = compare
+
+      assert_equal AFTER_HOUR, result[:after][:from]
+      assert_equal "clean", result[:outcome]
+    end
+
     test "for compares a page of deployments keyed by id" do
       other = RailsPulse::Deployment.create!(revision: "def456", started_at: DEPLOY_TIME - 1.day)
       seed(before: { avg: 200.0 }, after: { avg: 400.0 })
@@ -47,7 +70,7 @@ module RailsPulse
       results = DeploymentComparison.for([ @deployment, other ])
 
       assert_equal "degraded", results[@deployment.id][:outcome]
-      assert_equal "pending", results[other.id][:outcome]
+      assert_equal "unavailable", results[other.id][:outcome]
     end
 
     test "for returns an empty hash for no deployments" do
@@ -83,6 +106,27 @@ module RailsPulse
       seed(before: { avg: 200.0 }, after: { avg: 300.0 })
 
       assert_equal "clean", compare[:outcome]
+    end
+
+    test "past the multiplier but under the absolute floor is not degraded" do
+      # 8 -> 13 is 1.6x but only 5ms worse, under min_delta_ms (50ms)
+      seed(before: { avg: 8.0 }, after: { avg: 13.0 })
+
+      assert_equal "clean", compare[:outcome]
+    end
+
+    test "a doubled but still tiny error rate is not degraded" do
+      # 0.1% -> 0.2% is 2x but only 0.1 percentage points worse, under min_delta_rate (1.0)
+      seed(before: { avg: 100.0, errors: 1, count: 1000 }, after: { avg: 100.0, errors: 2, count: 1000 })
+
+      assert_equal "clean", metric(compare, :error_rate)[:outcome]
+    end
+
+    test "first errors under the absolute floor are not degraded" do
+      # 0 -> 0.1% stays under min_delta_rate (1.0 percentage point)
+      seed(before: { avg: 100.0, errors: 0, count: 1000 }, after: { avg: 100.0, errors: 1, count: 1000 })
+
+      assert_equal "clean", metric(compare, :error_rate)[:outcome]
     end
 
     test "p95 response time more than 1.5x worse is degraded" do
@@ -167,11 +211,20 @@ module RailsPulse
       assert_includes result[:note], "available once SummaryJob has summarized it"
     end
 
-    test "an hour after that has ended but is not summarized is pending" do
+    test "an hour after that has ended but is not summarized is pending within the grace period" do
       seed(before: { avg: 100.0 })
       result = compare
 
       assert_equal "pending", result[:outcome]
+      assert_includes result[:note], "SummaryJob is scheduled"
+    end
+
+    test "an hour after still not summarized past the grace period is unavailable" do
+      travel_to AFTER_HOUR + 1.hour + DeploymentComparison::SUMMARY_GRACE
+      seed(before: { avg: 100.0 })
+      result = compare
+
+      assert_equal "unavailable", result[:outcome]
       assert_includes result[:note], "SummaryJob is scheduled"
     end
 

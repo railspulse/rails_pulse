@@ -7,7 +7,7 @@ module RailsPulse
       # combined across periods: an hour, day, week or month is read from its
       # own summary rows.
       class InsightsController < BaseController
-        PERIOD_TYPES = %w[hour day week month].freeze
+        PERIOD_TYPES = RailsPulse::Summary::PERIOD_TYPES
         DEFAULT_PERIOD_TYPE = "week".freeze
         STEPS = { "hour" => 1.hour, "day" => 1.day, "week" => 1.week, "month" => 1.month }.freeze
 

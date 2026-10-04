@@ -13,7 +13,11 @@ module RailsPulse
 
           @old     = RailsPulse::Deployment.create!(revision: "a" * 40, started_at: 3.days.ago, finished_at: 3.days.ago + 90,
                                                     metadata: { "branch" => "main" }.to_json)
-          @middle  = RailsPulse::Deployment.create!(revision: "bbb222", started_at: 2.hours.ago, finished_at: 2.hours.ago + 60)
+          # Pinned inside its hour so the deploy starts and finishes in the
+          # same hour whatever the wall clock says; the comparison's after
+          # window follows the hour the deploy finished in.
+          @middle  = RailsPulse::Deployment.create!(revision: "bbb222", started_at: 2.hours.ago.beginning_of_hour + 5.minutes,
+                                                    finished_at: 2.hours.ago.beginning_of_hour + 6.minutes)
           @running = RailsPulse::Deployment.create!(revision: "ccc333", started_at: 10.minutes.ago)
         end
 

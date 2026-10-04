@@ -7,6 +7,11 @@ module RailsPulse
   # Reads the period's ten slowest routes (by P95) and ten most expensive
   # queries (by total time). Each recommendation carries a config_snippet
   # that keeps the threshold keys it does not change.
+  #
+  # A recommendation is only emitted when its suggestion actually moves the
+  # threshold the way the text says and keeps slow < very_slow < critical in
+  # order: a "lower your critical threshold" snippet that repeats or raises
+  # the current value would be worse than silence.
   class ConfigRecommendations
     SAMPLE_SIZE = 10
 
@@ -46,8 +51,8 @@ module RailsPulse
       max_p95    = p95s.max.to_i
       recs       = []
 
-      if above_slow >= 3 && above_slow.to_f / @route_rows.size >= 0.4
-        suggested = ceil_to(slow * 1.5, 50)
+      suggested = ceil_to(slow * 1.5, 50)
+      if above_slow >= 3 && above_slow.to_f / @route_rows.size >= 0.4 && suggested < @route_thresholds[:very_slow].to_i
         recs << {
           title:          "Route slow threshold may be too low",
           detail:         "#{above_slow} of #{@route_rows.size} sampled routes exceeded the #{slow}ms slow " \
@@ -57,8 +62,8 @@ module RailsPulse
         }
       end
 
-      if max_p95 > 0 && max_p95 < critical / 2
-        suggested = [ ceil_to(max_p95 * 2.0, 500), slow * 3, @route_thresholds[:very_slow].to_i ].max
+      suggested = [ ceil_to(max_p95 * 2.0, 500), slow * 3, @route_thresholds[:very_slow].to_i ].max
+      if max_p95 > 0 && max_p95 < critical / 2 && suggested < critical
         recs << {
           title:          "Route critical threshold may be too permissive",
           detail:         "No route came close to the #{critical}ms critical threshold this period " \
@@ -81,8 +86,8 @@ module RailsPulse
       max_p95    = p95s.max.to_i
       recs       = []
 
-      if above_slow >= 3 && above_slow.to_f / @query_rows.size >= 0.4
-        suggested = ceil_to(slow * 1.5, 10)
+      suggested = ceil_to(slow * 1.5, 10)
+      if above_slow >= 3 && above_slow.to_f / @query_rows.size >= 0.4 && suggested < @query_thresholds[:very_slow].to_i
         recs << {
           title:          "Query slow threshold may be too low",
           detail:         "#{above_slow} of #{@query_rows.size} sampled queries exceeded the #{slow}ms slow " \
@@ -91,8 +96,8 @@ module RailsPulse
         }
       end
 
-      if max_p95 > 0 && max_p95 < critical / 2
-        suggested = [ ceil_to(max_p95 * 2.0, 100), slow * 3, @query_thresholds[:very_slow].to_i ].max
+      suggested = [ ceil_to(max_p95 * 2.0, 100), slow * 3, @query_thresholds[:very_slow].to_i ].max
+      if max_p95 > 0 && max_p95 < critical / 2 && suggested < critical
         recs << {
           title:          "Query critical threshold may be too permissive",
           detail:         "No query came close to the #{critical}ms critical threshold this period " \

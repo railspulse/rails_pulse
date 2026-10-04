@@ -2,15 +2,17 @@ module RailsPulse
   # Whether a deployment made the application slower or more error-prone,
   # answered from the hourly overall request summaries either side of it.
   #
-  # The hour the deploy started in is skipped: during a rolling deploy it
-  # holds traffic from both versions. "Before" is the hour ending at the
-  # start of that hour and "after" the hour that follows it, so a deploy at
-  # 14:28 compares 13:00-14:00 with 15:00-16:00, and its answer is available
-  # once SummaryJob has summarized 15:00.
+  # Every hour the deploy ran in is skipped: during a rolling deploy those
+  # hours hold traffic from both versions. "Before" is the hour ending at
+  # the start of the hour the deploy started in, "after" the hour following
+  # the hour it finished in (the start hour when no finish was recorded), so
+  # a deploy running 14:28-15:40 compares 13:00-14:00 with 16:00-17:00, and
+  # its answer is available once SummaryJob has summarized 16:00.
   #
   # Computed on request and never stored. A metric degraded when it is more
-  # than its multiplier worse after the deploy; either window holding fewer
-  # than MINIMUM_REQUESTS requests makes the comparison insufficient_data.
+  # than its multiplier worse after the deploy and worse by at least the
+  # regression_thresholds absolute floor; either window holding fewer than
+  # MINIMUM_REQUESTS requests makes the comparison insufficient_data.
   class DeploymentComparison
     METRICS = %i[avg_response_time p95_response_time error_rate].freeze
 
@@ -27,6 +29,12 @@ module RailsPulse
     }.freeze
 
     MINIMUM_REQUESTS = 10
+
+    # SummaryJob runs hourly, so the after-hour's row should exist within
+    # this long of that hour ending; a row still missing after that will not
+    # appear on its own, and the comparison is reported unavailable rather
+    # than leaving a polling agent waiting on a job that is not running.
+    SUMMARY_GRACE = 2.hours
 
     # One comparison per deployment, reading every hourly row they need in
     # a single query so a page of deployments costs one statement.
@@ -46,10 +54,18 @@ module RailsPulse
       end
     end
 
-    # The start of the hour before and the hour after a deployment.
+    # The start of the hour before a deployment and the hour after it. The
+    # after window follows the hour the deploy finished in, so a rolling
+    # deploy that ran past the top of the hour does not leak mixed-version
+    # traffic into the measurement.
     def self.windows(deployment)
-      deploy_hour = RailsPulse::Summary.normalize_period_start("hour", deployment.started_at.in_time_zone)
-      { before: deploy_hour - 1.hour, after: deploy_hour + 1.hour }
+      start_hour  = RailsPulse::Summary.normalize_period_start("hour", deployment.started_at.in_time_zone)
+      finish_hour = if deployment.finished_at
+        RailsPulse::Summary.normalize_period_start("hour", deployment.finished_at.in_time_zone)
+      else
+        start_hour
+      end
+      { before: start_hour - 1.hour, after: finish_hour + 1.hour }
     end
 
     def initialize(deployment, rows: nil, now: Time.current)
@@ -95,11 +111,20 @@ module RailsPulse
       )
     end
 
-    # Errors where there were none is degraded, though it has no ratio.
+    # Both gates matter, as in Operations::Comparison#regression?: the ratio
+    # alone flags trivial noise (8ms to 13ms is 1.6x), and the floor alone
+    # flags slow endpoints that barely moved. Errors where there were none is
+    # degraded once past the floor, though it has no ratio.
     def degraded?(metric, before_value, after_value)
-      return after_value.positive? if before_value.zero?
+      return false unless after_value - before_value >= min_delta(metric)
+      return true if before_value.zero?
 
       after_value / before_value > MULTIPLIERS[metric]
+    end
+
+    def min_delta(metric)
+      thresholds = RailsPulse.configuration.regression_thresholds
+      metric == :error_rate ? thresholds[:min_delta_rate].to_f : thresholds[:min_delta_ms].to_f
     end
 
     def value(metric, row)
@@ -114,8 +139,14 @@ module RailsPulse
       row.present? && row.count.to_i >= MINIMUM_REQUESTS
     end
 
+    # A missing after-hour row is pending only while SummaryJob could still
+    # write it; past SUMMARY_GRACE it is unavailable, a distinct value so an
+    # agent polling for the comparison is not left waiting forever when the
+    # job is not running (note says which).
     def outcome(metrics, after)
-      return "pending" if after.nil? && !pruned?(@windows[:after])
+      if after.nil? && !pruned?(@windows[:after])
+        return @now < @windows[:after] + 1.hour + SUMMARY_GRACE ? "pending" : "unavailable"
+      end
       return "degraded" if metrics.any? { |m| m[:outcome] == "degraded" }
       return "insufficient_data" if metrics.any? { |m| m[:outcome] == "insufficient_data" }
 

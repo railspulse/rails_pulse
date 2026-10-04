@@ -35,12 +35,18 @@ module RailsPulse
 
     private
 
-    def summaries(type)
-      RailsPulse::Summary.where(summarizable_type: type, period_type: @period_type, period_start: @period_start)
+    # Classification can only keep a row past its slow threshold or carrying
+    # errors, so healthy rows are excluded in SQL rather than loading every
+    # summary row for the period just to drop almost all of them in Ruby.
+    def summaries(type, slow_threshold, with_errors: true)
+      scope = RailsPulse::Summary.where(summarizable_type: type, period_type: @period_type, period_start: @period_start)
+      return scope.where("rails_pulse_summaries.p95_duration >= ?", slow_threshold) unless with_errors
+
+      scope.where("rails_pulse_summaries.p95_duration >= ? OR rails_pulse_summaries.error_count > 0", slow_threshold)
     end
 
     def route_items
-      route_data = summaries("RailsPulse::Route")
+      route_data = summaries("RailsPulse::Route", @route_thresholds[:slow])
         .joins("INNER JOIN rails_pulse_routes ON rails_pulse_routes.id = rails_pulse_summaries.summarizable_id")
         .select(
           "rails_pulse_summaries.summarizable_id as route_id",
@@ -66,7 +72,7 @@ module RailsPulse
     end
 
     def query_items
-      query_data = summaries("RailsPulse::Query")
+      query_data = summaries("RailsPulse::Query", @query_thresholds[:slow], with_errors: false)
         .joins("INNER JOIN rails_pulse_queries ON rails_pulse_queries.id = rails_pulse_summaries.summarizable_id")
         .select(
           "rails_pulse_summaries.summarizable_id as query_id",
@@ -86,7 +92,7 @@ module RailsPulse
     def job_items
       return [] unless RailsPulse.configuration.track_jobs
 
-      job_data = summaries("RailsPulse::Job")
+      job_data = summaries("RailsPulse::Job", @job_thresholds[:slow])
         .joins("INNER JOIN rails_pulse_jobs ON rails_pulse_jobs.id = rails_pulse_summaries.summarizable_id")
         .select(
           "rails_pulse_summaries.summarizable_id as job_id",

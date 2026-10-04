@@ -43,6 +43,17 @@ module RailsPulse
         StoragePressure.new.pressure_items
       end
 
+      # The dashboard window is user-selected, so the error-rate reason names
+      # the window's real length rather than assuming a week.
+      def span_phrase
+        start, finish = period_range
+        hours = ((finish - start) / 1.hour).round
+        return "in the last #{hours} hour#{"s" unless hours == 1}" if hours <= 25
+
+        days = (hours / 24.0).round
+        "in the last #{days} day#{"s" unless days == 1}"
+      end
+
       def url_helpers
         RailsPulse::Engine.routes.url_helpers
       end
@@ -70,7 +81,7 @@ module RailsPulse
           errors     = record.total_errors.to_i
           error_rate = total > 0 ? (errors * 100.0 / total).round(1) : 0.0
 
-          severity, reason, metric, metric_sub, sort_score = classify_route(p95, total, errors, error_rate, "this week")
+          severity, reason, metric, metric_sub, sort_score = classify_route(p95, total, errors, error_rate, span_phrase)
           next unless severity
 
           items << {

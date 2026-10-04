@@ -64,12 +64,13 @@ rails_pulse_deployments(period: "last_7_days")
 rails-pulse deployments list --json
 ```
 
-Each deployment carries a `comparison` of the hour before the deploy against the hour after it.
-`degraded` means average or p95 response time got more than 1.5x worse, or the error rate more
-than 1.25x worse; the `metrics` say which. `insufficient_data` means fewer than 10 requests in
-either hour, so it is not an all-clear, and `pending` means the hour after has not been
-summarized yet. Use the `before` and `after` bounds as `since`/`until` for the tools below to see
-which endpoints changed.
+Each deployment carries a `comparison` of the hour before the deploy started against the hour
+after it finished. `degraded` means average or p95 response time got more than 1.5x and at
+least 50ms worse, or the error rate more than 1.25x and at least a percentage point worse; the
+`metrics` say which. `insufficient_data` means fewer than 10 requests in either hour, so it is
+not an all-clear; `pending` means the hour after has not been summarized yet; `unavailable`
+means it never will be because SummaryJob is not running. Use the `before` and `after` bounds
+as `since`/`until` for the tools below to see which endpoints changed.
 
 ### 2. Identify affected endpoints
 

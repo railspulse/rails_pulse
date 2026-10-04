@@ -49,6 +49,29 @@ module RailsPulse
       end
     end
 
+    test "does not recommend a critical threshold that fails to lower it" do
+      # max(ceil_to(1499 * 2, 500), 1500, 1500) = 3000, the current critical
+      recs = recommendations(route_rows: rows(1499, 100, 100))
+
+      assert_not_includes titles(recs), "Route critical threshold may be too permissive"
+    end
+
+    test "does not recommend a slow threshold at or past very_slow" do
+      # ceil_to(1200 * 1.5, 50) = 1800, past very_slow 1500
+      with_route_thresholds(slow: 1200, very_slow: 1500, critical: 3000) do
+        recs = recommendations(route_rows: rows(1300, 1400, 1400))
+
+        assert_not_includes titles(recs), "Route slow threshold may be too low"
+      end
+    end
+
+    test "does not recommend a query critical threshold that fails to lower it" do
+      # max(ceil_to(499 * 2, 100), 300, 500) = 1000, the current critical
+      recs = recommendations(query_rows: rows(499, 400, 300))
+
+      assert_not_includes titles(recs), "Query critical threshold may be too permissive"
+    end
+
     test "returns both route recommendations when both conditions hold" do
       recs = recommendations(route_rows: rows(600, 700, 800, 600, 600))
 

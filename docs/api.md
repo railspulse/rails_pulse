@@ -97,7 +97,8 @@ header.
   its record `id`); `threshold_recommendations` checks `route_thresholds` and `query_thresholds`
   against the period's ten slowest routes and ten most expensive queries and suggests a
   `config_snippet` when a slow threshold is exceeded by at least three of them and 40% or more,
-  or nothing came within half of a critical threshold. `thresholds` echoes the current settings
+  or nothing came within half of a critical threshold; a recommendation whose suggested value
+  would not actually tighten the thresholds, or would put them out of order, is skipped. `thresholds` echoes the current settings
   and `period.summarized` says whether SummaryJob has written the period yet. An unknown
   `period` or an invalid `at` is a `400`.
 - `routes` takes `min_requests` when a time window is given: routes with fewer requests in
@@ -106,13 +107,18 @@ header.
   `routes_with_traffic`, which separate "nothing ran in this window" from "nothing ran often
   enough".
 - `deployments` carries a `comparison` on every row: the hour before the hour the deploy
-  started in against the hour after it, read from the hourly overall request summaries (the
-  deploy hour itself mixes both versions and is skipped). Each of `avg_response_time`,
+  started in against the hour after the hour it finished in, read from the hourly overall
+  request summaries (every hour the deploy ran in mixes both versions and is skipped; a
+  deploy with no `finished_at` skips its start hour only). Each of `avg_response_time`,
   `p95_response_time` and `error_rate` is `degraded` when it is more than its `multiplier`
-  worse afterwards (1.5 for the two response times, 1.25 for the error rate; errors where there
-  were none is `degraded` with a `ratio` of null), `clean` otherwise, and `insufficient_data`
-  when either hour had fewer than 10 requests. The overall `outcome` is `degraded` if any
-  metric degraded, `pending` until the hour after has been summarized, and
+  worse afterwards (1.5 for the two response times, 1.25 for the error rate) and worse by at
+  least the `config.regression_thresholds` absolute floor (`min_delta_ms`, default 50ms, for
+  the response times; `min_delta_rate`, default one percentage point, for the error rate;
+  errors where there were none is `degraded` with a `ratio` of null), `clean` otherwise, and
+  `insufficient_data` when either hour had fewer than 10 requests. The overall `outcome` is
+  `degraded` if any metric degraded, `pending` until the hour after has been summarized,
+  `unavailable` when that hour ended more than two hours ago and was never summarized (the
+  row will not appear on its own — check that SummaryJob is scheduled), and
   `insufficient_data` when the hours were too quiet or have aged out of
   `config.hourly_summary_retention`; `note` says which. It is computed on each request and
   never stored or sent anywhere.
