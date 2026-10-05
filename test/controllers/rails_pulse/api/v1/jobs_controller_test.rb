@@ -230,7 +230,7 @@ module RailsPulse
 
         test "a window is widened to the application's period boundaries, not UTC ones" do
           Time.use_zone("Asia/Tokyo") do
-            day_start = 3.days.ago.in_time_zone.beginning_of_day
+            day_start = 10.days.ago.in_time_zone.beginning_of_day
 
             get rails_pulse.api_v1_jobs_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
               params: { since: (day_start + 5.hours).utc.iso8601, until: (day_start + 20.hours).utc.iso8601 }
@@ -238,7 +238,7 @@ module RailsPulse
           body = JSON.parse(response.body)
 
           assert_equal "day", body["meta"]["window"]["period_type"]
-          assert_equal Time.use_zone("Asia/Tokyo") { 3.days.ago.in_time_zone.beginning_of_day }.utc.iso8601,
+          assert_equal Time.use_zone("Asia/Tokyo") { 10.days.ago.in_time_zone.beginning_of_day }.utc.iso8601,
                        body["meta"]["window"]["since"]
         end
 

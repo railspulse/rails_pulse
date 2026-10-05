@@ -7,7 +7,8 @@ module RailsPulse
       COLUMNS = [
         [ "Revision", 14, :short_revision ],
         [ "Started",  25, :started_at ],
-        [ "Finished", 25, :finished_at ]
+        [ "Finished", 25, :finished_at ],
+        [ "Compared", 17, :compared ]
       ].freeze
 
       desc "list", "List recorded deployments"
@@ -15,11 +16,18 @@ module RailsPulse
         Returns deployments ordered by most recent first. A deployment still in progress has
         no finish time.
 
+        Each deployment is compared across the hours it ran in: the hour before it started
+        against the hour after it finished. degraded when average or p95 response time is
+        more than 1.5x and at least 50ms worse afterwards, or the error rate more than 1.25x
+        and at least a percentage point worse; insufficient_data when either hour had fewer
+        than 10 requests; pending until the hour after has been summarized, or unavailable
+        when it never will be because SummaryJob is not running.
+
         Filter by time window (ISO 8601):
           --since 2026-06-01T00:00:00Z
           --until 2026-06-01T23:59:59Z
 
-        Use --json to get the full revision, duration and deployment metadata.
+        Use --json to get the full revision, duration, metadata and per-metric comparison.
       DESC
       option :limit,  type: :numeric, default: 25,    desc: "Max records to return (1–500)"
       option :offset, type: :numeric, default: 0,     desc: "Number of records to skip (for pagination)"
@@ -32,6 +40,7 @@ module RailsPulse
           params[:since] = options[:since] if options[:since]
           params[:until] = options[:until] if options[:until]
           result = client.get("/deployments", params)
+          (result["data"] || []).each { |row| row["compared"] = row.dig("comparison", "outcome") } unless options[:json]
           Formatter.render(result, json: options[:json], columns: COLUMNS)
         end
       end

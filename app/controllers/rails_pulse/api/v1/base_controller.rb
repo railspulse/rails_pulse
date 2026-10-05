@@ -28,7 +28,7 @@ module RailsPulse
 
         # Parameters every endpoint reads as one string. A repeated or nested
         # one (`search[]=x`) is refused rather than reaching a String method.
-        SCALAR_PARAMS = %i[limit offset min_requests occurrences since until search route status sort job].freeze
+        SCALAR_PARAMS = %i[limit offset min_requests occurrences since until search route status sort job period at].freeze
         INTEGER_PARAMS = %i[limit offset min_requests occurrences].freeze
 
         # Past any real table, and inside a 64-bit integer on every adapter.

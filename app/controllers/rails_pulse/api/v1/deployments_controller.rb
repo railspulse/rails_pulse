@@ -12,9 +12,11 @@ module RailsPulse
           collection = collection.where(started_at: ..until_end) if until_end
 
           data, meta = paginated(collection)
+          deployments = data.to_a
+          comparisons = RailsPulse::DeploymentComparison.for(deployments)
 
           render json: {
-            data: data.map { |deployment| DeploymentSerializer.serialize(deployment) },
+            data: deployments.map { |deployment| DeploymentSerializer.serialize(deployment, comparison: comparisons[deployment.id]) },
             meta: meta
           }
         end

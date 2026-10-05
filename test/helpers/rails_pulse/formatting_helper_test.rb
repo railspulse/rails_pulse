@@ -110,7 +110,7 @@ class RailsPulse::FormattingHelperTest < ActionView::TestCase
   end
 
   test "time_ago_in_words handles days ago" do
-    time = Time.now - 2.days
+    time = Time.now - 48.hours
     result = time_ago_in_words(time)
 
     assert_equal "2d ago", result
@@ -200,7 +200,7 @@ class RailsPulse::FormattingHelperTest < ActionView::TestCase
   end
 
   test "time_ago_in_words handles large number of days" do
-    time = Time.now - 100.days
+    time = Time.now - 2400.hours
     result = time_ago_in_words(time)
 
     assert_equal "100d ago", result

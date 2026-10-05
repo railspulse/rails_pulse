@@ -67,6 +67,17 @@ module RailsPulse
         assert_equal "/api/users", critical_routes.first[:name]
       end
 
+      test "error rate reason names the selected window length" do
+        route = rails_pulse_routes(:api_users)
+        create_route_summary(route: route, count: 100, errors: 10, p95: 200.0, days_ago: 0)
+
+        week = RailsPulse::Dashboard::NeedsAttention.new(window: RailsPulse::TimeWindow.new(7.days.ago, Time.current)).to_attention_data
+        day  = RailsPulse::Dashboard::NeedsAttention.new(window: RailsPulse::TimeWindow.new(24.hours.ago, Time.current)).to_attention_data
+
+        assert_includes week[:critical].find { |i| i[:type] == "ROUTE" }[:reason], "in the last 7 days"
+        assert_includes day[:critical].find { |i| i[:type] == "ROUTE" }[:reason], "in the last 24 hours"
+      end
+
       test "route with P95 >= 3000ms is classified as critical" do
         route = rails_pulse_routes(:api_users)
         create_route_summary(route: route, count: 100, errors: 0, p95: 3000.0)

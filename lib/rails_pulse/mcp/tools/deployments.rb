@@ -5,9 +5,13 @@ module RailsPulse
         extend Helpers
 
         tool_name "rails_pulse_deployments"
-        description "Recent deployments with revision, start and finish time, and metadata. Use this to pin an " \
-                    "investigation to a deploy time, then compare the other tools before and after it to see " \
-                    "whether a release made things worse."
+        description "Recent deployments with revision, start and finish time, metadata, and whether each one made " \
+                    "the application slower or more error-prone. Each deployment's `comparison` sets the hour " \
+                    "before it started against the hour after it finished: `degraded` when average or p95 " \
+                    "response time is more than 1.5x and at least 50ms worse, or the error rate more than 1.25x " \
+                    "and at least a percentage point worse, `insufficient_data` under 10 requests in either hour, " \
+                    "`pending` until the hour after has been summarized, `unavailable` when it never will be " \
+                    "because SummaryJob is not running. Use it to pin an investigation to a release."
 
         annotations(
           read_only_hint: true,
@@ -51,7 +55,8 @@ module RailsPulse
             finished_at: deployment["finished_at"],
             duration_seconds: deployment["duration_seconds"],
             in_progress: deployment["in_progress"] == true,
-            metadata: deployment["metadata"]
+            metadata: deployment["metadata"],
+            comparison: deployment["comparison"]
           }
         end
 
@@ -60,7 +65,12 @@ module RailsPulse
 
           latest = deployments.first
           state = latest[:in_progress] ? " (in progress)" : ""
-          "#{deployments.size} deployment(s). Latest: #{latest[:short_revision]} at #{latest[:started_at]}#{state}."
+          summary = "#{deployments.size} deployment(s). Latest: #{latest[:short_revision]} at #{latest[:started_at]}#{state}."
+
+          degraded = deployments.select { |d| outcome(d) == "degraded" }
+          return summary if degraded.empty?
+
+          "#{summary} Degraded: #{degraded.map { |d| "#{d[:short_revision]} (#{degraded_metrics(d).join(', ')})" }.join('; ')}."
         end
 
         private_class_method def self.build_next_steps(deployments)
@@ -68,11 +78,31 @@ module RailsPulse
             return [ "Record deployments via `rails_pulse:record_deployment` or POST /deployments so an investigation can be pinned to a release." ]
           end
 
-          latest = deployments.first
+          # The hour after a pending or unavailable deployment has not been
+          # summarized, so point at one that can be compared when there is one.
+          target = deployments.find { |d| outcome(d) == "degraded" } ||
+            deployments.find { |d| d[:comparison] && !%w[pending unavailable].include?(outcome(d)) } ||
+            deployments.first
+          before = target.dig(:comparison, "before")
+          after = target.dig(:comparison, "after")
+          unless before && after && !%w[pending unavailable].include?(outcome(target))
+            return [ "Call rails_pulse_slow_requests and rails_pulse_errors with since: \"#{target[:started_at]}\" " \
+                     "and compare against the same length of time before it." ]
+          end
+
           [
-            "To see what #{latest[:short_revision]} changed, call rails_pulse_slow_requests and rails_pulse_errors " \
-            "with period: \"#{latest[:started_at]}\" and compare against the period before it."
+            "To see what #{target[:short_revision]} changed, call rails_pulse_slow_requests and rails_pulse_errors " \
+            "with since: \"#{after['from']}\", until: \"#{after['to']}\", then with since: \"#{before['from']}\", " \
+            "until: \"#{before['to']}\", and compare the two."
           ]
+        end
+
+        private_class_method def self.outcome(deployment)
+          deployment.dig(:comparison, "outcome")
+        end
+
+        private_class_method def self.degraded_metrics(deployment)
+          (deployment.dig(:comparison, "metrics") || []).select { |m| m["outcome"] == "degraded" }.map { |m| m["metric"] }
         end
       end
     end

@@ -51,6 +51,10 @@ RailsPulse::Engine.routes.draw do
     # Whether the data is there, rather than a question about the data.
     get "coverage", to: "coverage#show", as: :coverage
 
+    # What needs attention over one summary period, and whether the
+    # thresholds fit it.
+    get "insights", to: "insights#show", as: :insights
+
     # Which application, environment and version answered, so results gathered
     # against staging are not read as production.
     get "capabilities", to: "capabilities#show", as: :capabilities

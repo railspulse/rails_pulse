@@ -2,7 +2,7 @@
 
 _Recorded 2026-09, before 1.0._
 
-`rails_pulse_events` is a single generic table: `kind`, `subject`, `outcome`, `value`, `occurred_at`, `message` and JSON `metadata`, indexed by kind and time and by kind, subject and time. One kind is written into it today, the background writer's once-a-minute heartbeat (`WriterHeartbeat`). A kind whose rows are updated in place rather than appended is registered in `config.event_retention_exempt_kinds`. `CleanupService` prunes everything else by `config.event_retention_period`; the writer prunes its own heartbeats after a day.
+`rails_pulse_events` is a single generic table: `kind`, `subject`, `outcome`, `value`, `occurred_at`, `message` and JSON `metadata`, indexed by kind and time and by kind, subject and time. Two kinds are written into it today: the background writer's once-a-minute heartbeat (`WriterHeartbeat`) and one row per cleanup run (`CleanupRun`), which `rails_pulse:status` reads to tell whether cleanup is scheduled. A kind whose rows are updated in place rather than appended is registered in `config.event_retention_exempt_kinds`. `CleanupService` prunes everything else by `config.event_retention_period`; the writer prunes its own heartbeats after a day.
 
 The alternative was one table per shape, starting with a typed heartbeats table. Typed columns read better, and the heartbeat's queue depth would be a column rather than a JSON key. It was rejected because the things Pulse notices have nearly the same shape (a kind, a subject, a number, a time, a message, some detail) and because a host should migrate as few tables as possible: with one table, the next thing worth noticing ships without a migration.
 

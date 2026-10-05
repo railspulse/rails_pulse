@@ -168,7 +168,7 @@ module RailsPulse
       # pruned aggressively because the 1-day UI view is all that reads them, so
       # raising this is the knob that buys hour-accurate change points further
       # back, at the cost of summary-table growth.
-      @hourly_summary_retention = 2.days
+      @hourly_summary_retention = 7.days
 
       # Deterministic regression rules. A change must clear both the ratio and
       # the absolute floor: without the floor, 2ms to 4ms reports as a 100%

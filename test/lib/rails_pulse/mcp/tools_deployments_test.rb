@@ -32,6 +32,25 @@ module RailsPulse
         "meta" => { "total" => 3, "limit" => 10, "offset" => 0 }
       }.freeze
 
+      COMPARED_RESPONSE = {
+        "data" => [
+          DEPLOYMENTS_RESPONSE["data"][0].merge("comparison" => {
+            "outcome" => "pending", "before" => { "from" => "2026-06-03T08:00:00Z", "to" => "2026-06-03T09:00:00Z", "requests" => 40 },
+            "after" => { "from" => "2026-06-03T10:00:00Z", "to" => "2026-06-03T11:00:00Z", "requests" => 0 }, "metrics" => []
+          }),
+          DEPLOYMENTS_RESPONSE["data"][1].merge("comparison" => {
+            "outcome" => "degraded", "before" => { "from" => "2026-06-02T08:00:00Z", "to" => "2026-06-02T09:00:00Z", "requests" => 40 },
+            "after" => { "from" => "2026-06-02T10:00:00Z", "to" => "2026-06-02T11:00:00Z", "requests" => 38 },
+            "metrics" => [
+              { "metric" => "avg_response_time", "outcome" => "clean" },
+              { "metric" => "p95_response_time", "outcome" => "degraded" },
+              { "metric" => "error_rate", "outcome" => "degraded" }
+            ]
+          })
+        ],
+        "meta" => { "total" => 2, "limit" => 10, "offset" => 0 }
+      }.freeze
+
       def client(responses = {})
         StubClient.new(responses)
       end
@@ -71,13 +90,50 @@ module RailsPulse
         assert_equal "2 deployment(s). Latest: bbb222 at 2026-06-02T09:00:00Z.", data["summary"]
       end
 
-      test "deployments next_steps point at the latest deploy time" do
+      test "deployments next_steps point at the latest deploy time when nothing was compared" do
         _, data = call(Tools::Deployments, client("/deployments" => DEPLOYMENTS_RESPONSE))
 
         assert_equal 1, data["next_steps"].size
-        assert_includes data["next_steps"].first, "ccc333"
-        assert_includes data["next_steps"].first, 'period: "2026-06-03T09:00:00Z"'
+        assert_includes data["next_steps"].first, 'since: "2026-06-03T09:00:00Z"'
         assert_includes data["next_steps"].first, "rails_pulse_slow_requests"
+      end
+
+      test "deployments pass each deployment's comparison through" do
+        _, data = call(Tools::Deployments, client("/deployments" => COMPARED_RESPONSE))
+
+        assert_equal "pending", data["deployments"].first["comparison"]["outcome"]
+        assert_equal "degraded", data["deployments"][1]["comparison"]["outcome"]
+      end
+
+      test "deployments summary names the degraded deployments and metrics" do
+        _, data = call(Tools::Deployments, client("/deployments" => COMPARED_RESPONSE))
+
+        assert_equal "2 deployment(s). Latest: ccc333 at 2026-06-03T09:00:00Z (in progress). " \
+                     "Degraded: bbb222 (p95_response_time, error_rate).", data["summary"]
+      end
+
+      test "deployments next_steps skip a pending deployment for one that was compared" do
+        clean = COMPARED_RESPONSE["data"][1].merge("comparison" => COMPARED_RESPONSE["data"][1]["comparison"].merge("outcome" => "clean"))
+        response = COMPARED_RESPONSE.merge("data" => [ COMPARED_RESPONSE["data"][0], clean ])
+        _, data = call(Tools::Deployments, client("/deployments" => response))
+
+        assert_includes data["next_steps"].first, "bbb222"
+      end
+
+      test "deployments next_steps fall back to since when only a pending deployment is listed" do
+        response = COMPARED_RESPONSE.merge("data" => [ COMPARED_RESPONSE["data"][0] ])
+        _, data = call(Tools::Deployments, client("/deployments" => response))
+
+        assert_includes data["next_steps"].first, 'since: "2026-06-03T09:00:00Z"'
+      end
+
+      test "deployments next_steps compare the hours either side of a degraded deployment" do
+        _, data = call(Tools::Deployments, client("/deployments" => COMPARED_RESPONSE))
+        step = data["next_steps"].first
+
+        assert_includes step, "bbb222"
+        assert_includes step, 'since: "2026-06-02T10:00:00Z", until: "2026-06-02T11:00:00Z"'
+        assert_includes step, 'since: "2026-06-02T08:00:00Z", until: "2026-06-02T09:00:00Z"'
       end
 
       test "deployments explains how to record deployments when none exist" do

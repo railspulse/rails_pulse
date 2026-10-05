@@ -43,7 +43,7 @@ A pre-aggregated row for one subject (a Route, Query, Job, or the overall reques
 _Avoid_: rollup, metric, stat
 
 **Period type**:
-The bucket size of a Summary: `hour`, `day`, `week` or `month`. Hourly summaries are pruned after `hourly_summary_retention` (default two days); the others follow the full retention period.
+The bucket size of a Summary: `hour`, `day`, `week` or `month`. Hourly summaries are pruned after `hourly_summary_retention` (default seven days); the others follow the full retention period.
 _Avoid_: granularity, interval, resolution
 
 **Baseline and comparison window**:
@@ -64,6 +64,10 @@ _Avoid_: label, category, flag
 A row recorded by the rake tasks or the deployments API with a revision, `started_at` and optional `finished_at` and metadata. Charts draw deployments as vertical markers so a change lines up with a release.
 _Avoid_: release, deploy marker (the marker is how a Deployment is drawn, not the row)
 
+**Deployment comparison**:
+A Deployment's hour before against its hour after, from the hourly overall request summaries, skipping the hour the deploy started in. A response-time metric is `degraded` past 1.5x and the error rate past 1.25x; under 10 requests in either hour is `insufficient_data`, and the comparison is `pending` until the hour after is summarized. Computed when asked for, never stored.
+_Avoid_: regression (reserved for the baseline comparison and its `regression_thresholds`), deploy check
+
 ### Collection
 
 **API token**:
@@ -83,7 +87,7 @@ The single background writer per process. The middleware pushes each request's c
 _Avoid_: worker, collector (that is the middleware), reporter
 
 **Event**:
-A row in `rails_pulse_events`: something Rails Pulse noticed rather than measured, tagged by `kind` with a `subject`, a `value`, `occurred_at` and JSON `metadata`. Writer heartbeats are the one kind written today. Pruned by `event_retention_period`, except kinds in `event_retention_exempt_kinds`.
+A row in `rails_pulse_events`: something Rails Pulse noticed rather than measured, tagged by `kind` with a `subject`, a `value`, `occurred_at` and JSON `metadata`. Writer heartbeats and cleanup runs are the kinds written today. Pruned by `event_retention_period`, except kinds in `event_retention_exempt_kinds`.
 _Avoid_: log, audit row, notification
 
 **Writer heartbeat**:

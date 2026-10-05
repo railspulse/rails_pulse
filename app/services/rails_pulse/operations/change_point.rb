@@ -11,7 +11,7 @@ module RailsPulse
     # assumption to defend.
     #
     # Precision is bounded by what summaries still exist. Hourly summaries are
-    # pruned at `hourly_summary_retention` (2 days by default), so a change point
+    # pruned at `hourly_summary_retention` (7 days by default), so a change point
     # can only be pinned to the hour inside that window. Beyond it the answer is
     # a day, and `granularity` says which the caller got — never silently one
     # pretending to be the other.

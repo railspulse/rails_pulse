@@ -89,11 +89,39 @@ header.
   whole length. Percentiles appear only when one summarized period holds every run in the
   window — they cannot be combined across periods — and `stats.percentiles_note` says so
   otherwise.
+- `GET insights` reads one summary period, `period` (`hour`, `day`, `week` or `month`, default
+  `week`), and `at` (ISO 8601) picks the period containing that time; without it, the last
+  complete period. One period rather than a window because a P95 cannot be combined across
+  periods. `needs_attention` lists the routes, queries and jobs past their slow or critical
+  thresholds by the dashboard's Needs Attention rules (`critical` first, ten at most, each with
+  its record `id`); `threshold_recommendations` checks `route_thresholds` and `query_thresholds`
+  against the period's ten slowest routes and ten most expensive queries and suggests a
+  `config_snippet` when a slow threshold is exceeded by at least three of them and 40% or more,
+  or nothing came within half of a critical threshold; a recommendation whose suggested value
+  would not actually tighten the thresholds, or would put them out of order, is skipped. `thresholds` echoes the current settings
+  and `period.summarized` says whether SummaryJob has written the period yet. An unknown
+  `period` or an invalid `at` is a `400`.
 - `routes` takes `min_requests` when a time window is given: routes with fewer requests in
   the window are excluded in SQL, before `limit`, so a busy route ranked below the limit is
   still returned. When it is above 1 the response's `meta` carries `min_requests` and
   `routes_with_traffic`, which separate "nothing ran in this window" from "nothing ran often
   enough".
+- `deployments` carries a `comparison` on every row: the hour before the hour the deploy
+  started in against the hour after the hour it finished in, read from the hourly overall
+  request summaries (every hour the deploy ran in mixes both versions and is skipped; a
+  deploy with no `finished_at` skips its start hour only). Each of `avg_response_time`,
+  `p95_response_time` and `error_rate` is `degraded` when it is more than its `multiplier`
+  worse afterwards (1.5 for the two response times, 1.25 for the error rate) and worse by at
+  least the `config.regression_thresholds` absolute floor (`min_delta_ms`, default 50ms, for
+  the response times; `min_delta_rate`, default one percentage point, for the error rate;
+  errors where there were none is `degraded` with a `ratio` of null), `clean` otherwise, and
+  `insufficient_data` when either hour had fewer than 10 requests. The overall `outcome` is
+  `degraded` if any metric degraded, `pending` until the hour after has been summarized,
+  `unavailable` when that hour ended more than two hours ago and was never summarized (the
+  row will not appear on its own — check that SummaryJob is scheduled), and
+  `insufficient_data` when the hours were too quiet or have aged out of
+  `config.hourly_summary_retention`; `note` says which. It is computed on each request and
+  never stored or sent anywhere.
 - `POST deployments` and `PUT deployments/finish` are the existing endpoints CI calls to
   record a release (the same action as the `rails_pulse:record_deployment` and
   `rails_pulse:finish_deployment` rake tasks below). They sit outside the `api/v1` read-only
@@ -113,7 +141,8 @@ over HTTP — it never loads the Rails app or the engine, so nothing under `lib/
 may reference Rails, models, or configuration directly. `rails-pulse configure` prompts for a
 URL and token and writes `~/.rails-pulse`; credentials otherwise come from `RAILS_PULSE_URL`
 and `RAILS_PULSE_TOKEN`. Each API resource above has a matching subcommand
-(`routes`, `requests`, `queries`, `jobs`, `job_runs`, `exceptions`, `deployments`, `coverage`).
+(`routes`, `requests`, `queries`, `jobs`, `job_runs`, `exceptions`, `deployments`, `coverage`,
+`insights`).
 `rails-pulse install claude` writes an agent skill file to
 `~/.claude/skills/rails-pulse/SKILL.md`; `rails-pulse install agents` writes a
 framework-neutral descriptor to `./AGENTS.md`, and with `--append` adds a delimited Rails
@@ -125,9 +154,10 @@ duplicating.
 `rails-pulse mcp` (`lib/rails_pulse/mcp/`) starts an MCP server over stdio for AI coding
 agents, built on the same HTTP client as the CLI. It needs the `mcp` gem, which is a
 development dependency of this gem and not a runtime one: the host adds `gem "mcp"` to its
-own Gemfile, and without it the command exits 1 saying so. All ten tools are read-only
+own Gemfile, and without it the command exits 1 saying so. All eleven tools are read-only
 (`read_only_hint: true`) and named `rails_pulse_<resource>`: `routes`, `endpoint`, `queries`,
-`errors`, `exceptions`, `exception`, `jobs`, `slow_requests`, `deployments`, and `coverage`.
+`errors`, `exceptions`, `exception`, `jobs`, `slow_requests`, `deployments`, `coverage`, and
+`insights`.
 
 Every tool that takes a `period` also takes `since` and `until` as ISO 8601 timestamps, so a
 window can be pinned rather than measured relative to now — what makes a before/after-deploy
@@ -138,6 +168,8 @@ comparison repeatable. A timestamp with no zone is read as UTC. Explicit bounds 
 8601, an unknown period, a `since` in the future, or an `until` at or before `since` is an
 error naming the correction rather than a query. `rails_pulse_queries` takes `route` as the
 integer `route_id` the endpoint and slow-requests tools return, or as a string.
+`rails_pulse_insights` is the exception: it reads a whole summary period, chosen by `period`
+(`hour`, `day`, `week`, `month`) and `at`, rather than a window.
 
 ## Operations — regression detection
 
@@ -181,7 +213,8 @@ Each is an `ActiveJob`; enqueue it the same way as any other job in the host app
   `target_hour` (default: the start of the hour one hour ago).
 - `RailsPulse::CleanupJob.perform_later` — runs retention-based cleanup when
   `config.archiving_enabled`; returns the stats hash from `CleanupService`, or `nil` if
-  archiving is disabled.
+  archiving is disabled. Each run is recorded as a `cleanup_run` event, which is how
+  `rails_pulse:status` tells whether cleanup is scheduled.
 - `RailsPulse::BackfillSummariesJob.perform_later(start_date, end_date, period_types = ["hour", "day"])`
   — backfills summaries for an existing date range.
 
@@ -189,7 +222,7 @@ Each is an `ActiveJob`; enqueue it the same way as any other job in the host app
 
 | Task | Purpose |
 |---|---|
-| `rails_pulse:status` | Reports schema, migration, route-backfill, and initializer state; exits 1 when something needs action. |
+| `rails_pulse:status` | Reports schema, migration, route-backfill, and initializer state; exits 1 when something needs action. Also reports whether `SummaryJob` and `CleanupJob` are running, hourly summary retention and job tracking, with suggestions that never change the exit status. |
 | `rails_pulse:migrate_routes` | Backfills controller actions, normalizes paths, and consolidates multi-verb routes on existing route rows. |
 | `rails_pulse:record_deployment[revision]` | Records a deployment event. |
 | `rails_pulse:finish_deployment[revision]` | Marks the latest deployment for a revision as finished. |

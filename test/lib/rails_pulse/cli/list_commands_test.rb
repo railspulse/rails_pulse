@@ -7,6 +7,7 @@ require "rails_pulse/cli/job_runs"
 require "rails_pulse/cli/exceptions"
 require "rails_pulse/cli/deployments"
 require "rails_pulse/cli/coverage"
+require "rails_pulse/cli/insights"
 
 module RailsPulse
   module CLI
@@ -378,6 +379,64 @@ module RailsPulse
         assert_equal COVERAGE_RESPONSE.merge("capabilities" => CAPABILITIES_RESPONSE), JSON.parse(out)
       end
 
+      # --- Insights ---
+
+      INSIGHTS_RESPONSE = {
+        "period" => { "type" => "week", "start" => "2026-06-08T00:00:00Z", "end" => "2026-06-14T23:59:59Z", "summarized" => true },
+        "needs_attention" => {
+          "critical" => [ { "type" => "route", "id" => 7, "name" => "GET /checkout", "severity" => "critical", "reason" => "3200ms P95 · exceeds 3000ms threshold" } ],
+          "warning" => [],
+          "total" => 1
+        },
+        "threshold_recommendations" => [
+          { "title" => "Route slow threshold may be too low", "detail" => "4 of 5 sampled routes exceeded the 500ms slow threshold.",
+            "config_snippet" => "config.route_thresholds = { slow: 750, very_slow: 1500, critical: 3000 }" }
+        ]
+      }.freeze
+
+      def run_insights(options = {})
+        cmd = Insights.new([], { "period" => "week", "json" => false }.merge(options.transform_keys(&:to_s)))
+        capture_io { cmd.show }
+      end
+
+      test "insights show prints the period, what needs attention and recommendations" do
+        stub_list(INSIGHTS_RESPONSE)
+        out, _err = run_insights
+
+        assert_includes @captured_uri.path, "/insights"
+        assert_equal({ "period" => "week" }, captured_params)
+        assert_match(/Week from 2026-06-08T00:00:00Z/, out)
+        assert_match(/CRITICAL\s+route\s+GET \/checkout/, out)
+        assert_includes out, "config.route_thresholds = { slow: 750, very_slow: 1500, critical: 3000 }"
+      end
+
+      test "insights show passes period and at" do
+        stub_list(INSIGHTS_RESPONSE)
+        run_insights(period: "day", at: "2026-06-10T00:00:00Z")
+
+        assert_equal({ "period" => "day", "at" => "2026-06-10T00:00:00Z" }, captured_params)
+      end
+
+      test "insights show says when the period is unsummarized and nothing is listed" do
+        stub_list(INSIGHTS_RESPONSE.merge(
+          "period" => INSIGHTS_RESPONSE["period"].merge("summarized" => false),
+          "needs_attention" => { "critical" => [], "warning" => [], "total" => 0 },
+          "threshold_recommendations" => []
+        ))
+        out, _err = run_insights
+
+        assert_includes out, "not fully summarized yet"
+        assert_includes out, "nothing past its thresholds"
+        assert_includes out, "none — the thresholds fit this period"
+      end
+
+      test "insights show --json prints the response" do
+        stub_list(INSIGHTS_RESPONSE)
+        out, _err = run_insights(json: true)
+
+        assert_equal INSIGHTS_RESPONSE, JSON.parse(out)
+      end
+
       # --- Deployments ---
 
       test "deployments list calls /deployments with time filters and renders a table" do
@@ -392,6 +451,26 @@ module RailsPulse
         assert_equal "2026-06-07T23:59:59Z", captured_params["until"]
         assert_match(/abc123\s+t1\s+t2/, out)
         assert_match(/def456\s+t3/, out)
+      end
+
+      test "deployments list shows each deployment's comparison outcome" do
+        stub_list("data" => [
+          { "short_revision" => "abc123", "started_at" => "t1", "finished_at" => "t2", "comparison" => { "outcome" => "degraded" } },
+          { "short_revision" => "def456", "started_at" => "t3", "finished_at" => "t4", "comparison" => { "outcome" => "pending" } }
+        ], "meta" => { "total" => 2 })
+        out, _err = run_cmd(Deployments)
+
+        assert_match(/COMPARED/, out)
+        assert_match(/abc123\s+t1\s+t2\s+degraded/, out)
+        assert_match(/def456\s+t3\s+t4\s+pending/, out)
+      end
+
+      test "deployments list --json passes the comparison through unchanged" do
+        response = { "data" => [ { "short_revision" => "abc123", "comparison" => { "outcome" => "clean" } } ], "meta" => { "total" => 1 } }
+        stub_list(response)
+        out, _err = run_cmd(Deployments, json: true)
+
+        assert_equal response, JSON.parse(out)
       end
 
       test "deployments list omits since and until when not provided" do

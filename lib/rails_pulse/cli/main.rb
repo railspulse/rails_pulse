@@ -9,6 +9,7 @@ require_relative "job_runs"
 require_relative "exceptions"
 require_relative "deployments"
 require_relative "coverage"
+require_relative "insights"
 require_relative "mcp"
 
 module RailsPulse
@@ -38,6 +39,8 @@ module RailsPulse
                "List recorded deployments with optional time filters")
       register(Coverage,  "coverage",  "coverage SUBCOMMAND",
                "What has been recorded, how recently, and any collection gaps")
+      register(Insights,  "insights",  "insights SUBCOMMAND",
+               "What needs attention over one period, and whether the thresholds fit it")
       register(Mcp,       "mcp",       "mcp",
                "Start MCP server for AI coding agents (Claude Code, Codex, Cursor)")
 
@@ -60,6 +63,7 @@ module RailsPulse
           say "  rails-pulse exceptions show 42                             # One group with backtraces and params"
           say "  rails-pulse deployments list                                # Recorded deploys, most recent first"
           say "  rails-pulse coverage show                                   # What is recorded, how recently, any gaps"
+          say "  rails-pulse insights show --period day                      # What needs attention yesterday, threshold fit"
           say "  rails-pulse install claude                                  # Install Claude Code skill file"
           say "  rails-pulse mcp                                             # Start MCP server for AI agents"
           say ""

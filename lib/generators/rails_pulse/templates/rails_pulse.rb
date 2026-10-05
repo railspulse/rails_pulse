@@ -427,12 +427,12 @@ RailsPulse.configure do |config|
   # config.baseline_window   = 28.days
   # config.comparison_window = 1.day
 
-  # Hourly summaries decide how precisely a change point can be placed. They are
-  # pruned at this age because the 1-day view is otherwise the only thing that
-  # reads them. Inside this window Rails Pulse can say a route slowed down at
-  # 14:00; beyond it, the finest answer is the day. Raising this buys precision
-  # at the cost of summary table growth.
-  # config.hourly_summary_retention = 2.days
+  # Hourly summaries decide how precisely a change point can be placed, and
+  # deployment comparisons read them. Inside this window Rails Pulse can say a
+  # route slowed down at 14:00 and compare a deploy's hour before and after;
+  # beyond it, the finest answer is the day and a deploy can no longer be
+  # compared. Raising this buys precision at the cost of summary table growth.
+  # config.hourly_summary_retention = 7.days
 
   # A change is reported as a regression only when it clears both the ratio and
   # the absolute floor for its unit. The ratio alone flags trivial millisecond
