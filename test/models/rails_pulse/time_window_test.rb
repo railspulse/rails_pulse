@@ -58,6 +58,25 @@ module RailsPulse
       assert_equal [ Time.zone.parse("2026-09-19 06:00"), Time.zone.parse("2026-09-19 07:00"), Time.zone.parse("2026-09-19 08:00") ], window.hour_starts
     end
 
+    test "bucket_timestamps steps one calendar day across a daylight-saving change" do
+      Time.use_zone("Australia/Melbourne") do
+        # Melbourne moved to daylight saving at 2am on 4 October 2026, so that
+        # day is 23 hours long.
+        window = TimeWindow.new(Time.zone.local(2026, 10, 3), Time.zone.local(2026, 10, 5).end_of_day)
+
+        expected = [ 3, 4, 5 ].map { |day| Time.zone.local(2026, 10, day).to_i }
+
+        assert_equal expected, window.bucket_timestamps("day")
+        assert_equal 23.hours.to_i, expected[2] - expected[1]
+      end
+    end
+
+    test "bucket_timestamps steps one hour for hourly charts" do
+      window = TimeWindow.new(Time.zone.local(2026, 1, 1, 10), Time.zone.local(2026, 1, 1, 12, 30))
+
+      assert_equal [ 10, 11, 12 ].map { |hour| Time.zone.local(2026, 1, 1, hour).to_i }, window.bucket_timestamps("hour")
+    end
+
     test "previous returns the same number of days immediately before" do
       window = RailsPulse::TimeWindow.new(Time.zone.parse("2026-09-16 00:00"), Time.zone.parse("2026-09-19 23:59:59"))
       previous = window.previous("day")

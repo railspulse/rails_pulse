@@ -84,20 +84,20 @@ module RailsPulse
           instance = TestClass.new(period: 7)
           start_time, end_time = instance.send(:period_range)
 
-          # Span is N days ago at midnight to now, so it's >= N days but < N+1 days
-          days_difference = ((end_time - start_time) / 1.day).floor
-
-          assert_equal 7, days_difference
+          # Counted in calendar days: across a daylight-saving change a day
+          # is 23 or 25 hours, so elapsed seconds over 86,400 can be one short.
+          assert_equal start_time.beginning_of_day, start_time
+          assert_equal 7, (end_time.to_date - start_time.to_date).to_i
         end
 
         test "period_range span matches period for 30 days" do
           instance = TestClass.new(period: 30)
           start_time, end_time = instance.send(:period_range)
 
-          # Span is N days ago at midnight to now, so it's >= N days but < N+1 days
-          days_difference = ((end_time - start_time) / 1.day).floor
-
-          assert_equal 30, days_difference
+          # Counted in calendar days: across a daylight-saving change a day
+          # is 23 or 25 hours, so elapsed seconds over 86,400 can be one short.
+          assert_equal start_time.beginning_of_day, start_time
+          assert_equal 30, (end_time.to_date - start_time.to_date).to_i
         end
 
         # Edge Cases

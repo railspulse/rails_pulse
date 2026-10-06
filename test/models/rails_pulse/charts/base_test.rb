@@ -65,49 +65,6 @@ module RailsPulse
         assert_kind_of TestChart, chart
       end
 
-      # Time Step Tests
-
-      test "time_step returns 86400 for day period_type" do
-        chart = TestChart.new(
-          ransack_query: @ransack_query,
-          period_type: :day,
-          window: RailsPulse::TimeWindow.new(@start_time, @end_time)
-        )
-
-        assert_equal 86400, chart.send(:time_step)
-      end
-
-      test "time_step returns 3600 for hour period_type" do
-        chart = TestChart.new(
-          ransack_query: @ransack_query,
-          period_type: :hour,
-          window: RailsPulse::TimeWindow.new(@start_time, @end_time)
-        )
-
-        assert_equal 3600, chart.send(:time_step)
-      end
-
-      test "time_step handles string period_type" do
-        chart = TestChart.new(
-          ransack_query: @ransack_query,
-          period_type: "hour",
-          window: RailsPulse::TimeWindow.new(@start_time, @end_time)
-        )
-
-        assert_equal 3600, chart.send(:time_step)
-      end
-
-      test "time_step handles nil period_type" do
-        chart = TestChart.new(
-          ransack_query: @ransack_query,
-          period_type: nil,
-          window: RailsPulse::TimeWindow.new(@start_time, @end_time)
-        )
-
-        # Should default to day
-        assert_equal 86400, chart.send(:time_step)
-      end
-
       # Base Summary Query Tests
 
       test "base_summary_query applies tag filters" do
@@ -196,9 +153,8 @@ module RailsPulse
         )
 
         raw_data = { @start_time.to_i => 100 }
-        step = 86400
 
-        result = chart.send(:pad_data_with_zeros, raw_data, @start_time, @end_time, step)
+        result = chart.send(:pad_data_with_zeros, raw_data)
 
         assert_kind_of Hash, result
         # Should have more entries than raw_data
@@ -214,9 +170,8 @@ module RailsPulse
 
         timestamp = @start_time.to_i
         raw_data = { timestamp => 100 }
-        step = 86400
 
-        result = chart.send(:pad_data_with_zeros, raw_data, @start_time, @end_time, step)
+        result = chart.send(:pad_data_with_zeros, raw_data)
 
         assert_equal 100, result[timestamp]
       end
@@ -229,9 +184,8 @@ module RailsPulse
         )
 
         raw_data = {}
-        step = 86400
 
-        result = chart.send(:pad_data_with_zeros, raw_data, @start_time, @end_time, step)
+        result = chart.send(:pad_data_with_zeros, raw_data)
 
         # All values should be 0
         assert result.values.all? { |v| v == 0 }
@@ -248,9 +202,8 @@ module RailsPulse
         )
 
         raw_data = { start.to_i => 50 }
-        step = 3600
 
-        result = chart.send(:pad_data_with_zeros, raw_data, start, finish, step)
+        result = chart.send(:pad_data_with_zeros, raw_data)
 
         assert_kind_of Hash, result
         assert_operator result.size, :>=, 6
@@ -264,9 +217,8 @@ module RailsPulse
         )
 
         raw_data = {}
-        step = 86400
 
-        result = chart.send(:pad_data_with_zeros, raw_data, @start_time, @start_time, step)
+        result = chart.send(:pad_data_with_zeros, raw_data)
 
         assert_equal 1, result.size
       end
@@ -351,9 +303,8 @@ module RailsPulse
         )
 
         raw_data = { start.to_i => 100 }
-        step = 86400
 
-        result = chart.send(:pad_data_with_zeros, raw_data, start, finish, step)
+        result = chart.send(:pad_data_with_zeros, raw_data)
 
         assert_kind_of Hash, result
         assert_operator result.size, :>=, 30

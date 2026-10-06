@@ -23,9 +23,8 @@ module RailsPulse
           end
 
           # Pad missing data with zeros
-          step = time_step
           daily_data = {}
-          (@window.start_time.to_i..@window.end_time.to_i).step(step) do |timestamp|
+          @window.bucket_timestamps(@period_type).each do |timestamp|
             daily_data[timestamp] = raw_data[timestamp] || nil
           end
 

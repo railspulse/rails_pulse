@@ -89,6 +89,25 @@ module RailsPulse
         assert_includes series_names, "P99"
       end
 
+      # Every day after a daylight-saving change starts an hour away from
+      # where a fixed 86,400-second step lands, so stepping that way dropped
+      # every summary after the change.
+      test "keeps the days after a daylight-saving change" do
+        Time.use_zone("Australia/Melbourne") do
+          travel_to Time.zone.local(2026, 10, 8, 12) do
+            create_summary(@route, Time.zone.local(2026, 10, 6), p50: 100, p95: 300, p99: 500, count: 10)
+            chart = TestPercentileChart.new(
+              ransack_query: RailsPulse::Summary.ransack,
+              period_type: "day",
+              window: RailsPulse::TimeWindow.new(Time.zone.local(2026, 10, 1), Time.zone.local(2026, 10, 8).end_of_day)
+            )
+            p50 = chart.to_chart_data[:series].find { |series| series[:name] == "P50" }[:data]
+
+            assert_equal [ [ Time.zone.local(2026, 10, 6).to_i * 1000, 100 ] ], p50.reject { |_, value| value.nil? }
+          end
+        end
+      end
+
       # ============================================================================
       # Weighted Percentile Calculation Tests
       # ============================================================================
@@ -197,12 +216,11 @@ module RailsPulse
         result = chart.to_chart_data
         p50_data = result[:series].find { |s| s[:name] == "P50" }[:data]
 
-        # Check that timestamps are spaced 86400000 milliseconds apart (1 day)
-        if p50_data.length > 1
-          diff = p50_data[1][0] - p50_data[0][0]
+        # One calendar day apart, which is 23 or 25 hours across a
+        # daylight-saving change.
+        times = p50_data.map { |timestamp_ms, _| Time.zone.at(timestamp_ms / 1000) }
 
-          assert_equal 86400000, diff
-        end
+        times.each_cons(2) { |current, following| assert_equal current + 1.day, following }
       end
 
       test "generates correct step size for hour period type" do
