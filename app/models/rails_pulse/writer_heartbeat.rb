@@ -23,14 +23,18 @@ module RailsPulse
         RailsPulse::Event.of_kind(KIND)
       end
 
-      def record!(hostname:, pid:, queue_size:, queue_depth:, dropped:, dropped_total:, sampled_at: Time.current)
+      # `host_label` is config.cloud.host_label: Rails Pulse Cloud names the
+      # host by it instead of the hostname, which can show internal addresses
+      # and changes with every container.
+      def record!(hostname:, pid:, queue_size:, queue_depth:, dropped:, dropped_total:, host_label: nil, sampled_at: Time.current)
         RailsPulse::Event.insert_all([ {
           kind:        KIND,
           subject:     "#{hostname}:#{pid}",
           outcome:     "sampled",
           value:       dropped,
           occurred_at: sampled_at,
-          metadata:    { hostname: hostname, pid: pid, queue_size: queue_size, queue_depth: queue_depth, dropped_total: dropped_total }.to_json,
+          metadata:    { hostname: hostname, host_label: host_label, pid: pid, queue_size: queue_size, queue_depth: queue_depth,
+                         dropped_total: dropped_total }.compact.to_json,
           created_at:  sampled_at,
           updated_at:  sampled_at
         } ])

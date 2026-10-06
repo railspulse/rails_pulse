@@ -32,6 +32,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     AddNullActionUniqueIndexToRoutes
     AddLocationToExceptionGroups
     CreateRailsPulseEvents
+    CreateRailsPulseCloudTables
   ].freeze
 
   def setup
@@ -279,6 +280,19 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert @conn.table_exists?(:rails_pulse_events), "events table missing"
     %w[kind subject outcome value occurred_at message metadata].each do |column|
       assert @conn.column_exists?(:rails_pulse_events, column), "#{column} missing on events"
+    end
+  end
+
+  test "upgrade from v0.2.7 creates the Rails Pulse Cloud tables" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    %w[installation_id last_hour_sent_at exception_groups_sent_through deployments_sent_through last_success_at
+       last_health_at last_error paused_until pause_reason contract_deprecated_on].each do |column|
+      assert @conn.column_exists?(:rails_pulse_cloud_installations, column), "#{column} missing on cloud installations"
+    end
+    %w[batch_id payload byte_size item_count attempts next_attempt_at last_error].each do |column|
+      assert @conn.column_exists?(:rails_pulse_cloud_batches, column), "#{column} missing on cloud batches"
     end
   end
 

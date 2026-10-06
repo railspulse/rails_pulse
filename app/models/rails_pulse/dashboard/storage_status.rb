@@ -78,6 +78,13 @@ module RailsPulse
           label: "Events",
           description: "What Pulse noticed: writer heartbeats every minute, pruned after a day; any other kind is kept for event_retention_period",
           time_column: :occurred_at
+        },
+        {
+          name: :rails_pulse_cloud_batches,
+          model: "RailsPulse::Cloud::BufferedBatch",
+          label: "Cloud buffer",
+          description: "Batches waiting to be sent to Rails Pulse Cloud. Held for at most 7 days or 50 MB",
+          time_column: :created_at
         }
       ].freeze
 

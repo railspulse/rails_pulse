@@ -232,13 +232,21 @@ Each is an `ActiveJob`; enqueue it the same way as any other job in the host app
   `rails_pulse:status` tells whether cleanup is scheduled.
 - `RailsPulse::BackfillSummariesJob.perform_later(start_date, end_date, period_types = ["hour", "day"])`
   — backfills summaries for an existing date range.
+- `RailsPulse::CloudSyncJob` — queues newly summarized hours, changed exception groups and
+  deployments for Rails Pulse Cloud and sends what is due. `SummaryJob` enqueues it after its
+  summaries when `config.cloud` is set, so it needs no schedule.
+- `RailsPulse::CloudHealthJob` — sends the health update for the minute just ended, queues
+  deployments recorded since the last run, and retries buffered batches. Scheduled every minute
+  by hosts that use Cloud. Both Cloud jobs do nothing while `config.cloud.api_key` or
+  `config.cloud.application` is unset, and never raise: a failure is logged and shown by
+  `rails_pulse:status`.
 
 ## Rake tasks
 
 | Task | Purpose |
 |---|---|
-| `rails_pulse:status` | Reports schema, migration, route-backfill, and initializer state; exits 1 when something needs action. Also reports whether `SummaryJob` and `CleanupJob` are running, hourly summary retention and job tracking, with suggestions that never change the exit status. |
-| `rails_pulse:cloud:preview` | Prints the next Rails Pulse Cloud batches and health update exactly as they would be sent, and that deployment metadata is sent as recorded. Sends nothing. |
+| `rails_pulse:status` | Reports schema, migration, route-backfill, and initializer state; exits 1 when something needs action. Also reports whether `SummaryJob` and `CleanupJob` are running, hourly summary retention, job tracking and the Rails Pulse Cloud sync (last accepted batch, buffer, last error, pause, contract deprecation), with suggestions that never change the exit status. |
+| `rails_pulse:cloud:preview` | Prints the batches the next Rails Pulse Cloud sync would queue and the health update, exactly as they would be sent, and that deployment metadata is sent as recorded. Sends and writes nothing. |
 | `rails_pulse:migrate_routes` | Backfills controller actions, normalizes paths, and consolidates multi-verb routes on existing route rows. |
 | `rails_pulse:record_deployment[revision]` | Records a deployment event. |
 | `rails_pulse:finish_deployment[revision]` | Marks the latest deployment for a revision as finished. |

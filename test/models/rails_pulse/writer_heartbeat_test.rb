@@ -19,6 +19,14 @@ module RailsPulse
       assert_equal({ "hostname" => "web-9", "pid" => 9, "queue_size" => 500, "queue_depth" => 7, "dropped_total" => 5 }, event.metadata_hash)
     end
 
+    test "record! keeps config.cloud.host_label alongside the hostname" do
+      RailsPulse::Event.delete_all
+      WriterHeartbeat.record!(hostname: "ip-10-0-3-17", host_label: "web-1", pid: 9, queue_size: 500, queue_depth: 0,
+                              dropped: 0, dropped_total: 0)
+
+      assert_equal "web-1", RailsPulse::Event.sole.metadata_hash["host_label"]
+    end
+
     test "live_processes returns the latest sample per process and skips stale writers" do
       processes = WriterHeartbeat.live_processes
 

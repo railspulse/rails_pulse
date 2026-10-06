@@ -374,6 +374,32 @@ RailsPulse.configure do |config|
   # config.deployment_token = ENV["RAILS_PULSE_DEPLOYMENT_TOKEN"]
 
   # ====================================================================================================
+  #                                            RAILS PULSE CLOUD
+  # ====================================================================================================
+  # Off unless both api_key and application are set; until then Rails Pulse makes no network calls.
+  # When on, it sends Rails Pulse Cloud an hourly summary of each route, query, job and exception,
+  # exception group and deployment records, and a health update every minute. It never sends request
+  # URLs or parameters, values in SQL, exception messages, backtraces or job arguments; the detail stays
+  # in this database. Everything in deployment metadata is sent as recorded.
+  # Run `rails rails_pulse:cloud:preview` to print exactly what would be sent.
+  #
+  # The hourly sync runs after RailsPulse::SummaryJob. Schedule the health update every minute:
+  #   # config/recurring.yml
+  #   rails_pulse_cloud_health:
+  #     class: RailsPulse::CloudHealthJob
+  #     schedule: every minute
+  #
+  # The key comes from your Application's settings in Rails Pulse Cloud; application is its slug.
+  # config.cloud.api_key = ENV["RAILS_PULSE_CLOUD_API_KEY"]
+  # config.cloud.application = "your-app"
+  # Defaults to Rails.env.
+  # config.cloud.environment = Rails.env
+  # config.cloud.url = "https://ingest.railspulse.com"
+  # Hosts are named by hostname, which can show internal addresses and changes with every container.
+  # Set a stable label instead (defaults to RAILS_PULSE_HOST_LABEL).
+  # config.cloud.host_label = ENV["RAILS_PULSE_HOST_LABEL"]
+
+  # ====================================================================================================
   #                                               DATA CLEANUP
   # ====================================================================================================
   # Configure automatic cleanup of old performance data to manage database size.

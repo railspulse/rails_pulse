@@ -59,6 +59,13 @@ module RailsPulse
         assert(hosts.none? { |host| host.to_s.include?("101") })
       end
 
+      test "a host is named by its config.cloud.host_label when it has one" do
+        WriterHeartbeat.record!(hostname: "ip-10-0-3-17", host_label: "web-1", pid: 1, queue_size: 1000, queue_depth: 0,
+                                dropped: 0, dropped_total: 0, sampled_at: @minute + 5.seconds)
+
+        assert_equal [ "web-1" ], HealthItem.for_minute_before(@now)[:hosts].map { |host| host[:host] }
+      end
+
       # Edge Cases
 
       test "a quiet minute has zero counts and no durations" do

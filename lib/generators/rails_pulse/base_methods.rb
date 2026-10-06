@@ -16,6 +16,8 @@ module RailsPulse
         rails_pulse_exception_groups
         rails_pulse_exception_occurrences
         rails_pulse_events
+        rails_pulse_cloud_installations
+        rails_pulse_cloud_batches
       ].freeze
 
       # Generate next migration number for timestamped migrations
