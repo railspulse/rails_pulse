@@ -36,6 +36,10 @@ module RailsPulse
       assert_equal "%work!_orders%", RailsPulse::LikePattern.containing("work_orders")
     end
 
+    test "starting_with follows the escaped value with a wildcard" do
+      assert_equal "/wp!_admin/%", RailsPulse::LikePattern.starting_with("/wp_admin/")
+    end
+
     # Edge Cases
 
     test "escape returns an empty string for nil" do
@@ -44,6 +48,10 @@ module RailsPulse
 
     test "containing matches everything for an empty value" do
       assert_equal "%%", RailsPulse::LikePattern.containing("")
+    end
+
+    test "starting_with matches everything for an empty value" do
+      assert_equal "%", RailsPulse::LikePattern.starting_with("")
     end
   end
 end

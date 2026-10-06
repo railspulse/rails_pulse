@@ -20,16 +20,25 @@ module RailsPulse
             since_start ||= 24.hours.ago if until_end.nil?
             render_with_stats(since_start..until_end, sort || "total_duration")
           else
-            data, meta = paginated(RailsPulse::Query.all.order(:id))
+            data, meta = paginated(queries_scope.order(:id))
             render json: { data: data.map { |query| QuerySerializer.serialize(query) }, meta: meta }
           end
         end
 
         private
 
+        # `hashed_sql` is the key Rails Pulse Cloud holds for a query, so an
+        # exact match on it is how a caller gets from Cloud back to the SQL.
+        def queries_scope
+          scope = RailsPulse::Query.all
+          scope = scope.where(hashed_sql: params[:hashed_sql]) if params[:hashed_sql].present?
+          scope
+        end
+
         def render_with_stats(range, sort)
           base = RailsPulse::Operation.where.not(query_id: nil).where(occurred_at: range)
           base = apply_route_filter(base)
+          base = base.where(query_id: queries_scope.select(:id)) if params[:hashed_sql].present?
           total = base.distinct.count(:query_id)
 
           rows = base

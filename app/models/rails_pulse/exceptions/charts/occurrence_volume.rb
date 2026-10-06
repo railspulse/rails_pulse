@@ -41,10 +41,8 @@ module RailsPulse
         # answer "zero" rather than "no data" — leaving the gap unfilled would
         # draw a chart that skips quiet days and misrepresents the trend.
         def pad_with_zeros(raw)
-          step = @period_type.to_s == "hour" ? 3600 : 86_400
-
           {}.tap do |padded|
-            (@window.start_time.to_i..@window.end_time.to_i).step(step) do |timestamp|
+            @window.bucket_timestamps(@period_type).each do |timestamp|
               padded[timestamp] = raw[timestamp] || 0
             end
           end

@@ -41,11 +41,15 @@ module RailsPulse
               type: %w[integer string],
               description: "Restrict to SQL issued while serving one endpoint. A route_id from rails_pulse_routes " \
                            "or rails_pulse_slow_requests, or a controller action or path to match on."
+            },
+            hashed_sql: {
+              type: "string",
+              description: "Exact hashed_sql of one query, as returned by this tool or by Rails Pulse Cloud"
             }
           }
         )
 
-        def self.call(period: "last_24_hours", limit: 10, sort: "total_duration", n_plus_one_only: false, route: nil, server_context:, **options)
+        def self.call(period: "last_24_hours", limit: 10, sort: "total_duration", n_plus_one_only: false, route: nil, hashed_sql: nil, server_context:, **options)
           respond(server_context) do |client|
             window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 50)
@@ -54,6 +58,7 @@ module RailsPulse
             page = n_plus_one_only ? MAX_PAGE : limit
             params = window_params(window).merge(sort: sort, limit: page)
             params[:route] = route if route
+            params[:hashed_sql] = hashed_sql if hashed_sql
             result = client.get("/queries", params)
 
             queries = (result["data"] || []).map { |q| format_query(q) }
@@ -85,6 +90,7 @@ module RailsPulse
 
           {
             id: query["id"],
+            hashed_sql: query["hashed_sql"],
             sql: truncate(sql, SQL_LENGTH),
             executions: stats["executions"],
             avg_duration_ms: stats["avg_duration_ms"],

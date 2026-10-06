@@ -108,6 +108,51 @@ module RailsPulse
           assert_equal 1, body["meta"]["total"]
         end
 
+        # A route is identified by its path and controller action together;
+        # a substring match would also return the routes nested under it.
+        test "path matches exactly, not as a substring" do
+          RailsPulse::Route.create!(http_methods: '["GET"]', path: "/api/users/export", controller_action: "api/users#export")
+
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { path: "/api/users" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "/api/users" ], body["data"].map { |r| r["path"] }
+          assert_equal 1, body["meta"]["total"]
+        end
+
+        test "controller_action matches exactly, not as a substring" do
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { controller_action: "api/users" }
+          body = JSON.parse(response.body)
+
+          assert_empty body["data"]
+
+          get rails_pulse.api_v1_routes_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { controller_action: "api/users#index" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ rails_pulse_routes(:api_users).id ], body["data"].map { |r| r["id"] }
+        end
+
+        test "path and controller_action must both match" do
+          get rails_pulse.api_v1_routes_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { path: "/api/users", controller_action: "api/posts#create" }
+          body = JSON.parse(response.body)
+
+          assert_empty body["data"]
+          assert_equal 0, body["meta"]["total"]
+        end
+
+        test "path and controller_action restrict the stats to that route" do
+          get rails_pulse.api_v1_routes_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { since: 20.hours.ago.iso8601, path: "/api/users", controller_action: "api/users#index" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "/api/users" ], body["data"].map { |r| r["path"] }
+          assert_equal 1, body["meta"]["total"]
+          assert_equal 5, body["data"].first["stats"]["request_count"]
+        end
+
         # min_requests is applied before the LIMIT, so a qualifying route that
         # ranks below the limit is still reachable. Filtering the page after
         # the fact returned nothing here.

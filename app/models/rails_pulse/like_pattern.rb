@@ -20,6 +20,12 @@ module RailsPulse
       "%#{escape(value)}%"
     end
 
+    # @param value [#to_s] user-supplied text to match at the start of a column
+    # @return [String] escaped pattern followed by a trailing wildcard
+    def starting_with(value)
+      "#{escape(value)}%"
+    end
+
     # @param value [#to_s] user-supplied text
     # @return [String] the text with LIKE metacharacters escaped
     def escape(value)

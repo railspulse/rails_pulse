@@ -10,6 +10,7 @@ module RailsPulse
 
           assert_equal request.id,                  result[:id]
           assert_equal request.route_id,            result[:route_id]
+          assert_equal request.route.path,          result[:path]
           assert_equal request.occurred_at,         result[:occurred_at]
           assert_equal request.duration,            result[:duration]
           assert_equal request.status,              result[:status]
@@ -22,7 +23,7 @@ module RailsPulse
         test "returns a hash with exactly the expected keys" do
           result = RequestSerializer.serialize(rails_pulse_requests(:users_request_1))
 
-          assert_equal %i[id route_id occurred_at duration status is_error request_uuid controller_action response_size_bytes], result.keys
+          assert_equal %i[id route_id path occurred_at duration status is_error request_uuid controller_action response_size_bytes], result.keys
         end
 
         test "reflects is_error true for error requests" do

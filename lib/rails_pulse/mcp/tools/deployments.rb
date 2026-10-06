@@ -26,15 +26,22 @@ module RailsPulse
               type: "integer",
               description: "Maximum number of deployments (1-100)",
               default: 10
+            },
+            revision: {
+              type: "string",
+              description: "A full revision or the start of one, e.g. 'a1b2c3d'. Searched inside the window, " \
+                           "so widen period or pass since for an older deployment."
             }
           }
         )
 
-        def self.call(period: "last_7_days", limit: 10, server_context:, **options)
+        def self.call(period: "last_7_days", limit: 10, revision: nil, server_context:, **options)
           respond(server_context) do |client|
             window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 100)
-            result = client.get("/deployments", window_params(window).merge(limit: limit))
+            params = window_params(window).merge(limit: limit)
+            params[:revision] = revision if revision
+            result = client.get("/deployments", params)
             deployments = (result["data"] || []).map { |d| format_deployment(d) }
 
             {

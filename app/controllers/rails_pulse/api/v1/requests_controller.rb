@@ -6,7 +6,7 @@ module RailsPulse
         STATUS_CODE  = /\A\d{3}\z/
 
         def index
-          collection = RailsPulse::Request.all.order(occurred_at: :desc, id: :desc)
+          collection = RailsPulse::Request.preload(:route).order(occurred_at: :desc, id: :desc)
 
           parsed_range = time_range
           return unless parsed_range
@@ -15,6 +15,7 @@ module RailsPulse
           collection = collection.where(occurred_at: since_start..) if since_start
           collection = collection.where(occurred_at: ..until_end) if until_end
           collection = apply_route_filter(collection)
+          collection = apply_path_prefix_filter(collection)
           collection = apply_status_filter(collection)
           return if performed?
 
@@ -35,6 +36,21 @@ module RailsPulse
             "LOWER(rails_pulse_requests.controller_action) LIKE :term #{RailsPulse::LikePattern::CLAUSE} " \
             "OR LOWER(rails_pulse_routes.path) LIKE :term #{RailsPulse::LikePattern::CLAUSE}",
             term: term
+          )
+        end
+
+        # Requests whose route path starts with the prefix. A request the
+        # router did not recognise is stored under its raw path, so this is how
+        # a caller finds the paths behind a burst of 404s. A trailing `*` is
+        # dropped, so a grouped prefix such as `/wp-admin/*` can be passed as
+        # it is; `/*` and `*` therefore match every path.
+        def apply_path_prefix_filter(scope)
+          return scope unless params[:path_prefix].present?
+
+          prefix = params[:path_prefix].to_s.delete_suffix("*")
+          scope.joins(:route).where(
+            "rails_pulse_routes.path LIKE :prefix #{RailsPulse::LikePattern::CLAUSE}",
+            prefix: RailsPulse::LikePattern.starting_with(prefix)
           )
         end
 

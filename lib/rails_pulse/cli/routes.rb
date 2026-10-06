@@ -27,6 +27,9 @@ module RailsPulse
         Search by path or controller action (case-insensitive substring):
           --search checkout
 
+        Match one route exactly by its path and controller action:
+          --path /orders/:id --controller-action orders#show
+
         Add request stats for a time window (ISO 8601). Only routes with traffic
         in the window are returned, ordered by request count:
           --since 2026-06-01T00:00:00Z
@@ -43,6 +46,8 @@ module RailsPulse
       option :since,  type: :string,                  desc: "Include request stats at or after this time (ISO 8601)"
       option :until,  type: :string,                  desc: "Include request stats at or before this time (ISO 8601)"
       option :search, type: :string,                  desc: "Filter by path or controller action substring"
+      option :path,   type: :string,                  desc: "Exact route path"
+      option :controller_action, type: :string,       desc: "Exact controller action"
       option :sort,   type: :string,                  desc: "Order stats by request_count, avg_duration, or error_count"
       option :json,   type: :boolean, default: false, desc: "Output raw JSON including meta envelope"
       def list
@@ -51,6 +56,8 @@ module RailsPulse
           params[:since]  = options[:since]  if options[:since]
           params[:until]  = options[:until]  if options[:until]
           params[:search] = options[:search] if options[:search]
+          params[:path]   = options[:path]   if options[:path]
+          params[:controller_action] = options[:controller_action] if options[:controller_action]
           params[:sort]   = options[:sort]   if options[:sort]
           result = client.get("/routes", params)
 

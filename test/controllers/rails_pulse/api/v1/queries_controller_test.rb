@@ -243,6 +243,38 @@ module RailsPulse
           assert_equal 0, body["meta"]["total"]
         end
 
+        test "hashed_sql finds one query without a window" do
+          query = rails_pulse_queries(:analyzed_query)
+
+          get rails_pulse.api_v1_queries_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { hashed_sql: query.hashed_sql }
+          body = JSON.parse(response.body)
+
+          assert_equal [ query.id ], body["data"].map { |q| q["id"] }
+          assert_equal query.hashed_sql, body["data"].first["hashed_sql"]
+          assert_equal 1, body["meta"]["total"]
+        end
+
+        test "hashed_sql restricts the stats to that query" do
+          seed_operations
+
+          get rails_pulse.api_v1_queries_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { since: 1.day.ago.iso8601, hashed_sql: @users.hashed_sql }
+          body = JSON.parse(response.body)
+
+          assert_equal [ @users.id ], body["data"].map { |q| q["id"] }
+          assert_equal 1, body["meta"]["total"]
+          refute_nil body["data"].first["stats"]
+        end
+
+        test "hashed_sql with no match returns an empty page" do
+          get rails_pulse.api_v1_queries_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { hashed_sql: "0" * 32 }
+          body = JSON.parse(response.body)
+
+          assert_empty body["data"]
+          assert_equal 0, body["meta"]["total"]
+        end
+
         private
 
         def seed_operations

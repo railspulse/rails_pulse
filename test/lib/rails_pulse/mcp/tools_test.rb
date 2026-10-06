@@ -306,6 +306,32 @@ module RailsPulse
         assert_includes data["summary"], "No 5xx errors found"
       end
 
+      test "errors passes path_prefix to the API" do
+        ctx = server_context("/requests" => REQUESTS_RESPONSE)
+        Tools::Errors.call(status: "404", path_prefix: "/wp-admin/*", server_context: ctx)
+        _path, params = ctx[:client].calls.first
+
+        assert_equal "/wp-admin/*", params[:path_prefix]
+        assert_equal "404", params[:status]
+      end
+
+      # A request no route matched has no controller action; grouping those
+      # under "unknown" would hide which paths were requested.
+      test "errors groups requests no route matched by their path" do
+        unmatched = {
+          "data" => [
+            { "id" => 1, "status" => 404, "duration" => 2.0, "controller_action" => nil, "path" => "/wp-admin/setup.php", "occurred_at" => "2026-06-01T12:00:00Z" },
+            { "id" => 2, "status" => 404, "duration" => 2.0, "controller_action" => nil, "path" => "/wp-admin/setup.php", "occurred_at" => "2026-06-01T12:01:00Z" },
+            { "id" => 3, "status" => 404, "duration" => 2.0, "controller_action" => nil, "path" => "/wp-admin/install.php", "occurred_at" => "2026-06-01T12:02:00Z" }
+          ],
+          "meta" => { "total" => 3 }
+        }
+        result = Tools::Errors.call(status: "404", server_context: server_context("/requests" => unmatched))
+        data = JSON.parse(result.content.first[:text])
+
+        assert_equal [ [ "/wp-admin/setup.php", 2 ], [ "/wp-admin/install.php", 1 ] ], data["by_endpoint"].map { |g| [ g["endpoint"], g["count"] ] }
+      end
+
       # --- Exceptions ---
 
       EXCEPTIONS_RESPONSE = {
@@ -345,6 +371,19 @@ module RailsPulse
         assert_nil params[:status]
         assert_nil params[:since]
         assert_equal "post", params[:search]
+      end
+
+      # A fingerprint names one group, so the open and last-7-days defaults
+      # would hide it once it is resolved or quiet.
+      test "exceptions looks up a fingerprint whatever its status or age" do
+        ctx = server_context("/exceptions" => EXCEPTIONS_RESPONSE)
+        result = Tools::Exceptions.call(fingerprint: "abc", since: "2026-09-24T12:00:00Z", server_context: ctx)
+        _path, params = ctx[:client].calls.first
+
+        assert_equal "abc", params[:fingerprint]
+        assert_nil params[:status]
+        assert_nil params[:since]
+        assert_equal "abc", JSON.parse(result.content.first[:text])["groups"].first["fingerprint"]
       end
 
       test "exceptions pins an explicit window" do

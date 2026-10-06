@@ -6,6 +6,7 @@ module RailsPulse
           {
             id:                  request.id,
             route_id:            request.route_id,
+            path:                request.route&.path,
             occurred_at:         request.occurred_at,
             duration:            request.duration,
             status:              request.status,

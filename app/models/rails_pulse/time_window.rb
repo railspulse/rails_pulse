@@ -45,6 +45,21 @@ module RailsPulse
       starts
     end
 
+    # The start of each chart bucket from the window's start, as epoch
+    # seconds: one calendar day or one hour apart in Time.zone. A day is 23
+    # or 25 hours across a daylight-saving change, so stepping a fixed 86,400
+    # seconds would drift off local midnight and miss every summary after it.
+    def bucket_timestamps(period_type)
+      step = period_type.to_s == "hour" ? 1.hour : 1.day
+      stamps = []
+      current = start_time
+      while current <= end_time
+        stamps << current.to_i
+        current += step
+      end
+      stamps
+    end
+
     # The window of the same length immediately preceding this one, for
     # period-over-period comparisons. `unit` is "day" or "hour".
     def previous(unit)

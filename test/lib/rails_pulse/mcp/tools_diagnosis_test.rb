@@ -111,6 +111,22 @@ module RailsPulse
         assert_in_delta Time.now - 3600, Time.iso8601(params[:since]), 5
       end
 
+      test "queries passes hashed_sql to the API and returns it on each query" do
+        response = QUERIES_RESPONSE.merge("data" => [ QUERIES_RESPONSE["data"].first.merge("hashed_sql" => "e4d909c2") ])
+        c = client("/queries" => response)
+        _, data = call(Tools::Queries, c, hashed_sql: "e4d909c2")
+
+        assert_equal "e4d909c2", c.calls.first[1][:hashed_sql]
+        assert_equal [ "e4d909c2" ], data["queries"].map { |q| q["hashed_sql"] }
+      end
+
+      test "queries leaves hashed_sql out of the API call when it is not given" do
+        c = client("/queries" => QUERIES_RESPONSE)
+        call(Tools::Queries, c)
+
+        refute_includes c.calls.first[1].keys, :hashed_sql
+      end
+
       test "queries formats stats, compacts SQL, and flags N+1" do
         _, data = call(Tools::Queries, client("/queries" => QUERIES_RESPONSE))
         first = data["queries"].first
@@ -351,6 +367,16 @@ module RailsPulse
 
         assert_equal "checkout", c.calls.first[1][:search]
         assert_equal [ "/checkout" ], data["routes"].map { |r| r["path"] }
+      end
+
+      test "routes passes an exact path and controller action to the API" do
+        c = client("/routes" => ROUTES_RESPONSE)
+        call(Tools::Routes, c, path: "/checkout", controller_action: "CheckoutController#create")
+        params = c.calls.first[1]
+
+        assert_equal "/checkout", params[:path]
+        assert_equal "CheckoutController#create", params[:controller_action]
+        assert_nil params[:search]
       end
 
       test "routes summary explains empty results with and without search" do

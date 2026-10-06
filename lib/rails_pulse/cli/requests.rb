@@ -9,7 +9,8 @@ module RailsPulse
         [ "Status",      6, :status ],
         [ "Duration",   10, :duration ],
         [ "Occurred",   25, :occurred_at ],
-        [ "Controller", 35, :controller_action ]
+        [ "Controller", 35, :controller_action ],
+        [ "Path",       35, :path ]
       ].freeze
 
       desc "list", "List recorded HTTP requests"
@@ -20,6 +21,11 @@ module RailsPulse
           --status 500      exact code
           --status 5xx      any 5xx response
           --status 4xx      any 4xx response
+
+        Filter by the start of the path. A trailing * is ignored, so a Rails Pulse Cloud
+        path_prefix can be passed as it is; requests no route matched are stored under
+        their raw path:
+          --path-prefix /wp-admin/ --status 404
 
         Filter by time window (ISO 8601):
           --since 2026-06-01T00:00:00Z
@@ -33,6 +39,7 @@ module RailsPulse
       option :since,  type: :string,                  desc: "Return requests at or after this time (ISO 8601)"
       option :until,  type: :string,                  desc: "Return requests at or before this time (ISO 8601)"
       option :status, type: :string,                  desc: "Filter by status code or class (e.g. 500, 5xx, 4xx)"
+      option :path_prefix, type: :string,             desc: "Only paths starting with this (e.g. /wp-admin/)"
       option :json,   type: :boolean, default: false, desc: "Output raw JSON including meta envelope"
       def list
         with_error_handling do
@@ -40,6 +47,7 @@ module RailsPulse
           params[:since]  = options[:since]  if options[:since]
           params[:until]  = options[:until]  if options[:until]
           params[:status] = options[:status] if options[:status]
+          params[:path_prefix] = options[:path_prefix] if options[:path_prefix]
           result = client.get("/requests", params)
           Formatter.render(result, json: options[:json], columns: COLUMNS)
         end

@@ -83,6 +83,14 @@ module RailsPulse
         assert_equal "avg_duration", captured_params["sort"]
       end
 
+      test "routes list passes an exact path and controller action" do
+        stub_list
+        run_cmd(Routes, path: "/orders/:id", controller_action: "orders#show")
+
+        assert_equal "/orders/:id", captured_params["path"]
+        assert_equal "orders#show", captured_params["controller_action"]
+      end
+
       test "routes list renders methods and action, switching to stats columns when present" do
         plain = { "data" => [ { "http_methods" => %w[GET POST], "path" => "/x", "controller_action" => "XController#show", "created_at" => "t", "stats" => nil } ], "meta" => {} }
         out, _err = (stub_list(plain); run_cmd(Routes))
@@ -138,6 +146,16 @@ module RailsPulse
         assert_equal "5xx", captured_params["status"]
       end
 
+      test "requests list passes path_prefix and shows each request's path" do
+        stub_list("data" => [
+          { "id" => 1, "status" => 404, "duration" => 2.0, "occurred_at" => "t1", "controller_action" => nil, "path" => "/wp-admin/setup.php" }
+        ], "meta" => { "total" => 1 })
+        out, _err = run_cmd(Requests, path_prefix: "/wp-admin/*", status: "404")
+
+        assert_equal "/wp-admin/*", captured_params["path_prefix"]
+        assert_match(%r{404.*/wp-admin/setup\.php}, out)
+      end
+
       # --- Queries ---
 
       test "queries list calls /queries endpoint" do
@@ -153,6 +171,13 @@ module RailsPulse
 
         assert_equal "2026-06-01T00:00:00Z", captured_params["since"]
         assert_equal "2026-06-07T23:59:59Z", captured_params["until"]
+      end
+
+      test "queries list passes hashed_sql when provided" do
+        stub_list
+        run_cmd(Queries, hashed_sql: "e4d909c2290d0fb1ca068ffaddf22cbd")
+
+        assert_equal "e4d909c2290d0fb1ca068ffaddf22cbd", captured_params["hashed_sql"]
       end
 
       test "queries list omits since and until when not provided" do
@@ -272,6 +297,13 @@ module RailsPulse
         assert_equal "2026-06-01T00:00:00Z", captured_params["since"]
         assert_equal "2026-06-07T23:59:59Z", captured_params["until"]
         assert_match(/RecordNotFound.*post\.rb#find.*open.*5/, out)
+      end
+
+      test "exceptions list passes fingerprint when provided" do
+        stub_list
+        run_cmd(Exceptions, fingerprint: "9b2c4e7a1f3d5c8b")
+
+        assert_equal "9b2c4e7a1f3d5c8b", captured_params["fingerprint"]
       end
 
       test "exceptions show fetches one group and prints its occurrences and backtrace" do
@@ -451,6 +483,13 @@ module RailsPulse
         assert_equal "2026-06-07T23:59:59Z", captured_params["until"]
         assert_match(/abc123\s+t1\s+t2/, out)
         assert_match(/def456\s+t3/, out)
+      end
+
+      test "deployments list passes revision when provided" do
+        stub_list
+        run_cmd(Deployments, revision: "a1b2c3d")
+
+        assert_equal "a1b2c3d", captured_params["revision"]
       end
 
       test "deployments list shows each deployment's comparison outcome" do

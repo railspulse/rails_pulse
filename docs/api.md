@@ -60,6 +60,16 @@ header.
   paging value that is not a whole number. Every listing breaks ties on id, so offset pages are
   stable.
   Substring filters match `_`, `%` and `!` literally.
+- Every key Rails Pulse Cloud holds has an exact lookup, so a caller can get from a Cloud
+  alert back to the local detail: `queries` takes `hashed_sql`, `exceptions` takes
+  `fingerprint` (combine it with no `status` or window to find the group however old or
+  resolved it is), `routes` takes `path` and `controller_action` as exact matches (unlike
+  `search`), `deployments` takes `revision` (the full revision or the start of one), and
+  `requests` takes `path_prefix`, matched against the start of the route path with a trailing
+  `*` dropped, so Cloud's `/wp-admin/*` can be passed as it is and `/*` or `*` match every
+  path. A request no route matched is stored under its raw path, so `path_prefix` with
+  `status=404` lists the paths behind an unmatched-traffic spike; each request carries its
+  `path`. Job names already had an exact lookup in `job`.
 - `queries` takes `route` — a route id, or a controller action or path to match on — and
   restricts the SQL to operations issued while serving that endpoint, which is how a caller
   gets from "this endpoint is slow" to "this is the SQL inside it". It implies a window the
@@ -142,7 +152,8 @@ may reference Rails, models, or configuration directly. `rails-pulse configure` 
 URL and token and writes `~/.rails-pulse`; credentials otherwise come from `RAILS_PULSE_URL`
 and `RAILS_PULSE_TOKEN`. Each API resource above has a matching subcommand
 (`routes`, `requests`, `queries`, `jobs`, `job_runs`, `exceptions`, `deployments`, `coverage`,
-`insights`).
+`insights`), and each lookup parameter is a flag of the same name (`--hashed-sql`,
+`--fingerprint`, `--path`, `--controller-action`, `--path-prefix`, `--revision`).
 `rails-pulse install claude` writes an agent skill file to
 `~/.claude/skills/rails-pulse/SKILL.md`; `rails-pulse install agents` writes a
 framework-neutral descriptor to `./AGENTS.md`, and with `--append` adds a delimited Rails
@@ -167,7 +178,11 @@ comparison repeatable. A timestamp with no zone is read as UTC. Explicit bounds 
 `rails_pulse_exceptions`); any other window is `since`/`until`. A timestamp that is not ISO
 8601, an unknown period, a `since` in the future, or an `until` at or before `since` is an
 error naming the correction rather than a query. `rails_pulse_queries` takes `route` as the
-integer `route_id` the endpoint and slow-requests tools return, or as a string.
+integer `route_id` the endpoint and slow-requests tools return, or as a string. The Cloud keys
+above are tool arguments too: `hashed_sql` on `rails_pulse_queries`, `fingerprint` on
+`rails_pulse_exceptions` (which then ignores `status` and the window), `path` and
+`controller_action` on `rails_pulse_routes`, `revision` on `rails_pulse_deployments`, and
+`path_prefix` on `rails_pulse_errors`, which groups requests no route matched by path.
 `rails_pulse_insights` is the exception: it reads a whole summary period, chosen by `period`
 (`hour`, `day`, `week`, `month`) and `at`, rather than a window.
 
