@@ -20,6 +20,59 @@ module RailsPulse
       assert_raises(ArgumentError) { build_config { @event_retention_exempt_kinds = [ :job_heartbeat ] } }
     end
 
+    test "cloud is off by default, pointed at production ingestion, in this Rails environment" do
+      cloud = Configuration.new.cloud
+
+      assert_not cloud.enabled?
+      assert_nil cloud.api_key
+      assert_nil cloud.application
+      assert_equal "https://ingest.railspulse.com", cloud.url
+      assert_equal Rails.env.to_s, cloud.environment
+    end
+
+    test "cloud is enabled only when both the key and the application are set" do
+      config = Configuration.new
+      config.cloud.api_key = "rpc_4f9Kx2mQ8vTzL1nB7wYc3HdR6sJe5PaU"
+
+      assert_not config.cloud.enabled?
+
+      config.cloud.application = "shop"
+
+      assert_predicate config.cloud, :enabled?
+    end
+
+    test "cloud host_label defaults to RAILS_PULSE_HOST_LABEL" do
+      ENV["RAILS_PULSE_HOST_LABEL"] = "web-1"
+
+      assert_equal "web-1", Configuration.new.cloud.host_label
+    ensure
+      ENV.delete("RAILS_PULSE_HOST_LABEL")
+    end
+
+    test "cloud settings are validated" do
+      assert_raises(ArgumentError) { build_config { @cloud.api_key = "test-api-token" } }
+      assert_raises(ArgumentError) { build_config { @cloud.api_key = "rpc_" } }
+      assert_raises(ArgumentError) { build_config { @cloud.url = "ingest.railspulse.com" } }
+      assert_raises(ArgumentError) { build_config { @cloud.application = "My Shop" } }
+      assert_raises(ArgumentError) { build_config { @cloud.environment = "" } }
+      assert_raises(ArgumentError) { build_config { @cloud.host_label = "x" * 256 } }
+      assert_nothing_raised do
+        build_config do
+          @cloud.api_key = "rpc_4f9Kx2mQ8vTzL1nB7wYc3HdR6sJe5PaU"
+          @cloud.application = "shop"
+          @cloud.url = "https://staging.railspulse.com/ingest"
+        end
+      end
+    end
+
+    test "cloud settings never show the key when inspected" do
+      config = Configuration.new
+      config.cloud.api_key = "rpc_4f9Kx2mQ8vTzL1nB7wYc3HdR6sJe5PaU"
+
+      assert_not_includes config.cloud.inspect, "4f9Kx2mQ"
+      assert_includes config.cloud.inspect, "[FILTERED]"
+    end
+
     test "enabled defaults to true" do
       config = Configuration.new
 

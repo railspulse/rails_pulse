@@ -1,0 +1,13 @@
+# Rails Pulse Cloud receives what comes from code, never from users
+
+_Recorded 2026-10, for the 0.6 release._
+
+The gem's Cloud client (`app/services/rails_pulse/cloud/`) builds what it sends from the hourly summaries, exception groups, deployments and writer heartbeats, by the sync contract in the rails_pulse_cloud repository (`docs/specs/cloud-sync-contract.md`). One rule decides each field: things that come from the application's code are sent (route patterns, controller actions, table and column names, exception classes and the file and method they were raised in, job classes and queues, call sites), and things that come from its users are not (request URLs and parameters, values in SQL, exception messages and backtraces, job arguments). Every item is keyed by content, a query by its hash and an exception group by its fingerprint, never a local id, and each key can be looked up through the local JSON API, so the detail stays in the host's database (decision 0006).
+
+The rule is enforced by building each field again from an allow-list rather than trusting what was stored. Normalised SQL is re-tokenised and a query with any token outside the allow-list is sent with a label and no shape, because normalisation is known to leave some literal forms in place. A recognised route's path is taken from the host's router, because the stored path keeps a value when two parameters share it or a glob captures it. An unrecognised path is cut to its first segment. Comments are dropped from SQL, and call sites outside `app/` are not sent. `rails rails_pulse:cloud:preview` prints the next batch through the same code, so what a customer reviews is what is sent.
+
+The client ships in the gem, opt-in and off by default, rather than as a separate gem. A separate gem would let the core gem say it contains no network code, but it would need the core to expose stable hooks into summaries, storage, scheduling and the status task, and a second version to keep in step. With nothing configured the gem makes no network calls, and the allow-list is the same either way.
+
+Sending the normalised SQL as stored, or exception messages, was rejected. Both make Cloud more useful at a glance, and both carry user data often enough that the privacy promise would depend on normalisation being perfect. Opting in to more detail is out of scope for contract version 1; if it is added, each kind is its own setting, off by default, with the contract and the public privacy page changed first.
+
+The cost: some queries arrive in Cloud as a label only, routes whose pattern cannot be found are sent with their unrecognisable segments replaced by `*`, and Cloud can name an exception but not show its message.

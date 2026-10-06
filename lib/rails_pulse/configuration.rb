@@ -1,5 +1,77 @@
 module RailsPulse
   class Configuration
+    # Settings for sending summaries to Rails Pulse Cloud, read as
+    # `config.cloud.api_key` and so on. Sending is off unless both api_key
+    # and application are set.
+    class CloudSettings
+      DEFAULT_URL = "https://ingest.railspulse.com".freeze
+      # The prefix every Cloud key carries, so a leaked one is recognisable
+      # and api_token cannot be pasted here by mistake.
+      API_KEY_PREFIX = "rpc_".freeze
+      APPLICATION_FORMAT = /\A[a-z0-9][a-z0-9-]{0,62}\z/
+      MAX_ENVIRONMENT_LENGTH = 64
+      MAX_HOST_LABEL_LENGTH = 255
+
+      attr_accessor :api_key, :url, :application, :environment, :host_label
+
+      def initialize
+        @api_key = nil
+        @url = DEFAULT_URL
+        @application = nil
+        @environment = Rails.env.to_s
+        @host_label = ENV["RAILS_PULSE_HOST_LABEL"].presence
+      end
+
+      def enabled?
+        api_key.present? && application.present?
+      end
+
+      def to_h
+        { api_key: api_key, url: url, application: application, environment: environment, host_label: host_label }
+      end
+
+      def ==(other)
+        other.is_a?(CloudSettings) && to_h == other.to_h
+      end
+
+      # The key is left out so it does not end up in a log or console.
+      def inspect
+        "#<#{self.class.name} #{to_h.merge(api_key: api_key.present? ? "[FILTERED]" : nil).inspect}>"
+      end
+
+      def validate!
+        if !api_key.nil? && !(api_key.is_a?(String) && api_key.start_with?(API_KEY_PREFIX) && api_key.length > API_KEY_PREFIX.length)
+          raise ArgumentError, "cloud.api_key must be a Rails Pulse Cloud key starting with #{API_KEY_PREFIX}, or nil"
+        end
+
+        unless http_url?(url)
+          raise ArgumentError, "cloud.url must be an http or https URL, got #{url.inspect}"
+        end
+
+        if !application.nil? && !(application.is_a?(String) && application.match?(APPLICATION_FORMAT))
+          raise ArgumentError, "cloud.application must be the Application's slug in Rails Pulse Cloud " \
+                               "(lowercase letters, digits and dashes), got #{application.inspect}"
+        end
+
+        unless environment.is_a?(String) && environment.present? && environment.length <= MAX_ENVIRONMENT_LENGTH
+          raise ArgumentError, "cloud.environment must be a name of 1 to #{MAX_ENVIRONMENT_LENGTH} characters, got #{environment.inspect}"
+        end
+
+        if !host_label.nil? && !(host_label.is_a?(String) && host_label.present? && host_label.length <= MAX_HOST_LABEL_LENGTH)
+          raise ArgumentError, "cloud.host_label must be a name of 1 to #{MAX_HOST_LABEL_LENGTH} characters, or nil"
+        end
+      end
+
+      private
+
+      def http_url?(value)
+        uri = URI.parse(value.to_s)
+        uri.is_a?(URI::HTTP) && uri.host.present?
+      rescue URI::InvalidURIError
+        false
+      end
+    end
+
     attr_writer   :ignored_routes
     attr_accessor :enabled,
                   :api_token,
@@ -61,6 +133,8 @@ module RailsPulse
     end
 
     # Read-only access to thresholds (use setters for validation)
+    attr_reader :cloud
+
     attr_reader :route_thresholds,
                 :request_thresholds,
                 :query_thresholds,
@@ -71,6 +145,7 @@ module RailsPulse
 
     def initialize
       @enabled = true
+      @cloud = CloudSettings.new
       @route_thresholds = { slow: 500, very_slow: 1500, critical: 3000 }
       @request_thresholds = { slow: 700, very_slow: 2000, critical: 4000 }
       @query_thresholds = { slow: 100, very_slow: 500, critical: 1000 }
@@ -247,6 +322,7 @@ module RailsPulse
       validate_query_service_level_objectives_settings!
       validate_comparison_settings!
       validate_schema_check_settings!
+      @cloud.validate!
     end
 
     private
