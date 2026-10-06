@@ -26,6 +26,9 @@ module RailsPulse
         Search the class name or location:
           --search RecordNotFound
 
+        Look up one group by its fingerprint, as listed with --json or by Rails Pulse Cloud:
+          --fingerprint 9b2c4e7a1f3d5c8b
+
         Filter by when the group was last seen (ISO 8601):
           --since 2026-06-01T00:00:00Z
           --until 2026-06-01T23:59:59Z
@@ -41,6 +44,7 @@ module RailsPulse
       option :until,  type: :string,                  desc: "Return groups last seen at or before this time (ISO 8601)"
       option :status, type: :string,                  desc: "Filter by status (open, resolved, ignored)"
       option :search, type: :string,                  desc: "Substring match on exception class or location"
+      option :fingerprint, type: :string,             desc: "Exact fingerprint of one group"
       option :sort,   type: :string,                  desc: "Sort by last_seen_at, first_seen_at, or occurrence_count"
       option :json,   type: :boolean, default: false, desc: "Output raw JSON including meta envelope"
       def list
@@ -50,6 +54,7 @@ module RailsPulse
           params[:until]  = options[:until]  if options[:until]
           params[:status] = options[:status] if options[:status]
           params[:search] = options[:search] if options[:search]
+          params[:fingerprint] = options[:fingerprint] if options[:fingerprint]
           params[:sort]   = options[:sort]   if options[:sort]
           result = client.get("/exceptions", params)
           Formatter.render(result, json: options[:json], columns: COLUMNS)

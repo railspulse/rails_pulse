@@ -28,11 +28,17 @@ module RailsPulse
               type: "string",
               description: "Error class filter: '4xx', '5xx' (default), or exact code like '500'",
               default: "5xx"
+            },
+            path_prefix: {
+              type: "string",
+              description: "Only requests whose path starts with this, e.g. '/wp-admin/'. A trailing '*' is ignored, " \
+                           "so a Rails Pulse Cloud path_prefix such as '/wp-admin/*' can be passed as it is. " \
+                           "Requests no route matched are listed by path; pair with status '404'."
             }
           }
         )
 
-        def self.call(period: "last_24_hours", limit: 100, status: "5xx", server_context:, **options)
+        def self.call(period: "last_24_hours", limit: 100, status: "5xx", path_prefix: nil, server_context:, **options)
           respond(server_context) do |client|
             window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 500)
@@ -40,12 +46,15 @@ module RailsPulse
             params = { limit: limit, offset: 0 }
             params.merge!(window_params(window))
             params[:status] = status
+            params[:path_prefix] = path_prefix if path_prefix
 
             result = client.get("/requests", params)
             requests = result["data"] || []
             total = result.dig("meta", "total") || requests.size
 
-            by_endpoint = requests.group_by { |r| r["controller_action"] || "unknown" }
+            # A request no route matched has no controller action, so it is
+            # grouped under its path rather than with every other one.
+            by_endpoint = requests.group_by { |r| r["controller_action"] || r["path"] || "unknown" }
 
             error_groups = by_endpoint.map do |action, reqs|
               sorted = reqs.sort_by { |r| r["occurred_at"].to_s }.reverse

@@ -15,6 +15,11 @@ module RailsPulse
           end
 
           scope = RailsPulse::Route.all
+          # Exact matches, unlike `search`: a route is identified by its path
+          # and controller action together, and a substring would also return
+          # `/orders/:id/items` for `/orders/:id`.
+          scope = scope.where(path: params[:path]) if params[:path].present?
+          scope = scope.where(controller_action: params[:controller_action]) if params[:controller_action].present?
           if params[:search].present?
             term = RailsPulse::LikePattern.containing(params[:search].downcase)
             scope = scope.where(
@@ -37,7 +42,7 @@ module RailsPulse
 
         def render_with_stats(scope, range, sort)
           base = RailsPulse::Request.where(occurred_at: range)
-          base = base.where(route_id: scope.select(:id)) if params[:search].present?
+          base = base.where(route_id: scope.select(:id)) if %i[search path controller_action].any? { |name| params[name].present? }
 
           # HAVING rather than a filter over the fetched page: a route busy
           # enough to qualify can rank below the limit, and dropping it after

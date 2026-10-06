@@ -81,6 +81,38 @@ module RailsPulse
           assert_equal [ "bbb222" ], body["data"].map { |d| d["revision"] }
         end
 
+        test "revision finds a deployment by its full revision" do
+          get rails_pulse.api_v1_deployments_path, headers: HEADERS, params: { revision: "a" * 40 }
+          body = JSON.parse(response.body)
+
+          assert_equal [ @old.id ], body["data"].map { |d| d["id"] }
+        end
+
+        test "revision finds a deployment by the start of its revision" do
+          get rails_pulse.api_v1_deployments_path, headers: HEADERS, params: { revision: "bbb" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "bbb222" ], body["data"].map { |d| d["revision"] }
+        end
+
+        test "revision matches an underscore literally" do
+          RailsPulse::Deployment.create!(revision: "v1_2", started_at: 1.hour.ago)
+          RailsPulse::Deployment.create!(revision: "v1X2", started_at: 1.hour.ago)
+
+          get rails_pulse.api_v1_deployments_path, headers: HEADERS, params: { revision: "v1_" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "v1_2" ], body["data"].map { |d| d["revision"] }
+        end
+
+        test "revision with no match returns an empty page" do
+          get rails_pulse.api_v1_deployments_path, headers: HEADERS, params: { revision: "zzz" }
+          body = JSON.parse(response.body)
+
+          assert_empty body["data"]
+          assert_equal 0, body["meta"]["total"]
+        end
+
         test "returns 400 for invalid until" do
           get rails_pulse.api_v1_deployments_path, headers: HEADERS, params: { until: "bad" }
 

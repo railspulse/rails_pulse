@@ -34,6 +34,11 @@ module RailsPulse
               type: "string",
               description: "Substring match on the exception class or location, e.g. 'RecordNotFound' or 'app/models'"
             },
+            fingerprint: {
+              type: "string",
+              description: "Exact fingerprint of one group, as returned by this tool or by Rails Pulse Cloud. " \
+                           "Finds the group whatever its status or when it was last seen, so status and period are ignored."
+            },
             limit: {
               type: "integer",
               description: "Maximum number of groups (1-100)",
@@ -43,10 +48,17 @@ module RailsPulse
         )
 
         # `period: "all"` drops the time filter; groups are otherwise limited to
-        # those last seen inside the window.
-        def self.call(period: "last_7_days", status: "open", search: nil, limit: 25, server_context:, **options)
+        # those last seen inside the window. A fingerprint names one group, so
+        # it drops both filters: the defaults would hide a resolved group or
+        # one last seen a month ago, and the caller asked for that group.
+        def self.call(period: "last_7_days", status: "open", search: nil, fingerprint: nil, limit: 25, server_context:, **options)
           respond(server_context) do |client|
             limit = limit.to_i.clamp(1, 100)
+            if fingerprint.to_s != ""
+              period = "all"
+              status = "all"
+              options = options.except(:since, :until)
+            end
             all_time = period.to_s == "all" && options[:since].nil? && options[:until].nil?
             window = all_time ? nil : resolve_window(period: period, since: options[:since], until_time: options[:until])
 
@@ -54,6 +66,7 @@ module RailsPulse
             params.merge!(window_params(window)) if window
             params[:status] = status unless status.to_s == "all"
             params[:search] = search if search.to_s != ""
+            params[:fingerprint] = fingerprint if fingerprint.to_s != ""
 
             result = client.get("/exceptions", params)
             groups = (result["data"] || []).map { |g| format_group(g) }
@@ -74,6 +87,7 @@ module RailsPulse
         private_class_method def self.format_group(group)
           {
             id: group["id"],
+            fingerprint: group["fingerprint"],
             exception_class: group["exception_class"],
             location: group["location"],
             message: truncate(group["message"], 300),

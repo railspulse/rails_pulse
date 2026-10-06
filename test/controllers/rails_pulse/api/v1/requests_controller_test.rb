@@ -45,7 +45,7 @@ module RailsPulse
           body = JSON.parse(response.body)
           req = body["data"].first
 
-          %w[id route_id occurred_at duration status is_error request_uuid controller_action response_size_bytes].each do |k|
+          %w[id route_id path occurred_at duration status is_error request_uuid controller_action response_size_bytes].each do |k|
             assert_includes req.keys, k
           end
         end
@@ -155,6 +155,47 @@ module RailsPulse
           assert_equal [ route.id ], body["data"].map { |r| r["route_id"] }
         end
 
+        # Requests the router did not recognise are stored under their raw
+        # path with no controller action.
+        test "path_prefix finds unmatched requests under a grouped prefix" do
+          matched = seed_unmatched("/wp-admin/setup.php", "/wp-admin/install.php", "/wp-login.php")
+
+          get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { path_prefix: "/wp-admin/*", status: "404" }
+          body = JSON.parse(response.body)
+
+          assert_equal 2, body["meta"]["total"]
+          assert_equal %w[/wp-admin/install.php /wp-admin/setup.php], body["data"].map { |r| r["path"] }.sort
+          assert_equal matched.first(2).map(&:id).sort, body["data"].map { |r| r["route_id"] }.sort
+        end
+
+        test "path_prefix without a trailing asterisk matches the same requests" do
+          seed_unmatched("/wp-admin/setup.php", "/wp-login.php")
+
+          get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { path_prefix: "/wp-login.php" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "/wp-login.php" ], body["data"].map { |r| r["path"] }
+        end
+
+        test "path_prefix matches an underscore literally" do
+          seed_unmatched("/wp_admin/x", "/wpXadmin/x")
+
+          get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { path_prefix: "/wp_admin/" }
+          body = JSON.parse(response.body)
+
+          assert_equal [ "/wp_admin/x" ], body["data"].map { |r| r["path"] }
+        end
+
+        test "path_prefix combines with the route filter" do
+          get rails_pulse.api_v1_requests_path,
+              headers: { "X-Rails-Pulse-Token" => VALID_TOKEN },
+              params: { path_prefix: "/api/", route: "/api/users" }
+          body = JSON.parse(response.body)
+
+          refute_empty body["data"]
+          body["data"].each { |r| assert_equal "/api/users", r["path"] }
+        end
+
         test "returns 400 for a status that is neither a code nor a class" do
           get rails_pulse.api_v1_requests_path, headers: { "X-Rails-Pulse-Token" => VALID_TOKEN }, params: { status: "failed" }
 
@@ -248,6 +289,17 @@ module RailsPulse
           body = JSON.parse(response.body)
 
           assert_empty body["data"]
+        end
+
+        private
+
+        def seed_unmatched(*paths)
+          paths.each_with_index.map do |path, index|
+            route = RailsPulse::Route.create!(http_methods: '["GET"]', path: path, controller_action: nil)
+            RailsPulse::Request.create!(route: route, duration: 2.0, status: 404, is_error: false,
+              request_uuid: "unmatched-#{index}", occurred_at: 1.hour.ago)
+            route
+          end
         end
       end
     end

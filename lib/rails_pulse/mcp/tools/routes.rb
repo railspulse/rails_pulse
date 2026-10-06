@@ -21,6 +21,15 @@ module RailsPulse
               type: "string",
               description: "Case-insensitive substring match on path or controller action (e.g. 'checkout')"
             },
+            path: {
+              type: "string",
+              description: "Exact route path, e.g. '/orders/:id'. With controller_action, identifies one route " \
+                           "the way Rails Pulse Cloud does."
+            },
+            controller_action: {
+              type: "string",
+              description: "Exact controller action, e.g. 'orders#show'"
+            },
             limit: {
               type: "integer",
               description: "Maximum number of routes (1-100)",
@@ -34,13 +43,15 @@ module RailsPulse
           }
         )
 
-        def self.call(period: "last_7_days", search: nil, limit: 50, sort: "request_count", server_context:, **options)
+        def self.call(period: "last_7_days", search: nil, path: nil, controller_action: nil, limit: 50, sort: "request_count", server_context:, **options)
           respond(server_context) do |client|
             window = resolve_window(period: period, since: options[:since], until_time: options[:until])
             limit = limit.to_i.clamp(1, 100)
 
             params = window_params(window).merge(sort: sort, limit: limit)
             params[:search] = search if search
+            params[:path] = path if path
+            params[:controller_action] = controller_action if controller_action
             result = client.get("/routes", params)
 
             routes = (result["data"] || []).map { |r| format_route(r) }

@@ -83,6 +83,20 @@ module RailsPulse
         assert_equal "3 deployment(s). Latest: ccc333 at 2026-06-03T09:00:00Z (in progress).", data["summary"]
       end
 
+      test "deployments passes a revision to the API" do
+        c = client("/deployments" => DEPLOYMENTS_RESPONSE)
+        call(Tools::Deployments, c, revision: "bbb222")
+
+        assert_equal "bbb222", c.calls.first[1][:revision]
+      end
+
+      test "deployments leaves revision out of the API call when it is not given" do
+        c = client("/deployments" => DEPLOYMENTS_RESPONSE)
+        call(Tools::Deployments, c)
+
+        refute_includes c.calls.first[1].keys, :revision
+      end
+
       test "deployments summary omits the in-progress note for a finished deploy" do
         finished = DEPLOYMENTS_RESPONSE.merge("data" => DEPLOYMENTS_RESPONSE["data"].last(2))
         _, data = call(Tools::Deployments, client("/deployments" => finished))

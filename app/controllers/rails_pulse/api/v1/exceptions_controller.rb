@@ -33,6 +33,7 @@ module RailsPulse
 
           collection = RailsPulse::ExceptionGroup.order(sort => :desc, id: :desc)
           collection = collection.where(status: status) if status
+          collection = collection.where(fingerprint: params[:fingerprint]) if params[:fingerprint].present?
           collection = collection.where(last_seen_at: since_start..) if since_start
           collection = collection.where(last_seen_at: ..until_end) if until_end
           collection = apply_search(collection)

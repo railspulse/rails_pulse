@@ -69,6 +69,24 @@ module RailsPulse
           assert_equal [ "ZeroDivisionError" ], JSON.parse(response.body)["data"].map { |g| g["exception_class"] }
         end
 
+        test "fingerprint finds one group whatever its status" do
+          group = rails_pulse_exception_groups(:resolved_group)
+
+          get rails_pulse.api_v1_exceptions_path, headers: HEADERS, params: { fingerprint: group.fingerprint }
+          body = JSON.parse(response.body)
+
+          assert_equal [ group.id ], body["data"].map { |g| g["id"] }
+          assert_equal group.fingerprint, body["data"].first["fingerprint"]
+        end
+
+        test "fingerprint matches exactly, not as a prefix" do
+          get rails_pulse.api_v1_exceptions_path, headers: HEADERS, params: { fingerprint: "abc123" }
+          body = JSON.parse(response.body)
+
+          assert_empty body["data"]
+          assert_equal 0, body["meta"]["total"]
+        end
+
         test "search matches an underscore literally" do
           get rails_pulse.api_v1_exceptions_path, headers: HEADERS, params: { search: "http_client", status: "ignored" }
 

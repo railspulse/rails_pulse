@@ -33,6 +33,9 @@ module RailsPulse
         Order by a stat (defaults the window to the last 24 hours when --since is omitted):
           --sort total_duration | avg_duration | executions | max_duration
 
+        Look up one query by its hashed_sql, as listed with --json or by Rails Pulse Cloud:
+          --hashed-sql e4d909c2290d0fb1ca068ffaddf22cbd
+
         Use --json to see analysis fields (issues, suggestions, n_plus_one) in full.
       DESC
       option :limit,  type: :numeric, default: 25,    desc: "Max records to return (1–500)"
@@ -40,6 +43,7 @@ module RailsPulse
       option :since,  type: :string,                  desc: "Return queries executed at or after this time (ISO 8601)"
       option :until,  type: :string,                  desc: "Return queries executed at or before this time (ISO 8601)"
       option :sort,   type: :string,                  desc: "Order by total_duration, avg_duration, executions, or max_duration"
+      option :hashed_sql, type: :string,              desc: "Exact hashed_sql of one query"
       option :json,   type: :boolean, default: false, desc: "Output raw JSON including meta envelope and analysis fields"
       def list
         with_error_handling do
@@ -47,6 +51,7 @@ module RailsPulse
           params[:since] = options[:since] if options[:since]
           params[:until] = options[:until] if options[:until]
           params[:sort]  = options[:sort]  if options[:sort]
+          params[:hashed_sql] = options[:hashed_sql] if options[:hashed_sql]
           result = client.get("/queries", params)
 
           if result["data"].any? { |q| q["stats"] }

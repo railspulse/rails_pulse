@@ -27,18 +27,23 @@ module RailsPulse
           --since 2026-06-01T00:00:00Z
           --until 2026-06-01T23:59:59Z
 
+        Find a deployment by its full revision or the start of one:
+          --revision a1b2c3d
+
         Use --json to get the full revision, duration, metadata and per-metric comparison.
       DESC
       option :limit,  type: :numeric, default: 25,    desc: "Max records to return (1–500)"
       option :offset, type: :numeric, default: 0,     desc: "Number of records to skip (for pagination)"
       option :since,  type: :string,                  desc: "Return deployments started at or after this time (ISO 8601)"
       option :until,  type: :string,                  desc: "Return deployments started at or before this time (ISO 8601)"
+      option :revision, type: :string,                desc: "Full revision or the start of one"
       option :json,   type: :boolean, default: false, desc: "Output raw JSON including meta envelope"
       def list
         with_error_handling do
           params = { limit: options[:limit], offset: options[:offset] }
           params[:since] = options[:since] if options[:since]
           params[:until] = options[:until] if options[:until]
+          params[:revision] = options[:revision] if options[:revision]
           result = client.get("/deployments", params)
           (result["data"] || []).each { |row| row["compared"] = row.dig("comparison", "outcome") } unless options[:json]
           Formatter.render(result, json: options[:json], columns: COLUMNS)
