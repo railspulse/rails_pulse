@@ -172,12 +172,11 @@ module RailsPulse
 
           # Should have at least 4 data points (3 days + 1)
           assert_operator data[:series].first[:data].length, :>=, 4
-          # Check step size is 1 day (86400 seconds in milliseconds)
-          if data[:series].first[:data].length > 1
-            step = (data[:series].first[:data][1][0] - data[:series].first[:data][0][0]) / 1000
+          # One calendar day apart, which is 23 or 25 hours across a
+          # daylight-saving change.
+          times = data[:series].first[:data].map { |timestamp_ms, _| Time.zone.at(timestamp_ms / 1000) }
 
-            assert_equal 86400, step
-          end
+          times.each_cons(2) { |current, following| assert_equal current + 1.day, following }
         end
 
         test "data values are integers" do
@@ -409,7 +408,7 @@ module RailsPulse
           end
         end
 
-        test "step size is 86400 seconds for daily data" do
+        test "daily points are one calendar day apart" do
           start_time = 5.days.ago.beginning_of_day
           end_time = Time.current.end_of_day
 
@@ -421,11 +420,9 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          if data[:series].first[:data].length > 1
-            step = (data[:series].first[:data][1][0] - data[:series].first[:data][0][0]) / 1000
+          times = data[:series].first[:data].map { |timestamp_ms, _| Time.zone.at(timestamp_ms / 1000) }
 
-            assert_equal 86400, step
-          end
+          times.each_cons(2) { |current, following| assert_equal current + 1.day, following }
         end
 
         test "handles large time ranges" do

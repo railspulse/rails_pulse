@@ -523,11 +523,9 @@ module RailsPulse
 
           data = chart.to_chart_data
 
-          if data[:series][0][:data].length > 1
-            step = (data[:series][0][:data][1][0] - data[:series][0][:data][0][0]) / 1000
+          times = data[:series][0][:data].map { |timestamp_ms, _| Time.zone.at(timestamp_ms / 1000) }
 
-            assert_equal 86400, step
-          end
+          times.each_cons(2) { |current, following| assert_equal current + 1.day, following }
         end
 
         test "nil values in data array for missing periods" do

@@ -47,9 +47,8 @@ module RailsPulse
         end
 
         # Convert to final values (weighted averages) and pad missing data
-        step = @period_type.to_s == "hour" ? 3600 : 86400
         daily_data = {}
-        (@window.start_time.to_i..@window.end_time.to_i).step(step) do |timestamp|
+        @window.bucket_timestamps(@period_type).each do |timestamp|
           if raw_data[timestamp]
             count = raw_data[timestamp][:total_count]
             daily_data[timestamp] = {

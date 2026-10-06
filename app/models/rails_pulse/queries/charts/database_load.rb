@@ -10,8 +10,6 @@ module RailsPulse
         end
 
         def to_chart_data
-          step = @period_type.to_s == "hour" ? 3600 : 86400
-
           # Get query summaries (DB time)
           query_summaries = RailsPulse::Summary
             .with_tag_filters(@disabled_tags, @show_non_tagged)
@@ -51,7 +49,7 @@ module RailsPulse
           # <25% = green (healthy), 25-40% = yellow (watch), >40% = red (bottleneck)
           bar_data = []
 
-          (@window.start_time.to_i..@window.end_time.to_i).step(step) do |timestamp|
+          @window.bucket_timestamps(@period_type).each do |timestamp|
             query_time = query_time_by_period[timestamp] || 0
             request_time = request_time_by_period[timestamp] || 0
             percentage = request_time > 0 ? (query_time.to_f / request_time * 100).round(1) : 0

@@ -195,20 +195,20 @@ module RailsPulse
           assert_in_delta 10.0, non_nil.first[1]
         end
 
-        test "daily step size is 86400 seconds" do
+        # A calendar day apart, not 86,400 seconds: across a daylight-saving
+        # change a day is 23 or 25 hours long.
+        test "daily points fall on consecutive local midnights" do
           chart = FailureRate.new(
             ransack_query: @ransack_query,
             period_type: "day",
             window: RailsPulse::TimeWindow.new(3.days.ago.beginning_of_day, Time.current.end_of_day)
           )
 
-          result = chart.to_chart_data
+          times = chart.to_chart_data[:series].first[:data].map { |timestamp_ms, _| Time.zone.at(timestamp_ms / 1000) }
 
-          if result[:series].first[:data].length > 1
-            step_ms = result[:series].first[:data][1][0] - result[:series].first[:data][0][0]
-
-            assert_equal 86400, step_ms / 1000
-          end
+          assert_equal 4, times.size
+          times.each_cons(2) { |current, following| assert_equal current + 1.day, following }
+          times.each { |time| assert_equal time.beginning_of_day, time }
         end
 
         test "hourly step size is 3600 seconds" do

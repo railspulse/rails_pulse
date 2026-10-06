@@ -209,9 +209,8 @@ module RailsPulse
       # Check that consecutive periods are 1 day apart
       if unique_period_starts.size > 1
         unique_period_starts.each_cons(2) do |current, next_period|
-          diff = (next_period - current).to_i
-
-          assert_equal 86400, diff, "Expected 1 day (86400s) between periods"
+          # A calendar day, which is 23 or 25 hours across a daylight-saving change.
+          assert_equal current.in_time_zone + 1.day, next_period.in_time_zone, "Expected 1 calendar day between periods"
         end
       end
     end
