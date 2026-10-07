@@ -102,27 +102,30 @@ module RailsPulse
       # schema qualifiers dropped.
       def render
         output = +""
-        previous = nil
-        without_schemas.each do |token|
-          output << " " if previous && space_between?(previous, token)
+        tokens = without_schemas
+        tokens.each_with_index do |token, index|
+          output << " " if index.positive? && space_between?(tokens[index - 1], token, index > 1 ? tokens[index - 2] : nil)
           output << token.last
-          previous = token
         end
         output
       end
 
-      def space_between?(previous, token)
+      def space_between?(previous, token, earlier)
         before = previous.last
         text = token.last
         return false if before == "." || text == "." || before == "(" || text == ")" || text == ","
-        return false if text == "(" && function_name?(previous)
+        return false if text == "(" && function_name?(previous, earlier)
 
         true
       end
 
-      def function_name?(token)
+      # A word before `(` is a function call, unless it is a keyword or the
+      # table named after INTO (`INSERT INTO posts (title)`).
+      def function_name?(token, earlier)
         kind, text = token
-        kind == :word && !KEYWORDS_BEFORE_PARENTHESIS.include?(text.upcase)
+        return false unless kind == :word && !KEYWORDS_BEFORE_PARENTHESIS.include?(text.upcase)
+
+        !(earlier && earlier.first == :word && TABLE_KEYWORDS.include?(earlier.last.upcase))
       end
 
       # A three-part name (schema.table.column) loses its schema anywhere; a
