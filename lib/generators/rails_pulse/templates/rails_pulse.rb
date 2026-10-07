@@ -383,6 +383,9 @@ RailsPulse.configure do |config|
   # in this database. Everything in deployment metadata is sent as recorded.
   # Run `rails rails_pulse:cloud:preview` to print exactly what would be sent.
   #
+  # Cloud keeps its state in two tables of its own. Add them with
+  # `rails generate rails_pulse:install_cloud`, then migrate.
+  #
   # The hourly sync runs after RailsPulse::SummaryJob. Schedule the health update every minute:
   #   # config/recurring.yml
   #   rails_pulse_cloud_health:

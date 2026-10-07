@@ -318,7 +318,8 @@ module RailsPulse
         end
 
         unless RailsPulse::Cloud::Installation.table_exists? && RailsPulse::Cloud::BufferedBatch.table_exists?
-          output.puts "Cloud:      (skipped — Cloud tables missing, schema is behind)"
+          output.puts "Cloud:      configured, but its tables are not installed, so nothing is sent"
+          suggest "Install the Rails Pulse Cloud tables: rails generate rails_pulse:install_cloud, then #{migrate_command}."
           return
         end
 

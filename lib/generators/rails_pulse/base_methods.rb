@@ -16,8 +16,6 @@ module RailsPulse
         rails_pulse_exception_groups
         rails_pulse_exception_occurrences
         rails_pulse_events
-        rails_pulse_cloud_installations
-        rails_pulse_cloud_batches
       ].freeze
 
       # Generate next migration number for timestamped migrations
@@ -45,6 +43,24 @@ module RailsPulse
         connection = ActiveRecord::Base.connection
         RAILS_PULSE_TABLES.all? { |table| connection.table_exists?(table) }
       rescue ActiveRecord::ConnectionNotEstablished, StandardError
+        false
+      end
+
+      # True when config/database.yml names a rails_pulse database in any
+      # environment.
+      def has_separate_database_config?
+        config_path = File.join(root_path, "config/database.yml")
+        return false unless File.exist?(config_path)
+
+        require "yaml"
+        require "erb"
+        # Process ERB before YAML parsing — database.yml files commonly use ERB
+        # for environment-specific values. YAML.safe_load alone raises SyntaxError
+        # on ERB tags.
+        yaml_content = ERB.new(File.read(config_path)).result
+        db_config = YAML.safe_load(yaml_content, aliases: true)
+        db_config.values.any? { |env| env.is_a?(Hash) && env.key?("rails_pulse") }
+      rescue
         false
       end
 

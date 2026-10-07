@@ -123,6 +123,23 @@ test "detects separate database setup from database.yml" do
     assert_no_match(/IMPORTANT: This upgrade changes how routes are identified/, output)
   end
 
+  test "upgrade refreshes the Cloud schema file of an app that installed Cloud" do
+    File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
+    File.write(File.join(destination_root, "db/rails_pulse_cloud_schema.rb"), "# an older Cloud schema\n")
+
+    mock_tables_exist { run_generator([], {}) }
+
+    assert_file "db/rails_pulse_cloud_schema.rb", /RailsPulse::CloudSchema = lambda/
+  end
+
+  test "upgrade does not add the Cloud schema file to an app that never installed Cloud" do
+    File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
+
+    mock_tables_exist { run_generator([], {}) }
+
+    assert_no_file "db/rails_pulse_cloud_schema.rb"
+  end
+
   test "single database upgrade copies multiple new migrations" do
     File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
     create_gem_migration("add_feature_one", "20251019000000")

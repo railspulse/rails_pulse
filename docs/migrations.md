@@ -20,6 +20,17 @@ Read before any schema change. The short checklist is in `CLAUDE.md`; this file 
 6. Add the migration class to `MIGRATION_CLASSES` in `test/migrations/upgrade_migration_test.rb` (filename sort order) and an assertion that the column or table exists after upgrading from the v0.2.7 baseline. Run `rake test_migrations`.
 7. Add a dummy-app copy under `test/dummy/db/migrate/`. `rake verify_dummy_migrations` fails when the two sets differ.
 
+## Rails Pulse Cloud tables
+
+The Cloud tables (`rails_pulse_cloud_installations`, `rails_pulse_cloud_batches`) are opt-in, so they are not in `db/rails_pulse_schema.rb`:
+
+| Path | Used by | Rule |
+|---|---|---|
+| `db/rails_pulse_cloud_schema.rb` | `rails generate rails_pulse:install_cloud` | source of truth for the Cloud tables; `table_exists?` guard on every table |
+| `lib/generators/rails_pulse/templates/db/rails_pulse_cloud_schema.rb` | the same generator | byte-identical copy; the generator copies it into the host with one migration that executes it, into `db/migrate` or `db/rails_pulse_migrate` |
+
+The upgrade generator refreshes the host's copy when it has one and never adds it. A separate-database `db:prepare` loads it after the main schema when it is present. To change a Cloud table: edit both schema files, then write the incremental migration in `db/rails_pulse_migrate/` as usual, with a `table_exists?(:rails_pulse_cloud_…)` guard so it is a no-op where Cloud was never installed. Do not add Cloud tables to `RAILS_PULSE_TABLES` or `SENTINEL_COLUMNS`: the schema check would pause tracking on installs that do not use Cloud. The dummy app carries both schema files (`rake sync_test_schema`) and an install migration for each.
+
 ## Rules inside a migration
 
 - **Never use model classes in `up` for data changes.** `Model.where(…).update_all` checks out a connection from the model's pool; on a separate-database SQLite host that pool cannot see DDL from the migration's own transaction and the migration rolls back. Use `execute(<<~SQL)`.

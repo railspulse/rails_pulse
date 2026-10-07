@@ -264,6 +264,10 @@ generators below and are not typically invoked directly.
   migrations.
 - `rails generate rails_pulse:upgrade` — brings an existing installation's schema and
   initializer up to date with the running gem version.
+- `rails generate rails_pulse:install_cloud` — adds the Rails Pulse Cloud tables to an
+  existing installation: copies `db/rails_pulse_cloud_schema.rb` and a migration that loads it
+  (`db/migrate`, or `db/rails_pulse_migrate` for a separate database; `--database` overrides
+  the detection). Installs that do not use Cloud never run it and never have the tables.
 
 ## Tracker
 

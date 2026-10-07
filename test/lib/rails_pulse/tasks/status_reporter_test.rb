@@ -308,6 +308,16 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
     assert_includes @output.string, "stops accepting this gem's sync contract on 2027-10-01"
   end
 
+  test "Cloud configured without its tables suggests install_cloud" do
+    assume_clean_install
+    RailsPulse::Cloud::Installation.stubs(:table_exists?).returns(false)
+
+    with_cloud { assert report }
+
+    assert_includes @output.string, "its tables are not installed"
+    assert_match(/Suggestions:.*rails generate rails_pulse:install_cloud/m, @output.string)
+  end
+
   test "Cloud without recent health updates suggests scheduling CloudHealthJob" do
     assume_clean_install
     RailsPulse::Cloud::Installation.delete_all

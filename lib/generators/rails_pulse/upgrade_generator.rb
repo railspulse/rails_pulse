@@ -60,22 +60,6 @@ module RailsPulse
         end
       end
 
-      def has_separate_database_config?
-        config_path = File.join(root_path, "config/database.yml")
-        return false unless File.exist?(config_path)
-
-        require "yaml"
-        require "erb"
-        # Process ERB before YAML parsing — database.yml files commonly use ERB
-        # for environment-specific values. YAML.safe_load alone raises SyntaxError
-        # on ERB tags.
-        yaml_content = ERB.new(File.read(config_path)).result
-        db_config = YAML.safe_load(yaml_content, aliases: true)
-        db_config.values.any? { |env| env.is_a?(Hash) && env.key?("rails_pulse") }
-      rescue
-        false
-      end
-
       def rails_pulse_tables_exist?
         return false unless defined?(ActiveRecord::Base)
 
@@ -129,6 +113,7 @@ module RailsPulse
         # Refresh the schema file so fresh databases (test, CI) built from
         # db/rails_pulse_schema.rb include all current columns and tables.
         copy_file "db/rails_pulse_schema.rb", "db/rails_pulse_schema.rb", force: true
+        refresh_cloud_schema
         sync_initializer
 
         gem_migrations = get_gem_migrations
@@ -150,6 +135,14 @@ module RailsPulse
         else
           upgrade_with_missing_columns(migration_dir: migration_dir, migrate_command: migrate_command)
         end
+      end
+
+      # Only an app that ran rails_pulse:install_cloud has the Cloud schema
+      # file; it is refreshed like the main one, never added.
+      def refresh_cloud_schema
+        return unless File.exist?(File.join(root_path, "db/rails_pulse_cloud_schema.rb"))
+
+        copy_file "db/rails_pulse_cloud_schema.rb", "db/rails_pulse_cloud_schema.rb", force: true
       end
 
       def announce_new_features(new_migrations)
