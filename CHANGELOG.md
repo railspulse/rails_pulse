@@ -17,6 +17,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Hourly summaries are kept for 7 days instead of 2.** Deployment comparisons and hour-precise change points read them, so at 2 days a deploy from earlier in the week could no longer be compared; `config.hourly_summary_retention` tunes it.
 
+### Fixed
+
+- **Daily charts no longer go blank after a daylight-saving change.** In a `config.time_zone` with daylight saving, every day after the clocks changed was drawn empty in a range that crossed the change; chart days now follow the zone's calendar.
+
 ## [0.5.0.pre.1] - 2026-10-03
 
 ### Added
