@@ -28,6 +28,13 @@ namespace :rails_pulse do
     exit 1 unless RailsPulse::Tasks::StatusReporter.report
   end
 
+  namespace :cloud do
+    desc "Prints exactly what the next Rails Pulse Cloud sync would send, without sending anything."
+    task preview: :environment do
+      print RailsPulse::Cloud::Preview.new.render
+    end
+  end
+
   desc "Migrate existing routes: backfill controller actions, normalize paths, consolidate multi-verb routes."
   task migrate_routes: :environment do
     ca_results = RailsPulse::RouteControllerActionBackfiller.call

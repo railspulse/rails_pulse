@@ -238,6 +238,7 @@ Each is an `ActiveJob`; enqueue it the same way as any other job in the host app
 | Task | Purpose |
 |---|---|
 | `rails_pulse:status` | Reports schema, migration, route-backfill, and initializer state; exits 1 when something needs action. Also reports whether `SummaryJob` and `CleanupJob` are running, hourly summary retention and job tracking, with suggestions that never change the exit status. |
+| `rails_pulse:cloud:preview` | Prints the next Rails Pulse Cloud batches and health update exactly as they would be sent, and that deployment metadata is sent as recorded. Sends nothing. |
 | `rails_pulse:migrate_routes` | Backfills controller actions, normalizes paths, and consolidates multi-verb routes on existing route rows. |
 | `rails_pulse:record_deployment[revision]` | Records a deployment event. |
 | `rails_pulse:finish_deployment[revision]` | Marks the latest deployment for a revision as finished. |

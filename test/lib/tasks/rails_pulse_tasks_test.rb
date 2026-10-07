@@ -70,6 +70,17 @@ class RailsPulseTasksTest < ActiveSupport::TestCase
     end
   end
 
+  # rails_pulse:cloud:preview tests
+
+  test "cloud preview task prints the preview without sending anything" do
+    RailsPulse::Cloud::Preview.any_instance.stubs(:render).returns("Rails Pulse Cloud preview\n")
+    Net::HTTP.expects(:start).never
+
+    output = reenable_and_capture("rails_pulse:cloud:preview") { Rake::Task["rails_pulse:cloud:preview"].invoke }
+
+    assert_includes output, "Rails Pulse Cloud preview"
+  end
+
   # rails_pulse:cleanup tests
 
   test "cleanup task outputs disabled message and exits when archiving_enabled is false" do
