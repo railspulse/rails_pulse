@@ -8,8 +8,10 @@ module RailsPulse
         @config = RailsPulse.configuration
       end
 
+      # Memoized: computing the items costs several aggregate queries (one a
+      # raw-request count), and one dashboard render asks for them repeatedly.
       def pressure_items
-        summary_staleness_items + stuck_records_items + sub_hour_retention_items + writer_drop_items
+        @pressure_items ||= summary_staleness_items + stuck_records_items + sub_hour_retention_items + writer_drop_items
       end
 
       # Dropped requests get their own Tracking badge, not this one

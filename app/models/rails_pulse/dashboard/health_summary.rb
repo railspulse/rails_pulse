@@ -4,11 +4,12 @@ module RailsPulse
       include Concerns::ThresholdConstants
       include Concerns::TimeRangeHelper
 
-      def initialize(disabled_tags: [], show_non_tagged: true, period: 7, window: nil)
+      def initialize(disabled_tags: [], show_non_tagged: true, period: 7, window: nil, storage_pressure: nil)
         @disabled_tags   = disabled_tags
         @show_non_tagged = show_non_tagged
         @period          = period
         @window          = window
+        @storage_pressure = storage_pressure
         @route_thresholds = RailsPulse.configuration.route_thresholds
         @query_thresholds = RailsPulse.configuration.query_thresholds
         @job_thresholds   = RailsPulse.configuration.job_thresholds
@@ -90,7 +91,7 @@ module RailsPulse
       end
 
       def storage_counts
-        StoragePressure.new.storage_counts
+        (@storage_pressure || StoragePressure.new).storage_counts
       end
 
       # A process that dropped and has since gone away still counts as

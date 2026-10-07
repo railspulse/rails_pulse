@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- **The dashboard no longer re-counts every Rails Pulse table on each load.** On large installs the storage panel's uncached row counts could add tens of seconds per page view; the dashboard now caches them for five minutes (the Storage page still measures afresh) and computes the storage-pressure checks once per page instead of four times.
 - **Daily charts no longer go blank after a daylight-saving change.** In a `config.time_zone` with daylight saving, every day after the clocks changed was drawn empty in a range that crossed the change; chart days now follow the zone's calendar.
 
 ## [0.5.0.pre.1] - 2026-10-03

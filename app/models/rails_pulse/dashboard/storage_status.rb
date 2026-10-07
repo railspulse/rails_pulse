@@ -81,35 +81,36 @@ module RailsPulse
         }
       ].freeze
 
-      # Table sizes come from dbstat / pg_total_relation_size /
-      # information_schema, one statement per table. The dashboard only shows
-      # a headline total, so it reads them through a short-lived per-process
-      # cache; the Storage page itself always measures afresh.
-      SIZE_CACHE_TTL = 5.minutes
-      @size_cache = {}
-      @size_cache_mutex = Mutex.new
+      # Table sizes (dbstat / pg_total_relation_size / information_schema) and
+      # row counts (an unindexed COUNT/MIN/MAX scan per table) cost one full
+      # statement per table. The dashboard only shows a headline total, so it
+      # reads both through a short-lived per-process cache; the Storage page
+      # itself always measures afresh.
+      CACHE_TTL = 5.minutes
+      @measurement_cache = {}
+      @measurement_cache_mutex = Mutex.new
 
       class << self
-        def cached_table_bytes(table_name)
-          @size_cache_mutex.synchronize do
-            entry = @size_cache[table_name]
-            return entry[:bytes] if entry && entry[:measured_at] > SIZE_CACHE_TTL.ago
+        def cached_measurement(key)
+          @measurement_cache_mutex.synchronize do
+            entry = @measurement_cache[key]
+            return entry[:value] if entry && entry[:measured_at] > CACHE_TTL.ago
 
-            bytes = yield
-            @size_cache[table_name] = { bytes: bytes, measured_at: Time.current }
-            bytes
+            value = yield
+            @measurement_cache[key] = { value: value, measured_at: Time.current }
+            value
           end
         end
 
-        def reset_size_cache!
-          @size_cache_mutex.synchronize { @size_cache.clear }
+        def reset_measurement_cache!
+          @measurement_cache_mutex.synchronize { @measurement_cache.clear }
         end
       end
 
-      def initialize(cached_sizes: false)
+      def initialize(cached: false, storage_pressure: nil)
         @config = RailsPulse.configuration
-        @pressure = StoragePressure.new
-        @cached_sizes = cached_sizes
+        @pressure = storage_pressure || StoragePressure.new
+        @cached = cached
       end
 
       def tables
@@ -203,7 +204,7 @@ module RailsPulse
         return unless model
         return unless connection.table_exists?(definition[:name])
 
-        stats = fetch_counts(model, definition)
+        stats = measured_counts(model, definition)
         limit = @config.max_table_records&.[](definition[:name])
         count = stats[:count]
         percent = limit.to_i.positive? ? ((count.to_f / limit) * 100).round(1) : nil
@@ -245,6 +246,12 @@ module RailsPulse
           bytes: nil,
           history_label: error.message
         }
+      end
+
+      def measured_counts(model, definition)
+        return fetch_counts(model, definition) unless @cached
+
+        self.class.cached_measurement([ :counts, definition[:name] ]) { fetch_counts(model, definition) }
       end
 
       def fetch_counts(model, definition)
@@ -352,9 +359,9 @@ module RailsPulse
       end
 
       def measured_table_bytes(table_name)
-        return table_bytes(table_name) unless @cached_sizes
+        return table_bytes(table_name) unless @cached
 
-        self.class.cached_table_bytes(table_name) { table_bytes(table_name) }
+        self.class.cached_measurement([ :bytes, table_name ]) { table_bytes(table_name) }
       end
 
       def table_bytes(table_name)

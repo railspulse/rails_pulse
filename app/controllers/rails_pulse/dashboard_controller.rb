@@ -31,13 +31,17 @@ module RailsPulse
       @response_time_percentiles_chart_data = RailsPulse::Dashboard::Charts::ResponseTimePercentiles.new(**card_and_chart_options).to_chart_data
       @throughput_and_errors_chart_data = RailsPulse::Dashboard::Charts::ThroughputAndErrors.new(**card_and_chart_options).to_chart_data
 
+      # One StoragePressure serves the whole page: its items cost several
+      # aggregate queries, and three panels below ask for them.
+      storage_pressure = RailsPulse::Dashboard::StoragePressure.new
+
       # Needs Attention panel
-      @needs_attention = RailsPulse::Dashboard::NeedsAttention.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, window: window).to_attention_data
+      @needs_attention = RailsPulse::Dashboard::NeedsAttention.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, window: window, storage_pressure: storage_pressure).to_attention_data
 
       # System Health bar
-      @health_summary = RailsPulse::Dashboard::HealthSummary.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, window: window).to_health_data
+      @health_summary = RailsPulse::Dashboard::HealthSummary.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, window: window, storage_pressure: storage_pressure).to_health_data
 
-      @storage_status = RailsPulse::Dashboard::StorageStatus.new(cached_sizes: true)
+      @storage_status = RailsPulse::Dashboard::StorageStatus.new(cached: true, storage_pressure: storage_pressure)
 
       # Deployments panel — scoped to the same window as the chart markers so
       # the panel and the markers drawn on the charts always agree.
