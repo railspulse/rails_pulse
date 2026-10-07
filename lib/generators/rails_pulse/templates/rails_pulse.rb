@@ -420,6 +420,18 @@ RailsPulse.configure do |config|
   # Time-based retention - delete records older than this period
   config.full_retention_period = 30.days
 
+  # At high traffic (millions of requests a day), keep full per-request detail
+  # only for the requests worth inspecting. With detail_capture set, a request
+  # is stored as rows only when it is slow, errored, or randomly sampled;
+  # everything else is folded into compact per-route and per-query aggregates,
+  # so dashboard counts, error rates and percentiles still cover ALL traffic.
+  # The requests list then shows captured requests only. Off (nil) by default.
+  # config.detail_capture = {
+  #   requests_slower_than: 500,  # keep requests at/above this many ms
+  #   sample_rate:          0.01, # plus 1% of the rest, for a representative sample
+  #   errors:               true  # and every 5xx request
+  # }
+
   # How long rows in rails_pulse_events are kept. The background writer's
   # heartbeats are pruned after a day regardless.
   config.event_retention_period = 90.days

@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **Detail capture for high-traffic installs.** With `config.detail_capture` set, only slow, errored and sampled requests are stored in full; everything else is folded into compact hourly aggregates, so dashboards still count all traffic while the requests and operations tables shrink by whatever your threshold cuts. Off by default.
+
 - **Before-and-after comparison for every deployment.** The deployments API, `rails-pulse deployments list` and the `rails_pulse_deployments` tool now say whether each release made things worse: response time or error rate materially worse in the hour after the deploy finished than in the hour before it started, or too little traffic to tell.
 - **What needs attention, and whether the thresholds fit.** `GET /rails_pulse/api/v1/insights`, `rails-pulse insights show` and the `rails_pulse_insights` tool list the routes, queries and jobs past their thresholds over one hour, day, week or month, and suggest an initializer line when `route_thresholds` or `query_thresholds` is too noisy or never fires.
 - **Exact lookups for the keys Rails Pulse Cloud holds.** The API, CLI and MCP tools can now find a query by `hashed_sql`, an exception group by `fingerprint`, a route by exact path and controller action, a deployment by revision, and requests by path prefix, so a Cloud alert leads straight to the local detail.

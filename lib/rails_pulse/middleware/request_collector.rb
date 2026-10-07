@@ -41,18 +41,7 @@ module RailsPulse
         operations = RailsPulse::Current.rails_pulse_operations || []
         path_params = env["action_dispatch.request.path_parameters"] || {}
         controller_action = [ path_params[:controller], path_params[:action] ].compact.join("#").presence
-        tracking_data = {
-          method: req.request_method,
-          path: RailsPulse::RoutePathNormalizer.normalize(req.path, path_params),
-          duration: duration,
-          status: status,
-          is_error: status.to_i >= 500,
-          request_uuid: req.uuid,
-          controller_action: controller_action,
-          occurred_at: occurred_at,
-          response_size_bytes: response_size_bytes(headers, response),
-          operations: operations.map(&:dup)
-        }
+        tracking_data = build_tracking_data(req, path_params, controller_action, duration, status, occurred_at, headers, response, operations)
 
         # Send to tracker — rescue ensures Pulse never 500s a host request.
         begin
@@ -69,6 +58,60 @@ module RailsPulse
       end
 
       private
+
+      # With detail capture off the payload is exactly what it always was —
+      # no :detail key at all. With it on, a request that is slow, errored or
+      # sampled still gets the full payload (plus detail: true); every other
+      # request is slimmed here, on the request thread, to what the writer's
+      # rollups need: the route identity, duration, status, and its SQL
+      # operations reduced to statement and duration. Decision 0022.
+      def build_tracking_data(req, path_params, controller_action, duration, status, occurred_at, headers, response, operations)
+        settings = RailsPulse.configuration.detail_capture_settings
+        base = {
+          method: req.request_method,
+          path: RailsPulse::RoutePathNormalizer.normalize(req.path, path_params),
+          duration: duration,
+          status: status,
+          controller_action: controller_action,
+          occurred_at: occurred_at
+        }
+
+        if settings.nil? || capture_detail?(settings, duration, status)
+          full = base.merge(
+            is_error: status.to_i >= 500,
+            request_uuid: req.uuid,
+            response_size_bytes: response_size_bytes(headers, response),
+            operations: operations.map(&:dup)
+          )
+          full[:detail] = true if settings
+          return full
+        end
+
+        base.merge(detail: false, operations: slim_sql_operations(operations))
+      end
+
+      def capture_detail?(settings, duration, status)
+        return true if settings.errors && status.to_i >= 500
+        return true if settings.requests_slower_than && duration >= settings.requests_slower_than
+
+        settings.sample_rate > 0 && Kernel.rand < settings.sample_rate
+      end
+
+      # Only SQL operations feed aggregates (per-query rollups); everything
+      # else exists for the per-request timeline, which a folded request
+      # does not keep.
+      def slim_sql_operations(operations)
+        operations.filter_map do |op|
+          next unless op[:operation_type] == "sql"
+
+          {
+            operation_type: "sql",
+            actual_sql: op[:actual_sql],
+            label: op[:label],
+            duration: op[:duration]
+          }
+        end
+      end
 
       def with_recording_suppressed
         RailsPulse::Current.skip_recording_rails_pulse_activity = true

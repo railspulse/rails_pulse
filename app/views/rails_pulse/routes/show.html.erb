@@ -49,6 +49,7 @@
           <% has_archived_summaries = @archived_summary_data && @archived_summary_data.any? %>
 
           <% if has_requests %>
+            <%= render 'rails_pulse/shared/detail_capture_notice' %>
             <%= render 'rails_pulse/routes/requests_table' %>
           <% end %>
 

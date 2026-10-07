@@ -171,7 +171,7 @@ module RailsPulse
         end
 
         output.puts "Tracking:   enabled=#{config.enabled} requests=#{config.enabled} jobs=#{config.track_jobs} " \
-                    "exceptions=#{config.track_exceptions} async=#{config.async}"
+                    "exceptions=#{config.track_exceptions} async=#{config.async} detail_capture=#{detail_capture_label}"
         output.puts "Dashboard:  mount_dashboard=#{config.mount_dashboard} authentication=#{auth}"
         output.puts "API:        api_token #{config.api_token.to_s.empty? ? 'NOT set (rails-pulse CLI and MCP server refuse every request)' : 'set'}, " \
                     "deployment_token #{config.deployment_token.to_s.empty? ? 'NOT set (POST deployments refuses every request; the rake tasks still work)' : 'set'}"
@@ -196,8 +196,23 @@ module RailsPulse
         return if dropped.zero?
 
         action "The writer dropped #{dropped} request(s) in the last hour. Raise config.async_queue_size or check database latency."
+        if config.detail_capture_settings.nil?
+          suggest "At sustained high traffic, config.detail_capture keeps full detail only for slow, errored and " \
+                  "sampled requests while dashboards still count all traffic, taking most of the load off the writer."
+        end
       rescue StandardError => e
         output.puts "Writer:     could not check (#{e.class}: #{e.message})"
+      end
+
+      def detail_capture_label
+        settings = config.detail_capture_settings
+        return "off" unless settings
+
+        parts = []
+        parts << "slower than #{settings.requests_slower_than.to_i}ms" if settings.requests_slower_than
+        parts << "#{(settings.sample_rate * 100).round(2)}% sample" if settings.sample_rate.positive?
+        parts << "errors" if settings.errors
+        "on (#{parts.join(', ')})"
       end
 
       def print_summaries
