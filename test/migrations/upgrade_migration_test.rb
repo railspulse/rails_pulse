@@ -437,8 +437,16 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     Dir.glob("#{MIGRATE_DIR}/*.rb").sort.each { |f| load f }
   end
 
+  # The Cloud tables are opt-in (db/rails_pulse_cloud_schema.rb, decision 0021
+  # era) and no migration under db/rails_pulse_migrate creates them, so they
+  # are not part of this suite's baseline-and-upgrade cycle. Dropping them
+  # here would leave the shared test database without them for the next
+  # `rake test` run's Cloud tests, since restore_current_schema reloads only
+  # the engine schema.
+  CLOUD_TABLES = %w[rails_pulse_cloud_installations rails_pulse_cloud_batches].freeze
+
   def drop_all_rails_pulse_tables
-    tables = @conn.tables.select { |t| t.start_with?("rails_pulse_") }
+    tables = @conn.tables.select { |t| t.start_with?("rails_pulse_") } - CLOUD_TABLES
     @conn.disable_referential_integrity do
       tables.each { |t| @conn.drop_table(t, force: :cascade) }
     end
