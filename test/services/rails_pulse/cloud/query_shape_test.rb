@@ -48,6 +48,10 @@ module RailsPulse
         assert_equal "SELECT COUNT(*) FROM users WHERE id IN (?, ?)", QueryShape.new("SELECT COUNT(*) FROM users WHERE id IN (?, ?)").sql_shape
       end
 
+      test "a table's column list keeps its space from the table name" do
+        assert_equal "INSERT INTO posts (title, body) VALUES (?, ?)", QueryShape.new("INSERT INTO posts(title, body) VALUES (?, ?)").sql_shape
+      end
+
       test "a three-part name loses its schema anywhere" do
         assert_equal "SELECT invoices.id FROM invoices", QueryShape.new('SELECT "acme"."invoices"."id" FROM "acme"."invoices"').sql_shape
       end
