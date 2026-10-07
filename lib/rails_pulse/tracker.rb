@@ -30,6 +30,10 @@ module RailsPulse
     PRUNE_INTERVAL = 1.hour
     private_constant :PRUNE_INTERVAL
 
+    # Route ids memoized for rollup folding, cleared wholesale once full
+    ROUTE_CACHE_MAX = 2_000
+    private_constant :ROUTE_CACHE_MAX
+
     # The background writer: one thread, one bounded queue, one connection.
     class Writer
       BATCH_SIZE = 50
@@ -104,7 +108,9 @@ module RailsPulse
         end
         thread.join(timeout) if thread&.alive?
         thread.kill if thread&.alive?
-        drain
+        drained = drain
+        Tracker.flush_rollups!
+        drained
       end
 
       private
@@ -143,6 +149,7 @@ module RailsPulse
             Tracker.perform_tracking_batch(batch)
           end
           heartbeat_if_due
+          Tracker.flush_rollups_if_due
         end
       rescue => e
         # perform_tracking_batch rescues its own errors, so this is a bug in the
@@ -203,15 +210,42 @@ module RailsPulse
       end
 
       # Persist everything queued so far and stop the writer thread. The next
-      # tracked request starts it again.
+      # tracked request starts it again. Shutdown flushes rollups itself, but
+      # inline tracking accumulates them with no writer, so flush here too.
       def flush!
         @writer&.shutdown
+        flush_rollups!
       end
 
       # Discard the writer, queue contents included. For tests.
       def reset_writer!
         @writer_mutex.synchronize { @writer = nil }
         @last_heartbeat_prune_at = nil
+      end
+
+      # Discard the rollup accumulator, folded data included, and the route id
+      # cache — a transactional test's rolled-back routes must not leak ids
+      # into the next test. For tests.
+      def reset_rollups!
+        @writer_mutex.synchronize { @rollups = nil }
+        @route_cache_mutex.synchronize { @route_id_cache.clear }
+      end
+
+      def flush_rollups_if_due
+        flush_rollups! if @rollups&.flush_due?
+      end
+
+      # Upsert every dirty rollup bucket's cumulative totals. Errors are
+      # logged, never raised: a lost flush is recovered by the next one as
+      # long as the buckets keep folding, and dropped otherwise — the same
+      # trade the writer queue makes.
+      def flush_rollups!
+        rows = @rollups&.drain_rows
+        return if rows.blank?
+
+        with_writer_connection { RailsPulse::Rollup.upsert_rows(rows) }
+      rescue => e
+        log_error(e)
       end
 
       # table_exists? has to run inside with_writer_connection too, or the bare
@@ -260,10 +294,19 @@ module RailsPulse
 
       # One connection checkout for the whole batch. A request that fails to
       # persist is logged and skipped; the others in the batch still land, and
-      # their operations go in with a single insert.
+      # their operations go in with a single insert. Requests detail capture
+      # declined (detail: false) are folded into rollups instead of persisted.
       def perform_tracking_batch(batch)
         with_writer_connection do
-          persisted = batch.filter_map do |data|
+          detailed, folded = batch.partition { |data| data[:detail] != false }
+
+          folded.each do |data|
+            fold_rollup(data)
+          rescue => e
+            log_error(e)
+          end
+
+          persisted = detailed.filter_map do |data|
             request = persist_request(data)
             [ request, data[:operations] ]
           rescue => e
@@ -287,6 +330,46 @@ module RailsPulse
         end
       end
 
+      def rollups
+        @writer_mutex.synchronize do
+          @rollups ||= RollupAccumulator.new
+        end
+      end
+
+      # Fold one non-captured request into the rollups: the request itself
+      # into its route's bucket, its SQL operations into their queries'
+      # buckets. Query rows are still created by resolve_sql_durations, so a
+      # query first seen in a fast request exists before it ever appears slow.
+      def fold_rollup(data)
+        route_id = cached_route_id(data[:method], data[:path], data[:controller_action])
+        rollups.fold_route(
+          route_id: route_id,
+          occurred_at: data[:occurred_at],
+          duration: data[:duration],
+          status: data[:status]
+        )
+
+        RailsPulse::Operation.resolve_sql_durations(data[:operations]).each do |query_id, duration|
+          rollups.fold_query(query_id: query_id, occurred_at: data[:occurred_at], duration: duration)
+        end
+      end
+
+      # (method, path, controller_action) => route id, capped and cleared
+      # wholesale when full. A new HTTP verb on a known path misses once,
+      # which is when find_or_create_for_request appends the verb.
+      def cached_route_id(method, path, controller_action)
+        key = [ method, path, controller_action ]
+        cached = @route_cache_mutex.synchronize { @route_id_cache[key] }
+        return cached if cached
+
+        route = RailsPulse::Route.find_or_create_for_request(method, path, controller_action: controller_action)
+        @route_cache_mutex.synchronize do
+          @route_id_cache.clear if @route_id_cache.size >= ROUTE_CACHE_MAX
+          @route_id_cache[key] = route.id
+        end
+        route.id
+      end
+
       def prune_heartbeats_if_due
         now = Time.current
         return if @last_heartbeat_prune_at && now - @last_heartbeat_prune_at < PRUNE_INTERVAL
@@ -296,6 +379,14 @@ module RailsPulse
       end
 
       def perform_tracking(data)
+        if data[:detail] == false
+          with_writer_connection { fold_rollup(data) }
+          # No writer loop runs on the inline path, so the interval check
+          # happens here, paid by whichever request crosses it.
+          flush_rollups_if_due
+          return nil
+        end
+
         with_writer_connection do
           request = persist_request(data)
           rows = operation_rows(request, data[:operations])
@@ -371,5 +462,8 @@ module RailsPulse
 
     @writer = nil
     @writer_mutex = Mutex.new
+    @rollups = nil
+    @route_id_cache = {}
+    @route_cache_mutex = Mutex.new
   end
 end
