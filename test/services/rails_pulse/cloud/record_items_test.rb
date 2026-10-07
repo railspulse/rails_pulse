@@ -33,18 +33,17 @@ module RailsPulse
 
       # Calculation Tests
 
-      test "changed_since returns the groups and deployments updated since then" do
+      test "exception groups and deployments are selected by when their rows changed" do
         ExceptionGroup.update_all(updated_at: 3.hours.ago)
         changed = rails_pulse_exception_groups(:zero_division)
         changed.update!(status: "resolved")
         Deployment.delete_all
         Deployment.create!(revision: "old", started_at: 5.hours.ago).update_columns(updated_at: 5.hours.ago)
         Deployment.create!(revision: "new", started_at: 10.minutes.ago)
+        window = 1.hour.ago...1.minute.from_now
 
-        items = RecordItems.changed_since(1.hour.ago)
-
-        assert_equal [ changed.fingerprint ], items.select { |item| item[:type] == "exception_group" }.map { |item| item[:fingerprint] }
-        assert_equal [ "new" ], items.select { |item| item[:type] == "deployment" }.map { |item| item[:revision] }
+        assert_equal [ changed.fingerprint ], RecordItems.exception_groups_updated(window).map { |item| item[:fingerprint] }
+        assert_equal [ "new" ], RecordItems.deployments_updated(window).map { |item| item[:revision] }
       end
 
       # Edge Cases

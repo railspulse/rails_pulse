@@ -14,6 +14,8 @@ Checklist for a new column or table:
 6. `test/migrations/upgrade_migration_test.rb`: add to `MIGRATION_CLASSES`, assert the column exists after upgrading from v0.2.7, run `rake test_migrations`
 7. `test/dummy/db/migrate/` copy; `rake sync_test_schema` syncs the dummy schema
 
+Rails Pulse Cloud's tables live in their own `db/rails_pulse_cloud_schema.rb` (plus its template copy), installed by `rails generate rails_pulse:install_cloud`, and stay out of `RAILS_PULSE_TABLES` and `SENTINEL_COLUMNS`; a later change to one is a migration in `db/rails_pulse_migrate/` guarded on the table existing. See `docs/migrations.md`.
+
 Never use model classes for data changes inside `up`; use `execute(<<~SQL)`. On separate-database SQLite hosts the model's pool cannot see DDL from the migration transaction and the migration rolls back.
 
 ## Running Tests

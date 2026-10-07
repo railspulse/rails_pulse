@@ -23,6 +23,15 @@ class RailsPulse::SchemaCheckTest < ActiveSupport::TestCase
     assert_empty expected["rails_pulse_summaries"]
   end
 
+  # An install that never ran rails_pulse:install_cloud has no Cloud tables,
+  # and tracking must not pause over it.
+  test "the Cloud tables are never required" do
+    expected = RailsPulse::SchemaCheck.expected_schema.keys
+
+    assert_not_includes expected, "rails_pulse_cloud_installations"
+    assert_not_includes expected, "rails_pulse_cloud_batches"
+  end
+
   test "every sentinel column exists in the gem's schema file" do
     schema_path = RailsPulse::Engine.root.join("db", "rails_pulse_schema.rb").to_s
     parsed = RailsPulse::Generators::SchemaParser.new(schema_path).extract_expected_schema

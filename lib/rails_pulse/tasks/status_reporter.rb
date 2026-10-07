@@ -54,6 +54,7 @@ module RailsPulse
         print_retention
         print_cleanup
         print_jobs
+        print_cloud
         print_actions
         print_suggestions
 
@@ -305,6 +306,50 @@ module RailsPulse
         output.puts(count.zero? ? "Jobs:       tracked, none recorded yet" : "Jobs:       tracked, #{count} job class(es) recorded")
       rescue StandardError => e
         output.puts "Jobs:       could not check (#{e.class}: #{e.message})"
+      end
+
+      # Reported, never an action: a Cloud outage or a refused key must not
+      # fail a deploy that runs this task.
+      def print_cloud
+        cloud = config.cloud
+        unless cloud.enabled?
+          output.puts "Cloud:      off (set config.cloud.api_key and config.cloud.application to send to Rails Pulse Cloud)"
+          return
+        end
+
+        unless RailsPulse::Cloud::Installation.table_exists? && RailsPulse::Cloud::BufferedBatch.table_exists?
+          output.puts "Cloud:      configured, but its tables are not installed, so nothing is sent"
+          suggest "Install the Rails Pulse Cloud tables: rails generate rails_pulse:install_cloud, then #{migrate_command}."
+          return
+        end
+
+        installation = RailsPulse::Cloud::Installation.existing
+        buffered = RailsPulse::Cloud::BufferedBatch.count
+        buffer = "#{buffered} batch(es) buffered (#{(RailsPulse::Cloud::BufferedBatch.sum(:byte_size) / 1024.0).round(1)} KB)"
+        output.puts "Cloud:      #{cloud.application} (#{cloud.environment}) to #{cloud.url}: #{cloud_state(installation)}; #{buffer}"
+        return suggest_cloud_health_job if installation.nil?
+
+        output.puts "            last error #{time_ago(installation.last_error_at)}: #{installation.last_error}" if installation.last_error.present?
+        suggest installation.pause_reason if installation.paused?
+        if installation.contract_deprecated_on.present?
+          suggest "Rails Pulse Cloud stops accepting this gem's sync contract on #{installation.contract_deprecated_on}; upgrade rails_pulse before then."
+        end
+        suggest_cloud_health_job if installation.last_health_at.nil? || installation.last_health_at < 5.minutes.ago
+      rescue StandardError => e
+        output.puts "Cloud:      could not check (#{e.class}: #{e.message})"
+      end
+
+      def cloud_state(installation)
+        return "not synced yet" if installation.nil?
+        return "paused until #{installation.paused_until.utc.iso8601}" if installation.paused?
+        return "connected, last accepted #{time_ago(installation.last_success_at)}" if installation.last_success_at
+
+        "nothing accepted yet"
+      end
+
+      def suggest_cloud_health_job
+        suggest "Schedule RailsPulse::CloudHealthJob every minute (see config/initializers/rails_pulse.rb). It sends health " \
+                "updates and retries buffered batches; the hourly sync follows RailsPulse::SummaryJob on its own."
       end
 
       def print_actions

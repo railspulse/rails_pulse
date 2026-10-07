@@ -19,12 +19,25 @@ module RailsPulse
         # Check if we should run monthly summary (first day of month)
         process_monthly_summary((target_hour.to_date - 1.month).beginning_of_month) if first_of_month?(target_hour)
       end
+
+      enqueue_cloud_sync
     rescue StandardError => e
       log_error(e)
       raise
     end
 
     private
+
+    # Cloud receives an hour only once it is summarized, so the sync follows
+    # this job rather than running on a schedule of its own. A queue that
+    # refuses the job must not fail the summaries already written.
+    def enqueue_cloud_sync
+      return unless RailsPulse.configuration.cloud.enabled?
+
+      CloudSyncJob.perform_later
+    rescue StandardError => e
+      RailsPulse.logger.error "Could not enqueue the Rails Pulse Cloud sync: #{e.class} - #{e.message}"
+    end
 
     def midnight?(time)
       time.hour == 0

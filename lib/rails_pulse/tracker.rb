@@ -220,7 +220,8 @@ module RailsPulse
         with_writer_connection do
           next false unless RailsPulse::Event.table_available?
 
-          RailsPulse::WriterHeartbeat.record!(hostname: hostname, pid: Process.pid, **sample)
+          RailsPulse::WriterHeartbeat.record!(hostname: hostname, pid: Process.pid,
+                                              host_label: RailsPulse.configuration.cloud.host_label, **sample)
           prune_heartbeats_if_due
           true
         end

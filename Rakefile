@@ -235,15 +235,21 @@ task :verify_dummy_migrations do
 end
 
 desc "Sync Rails Pulse schema to test/dummy app"
-task :sync_test_schema do
-  source = "db/rails_pulse_schema.rb"
-  dest = "test/dummy/db/rails_pulse_schema.rb"
+# The dummy app stands in for a host that has run both rails_pulse:install
+# and rails_pulse:install_cloud, so it carries both schema files.
+TEST_SCHEMA_FILES = %w[rails_pulse_schema.rb rails_pulse_cloud_schema.rb].freeze
 
-  if File.exist?(source)
-    FileUtils.cp(source, dest)
-    puts RailsPulseConsole.line(:ok, "synced schema #{RailsPulseConsole.dim("#{source} -> #{dest}")}")
-  else
-    puts RailsPulseConsole.line(:warn, "source schema not found: #{source}")
+task :sync_test_schema do
+  TEST_SCHEMA_FILES.each do |file|
+    source = "db/#{file}"
+    dest = "test/dummy/db/#{file}"
+
+    if File.exist?(source)
+      FileUtils.cp(source, dest)
+      puts RailsPulseConsole.line(:ok, "synced schema #{RailsPulseConsole.dim("#{source} -> #{dest}")}")
+    else
+      puts RailsPulseConsole.line(:warn, "source schema not found: #{source}")
+    end
   end
 end
 
@@ -337,10 +343,12 @@ def perform_test_setup_for_version(database, rails_version, quiet: false)
   end
 
   begin
-    source = "db/rails_pulse_schema.rb"
-    dest = "test/dummy/db/rails_pulse_schema.rb"
-    FileUtils.cp(source, dest) if File.exist?(source)
-    puts RailsPulseConsole.line(:ok, "synced schema #{RailsPulseConsole.dim("#{source} -> #{dest}")}") unless quiet
+    TEST_SCHEMA_FILES.each do |file|
+      source = "db/#{file}"
+      dest = "test/dummy/db/#{file}"
+      FileUtils.cp(source, dest) if File.exist?(source)
+      puts RailsPulseConsole.line(:ok, "synced schema #{RailsPulseConsole.dim("#{source} -> #{dest}")}") unless quiet
+    end
 
     schema_file = "test/dummy/db/schema.rb"
     if File.exist?(schema_file)

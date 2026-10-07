@@ -5,7 +5,9 @@ module RailsPulse
     # the review: keep or discard hunks. Values that differ between a new
     # install and an upgrade (today: track_exceptions) use the gem default.
     class ConfigUpdater
-      ASSIGNMENT = /\A\s*(#\s*)?config\.(\w+)\s*=/.freeze
+      # Nested settings (`config.cloud.api_key`) are keyed by their full
+      # dotted name.
+      ASSIGNMENT = /\A\s*(#\s*)?config\.(\w+(?:\.\w+)*)\s*=/.freeze
       HASH_ENTRY = /\A\s*([a-z_][a-z0-9_]*):/.freeze
 
       UPGRADE_VALUE_OVERRIDES = {
@@ -128,8 +130,13 @@ module RailsPulse
         code.count("{") - code.count("}") + code.count("[") - code.count("]")
       end
 
+      # Every key the content names, and each prefix of a dotted one, so
+      # `config.cloud.api_key` mentions both `cloud.api_key` and `cloud`.
       def mentioned_keys(content)
-        content.scan(/config\.(\w+)/).flatten.uniq
+        content.scan(/config\.(\w+(?:\.\w+)*)/).flatten.flat_map do |key|
+          parts = key.split(".")
+          (1..parts.size).map { |length| parts.first(length).join(".") }
+        end.uniq
       end
 
       def missing_hash_entries(host, missing_keys)

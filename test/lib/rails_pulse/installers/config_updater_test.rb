@@ -76,6 +76,46 @@ module RailsPulse
         assert_valid_ruby host
       end
 
+      test "nested settings are added by their full dotted name" do
+        write_template <<~RUBY
+          RailsPulse.configure do |config|
+            # Cloud key
+            # config.cloud.api_key = ENV["RAILS_PULSE_CLOUD_API_KEY"]
+            # config.cloud.application = "your-app"
+          end
+        RUBY
+        write_host <<~RUBY
+          RailsPulse.configure do |config|
+            config.cloud.application = "shop"
+          end
+        RUBY
+
+        result = update_config
+
+        assert_equal [ "cloud.api_key" ], result[:keys]
+        host = File.read(@destination)
+
+        assert_includes host, '# config.cloud.api_key = ENV["RAILS_PULSE_CLOUD_API_KEY"]'
+        assert_includes host, 'config.cloud.application = "shop"'
+        refute_includes host, '# config.cloud.application = "your-app"'
+        assert_valid_ruby host
+      end
+
+      test "a dotted mention still counts as mentioning the setting it starts with" do
+        write_template <<~RUBY
+          RailsPulse.configure do |config|
+            config.tags = []
+          end
+        RUBY
+        write_host <<~RUBY
+          RailsPulse.configure do |config|
+            config.tags.push("custom")
+          end
+        RUBY
+
+        assert_equal :unchanged, update_config[:status]
+      end
+
       test "uses gem default for track_exceptions instead of the install template value" do
         write_template <<~RUBY
           RailsPulse.configure do |config|

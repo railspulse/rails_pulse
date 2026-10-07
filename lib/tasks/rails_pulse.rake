@@ -11,6 +11,12 @@ namespace :db do
         if schema_file.exist?
           load schema_file
           puts "Rails Pulse schema loaded successfully"
+          # Present only when the app ran rails_pulse:install_cloud.
+          cloud_schema_file = Rails.root.join("db/rails_pulse_cloud_schema.rb")
+          if cloud_schema_file.exist?
+            load cloud_schema_file
+            puts "Rails Pulse Cloud schema loaded successfully"
+          end
           # Record any copied migrations as already applied so they don't show as
           # pending after a fresh schema load. The schema file creates all tables and
           # columns directly, so the incremental migrations are logically already done.

@@ -67,8 +67,10 @@ module RailsPulse
         end.sort_by { |entry| entry[:host].to_s }
       end
 
+      # config.cloud.host_label when the host set one, otherwise its hostname.
       def host_of(event)
-        event.metadata_hash["hostname"].presence || event.subject.to_s.rpartition(":").first
+        metadata = event.metadata_hash
+        metadata["host_label"].presence || metadata["hostname"].presence || event.subject.to_s.rpartition(":").first
       end
     end
   end

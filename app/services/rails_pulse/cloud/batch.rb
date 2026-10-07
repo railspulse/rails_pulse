@@ -12,7 +12,7 @@ module RailsPulse
       MAX_ITEMS = 5_000
       MAX_COMPRESSED_BYTES = 1_000_000
 
-      attr_reader :envelope, :items
+      attr_reader :envelope, :items, :batch_id
 
       # @param items [Array<Hash>]
       # @param envelope [Hash] the fields every batch repeats (see .envelope)

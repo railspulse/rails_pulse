@@ -12,11 +12,14 @@ module RailsPulse
 
       module_function
 
-      # Groups and deployments whose rows changed at or after `since`.
-      def changed_since(since)
-        groups = ExceptionGroup.where(updated_at: since..).order(:id).map { |record| exception_group(record) }
-        deployments = Deployment.where(updated_at: since..).order(:started_at, :id).map { |record| deployment(record) }
-        groups + deployments
+      # Items for the groups whose rows changed inside `window`.
+      def exception_groups_updated(window)
+        ExceptionGroup.where(updated_at: window).order(:id).map { |record| exception_group(record) }
+      end
+
+      # Items for the deployments recorded or finished inside `window`.
+      def deployments_updated(window)
+        Deployment.where(updated_at: window).order(:started_at, :id).map { |record| deployment(record) }
       end
 
       # The message is never sent: it is built from runtime values and can

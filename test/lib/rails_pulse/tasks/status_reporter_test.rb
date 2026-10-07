@@ -20,7 +20,7 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
     report
 
     assert_match(/\ARails Pulse #{Regexp.escape(RailsPulse::VERSION)}/, @output.string)
-    %w[Database: Schema: Migrations: Routes: Initializer: Tracking: Dashboard: API: Writer: Summaries: Retention: Cleanup: Jobs:].each do |label|
+    %w[Database: Schema: Migrations: Routes: Initializer: Tracking: Dashboard: API: Writer: Summaries: Retention: Cleanup: Jobs: Cloud:].each do |label|
       assert_includes @output.string, label
     end
   end
@@ -275,7 +275,71 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
     assert_operator @output.string.index("OK — nothing to do."), :<, @output.string.index("Suggestions:")
   end
 
+  test "Cloud is reported off until the key and application are set" do
+    assume_clean_install
+
+    assert report
+    assert_includes @output.string, "Cloud:      off"
+  end
+
+  test "Cloud reports the last accepted sync and the buffer" do
+    assume_clean_install
+    RailsPulse::Cloud::Installation.delete_all
+    RailsPulse::Cloud::BufferedBatch.delete_all
+    RailsPulse::Cloud::Installation.current.update!(last_success_at: 3.minutes.ago, last_health_at: 1.minute.ago)
+
+    with_cloud { assert report }
+
+    assert_match(/Cloud:      shop \(test\) to https:\/\/ingest\.railspulse\.com: connected, last accepted 3m ago; 0 batch\(es\) buffered/, @output.string)
+    assert_not_includes @output.string, "CloudHealthJob"
+  end
+
+  test "a paused Cloud sync is a suggestion, not an action" do
+    assume_clean_install
+    RailsPulse::Cloud::Installation.delete_all
+    installation = RailsPulse::Cloud::Installation.current
+    installation.pause!(1.hour.from_now, "Rails Pulse Cloud refused config.cloud.api_key: That key has been revoked.")
+    installation.update!(last_health_at: 1.minute.ago, contract_deprecated_on: "2027-10-01")
+
+    with_cloud { assert report }
+
+    assert_includes @output.string, "paused until"
+    assert_match(/Suggestions:.*That key has been revoked\./m, @output.string)
+    assert_includes @output.string, "stops accepting this gem's sync contract on 2027-10-01"
+  end
+
+  test "Cloud configured without its tables suggests install_cloud" do
+    assume_clean_install
+    RailsPulse::Cloud::Installation.stubs(:table_exists?).returns(false)
+
+    with_cloud { assert report }
+
+    assert_includes @output.string, "its tables are not installed"
+    assert_match(/Suggestions:.*rails generate rails_pulse:install_cloud/m, @output.string)
+  end
+
+  test "Cloud without recent health updates suggests scheduling CloudHealthJob" do
+    assume_clean_install
+    RailsPulse::Cloud::Installation.delete_all
+
+    with_cloud { assert report }
+
+    assert_includes @output.string, "not synced yet"
+    assert_match(/Suggestions:.*RailsPulse::CloudHealthJob every minute/m, @output.string)
+  end
+
   private
+
+  def with_cloud
+    cloud = RailsPulse.configuration.cloud
+    saved = cloud.to_h
+    cloud.api_key = "rpc_4f9Kx2mQ8vTzL1nB7wYc3HdR6sJe5PaU"
+    cloud.application = "shop"
+    cloud.environment = "test"
+    yield
+  ensure
+    saved.each { |key, value| cloud.public_send(:"#{key}=", value) }
+  end
 
   def with_config(settings)
     original = settings.keys.to_h { |key| [ key, RailsPulse.configuration.public_send(key) ] }
