@@ -36,10 +36,10 @@ module RailsPulse
       storage_pressure = RailsPulse::Dashboard::StoragePressure.new
 
       # Needs Attention panel
-      @needs_attention = RailsPulse::Dashboard::NeedsAttention.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, window: window, storage_pressure: storage_pressure).to_attention_data
+      @needs_attention = RailsPulse::Dashboard::NeedsAttention.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, period_type: period_type, window: window, storage_pressure: storage_pressure).to_attention_data
 
       # System Health bar
-      @health_summary = RailsPulse::Dashboard::HealthSummary.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, window: window, storage_pressure: storage_pressure).to_health_data
+      @health_summary = RailsPulse::Dashboard::HealthSummary.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, period_type: period_type, window: window, storage_pressure: storage_pressure).to_health_data
 
       @storage_status = RailsPulse::Dashboard::StorageStatus.new(estimated: true, storage_pressure: storage_pressure)
 

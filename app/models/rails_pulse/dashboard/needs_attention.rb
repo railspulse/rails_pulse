@@ -4,10 +4,11 @@ module RailsPulse
       include Concerns::AttentionClassification
       include Concerns::TimeRangeHelper
 
-      def initialize(disabled_tags: [], show_non_tagged: true, period: 7, window: nil, storage_pressure: nil)
+      def initialize(disabled_tags: [], show_non_tagged: true, period: 7, period_type: nil, window: nil, storage_pressure: nil)
         @disabled_tags    = disabled_tags
         @show_non_tagged  = show_non_tagged
         @period           = period
+        @period_type      = period_type
         @window           = window
         @storage_pressure = storage_pressure
         @route_thresholds = RailsPulse.configuration.route_thresholds
@@ -60,12 +61,11 @@ module RailsPulse
       end
 
       def route_items
-        start, finish = period_range
-
         route_data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
           .joins("INNER JOIN rails_pulse_routes ON rails_pulse_routes.id = rails_pulse_summaries.summarizable_id")
-          .where(summarizable_type: "RailsPulse::Route", period_start: start..finish)
+          .where(summarizable_type: "RailsPulse::Route")
+          .merge(period_summaries)
           .group("rails_pulse_summaries.summarizable_id, rails_pulse_routes.path")
           .select(
             "rails_pulse_summaries.summarizable_id as route_id",
@@ -101,12 +101,11 @@ module RailsPulse
       end
 
       def query_items
-        start, finish = period_range
-
         query_data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
           .joins("INNER JOIN rails_pulse_queries ON rails_pulse_queries.id = rails_pulse_summaries.summarizable_id")
-          .where(summarizable_type: "RailsPulse::Query", period_start: start..finish)
+          .where(summarizable_type: "RailsPulse::Query")
+          .merge(period_summaries)
           .group("rails_pulse_summaries.summarizable_id, rails_pulse_queries.normalized_sql")
           .select(
             "rails_pulse_summaries.summarizable_id as query_id",
@@ -204,12 +203,10 @@ module RailsPulse
         return [] unless RailsPulse.configuration.track_exceptions
         return [] unless exception_tables_available?
 
-        start, finish = period_range
-
         counts = RailsPulse::Summary
           .for_exceptions
           .where.not(summarizable_id: 0)
-          .where(period_start: start..finish)
+          .merge(period_summaries)
           .group(:summarizable_id)
           .sum(:count)
 

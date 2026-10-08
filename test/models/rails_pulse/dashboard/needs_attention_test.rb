@@ -69,7 +69,7 @@ module RailsPulse
 
       test "error rate reason names the selected window length" do
         route = rails_pulse_routes(:api_users)
-        create_route_summary(route: route, count: 100, errors: 10, p95: 200.0, days_ago: 0)
+        create_route_summary(route: route, count: 100, errors: 10, p95: 200.0, period_type: "hour", period_start: Time.current.beginning_of_hour)
 
         week = RailsPulse::Dashboard::NeedsAttention.new(window: RailsPulse::TimeWindow.new(7.days.ago, Time.current)).to_attention_data
         day  = RailsPulse::Dashboard::NeedsAttention.new(window: RailsPulse::TimeWindow.new(24.hours.ago, Time.current)).to_attention_data
@@ -366,6 +366,90 @@ module RailsPulse
         assert_equal 1, route_items.size
       end
 
+      # Summary Granularity Tests
+
+      test "traffic summarized by the hour and by the day is counted once" do
+        travel_to Time.zone.parse("2026-06-10 12:00")
+        route = rails_pulse_routes(:api_users)
+        day_start = 2.days.ago.beginning_of_day
+        24.times do |hour|
+          create_route_summary(route: route, count: 10, errors: 1, p95: 200.0, period_type: "hour", period_start: day_start + hour.hours)
+        end
+        create_route_summary(route: route, count: 240, errors: 24, p95: 200.0, period_start: day_start)
+
+        item = route_item(NeedsAttention.new(period: 7).to_attention_data)
+
+        assert_includes item[:reason], "10.0% error rate · 240 requests"
+        assert_equal "24 errors", item[:metric]
+      end
+
+      test "a week row inside the window is not added to its day rows" do
+        travel_to Time.zone.parse("2026-06-10 12:00")
+        route = rails_pulse_routes(:api_users)
+        week_start = Time.current.beginning_of_week
+        create_route_summary(route: route, count: 240, errors: 24, p95: 200.0, period_start: week_start)
+        create_route_summary(route: route, count: 240, errors: 24, p95: 200.0, period_type: "week", period_start: week_start)
+
+        item = route_item(NeedsAttention.new(period: 7).to_attention_data)
+
+        assert_includes item[:reason], "240 requests"
+      end
+
+      test "a multi-day window includes today's hourly traffic" do
+        route = rails_pulse_routes(:api_users)
+        create_route_summary(route: route, count: 100, errors: 0, p95: 200.0)
+        create_route_summary(route: route, count: 100, errors: 20, p95: 200.0, period_type: "hour", period_start: Time.current.beginning_of_hour)
+
+        item = route_item(NeedsAttention.new(period: 7).to_attention_data)
+
+        assert_includes item[:reason], "10.0% error rate · 200 requests"
+      end
+
+      test "a window of a day or less reads only hourly rows" do
+        travel_to Time.zone.parse("2026-06-10 00:30")
+        route = rails_pulse_routes(:api_users)
+        day_start = 1.day.ago.beginning_of_day
+        24.times do |hour|
+          create_route_summary(route: route, count: 10, errors: 1, p95: 200.0, period_type: "hour", period_start: day_start + hour.hours)
+        end
+        create_route_summary(route: route, count: 240, errors: 24, p95: 200.0, period_start: day_start)
+        window = RailsPulse::TimeWindow.new(day_start, Time.current)
+
+        item = route_item(NeedsAttention.new(window: window, period_type: "hour").to_attention_data)
+
+        assert_includes item[:reason], "240 requests"
+      end
+
+      test "a window that ended before today reads only day rows" do
+        travel_to Time.zone.parse("2026-06-10 12:00")
+        route = rails_pulse_routes(:api_users)
+        day_start = 3.days.ago.beginning_of_day
+        24.times do |hour|
+          create_route_summary(route: route, count: 10, errors: 1, p95: 200.0, period_type: "hour", period_start: day_start + hour.hours)
+        end
+        create_route_summary(route: route, count: 240, errors: 24, p95: 200.0, period_start: day_start)
+        window = RailsPulse::TimeWindow.new(5.days.ago.beginning_of_day, 2.days.ago.end_of_day)
+
+        item = route_item(NeedsAttention.new(window: window, period_type: "day").to_attention_data)
+
+        assert_includes item[:reason], "240 requests"
+      end
+
+      test "query counts are not inflated by overlapping hour rows" do
+        travel_to Time.zone.parse("2026-06-10 12:00")
+        query = rails_pulse_queries(:simple_query)
+        day_start = 2.days.ago.beginning_of_day
+        24.times do |hour|
+          create_query_summary(query: query, count: 10, p95: 2000.0, period_type: "hour", period_start: day_start + hour.hours)
+        end
+        create_query_summary(query: query, count: 240, p95: 2000.0, period_start: day_start)
+
+        result = NeedsAttention.new(period: 7).to_attention_data
+        item = (result[:critical] + result[:warning]).find { |i| i[:type] == "QUERY" && i[:link].end_with?("/#{query.id}") }
+
+        assert_equal "240 executions", item[:metric_sub]
+      end
+
       # Edge Cases
 
       test "returns empty results when no route or query issues exist and summary is fresh" do
@@ -484,14 +568,18 @@ module RailsPulse
         )
       end
 
-      def create_route_summary(route:, count:, errors:, p95:, days_ago: 2)
-        period_start = days_ago.days.ago.beginning_of_day
+      def route_item(result)
+        (result[:critical] + result[:warning]).find { |i| i[:type] == "ROUTE" }
+      end
+
+      def create_route_summary(route:, count:, errors:, p95:, days_ago: 2, period_type: "day", period_start: nil)
+        period_start ||= days_ago.days.ago.beginning_of_day
         RailsPulse::Summary.create!(
           summarizable_type: "RailsPulse::Route",
           summarizable_id:   route.id,
           period_start:      period_start,
-          period_end:        period_start.end_of_day,
-          period_type:       "day",
+          period_end:        RailsPulse::Summary.calculate_period_end(period_type, period_start),
+          period_type:       period_type,
           count:             count,
           error_count:       errors,
           avg_duration:      p95 * 0.7,
@@ -499,14 +587,14 @@ module RailsPulse
         )
       end
 
-      def create_query_summary(query:, count:, p95:, days_ago: 2)
-        period_start = days_ago.days.ago.beginning_of_day
+      def create_query_summary(query:, count:, p95:, days_ago: 2, period_type: "day", period_start: nil)
+        period_start ||= days_ago.days.ago.beginning_of_day
         RailsPulse::Summary.create!(
           summarizable_type: "RailsPulse::Query",
           summarizable_id:   query.id,
           period_start:      period_start,
-          period_end:        period_start.end_of_day,
-          period_type:       "day",
+          period_end:        RailsPulse::Summary.calculate_period_end(period_type, period_start),
+          period_type:       period_type,
           count:             count,
           avg_duration:      p95 * 0.7,
           p95_duration:      p95
