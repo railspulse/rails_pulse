@@ -268,7 +268,7 @@ module RailsPulse
     test "normalize gives a preload the same fingerprint however many ids it loads" do
       fingerprints = [ 1, 3, 12 ].map do |count|
         ids = (1..count).to_a.join(", ")
-        RailsPulse::SqlQueryNormalizer.normalize(%(SELECT "posts".* FROM "posts" WHERE "posts"."user_id" IN (#{ids})))
+        RailsPulse::SqlQueryNormalizer.normalize(%(SELECT "posts".* FROM "posts" WHERE "posts"."user_id" IN (#{ids})), adapter: "postgresql")
       end
 
       assert_equal 1, fingerprints.uniq.length, fingerprints.inspect
@@ -345,7 +345,7 @@ module RailsPulse
     test "normalize gives a batch insert the same fingerprint however many rows it writes" do
       fingerprints = [ 1, 2, 50 ].map do |count|
         rows = (1..count).map { |n| "(#{n}, 'name #{n}')" }.join(", ")
-        RailsPulse::SqlQueryNormalizer.normalize(%(INSERT INTO "users" ("id", "name") VALUES #{rows}))
+        RailsPulse::SqlQueryNormalizer.normalize(%(INSERT INTO "users" ("id", "name") VALUES #{rows}), adapter: "postgresql")
       end
 
       assert_equal 1, fingerprints.uniq.length, fingerprints.inspect
@@ -415,6 +415,21 @@ module RailsPulse
       end
     end
 
+    test "normalize redacts every double-quoted span on MySQL adapters" do
+      %w[mysql2 trilogy].each do |adapter|
+        assert_normalizes({
+          # Issue #313: on MySQL double quotes delimit a string, so a value
+          # that happens to be shaped like an identifier is still a value
+          %(SELECT * FROM users WHERE name = "JaneDoe" AND phone = "5551234567" AND note = 'Jane Doe' AND id = 123) =>
+            "SELECT * FROM users WHERE name = ? AND phone = ? AND note = ? AND id = ?",
+
+          # Rails quotes MySQL identifiers with backticks, never double quotes
+          'SELECT `user_id`, "created_at" FROM `user_sessions`' =>
+            "SELECT `user_id`, ? FROM `user_sessions`"
+        }, adapter)
+      end
+    end
+
     test "normalize treats a backslash as an ordinary character on other adapters" do
       %w[postgresql sqlite3].each do |adapter|
         assert_normalizes({
@@ -426,7 +441,13 @@ module RailsPulse
 
           # LIKE with an escape clause, as these databases spell it
           "SELECT * FROM t WHERE a LIKE '%foo\\%' ESCAPE '\\'" =>
-            "SELECT * FROM t WHERE a LIKE ? ESCAPE ?"
+            "SELECT * FROM t WHERE a LIKE ? ESCAPE ?",
+
+          # Double quotes delimit identifiers here, so an identifier-shaped
+          # token is kept even on the right of a comparison; Rails never
+          # writes a value that way on these databases (issue #313)
+          'SELECT * FROM users WHERE name = "JaneDoe" AND phone = "5551234567"' =>
+            'SELECT * FROM users WHERE name = "JaneDoe" AND phone = ?'
         }, adapter)
       end
     end
@@ -580,7 +601,7 @@ module RailsPulse
 
       result = nil
       elapsed = Benchmark.realtime do
-        result = RailsPulse::SqlQueryNormalizer.normalize(query)
+        result = RailsPulse::SqlQueryNormalizer.normalize(query, adapter: "postgresql")
       end
 
       assert_operator elapsed, :<, 2, "normalize took too long (#{elapsed}s) on a large IN list"
@@ -589,16 +610,14 @@ module RailsPulse
 
     private
 
-    def assert_normalizes(examples, adapter = nil)
+    # Examples name their dialect so they do not change meaning with the
+    # database the suite happens to run against; the host default is
+    # covered by the tests that call normalize without an adapter.
+    def assert_normalizes(examples, adapter = "postgresql")
       examples.each do |input, expected|
-        result =
-          if adapter
-            RailsPulse::SqlQueryNormalizer.normalize(input, adapter: adapter)
-          else
-            RailsPulse::SqlQueryNormalizer.normalize(input)
-          end
+        result = RailsPulse::SqlQueryNormalizer.normalize(input, adapter: adapter)
 
-        assert_equal expected, result, "Failed for input: #{input.inspect} (adapter: #{adapter || "host"})"
+        assert_equal expected, result, "Failed for input: #{input.inspect} (adapter: #{adapter})"
       end
     end
   end

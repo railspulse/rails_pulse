@@ -1,12 +1,15 @@
 module RailsPulse
   class SqlQueryNormalizer
-    # Adapters whose drivers escape a quote inside a string literal with a
-    # backslash ('O\'Brien', "O\"Brien") rather than by doubling it. The
-    # PostgreSQL and SQLite adapters double the quote, and on those databases
-    # a backslash inside a plain string is an ordinary character ('C:\' is a
-    # complete string), so backslash handling must switch on the adapter
-    # rather than apply everywhere.
-    BACKSLASH_ESCAPING_ADAPTERS = %w[mysql2 trilogy].freeze
+    # MySQL adapters. MySQL's quoting differs from PostgreSQL's and SQLite's
+    # in two ways the scanner must know about. Its drivers escape a quote
+    # inside a string with a backslash ('O\'Brien', "O\"Brien") rather than
+    # by doubling it, whereas on the other two a backslash in a plain string
+    # is an ordinary character ('C:\' is a complete string). And double
+    # quotes delimit a string, not an identifier (Rails quotes MySQL
+    # identifiers with backticks), so every double-quoted span is a value to
+    # redact, where on the other two it is an identifier when it looks like
+    # one (issue #313).
+    MYSQL_ADAPTERS = %w[mysql2 trilogy].freeze
 
     # Opening delimiter of a PostgreSQL dollar-quoted string: $$ or $tag$.
     # \G anchors the match at the scan position, so a failed attempt does
@@ -17,11 +20,11 @@ module RailsPulse
     # hex and national strings (B'...', X'...', N'...'), upper or lower case.
     STRING_PREFIX_CHARS = "EeBbXxNn"
 
-    # A quoted token protected as an identifier rather than redacted as a
-    # value: a plain identifier or a dotted chain of them ("users.email").
+    # A double-quoted token kept as an identifier on PostgreSQL and SQLite:
+    # a plain identifier or a dotted chain of them ("users.email").
     # Anything else between double quotes — an email, a sentence, a number —
-    # is a string value on the databases where double quotes can delimit
-    # strings (MySQL, SQLite), so it must not survive normalization.
+    # can only be a value (SQLite accepts a double-quoted string in
+    # hand-written SQL), so it must not survive normalization.
     QUOTED_IDENTIFIER = /\A[A-Za-z_][A-Za-z0-9_$]*(?:\.[A-Za-z_][A-Za-z0-9_$]*)*\z/
 
     # Longest double-quoted span that is checked against QUOTED_IDENTIFIER.
@@ -45,7 +48,7 @@ module RailsPulse
 
     def initialize(query_string, adapter: self.class.host_adapter)
       @query_string = query_string
-      @backslash_escapes = BACKSLASH_ESCAPING_ADAPTERS.include?(adapter.to_s.downcase)
+      @mysql = MYSQL_ADAPTERS.include?(adapter.to_s.downcase)
     end
 
     def normalize
@@ -80,13 +83,13 @@ module RailsPulse
     private
 
     # One linear scan over the query replacing every single-quoted string
-    # ('...', with '' doubling and, on backslash-escaping adapters, \'),
-    # prefixed string (E'...' and friends, with backslash escapes) and
-    # dollar-quoted string ($$...$$, $tag$...$tag$) with "?". A double-quoted
-    # span is copied through when it is an identifier and replaced with "?"
-    # when it is a value; backticked spans are always identifiers and are
-    # copied through. Left to right with no backtracking, like the databases'
-    # own lexers, and no regex runs across literal content, so a host's tight
+    # ('...', with '' doubling and, on MySQL, \'), prefixed string (E'...'
+    # and friends, with backslash escapes) and dollar-quoted string
+    # ($$...$$, $tag$...$tag$) with "?". A double-quoted span is copied
+    # through when it is an identifier and replaced with "?" when it is a
+    # value; backticked spans are always identifiers and are copied through.
+    # Left to right with no backtracking, like the databases' own lexers,
+    # and no regex runs across literal content, so a host's tight
     # Regexp.timeout cannot trip on a long literal (see issue #286).
     def replace_string_literals(query)
       result = +""
@@ -98,7 +101,7 @@ module RailsPulse
 
         case char
         when "'"
-          close = find_closing_quote(query, i + 1, "'", backslash_escapes: @backslash_escapes)
+          close = find_closing_quote(query, i + 1, "'", backslash_escapes: @mysql)
           if close
             result << "?"
             i = close + 1
@@ -107,9 +110,9 @@ module RailsPulse
             break
           end
         when '"'
-          close = find_closing_quote(query, i + 1, '"', backslash_escapes: @backslash_escapes)
+          close = find_closing_quote(query, i + 1, '"', backslash_escapes: @mysql)
           if close
-            result << (quoted_identifier?(query[(i + 1)...close]) ? query[i..close] : "?")
+            result << (keep_double_quoted?(query[(i + 1)...close]) ? query[i..close] : "?")
             i = close + 1
           else
             result << query[i..]
@@ -164,7 +167,7 @@ module RailsPulse
       identifier_counter = 0
 
       normalized = query.gsub(/`[^`]+`|"([^"]+)"/) do |match|
-        next "?" if $1 && !quoted_identifier?($1)
+        next "?" if $1 && !keep_double_quoted?($1)
 
         placeholder = "__IDENTIFIER_#{identifier_counter}__"
         protected_identifiers[placeholder] = match
@@ -175,8 +178,8 @@ module RailsPulse
       { normalized: normalized, mapping: protected_identifiers }
     end
 
-    def quoted_identifier?(content)
-      content.length <= MAX_QUOTED_IDENTIFIER_LENGTH && content.match?(QUOTED_IDENTIFIER)
+    def keep_double_quoted?(content)
+      !@mysql && content.length <= MAX_QUOTED_IDENTIFIER_LENGTH && content.match?(QUOTED_IDENTIFIER)
     end
 
     def replace_literal_values(query)
