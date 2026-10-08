@@ -56,6 +56,22 @@ module RailsPulse
         assert_kind_of Array, result
       end
 
+      test "pressure_items are computed once per instance" do
+        create_fresh_summary
+        pressure = StoragePressure.new
+
+        first = pressure.pressure_items
+        queries = 0
+        subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+          queries += 1 if payload[:name] != "SCHEMA"
+        end
+        second = pressure.pressure_items
+        ActiveSupport::Notifications.unsubscribe(subscriber)
+
+        assert_same first, second
+        assert_equal 0, queries
+      end
+
       test "storage_counts returns hash with healthy, slow, critical keys" do
         create_fresh_summary
 

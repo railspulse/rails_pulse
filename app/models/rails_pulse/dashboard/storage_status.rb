@@ -81,39 +81,29 @@ module RailsPulse
         }
       ].freeze
 
-      # Table sizes come from dbstat / pg_total_relation_size /
-      # information_schema, one statement per table. The dashboard only shows
-      # a headline total, so it reads them through a short-lived per-process
-      # cache; the Storage page itself always measures afresh.
-      SIZE_CACHE_TTL = 5.minutes
-      @size_cache = {}
-      @size_cache_mutex = Mutex.new
-
-      class << self
-        def cached_table_bytes(table_name)
-          @size_cache_mutex.synchronize do
-            entry = @size_cache[table_name]
-            return entry[:bytes] if entry && entry[:measured_at] > SIZE_CACHE_TTL.ago
-
-            bytes = yield
-            @size_cache[table_name] = { bytes: bytes, measured_at: Time.current }
-            bytes
-          end
-        end
-
-        def reset_size_cache!
-          @size_cache_mutex.synchronize { @size_cache.clear }
-        end
+      # The Storage page counts every row exactly: one unindexed COUNT/MIN/MAX
+      # scan per table, which takes tens of seconds on large installs. The
+      # dashboard only shows headline counts and fill bars, so with
+      # estimated: true it reads the catalog's row estimates instead
+      # (pg_class.reltuples, information_schema TABLE_ROWS). SQLite keeps no
+      # such estimate, and dbstat walks the whole file, so there the dashboard
+      # measures no tables at all.
+      def initialize(estimated: false, storage_pressure: nil)
+        @config = RailsPulse.configuration
+        @pressure = storage_pressure || StoragePressure.new
+        @estimated = estimated
       end
 
-      def initialize(cached_sizes: false)
-        @config = RailsPulse.configuration
-        @pressure = StoragePressure.new
-        @cached_sizes = cached_sizes
+      def estimated?
+        @estimated
+      end
+
+      def counts_available?
+        !(@estimated && sqlite?)
       end
 
       def tables
-        @tables ||= TABLE_CATALOG.filter_map { |definition| build_table(definition) }
+        @tables ||= counts_available? ? TABLE_CATALOG.filter_map { |definition| build_table(definition) } : []
       end
 
       def pressure_items
@@ -203,7 +193,7 @@ module RailsPulse
         return unless model
         return unless connection.table_exists?(definition[:name])
 
-        stats = fetch_counts(model, definition)
+        stats = measured_counts(model, definition)
         limit = @config.max_table_records&.[](definition[:name])
         count = stats[:count]
         percent = limit.to_i.positive? ? ((count.to_f / limit) * 100).round(1) : nil
@@ -223,7 +213,7 @@ module RailsPulse
           newest_at: stats[:newest_at],
           recent_count: stats[:recent_count],
           runway_label: runway_label(count, limit, stats[:recent_count]),
-          bytes: measured_table_bytes(definition[:name]),
+          bytes: table_bytes(definition[:name]),
           history_label: history_label(stats[:oldest_at], stats[:newest_at])
         }
       rescue => error
@@ -245,6 +235,33 @@ module RailsPulse
           bytes: nil,
           history_label: error.message
         }
+      end
+
+      def measured_counts(model, definition)
+        return fetch_counts(model, definition) unless @estimated
+
+        { count: estimated_count(definition[:name]), oldest_at: nil, newest_at: nil, recent_count: 0 }
+      end
+
+      def estimated_count(table_name)
+        if connection.adapter_name.downcase.include?("postgres")
+          estimate = connection.select_value(
+            "SELECT reltuples::bigint FROM pg_class WHERE oid = to_regclass(#{connection.quote(table_name.to_s)})"
+          ).to_i
+          # -1 until the table's first ANALYZE; autovacuum runs one after
+          # about 50 inserts, so a table without an estimate is small enough
+          # to count.
+          estimate.negative? ? connection.select_value("SELECT COUNT(*) FROM #{connection.quote_table_name(table_name)}").to_i : estimate
+        else
+          connection.select_value(
+            RailsPulse::ApplicationRecord.sanitize_sql_array([ <<~SQL, table_name.to_s ])
+              SELECT TABLE_ROWS
+              FROM information_schema.TABLES
+              WHERE TABLE_SCHEMA = DATABASE()
+                AND TABLE_NAME = ?
+            SQL
+          ).to_i
+        end
       end
 
       def fetch_counts(model, definition)
@@ -351,12 +368,6 @@ module RailsPulse
         row[key] || row[key.to_s] || row[key.to_s.upcase] || row[key.to_sym]
       end
 
-      def measured_table_bytes(table_name)
-        return table_bytes(table_name) unless @cached_sizes
-
-        self.class.cached_table_bytes(table_name) { table_bytes(table_name) }
-      end
-
       def table_bytes(table_name)
         adapter = connection.adapter_name.downcase
 
@@ -408,6 +419,10 @@ module RailsPulse
         config.respond_to?(:database) ? config.database : config.configuration_hash[:database]
       rescue StandardError
         nil
+      end
+
+      def sqlite?
+        connection.adapter_name.downcase.include?("sqlite")
       end
 
       def adapter_label
