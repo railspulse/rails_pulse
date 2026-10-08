@@ -225,6 +225,104 @@ module RailsPulse
       end
     end
 
+    test "normalize replaces dollar-quoted string literals" do
+      examples = {
+        # Issue #335: dollar-quoted values must not survive normalization
+        "SELECT * FROM notes WHERE body = $$jane@example.com$$" =>
+          "SELECT * FROM notes WHERE body = ?",
+
+        # Tagged form, spanning lines and containing single quotes
+        "SELECT * FROM notes WHERE body = $tag$line one\nit's 'quoted'$tag$ AND id = 7" =>
+          "SELECT * FROM notes WHERE body = ? AND id = ?",
+
+        # Content containing every other quote form
+        %(SELECT * FROM notes WHERE body = $$it's a "quoted" `word`$$) =>
+          "SELECT * FROM notes WHERE body = ?",
+
+        # Two dollar-quoted values stay two values
+        "SELECT * FROM t WHERE a = $$x$$ AND b = $$y$$" =>
+          "SELECT * FROM t WHERE a = ? AND b = ?",
+
+        # $$ inside an ordinary string is part of that string, not an opener
+        "SELECT * FROM t WHERE a = '$$' AND b = 'x'" =>
+          "SELECT * FROM t WHERE a = ? AND b = ?",
+
+        # A lone dollar sign is not a string delimiter
+        "SELECT * FROM t WHERE price_usd$ > 5" =>
+          "SELECT * FROM t WHERE price_usd$ > ?"
+      }
+
+      examples.each do |input, expected|
+        result = RailsPulse::SqlQueryNormalizer.normalize(input)
+
+        assert_equal expected, result, "Failed for input: #{input}"
+      end
+    end
+
+    test "normalize replaces prefixed string literals" do
+      examples = {
+        # Issue #335: PostgreSQL escape string with a backslash-escaped quote
+        "SELECT * FROM users WHERE email = E'jane\\'s@example.com'" =>
+          "SELECT * FROM users WHERE email = ?",
+
+        # Lower-case prefix with a doubled-quote escape
+        "SELECT * FROM users WHERE name = e'O''Brien'" =>
+          "SELECT * FROM users WHERE name = ?",
+
+        # Bit, hex and national strings
+        "SELECT * FROM flags WHERE bits = B'1010' AND hex = X'4F' AND label = N'value'" =>
+          "SELECT * FROM flags WHERE bits = ? AND hex = ? AND label = ?",
+
+        # A value that is just the letter E must not act as a prefix for
+        # whatever follows the next quote
+        "SELECT * FROM grades WHERE grade = 'E' AND name = 'Jane'" =>
+          "SELECT * FROM grades WHERE grade = ? AND name = ?"
+      }
+
+      examples.each do |input, expected|
+        result = RailsPulse::SqlQueryNormalizer.normalize(input)
+
+        assert_equal expected, result, "Failed for input: #{input}"
+      end
+    end
+
+    test "normalize replaces double-quoted string values but keeps quoted identifiers" do
+      examples = {
+        # Issue #335: a MySQL double-quoted string in the default SQL mode
+        'SELECT * FROM users WHERE email = "jane@example.com"' =>
+          "SELECT * FROM users WHERE email = ?",
+
+        # Quoted identifiers survive, including a dotted chain in one token
+        'SELECT "users"."email" FROM "users" WHERE "users"."id" = 1' =>
+          'SELECT "users"."email" FROM "users" WHERE "users"."id" = ?',
+        'SELECT "app_v2.users".name FROM "app_v2.users"' =>
+          'SELECT "app_v2.users".name FROM "app_v2.users"'
+      }
+
+      examples.each do |input, expected|
+        result = RailsPulse::SqlQueryNormalizer.normalize(input)
+
+        assert_equal expected, result, "Failed for input: #{input}"
+      end
+    end
+
+    test "normalize handles long dollar-quoted and prefixed literals under a tight Regexp.timeout" do
+      skip "Regexp.timeout requires Ruby 3.2+" unless Regexp.respond_to?(:timeout=)
+
+      original_timeout = Regexp.timeout
+      long_value = "x" * 2_000_000
+      query = "SELECT * FROM logs WHERE a = $$#{long_value}$$ AND b = E'#{long_value}\\' tail'"
+
+      begin
+        Regexp.timeout = 0.05
+        result = RailsPulse::SqlQueryNormalizer.normalize(query)
+      ensure
+        Regexp.timeout = original_timeout
+      end
+
+      assert_equal "SELECT * FROM logs WHERE a = ? AND b = ?", result
+    end
+
     test "class method normalize delegates to instance" do
       query = "SELECT * FROM users WHERE id = 123"
       expected = "SELECT * FROM users WHERE id = ?"

@@ -10,6 +10,22 @@ module RailsPulse
     # issue #286.
     LONG_QUERY_THRESHOLD = 100_000
 
+    # Opening delimiter of a PostgreSQL dollar-quoted string: $$ or $tag$.
+    # \G anchors the match at the scan position, so a failed attempt does
+    # not search ahead through the rest of the string.
+    DOLLAR_QUOTE_OPENER = /\G\$(?:[A-Za-z_][A-Za-z0-9_]*)?\$/
+
+    # String-literal prefixes: PostgreSQL escape strings (E'...'), bit,
+    # hex and national strings (B'...', X'...', N'...'), upper or lower case.
+    STRING_PREFIX_CHARS = "EeBbXxNn"
+
+    # A quoted token protected as an identifier rather than redacted as a
+    # value: a plain identifier or a dotted chain of them ("users.email").
+    # Anything else between double quotes — an email, a sentence, a number —
+    # is a string value on the databases where double quotes can delimit
+    # strings (MySQL, SQLite), so it must not survive normalization.
+    QUOTED_IDENTIFIER = /\A[A-Za-z_][A-Za-z0-9_$]*(?:\.[A-Za-z_][A-Za-z0-9_$]*)*\z/
+
     # Smart normalization: preserve table/column names, replace only literal values
     def self.normalize(query_string)
       new(query_string).normalize
@@ -24,6 +40,12 @@ module RailsPulse
       return "" if @query_string.empty?
 
       normalized = @query_string.dup
+
+      # Step 0: Replace single-quoted, prefixed and dollar-quoted string
+      # literals in one left-to-right pass, so a quote form occurring inside
+      # another (an apostrophe in a dollar-quoted string, $$ inside a plain
+      # string) cannot pair across two separate literals.
+      normalized = replace_string_literals(normalized)
 
       # Step 1: Temporarily protect quoted identifiers
       protected_identifiers = protect_identifiers(normalized)
@@ -43,6 +65,72 @@ module RailsPulse
     end
 
     private
+
+    # One linear scan over the query replacing every single-quoted string
+    # ('...', with '' doubling), prefixed string (E'...' and friends, with
+    # backslash escapes) and dollar-quoted string ($$...$$, $tag$...$tag$)
+    # with "?". Double-quoted and backticked spans are copied through
+    # verbatim — whether they are identifiers or values is decided later —
+    # so a quote character inside them cannot open a string here. Left to
+    # right with no backtracking, like the databases' own lexers, and no
+    # regex runs across literal content, so a host's tight Regexp.timeout
+    # cannot trip on a long literal (see LONG_QUERY_THRESHOLD and #286).
+    def replace_string_literals(query)
+      result = +""
+      i = 0
+      len = query.length
+
+      while i < len
+        char = query[i]
+
+        case char
+        when "'"
+          close = find_closing_quote(query, i + 1, "'")
+          if close
+            result << "?"
+            i = close + 1
+          else
+            result << query[i..]
+            break
+          end
+        when '"', "`"
+          close = find_closing_quote(query, i + 1, char)
+          if close
+            result << query[i..close]
+            i = close + 1
+          else
+            result << query[i..]
+            break
+          end
+        when "$"
+          if (m = DOLLAR_QUOTE_OPENER.match(query, i))
+            delimiter = m[0]
+            close = query.index(delimiter, i + delimiter.length)
+            if close
+              result << "?"
+              i = close + delimiter.length
+              next
+            end
+          end
+          result << char
+          i += 1
+        else
+          if STRING_PREFIX_CHARS.include?(char) && query[i + 1] == "'" &&
+              (i == 0 || !query[i - 1].match?(/[A-Za-z0-9_$]/))
+            close = find_closing_quote(query, i + 2, "'", backslash_escapes: true)
+            if close
+              result << "?"
+              i = close + 1
+              next
+            end
+          end
+          result << char
+          i += 1
+        end
+      end
+
+      result
+    end
 
     def protect_identifiers(query)
       protected_identifiers = {}
@@ -76,16 +164,14 @@ module RailsPulse
     end
 
     def looks_like_identifier?(content)
-      content.match?(/^[a-zA-Z_][a-zA-Z0-9_]*$/) || content.include?(".")
+      content.match?(QUOTED_IDENTIFIER)
     end
 
     def replace_literal_values(query)
       normalized = query.dup
 
-      # Replace string literals (single quotes) FIRST so a very long literal
-      # collapses to a single "?" before any other regex in this method has
-      # to scan across it — see LONG_QUERY_THRESHOLD and issue #286.
-      normalized = replace_quoted_literals(normalized, "'")
+      # Single-quoted, prefixed and dollar-quoted strings were already
+      # replaced by replace_string_literals before identifier protection.
 
       # Replace double-quoted string literals (not protected identifiers)
       normalized = replace_quoted_literals(normalized, '"')
@@ -151,14 +237,20 @@ module RailsPulse
 
     # Returns the index of the unescaped closing quote_char starting the
     # search at `start`, treating a doubled quote_char (e.g. '') as an
-    # escaped literal quote rather than a terminator. Returns nil if the
-    # string is never closed.
-    def find_closing_quote(query, start, quote_char)
+    # escaped literal quote rather than a terminator. With
+    # backslash_escapes (prefixed strings like E'...'), a backslash also
+    # escapes the character after it. Returns nil if the string is never
+    # closed.
+    def find_closing_quote(query, start, quote_char, backslash_escapes: false)
       j = start
       len = query.length
 
       while j < len
-        if query[j] == quote_char
+        char = query[j]
+
+        if backslash_escapes && char == "\\"
+          j += 2
+        elsif char == quote_char
           return j unless query[j + 1] == quote_char
           j += 2
         else
