@@ -87,45 +87,39 @@ module RailsPulse
         assert_equal RailsPulse::Query.count, table[:count]
       end
 
-      test "cached sizes are measured once per table within the cache window" do
-        StorageStatus.reset_size_cache!
-        size_statements = lambda do
-          count = 0
-          subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
-            # MySQL's table_exists? also reads information_schema, tagged SCHEMA; only
-            # count the size lookups themselves.
-            count += 1 if payload[:name] != "SCHEMA" && payload[:sql] =~ /dbstat|pg_total_relation_size|information_schema/i
-          end
-          yield_result = StorageStatus.new(cached_sizes: true).tables
-          ActiveSupport::Notifications.unsubscribe(subscriber)
-          [ count, yield_result ]
-        end
+      test "estimated status on SQLite measures no tables" do
+        skip "SQLite only" unless sqlite?
 
-        first_count, first_tables = size_statements.call
-        second_count, second_tables = size_statements.call
+        status = StorageStatus.new(estimated: true)
+        statements = table_scans { status.overview }
 
-        assert_operator first_count, :>, 0
-        assert_equal 0, second_count
-        assert_equal first_tables.map { |t| t[:bytes] }, second_tables.map { |t| t[:bytes] }
-      ensure
-        StorageStatus.reset_size_cache!
+        refute_predicate status, :counts_available?
+        assert_empty status.tables
+        assert_equal 0, status.overview[:total_records]
+        assert_empty statements
       end
 
-      test "uncached status measures sizes on every call" do
-        StorageStatus.reset_size_cache!
-        count = 0
-        subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
-            # MySQL's table_exists? also reads information_schema, tagged SCHEMA; only
-            # count the size lookups themselves.
-            count += 1 if payload[:name] != "SCHEMA" && payload[:sql] =~ /dbstat|pg_total_relation_size|information_schema/i
+      test "estimated status on PostgreSQL and MySQL reads catalog estimates without scanning" do
+        skip "PostgreSQL and MySQL only" if sqlite?
+        if RailsPulse::ApplicationRecord.connection.adapter_name.downcase.include?("postgres")
+          StorageStatus::TABLE_CATALOG.each { |definition| RailsPulse::ApplicationRecord.connection.execute("ANALYZE #{definition[:name]}") }
         end
 
-        StorageStatus.new.tables
-        StorageStatus.new.tables
+        status = StorageStatus.new(estimated: true)
+        statements = table_scans { status.tables }
 
-        assert_operator count, :>=, 2
-      ensure
-        ActiveSupport::Notifications.unsubscribe(subscriber)
+        assert_predicate status, :counts_available?
+        assert_includes status.tables.map { |table| table[:label] }, "Queries"
+        assert status.tables.all? { |table| table[:count].is_a?(Integer) && table[:count] >= 0 }
+        assert_empty statements
+      end
+
+      test "exact status counts every table" do
+        status = StorageStatus.new
+
+        refute_predicate status, :estimated?
+        assert_predicate status, :counts_available?
+        assert_equal RailsPulse::Query.count, table_named(:rails_pulse_queries)[:count]
       end
 
       # Calculation Tests
@@ -238,6 +232,22 @@ module RailsPulse
       end
 
       private
+
+      def sqlite?
+        RailsPulse::ApplicationRecord.connection.adapter_name.downcase.include?("sqlite")
+      end
+
+      # Statements that read a Rails Pulse table's rows or walk its pages.
+      def table_scans
+        statements = []
+        subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+          statements << payload[:sql] if payload[:name] != "SCHEMA" && payload[:sql] =~ /COUNT\(\*\)|dbstat/i
+        end
+        yield
+        statements
+      ensure
+        ActiveSupport::Notifications.unsubscribe(subscriber)
+      end
 
       def table_named(name)
         table = StorageStatus.new.tables.find { |entry| entry[:name] == name }

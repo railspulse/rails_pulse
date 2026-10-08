@@ -28,6 +28,11 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
 
     # Storage Panel
     assert_selector ".storage-panel-stats"
-    assert_text "HIGHEST FILL"
+    assert_text "CLEANUP"
+    if sqlite_adapter?
+      assert_text "the dashboard leaves them out"
+    else
+      assert_text "HIGHEST FILL"
+    end
   end
 end
