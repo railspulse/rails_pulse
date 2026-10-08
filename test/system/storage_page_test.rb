@@ -8,9 +8,13 @@ class StoragePageTest < ApplicationSystemTestCase
     visit_rails_pulse_path "/"
 
     assert_selector ".storage-panel-stats"
-    assert_text "HIGHEST FILL"
-    assert_text "RECORDS"
     assert_text "CLEANUP"
+    if sqlite_adapter?
+      assert_text "the dashboard leaves them out"
+    else
+      assert_text "HIGHEST FILL"
+      assert_text "RECORDS"
+    end
 
     find("a[href='/rails_pulse/storage']", match: :first).click
 

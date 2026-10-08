@@ -4,11 +4,12 @@ module RailsPulse
       include Concerns::AttentionClassification
       include Concerns::TimeRangeHelper
 
-      def initialize(disabled_tags: [], show_non_tagged: true, period: 7, window: nil)
+      def initialize(disabled_tags: [], show_non_tagged: true, period: 7, window: nil, storage_pressure: nil)
         @disabled_tags    = disabled_tags
         @show_non_tagged  = show_non_tagged
         @period           = period
         @window           = window
+        @storage_pressure = storage_pressure
         @route_thresholds = RailsPulse.configuration.route_thresholds
         @query_thresholds = RailsPulse.configuration.query_thresholds
         @job_thresholds   = RailsPulse.configuration.job_thresholds
@@ -40,7 +41,7 @@ module RailsPulse
       private
 
       def storage_pressure_items
-        StoragePressure.new.pressure_items
+        (@storage_pressure || StoragePressure.new).pressure_items
       end
 
       # The dashboard window is user-selected, so the error-rate reason names
