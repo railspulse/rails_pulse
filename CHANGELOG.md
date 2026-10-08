@@ -22,6 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **Normalised SQL no longer shows some string values.** A value written in one of SQL's less common string forms — only possible in hand-written SQL — stayed visible in the normalised query on the dashboard, the API and the MCP server, and split that query's stats into one entry per value; it is now replaced with `?` like any other value. On MySQL the same happened to any value containing an apostrophe or any double-quoted value shaped like a column name, and on every database to very small or very large decimals. (#335, #313)
 - **The dashboard no longer counts every Rails Pulse table on each load.** On PostgreSQL and MySQL its storage panel now shows the database's row estimates, and on SQLite it leaves record counts to the Storage page, so large installs no longer wait tens of seconds per page view; the storage-pressure checks also run once per page instead of four times.
+- **Needs Attention and System Health no longer overcount traffic.** Request, error, query and exception counts were added up once per summary granularity, which inflated them and could raise an exception group's severity; today's traffic now counts in windows longer than a day. (#338)
 - **Daily charts no longer go blank after a daylight-saving change.** In a `config.time_zone` with daylight saving, every day after the clocks changed was drawn empty in a range that crossed the change; chart days now follow the zone's calendar.
 
 ## [0.5.0.pre.1] - 2026-10-03
