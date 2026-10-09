@@ -435,6 +435,18 @@ module RailsPulse
         assert_includes item[:reason], "240 requests"
       end
 
+      test "a window that ended before today leaves out the days after it" do
+        travel_to Time.zone.parse("2026-06-10 12:00")
+        route = rails_pulse_routes(:api_users)
+        create_route_summary(route: route, count: 240, errors: 24, p95: 200.0, period_start: 3.days.ago.beginning_of_day)
+        create_route_summary(route: route, count: 1000, errors: 0, p95: 200.0, period_start: 1.day.ago.beginning_of_day)
+        window = RailsPulse::TimeWindow.new(5.days.ago.beginning_of_day, 2.days.ago.end_of_day)
+
+        item = route_item(NeedsAttention.new(window: window, period_type: "day").to_attention_data)
+
+        assert_includes item[:reason], "10.0% error rate · 240 requests"
+      end
+
       test "query counts are not inflated by overlapping hour rows" do
         travel_to Time.zone.parse("2026-06-10 12:00")
         query = rails_pulse_queries(:simple_query)

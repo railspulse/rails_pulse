@@ -14,14 +14,15 @@ module RailsPulse
         # summarized per hour, day, week and month, so summing across period
         # types would count it once per granularity. A window of 25 hours or
         # less reads hourly rows. A longer one reads daily rows up to the start
-        # of today and hourly rows after it, because a day is summarized only
-        # once it has ended.
+        # of today, or to its own end if that comes first, and hourly rows
+        # after today's start, because a day is summarized only once it has
+        # ended.
         def period_summaries
           start, finish = period_range
           return RailsPulse::Summary.where(period_type: "hour", period_start: start..finish) if hourly_period?(start, finish)
 
           today = Time.zone.now.beginning_of_day
-          RailsPulse::Summary.where(period_type: "day", period_start: start...today)
+          RailsPulse::Summary.where(period_type: "day", period_start: start...[ today, finish ].min)
             .or(RailsPulse::Summary.where(period_type: "hour", period_start: today..finish))
         end
 
