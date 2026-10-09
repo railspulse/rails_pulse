@@ -444,6 +444,18 @@ module RailsPulse
         assert_equal 1, health[:routes][:critical]
       end
 
+      test "a window that ended before today does not classify on the days after it" do
+        travel_to Time.zone.parse("2026-06-10 12:00")
+        query = rails_pulse_queries(:simple_query)
+        create_query_summary(query: query, count: 240, p95: 50.0, period_start: 3.days.ago.beginning_of_day)
+        create_query_summary(query: query, count: 240, p95: 2000.0, period_start: 1.day.ago.beginning_of_day)
+        window = RailsPulse::TimeWindow.new(5.days.ago.beginning_of_day, 2.days.ago.end_of_day)
+
+        health = HealthSummary.new(window: window, period_type: "day").to_health_data
+
+        assert_equal({ healthy: 1, slow: 0, critical: 0 }, health[:queries])
+      end
+
       # Storage Health Badge Tests
 
       test "storage value has healthy, slow, and critical keys" do
