@@ -289,6 +289,10 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     Rails.application.config.asset_host = "https://cdn.example.com"
     Rails.application.config.action_controller.asset_host = "https://cdn.example.com"
     ActionController::Base.config.asset_host = "https://cdn.example.com"
+    # AssetServingTest installs packaged assets into the dummy app's
+    # public/assets, which parallel workers share; this test is about the
+    # middleware fallback, so it must not see them.
+    RailsPulse::PackagedAssets.stubs(:url_path).returns(nil)
 
     get rails_pulse.root_path
 
