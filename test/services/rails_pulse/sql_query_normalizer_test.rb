@@ -513,6 +513,26 @@ module RailsPulse
       )
     end
 
+    test "normalize replaces PostgreSQL Unicode escape strings with their prefix" do
+      assert_normalizes(
+        "SELECT * FROM users WHERE name = U&'d\\0061t\\+000061'" =>
+          "SELECT * FROM users WHERE name = ?",
+
+        # Lower-case prefix, and a UESCAPE clause naming its own escape character
+        "SELECT * FROM users WHERE name = u&'d!0061ta' UESCAPE '!' AND token = 'secret'" =>
+          "SELECT * FROM users WHERE name = ? UESCAPE ? AND token = ?",
+
+        # A backslash is the Unicode escape character, not a quote escape, so
+        # the string ends at the next quote
+        "SELECT * FROM files WHERE path = U&'C:\\' AND token = 'secret'" =>
+          "SELECT * FROM files WHERE path = ? AND token = ?",
+
+        # An identifier ending in U is not a prefix
+        "SELECT * FROM menu WHERE label = MENU&'x'" =>
+          "SELECT * FROM menu WHERE label = MENU&?"
+      )
+    end
+
     test "normalize ends a bit, hex or national string at a quote after a backslash outside MySQL" do
       %w[postgresql sqlite3].each do |adapter|
         assert_normalizes({
