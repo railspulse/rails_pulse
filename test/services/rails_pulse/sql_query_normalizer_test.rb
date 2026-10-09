@@ -513,6 +513,26 @@ module RailsPulse
       )
     end
 
+    test "normalize ends a bit, hex or national string at a quote after a backslash outside MySQL" do
+      %w[postgresql sqlite3].each do |adapter|
+        assert_normalizes({
+          "SELECT * FROM files WHERE path = N'C:\\' AND token = 'secret'" =>
+            "SELECT * FROM files WHERE path = ? AND token = ?",
+          "SELECT * FROM blobs WHERE data = X'00\\' AND token = 'secret'" =>
+            "SELECT * FROM blobs WHERE data = ? AND token = ?",
+          "SELECT * FROM flags WHERE bits = b'1\\' AND token = 'secret'" =>
+            "SELECT * FROM flags WHERE bits = ? AND token = ?"
+        }, adapter)
+      end
+    end
+
+    test "normalize treats a backslash in a national string as an escape on MySQL adapters" do
+      assert_normalizes({
+        "SELECT * FROM users WHERE name = N'O\\'Brien' AND token = 'secret'" =>
+          "SELECT * FROM users WHERE name = ? AND token = ?"
+      }, "mysql2")
+    end
+
     # Edge Cases
 
     test "normalize handles edge cases gracefully" do

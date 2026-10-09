@@ -142,7 +142,9 @@ module RailsPulse
         else
           if STRING_PREFIX_CHARS.include?(char) && query[i + 1] == "'" &&
               (i == 0 || !query[i - 1].match?(/[A-Za-z0-9_$]/))
-            close = find_closing_quote(query, i + 2, "'", backslash_escapes: true)
+            # Only E'...' takes backslash escapes outside MySQL: N'C:\' is a
+            # complete string on PostgreSQL and SQLite.
+            close = find_closing_quote(query, i + 2, "'", backslash_escapes: @mysql || char.casecmp?("e"))
             if close
               result << "?"
               i = close + 1
