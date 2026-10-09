@@ -5,13 +5,17 @@ module RailsPulse
   # and a critical threshold nothing came within half of will never fire.
   #
   # Reads the period's ten slowest routes (by P95) and ten most expensive
-  # queries (by total time). Each recommendation carries a config_snippet
-  # that keeps the threshold keys it does not change.
+  # queries (by total time). The query critical check also reads the
+  # period's highest query P95, because a rarely run slow query is not among
+  # the most expensive yet is exactly what a critical threshold must catch.
+  # Each recommendation carries a config_snippet that keeps the threshold
+  # keys it does not change.
   #
   # A recommendation is only emitted when its suggestion actually moves the
   # threshold the way the text says and keeps slow < very_slow < critical in
   # order: a "lower your critical threshold" snippet that repeats or raises
-  # the current value would be worse than silence.
+  # the current value, or merges the very_slow and critical bands, would be
+  # worse than silence.
   class ConfigRecommendations
     SAMPLE_SIZE = 10
 
@@ -25,12 +29,17 @@ module RailsPulse
         { query_id: summary.summarizable_id, p95_duration: summary.p95_duration&.round(0) }
       end
 
-      new(route_rows: route_rows, query_rows: query_rows)
+      query_max_p95 = period.for_queries.maximum(:p95_duration)&.round(0)
+
+      new(route_rows: route_rows, query_rows: query_rows, query_max_p95: query_max_p95)
     end
 
-    def initialize(route_rows:, query_rows:)
+    # query_max_p95 is the period's highest query P95; without it the
+    # highest among query_rows stands in.
+    def initialize(route_rows:, query_rows:, query_max_p95: nil)
       @route_rows       = route_rows
       @query_rows       = query_rows
+      @query_max_p95    = query_max_p95
       @route_thresholds = RailsPulse.configuration.route_thresholds
       @query_thresholds = RailsPulse.configuration.query_thresholds
     end
@@ -62,7 +71,7 @@ module RailsPulse
         }
       end
 
-      suggested = [ ceil_to(max_p95 * 2.0, 500), slow * 3, @route_thresholds[:very_slow].to_i ].max
+      suggested = [ ceil_to(max_p95 * 2.0, 500), slow * 3, @route_thresholds[:very_slow].to_i + 500 ].max
       if max_p95 > 0 && max_p95 < critical / 2 && suggested < critical
         recs << {
           title:          "Route critical threshold may be too permissive",
@@ -83,7 +92,7 @@ module RailsPulse
       critical = @query_thresholds[:critical].to_i
       p95s     = @query_rows.map { |r| r[:p95_duration].to_i }
       above_slow = p95s.count { |p| p >= slow }
-      max_p95    = p95s.max.to_i
+      max_p95    = (@query_max_p95 || p95s.max).to_i
       recs       = []
 
       suggested = ceil_to(slow * 1.5, 10)
@@ -96,7 +105,7 @@ module RailsPulse
         }
       end
 
-      suggested = [ ceil_to(max_p95 * 2.0, 100), slow * 3, @query_thresholds[:very_slow].to_i ].max
+      suggested = [ ceil_to(max_p95 * 2.0, 100), slow * 3, @query_thresholds[:very_slow].to_i + 100 ].max
       if max_p95 > 0 && max_p95 < critical / 2 && suggested < critical
         recs << {
           title:          "Query critical threshold may be too permissive",

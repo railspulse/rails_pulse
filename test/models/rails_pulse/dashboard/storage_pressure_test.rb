@@ -155,63 +155,21 @@ module RailsPulse
         assert_empty items
       end
 
-      # Signal B — Stuck Records
+      # Expired records
 
-      test "returns no stuck-records item when no requests exist past retention" do
+      test "requests past retention and older than every hourly summary are not a pressure item" do
+        # Hourly summaries are kept for 7 days and raw requests for 30, so an
+        # expired request waiting for the next daily cleanup always predates
+        # them. Time-based cleanup deletes it by age alone.
         RailsPulse.configuration.full_retention_period = 30.days
         create_overall_hourly_summary(period_end: 30.minutes.ago)
+        create_request(occurred_at: 31.days.ago)
 
-        items = StoragePressure.new.pressure_items.select { |i| i[:name] == "Storage pressure" }
-
-        assert_empty items
+        assert_empty StoragePressure.new.pressure_items
+        assert_equal 1, StoragePressure.new.storage_counts[:healthy]
       end
 
-      test "returns critical stuck-records item when requests are past retention and before oldest summary" do
-        RailsPulse.configuration.full_retention_period = 30.days
-        # Summary only covers recent time — oldest summary start is recent
-        create_overall_hourly_summary(period_end: 30.minutes.ago)
-        # Request older than 30-day retention AND before the oldest summary's period_start
-        create_request(occurred_at: 45.days.ago)
-
-        items = StoragePressure.new.pressure_items.select { |i| i[:name] == "Storage pressure" }
-
-        assert_equal 1, items.size
-        assert_equal :critical, items.first[:severity]
-      end
-
-      test "stuck-records metric shows count of stuck requests" do
-        RailsPulse.configuration.full_retention_period = 30.days
-        create_overall_hourly_summary(period_end: 30.minutes.ago)
-        create_request(occurred_at: 45.days.ago)
-        create_request(occurred_at: 50.days.ago)
-
-        item = StoragePressure.new.pressure_items.find { |i| i[:name] == "Storage pressure" }
-
-        assert_includes item[:metric], "2"
-      end
-
-      test "returns no stuck-records item when archiving is disabled" do
-        RailsPulse.configuration.archiving_enabled = false
-        RailsPulse.configuration.full_retention_period = 30.days
-        create_overall_hourly_summary(period_end: 30.minutes.ago)
-        create_request(occurred_at: 45.days.ago)
-
-        items = StoragePressure.new.pressure_items.select { |i| i[:name] == "Storage pressure" }
-
-        assert_empty items
-      end
-
-      test "returns no stuck-records item when no summaries exist" do
-        RailsPulse.configuration.full_retention_period = 30.days
-        create_request(occurred_at: 45.days.ago)
-
-        # Without any summaries, oldest_summary_start is nil — no stuck detection
-        items = StoragePressure.new.pressure_items.select { |i| i[:name] == "Storage pressure" }
-
-        assert_empty items
-      end
-
-      # Signal C — Sub-hour Retention
+      # Signal B — Sub-hour Retention
 
       test "returns warning when full_retention_period is 30 minutes" do
         RailsPulse.configuration.instance_variable_set(:@full_retention_period, 30.minutes)
@@ -269,16 +227,6 @@ module RailsPulse
 
         assert_equal 0, counts[:healthy]
         assert_equal 0, counts[:slow]
-        assert_equal 1, counts[:critical]
-      end
-
-      test "storage_counts is critical when stuck records exist" do
-        RailsPulse.configuration.full_retention_period = 30.days
-        create_overall_hourly_summary(period_end: 30.minutes.ago)
-        create_request(occurred_at: 45.days.ago)
-
-        counts = StoragePressure.new.storage_counts
-
         assert_equal 1, counts[:critical]
       end
 

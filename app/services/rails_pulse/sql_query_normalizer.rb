@@ -84,7 +84,7 @@ module RailsPulse
 
     # One linear scan over the query replacing every single-quoted string
     # ('...', with '' doubling and, on MySQL, \'), prefixed string (E'...'
-    # and friends, with backslash escapes) and dollar-quoted string
+    # and friends, with backslash escapes; U&'...') and dollar-quoted string
     # ($$...$$, $tag$...$tag$) with "?". A double-quoted span is copied
     # through when it is an identifier and replaced with "?" when it is a
     # value; backticked spans are always identifiers and are copied through.
@@ -145,6 +145,16 @@ module RailsPulse
             # Only E'...' takes backslash escapes outside MySQL: N'C:\' is a
             # complete string on PostgreSQL and SQLite.
             close = find_closing_quote(query, i + 2, "'", backslash_escapes: @mysql || char.casecmp?("e"))
+            if close
+              result << "?"
+              i = close + 1
+              next
+            end
+          elsif char.casecmp?("u") && query[i + 1] == "&" && query[i + 2] == "'" &&
+              (i == 0 || !query[i - 1].match?(/[A-Za-z0-9_$]/))
+            # PostgreSQL Unicode escape string (U&'...'). Its backslash
+            # introduces a code point, not a quote, so only '' escapes a quote.
+            close = find_closing_quote(query, i + 3, "'", backslash_escapes: @mysql)
             if close
               result << "?"
               i = close + 1
