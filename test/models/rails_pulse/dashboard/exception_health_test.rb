@@ -22,15 +22,15 @@ module RailsPulse
         travel_back
       end
 
-      def exception_summary(group_id, count:, days_ago: 1)
-        period_start = (@now - days_ago.days).beginning_of_day
+      def exception_summary(group_id, count:, days_ago: 1, period_type: "day", period_start: nil)
+        period_start ||= (@now - days_ago.days).beginning_of_day
 
         RailsPulse::Summary.create!(
           summarizable_type: "RailsPulse::ExceptionGroup",
           summarizable_id:   group_id,
-          period_type:       "day",
+          period_type:       period_type,
           period_start:      period_start,
-          period_end:        period_start.end_of_day,
+          period_end:        RailsPulse::Summary.calculate_period_end(period_type, period_start),
           count:             count
         )
       end
@@ -155,6 +155,32 @@ module RailsPulse
         items = (result[:critical] + result[:warning]).select { |i| i[:type] == "EXCEPTION" }
 
         assert_empty items
+      end
+
+      # Summary Granularity Tests
+
+      test "occurrences summarized by the hour and by the day are counted once" do
+        @now = Time.zone.parse("2026-06-10 12:00")
+        travel_to @now
+        group = rails_pulse_exception_groups(:record_not_found)
+        day_start = 2.days.ago.beginning_of_day
+        6.times { |hour| exception_summary(group.id, count: 10, period_type: "hour", period_start: day_start + hour.hours) }
+        exception_summary(group.id, count: 60, period_start: day_start)
+
+        health = HealthSummary.new(period: 7).to_health_data
+        item = NeedsAttention.new(period: 7).to_attention_data[:warning].find { |i| i[:type] == "EXCEPTION" }
+
+        assert_equal 0, health[:exceptions][:critical]
+        assert_equal "60 this period", item[:metric]
+      end
+
+      test "today's hourly occurrences count in a multi-day window" do
+        group = rails_pulse_exception_groups(:record_not_found)
+        exception_summary(group.id, count: 25, period_type: "hour", period_start: Time.current.beginning_of_hour)
+
+        item = NeedsAttention.new(period: 7).to_attention_data[:warning].find { |i| i[:type] == "EXCEPTION" }
+
+        assert_equal "25 this period", item[:metric]
       end
     end
   end

@@ -4,10 +4,11 @@ module RailsPulse
       include Concerns::ThresholdConstants
       include Concerns::TimeRangeHelper
 
-      def initialize(disabled_tags: [], show_non_tagged: true, period: 7, window: nil, storage_pressure: nil)
+      def initialize(disabled_tags: [], show_non_tagged: true, period: 7, period_type: nil, window: nil, storage_pressure: nil)
         @disabled_tags   = disabled_tags
         @show_non_tagged = show_non_tagged
         @period          = period
+        @period_type     = period_type
         @window          = window
         @storage_pressure = storage_pressure
         @route_thresholds = RailsPulse.configuration.route_thresholds
@@ -30,11 +31,10 @@ module RailsPulse
       private
 
       def route_counts
-        start, finish = period_range
-
         data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
-          .where(summarizable_type: "RailsPulse::Route", period_start: start..finish)
+          .where(summarizable_type: "RailsPulse::Route")
+          .merge(period_summaries)
           .group("summarizable_id")
           .select(
             "summarizable_id",
@@ -63,11 +63,10 @@ module RailsPulse
       end
 
       def query_counts
-        start, finish = period_range
-
         data = RailsPulse::Summary
           .with_tag_filters(@disabled_tags, @show_non_tagged)
-          .where(summarizable_type: "RailsPulse::Query", period_start: start..finish)
+          .where(summarizable_type: "RailsPulse::Query")
+          .merge(period_summaries)
           .group("summarizable_id")
           .select(
             "summarizable_id",
@@ -153,12 +152,10 @@ module RailsPulse
         return nil unless RailsPulse.configuration.track_exceptions
         return nil unless exception_summaries_available?
 
-        start, finish = period_range
-
         counts = RailsPulse::Summary
           .for_exceptions
           .where.not(summarizable_id: 0)
-          .where(period_start: start..finish)
+          .merge(period_summaries)
           .group(:summarizable_id)
           .sum(:count)
 
