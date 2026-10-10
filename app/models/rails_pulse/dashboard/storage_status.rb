@@ -103,7 +103,11 @@ module RailsPulse
       end
 
       def tables
-        @tables ||= counts_available? ? TABLE_CATALOG.filter_map { |definition| build_table(definition) } : []
+        @tables ||= if counts_available?
+          with_current_mysql_statistics { TABLE_CATALOG.filter_map { |definition| build_table(definition) } }
+        else
+          []
+        end
       end
 
       def pressure_items
@@ -186,6 +190,31 @@ module RailsPulse
 
       def connection
         RailsPulse::ApplicationRecord.connection
+      end
+
+      # MySQL 8 caches information_schema's TABLE_ROWS, DATA_LENGTH and
+      # INDEX_LENGTH for information_schema_stats_expiry seconds, a day by
+      # default, so a table that grew after its first read reports its old
+      # size. An expiry of 0 reads current statistics; a SET_VAR hint does
+      # not reach information_schema, so it is set on the session and put
+      # back afterwards because the connection returns to the pool. MariaDB
+      # has no such variable and does not cache, so the block runs as is.
+      def with_current_mysql_statistics
+        previous = session_statistics_expiry
+        return yield if previous.nil?
+
+        connection.execute("SET SESSION information_schema_stats_expiry = 0")
+        yield
+      ensure
+        connection.execute("SET SESSION information_schema_stats_expiry = #{previous.to_i}") unless previous.nil?
+      end
+
+      def session_statistics_expiry
+        return unless mysql?
+
+        connection.select_value("SELECT @@SESSION.information_schema_stats_expiry")
+      rescue ActiveRecord::StatementInvalid
+        nil
       end
 
       def build_table(definition)
@@ -375,7 +404,7 @@ module RailsPulse
           connection.select_value(
             "SELECT pg_total_relation_size(#{connection.quote(table_name.to_s)})"
           ).to_i
-        elsif adapter.include?("mysql")
+        elsif mysql?
           connection.select_value(
             RailsPulse::ApplicationRecord.sanitize_sql_array([ <<~SQL, table_name.to_s ])
               SELECT DATA_LENGTH + INDEX_LENGTH
@@ -421,6 +450,10 @@ module RailsPulse
         nil
       end
 
+      def mysql?
+        connection.adapter_name.downcase.match?(/mysql|trilogy/)
+      end
+
       def sqlite?
         connection.adapter_name.downcase.include?("sqlite")
       end
@@ -429,7 +462,7 @@ module RailsPulse
         name = connection.adapter_name
         case name.downcase
         when /postgres/ then "PostgreSQL"
-        when /mysql/ then "MySQL"
+        when /mysql|trilogy/ then "MySQL"
         when /sqlite/ then "SQLite"
         else name
         end
@@ -458,7 +491,7 @@ module RailsPulse
           "File size of the dedicated Rails Pulse SQLite database."
         elsif adapter.include?("postgres")
           "PostgreSQL relation size including indexes (pg_total_relation_size)."
-        elsif adapter.include?("mysql")
+        elsif mysql?
           "MySQL data + index length from information_schema."
         end
       end
