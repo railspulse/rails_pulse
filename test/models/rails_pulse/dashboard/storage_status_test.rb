@@ -114,6 +114,53 @@ module RailsPulse
         assert_empty statements
       end
 
+      test "estimated status on MySQL counts new rows and restores the session statistics expiry" do
+        skip "MySQL only" unless mysql?
+        connection = RailsPulse::ApplicationRecord.connection
+        connection.execute("SET SESSION information_schema_stats_expiry = 3600")
+        begin
+          RailsPulse::Query.insert_all(
+            Array.new(50) do |index|
+              sql = "SELECT #{index} FROM storage_status_test"
+              { hashed_sql: Digest::MD5.hexdigest(sql), normalized_sql: sql, created_at: Time.current, updated_at: Time.current }
+            end
+          )
+
+          count = StorageStatus.new(estimated: true).tables.find { |table| table[:name] == :rails_pulse_queries }[:count]
+
+          assert_operator count, :>=, 50
+          assert_equal 3600, connection.select_value("SELECT @@SESSION.information_schema_stats_expiry").to_i
+        ensure
+          connection.execute("SET SESSION information_schema_stats_expiry = DEFAULT")
+        end
+      end
+
+      test "an adapter without the MySQL statistics variable still lists every table" do
+        skip "SQLite only: a failed statement would abort the PostgreSQL test transaction" unless sqlite?
+        RailsPulse::ApplicationRecord.connection.stubs(:adapter_name).returns("Mysql2")
+
+        tables = StorageStatus.new.tables
+
+        assert_equal RailsPulse::Query.count, tables.find { |table| table[:name] == :rails_pulse_queries }[:count]
+      end
+
+      test "only MySQL changes the session statistics expiry" do
+        statements = []
+        subscriber = ActiveSupport::Notifications.subscribe("sql.active_record") do |*, payload|
+          statements << payload[:sql] if payload[:sql].include?("information_schema_stats_expiry")
+        end
+
+        StorageStatus.new.tables
+
+        if mysql?
+          assert_equal 3, statements.size
+        else
+          assert_empty statements
+        end
+      ensure
+        ActiveSupport::Notifications.unsubscribe(subscriber)
+      end
+
       test "exact status counts every table" do
         status = StorageStatus.new
 
@@ -235,6 +282,10 @@ module RailsPulse
 
       def sqlite?
         RailsPulse::ApplicationRecord.connection.adapter_name.downcase.include?("sqlite")
+      end
+
+      def mysql?
+        RailsPulse::ApplicationRecord.connection.adapter_name.downcase.include?("mysql")
       end
 
       # Statements that read a Rails Pulse table's rows or walk its pages.
