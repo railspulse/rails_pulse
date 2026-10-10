@@ -11,7 +11,7 @@ module RailsPulse
       # Memoized: computing the items costs several aggregate queries (one a
       # raw-request count), and one dashboard render asks for them repeatedly.
       def pressure_items
-        @pressure_items ||= summary_staleness_items + stuck_records_items + sub_hour_retention_items + writer_drop_items
+        @pressure_items ||= summary_staleness_items + sub_hour_retention_items + writer_drop_items
       end
 
       # Dropped requests get their own Tracking badge, not this one
@@ -49,43 +49,7 @@ module RailsPulse
         end
       end
 
-      # Signal B — Records past retention that haven't been summarized (cleanup is blocked)
-      def stuck_records_items
-        return [] unless @config.archiving_enabled
-        return [] unless @config.full_retention_period
-
-        oldest_start = oldest_overall_request_summary_start
-        return [] if oldest_start.nil?
-
-        stuck_count = RailsPulse::Request
-          .where("occurred_at < ?", @config.full_retention_period.ago)
-          .where("occurred_at < ?", oldest_start)
-          .count
-
-        return [] if stuck_count.zero?
-
-        [ {
-          type:          "STORAGE",
-          name:          "Storage pressure",
-          reason:        "#{stuck_count} #{"request".pluralize(stuck_count)} past the retention window cannot be cleaned up — summarize first",
-          metric:        "#{stuck_count} stuck",
-          metric_sub:    "older than #{humanize_duration(@config.full_retention_period)}",
-          link:          "#",
-          severity:      :critical,
-          sort_score:    stuck_count.to_f,
-          popover_title: "Cleanup is blocked on unsummarised records",
-          popover_body:  "#{stuck_count} #{"request".pluralize(stuck_count)} are older than your retention period " \
-                         "(#{humanize_duration(@config.full_retention_period)}) but predate any hourly summary record. " \
-                         "CleanupService will not delete records from a time period until that period has been summarised — " \
-                         "otherwise those data points would be permanently lost from dashboard charts.<br><br>" \
-                         "<strong>How to fix:</strong> Run <code>RailsPulse::SummaryJob</code> to summarise the historical periods. " \
-                         "If the job is not yet scheduled, run the backfill task to summarise all historical data:<br><br>" \
-                         "<code>rails rails_pulse:backfill_summaries</code><br><br>" \
-                         "Once the affected periods are summarised, the next cleanup run will delete these records automatically."
-        } ]
-      end
-
-      # Signal C — Retention period shorter than 1-hour cleanup minimum
+      # Signal B — Retention period shorter than 1-hour cleanup minimum
       def sub_hour_retention_items
         return [] unless @config.full_retention_period
         return [] unless @config.full_retention_period < 1.hour
@@ -110,7 +74,7 @@ module RailsPulse
         } ]
       end
 
-      # Signal D — the background writer is discarding requests
+      # Signal C — the background writer is discarding requests
       def writer_drop_items
         return [] unless RailsPulse::Event.table_available?
 
@@ -150,8 +114,8 @@ module RailsPulse
           severity:      severity,
           sort_score:    severity == :critical ? Float::INFINITY : 1.0,
           popover_title: "Summary job is not running",
-          popover_body:  "Rails Pulse summarises raw request data into hourly aggregates before cleanup can safely delete them. " \
-                         "Until a period is summarised, CleanupService will not delete records from it — so your database will grow until the summary job catches up.<br><br>" \
+          popover_body:  "Rails Pulse summarises raw request data into hourly aggregates for the dashboard's charts. " \
+                         "Count-based cleanup only trims records from periods that have been summarised, so until the job catches up tables can grow past <code>max_table_records</code>.<br><br>" \
                          "<strong>How to fix:</strong> Schedule <code>RailsPulse::SummaryJob</code> to run every hour in your job scheduler " \
                          "(Sidekiq-Cron, GoodJob, Solid Queue, etc.). Once it has run, cleanup will resume automatically on its next execution.<br><br>" \
                          "To backfill any historical gaps, run: <code>rails rails_pulse:backfill_summaries</code>"
@@ -162,26 +126,6 @@ module RailsPulse
         RailsPulse::Summary
           .where(summarizable_type: "RailsPulse::Request", summarizable_id: 0, period_type: "hour")
           .maximum(:period_end)
-      end
-
-      def oldest_overall_request_summary_start
-        RailsPulse::Summary
-          .where(summarizable_type: "RailsPulse::Request", summarizable_id: 0, period_type: "hour")
-          .minimum(:period_start)
-      end
-
-      def humanize_duration(duration)
-        total_seconds = duration.to_i
-        if total_seconds >= 86_400
-          days = total_seconds / 86_400
-          "#{days} #{"day".pluralize(days)}"
-        elsif total_seconds >= 3_600
-          hours = total_seconds / 3_600
-          "#{hours} #{"hour".pluralize(hours)}"
-        else
-          minutes = total_seconds / 60
-          "#{minutes} #{"minute".pluralize(minutes)}"
-        end
       end
     end
   end
