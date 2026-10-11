@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - **A query is the same query however many values it loads.** `WHERE id IN (…)` with 3 ids and with 12 ids, and a batch insert of 2 rows and of 50, used to be tracked as separate queries, each with its own stats, N+1 flags and EXPLAIN; they are now one entry. Entries recorded by earlier versions keep their old form until retention removes them, so a query may appear twice on the Queries page for a while after upgrading.
 - **Hourly summaries are kept for 7 days instead of 2.** Deployment comparisons and hour-precise change points read them, so at 2 days a deploy from earlier in the week could no longer be compared; `config.hourly_summary_retention` tunes it.
+- **The bundled Floating UI is updated to 1.8.0.** Its positioning fixes keep dashboard popovers in place on pages with a stable scrollbar gutter or a left-side scrollbar, and after the page layout shifts.
 
 ### Fixed
 
