@@ -12,4 +12,5 @@ $LOAD_PATH.unshift File.expand_path("../../../lib", __dir__)
 # (and its minimum-coverage at_exit gate) for every job, killing db:migrate.
 if ENV["COVERAGE"] == "true"
   require "simplecov"
+  SimpleCov.start
 end
