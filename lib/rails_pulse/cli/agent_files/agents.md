@@ -55,6 +55,10 @@ All tools are read-only. Each returns a `summary` and `next_steps`.
 
 Every tool that takes a `period` also takes `since` and `until` as ISO 8601 timestamps, read as UTC when no zone is given, and echoes the bounds it measured back as `window`. `period` itself is only `last_hour`, `last_24_hours` or `last_7_days` (plus `all` on `rails_pulse_exceptions`); any other window is `since`/`until`. `rails_pulse_insights` instead reads one whole summary period (`period`: `hour`, `day`, `week` or `month`, and `at` for a time inside it), so its P95s are exact. Use them to compare two fixed windows — the 24 hours before a release against the 24 hours after — rather than a relative period that moves between calls.
 
+## Rails Pulse Cloud MCP
+
+With Rails Pulse Cloud, a hosted MCP server at `https://mcp.railspulse.com` adds a year of history, deployments and their regression checks, alerts and uptime. Connect it with an MCP key from Profile → API keys, sent as `Authorization: Bearer rpc_…`. Its tools are `rails_pulse_cloud_applications`, `_health`, `_trends`, `_deployments`, `_compare`, `_alerts` and `_uptime`. Each answer's `local` entry names the `rails_pulse_*` tool and arguments that find the same detail locally.
+
 ## CLI
 
 The `rails-pulse` CLI works without MCP. Append `--json` for structured output.
@@ -87,3 +91,5 @@ Set `RAILS_PULSE_URL` and `RAILS_PULSE_TOKEN` (the application's `config.api_tok
 5. Inspect SQL and jobs (`rails_pulse_queries`, `rails_pulse_jobs`)
 6. Correlate with source code: pass the endpoint's `route_id` to `rails_pulse_queries` for the SQL inside it and the file and line each query came from
 7. Fix, deploy, and re-check the same endpoint
+
+With Rails Pulse Cloud connected: detect with `rails_pulse_cloud_health`, understand with `rails_pulse_cloud_deployments` and `rails_pulse_cloud_trends`, investigate with the `local` lookup each one returns, fix, then verify with `rails_pulse_cloud_compare` on the fix's revision. It answers `better`, `worse` or `unchanged` for each metric.

@@ -1,6 +1,6 @@
 ---
 name: rails-pulse
-description: Investigate Rails application performance with Rails Pulse. Use when asked about slow endpoints, regressions after a deploy, expensive or N+1 SQL, error rates, failing background jobs, or whether a performance fix worked. Prefers the rails_pulse_* MCP tools; falls back to the rails-pulse CLI.
+description: Investigate Rails application performance with Rails Pulse. Use when asked about slow endpoints, regressions after a deploy, expensive or N+1 SQL, error rates, failing background jobs, or whether a performance fix worked. Prefers the rails_pulse_* MCP tools; falls back to the rails-pulse CLI. With Rails Pulse Cloud connected, also uses the rails_pulse_cloud_* tools for history, deployments, alerts, uptime and fix verification.
 ---
 
 # Rails Pulse
@@ -35,6 +35,25 @@ All tools are read-only. Each returns a `summary` and `next_steps`.
 | `rails_pulse_jobs` | Background job health and recent failures with error classes |
 | `rails_pulse_deployments` | Recent deployments with timing, metadata, and whether each one degraded response time or error rate |
 | `rails_pulse_insights` | What needs attention over one hour, day, week or month, and whether the thresholds fit it |
+
+### Rails Pulse Cloud MCP tools (when connected)
+
+Rails Pulse Cloud is a hosted MCP server at `https://mcp.railspulse.com`, read with an MCP key. It
+keeps a year of hourly and daily history, every deployment's regression check, alerts and uptime:
+what the application cannot keep or see for itself. It has no SQL values, parameters or
+backtraces. Each answer's `local` entry names the `rails_pulse_*` tool and the exact arguments,
+window included, that find the same route, query, job or exception here. When that window is
+older than 30 days, the local detail may already be deleted, and `local` says so.
+
+| Tool | Purpose |
+|------|---------|
+| `rails_pulse_cloud_applications` | Every application and environment: healthy, alerting, not reporting; latest deployment; uptime |
+| `rails_pulse_cloud_health` | One environment against the window before, firing alerts, and what needs attention |
+| `rails_pulse_cloud_trends` | The whole app or one route, query, job or exception over time, or a kind ranked by change |
+| `rails_pulse_cloud_deployments` | Deployments with their regression check: `regressed`, `clean`, `insufficient_data`, `pending` |
+| `rails_pulse_cloud_compare` | Before against after a deployment or a time, per metric `better`, `worse` or `unchanged` |
+| `rails_pulse_cloud_alerts` | Alert rules and their state, and recent alert events |
+| `rails_pulse_cloud_uptime` | Uptime checks, uptime % over 7 and 30 days, and recent outages |
 
 ### CLI
 
@@ -144,6 +163,30 @@ rails_pulse_endpoint(endpoint: "CheckoutController#create", since: "2026-09-25T1
 
 Use the deploy time as the boundary, and exclude the minutes around it when a rolling deploy
 makes them a mix of both versions.
+
+## With Rails Pulse Cloud: detect, understand, investigate, fix, verify
+
+When the `rails_pulse_cloud_*` tools are available, use Cloud for when and how much, and the local
+tools for why.
+
+1. **Detect.** `rails_pulse_cloud_applications`, then `rails_pulse_cloud_health` for the environment.
+   Firing alerts, uptime checks that are down and `needs_attention` say where to look.
+2. **Understand.** `rails_pulse_cloud_deployments` lines the change up with a release.
+   `rails_pulse_cloud_trends` with `kind: "route"` (or `query`, `job`, `exception_group`) and
+   `sort: "change"` finds what moved, and it covers windows older than the application keeps.
+3. **Investigate.** Call the `local` lookup that Cloud returned, with its `since` and `until`, then continue
+   with the local workflow above: endpoint, queries, source locations.
+4. **Fix.** Change the code. Note the revision it ships in.
+5. **Verify.** Once it is deployed, call `rails_pulse_cloud_compare` with that `revision` (or `at` for
+   the time it went live), and the `kind` and `subject` it targeted. `better` is the confirmation.
+   `too_early` means no complete hour has passed since the deploy. Ask again at the time it gives.
+   When `other_deployments` is not empty, a change may belong to another release.
+
+```
+rails_pulse_cloud_deployments(application: "shop")
+rails_pulse_cloud_trends(application: "shop", kind: "route", sort: "change", range: "7d")
+rails_pulse_cloud_compare(application: "shop", revision: "f1x3d00", kind: "route", subject: "/checkout CheckoutsController#create")
+```
 
 ## Guidelines
 
