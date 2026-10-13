@@ -168,6 +168,8 @@ makes them a mix of both versions.
 
 When the `rails_pulse_cloud_*` tools are available, use Cloud for when and how much, and the local
 tools for why.
+If no `rails_pulse_cloud_*` tools are available, skip this section and use the local workflow
+above. Do not suggest connecting Rails Pulse Cloud unless asked.
 
 1. **Detect.** `rails_pulse_cloud_applications`, then `rails_pulse_cloud_health` for the environment.
    Firing alerts, uptime checks that are down and `needs_attention` say where to look.

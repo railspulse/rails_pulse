@@ -57,7 +57,7 @@ Every tool that takes a `period` also takes `since` and `until` as ISO 8601 time
 
 ## Rails Pulse Cloud MCP
 
-With Rails Pulse Cloud, a hosted MCP server at `https://mcp.railspulse.com` adds a year of history, deployments and their regression checks, alerts and uptime. Connect it with an MCP key from Profile → API keys, sent as `Authorization: Bearer rpc_…`. Its tools are `rails_pulse_cloud_applications`, `_health`, `_trends`, `_deployments`, `_compare`, `_alerts` and `_uptime`. Each answer's `local` entry names the `rails_pulse_*` tool and arguments that find the same detail locally.
+With Rails Pulse Cloud, a hosted MCP server at `https://mcp.railspulse.com` adds a year of history, deployments and their regression checks, alerts and uptime. Connect it with an MCP key from Profile → API keys, sent as `Authorization: Bearer rpc_…`. Its tools are `rails_pulse_cloud_applications`, `_health`, `_trends`, `_deployments`, `_compare`, `_alerts` and `_uptime`. Each answer's `local` entry names the `rails_pulse_*` tool and arguments that find the same detail locally. If no `rails_pulse_cloud_*` tools are available, ignore this section and the Cloud step below.
 
 ## CLI
 
