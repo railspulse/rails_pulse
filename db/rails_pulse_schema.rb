@@ -150,6 +150,10 @@ RailsPulse::Schema = lambda do |connection|
     connection.add_index :rails_pulse_operations, [ :query_id, :occurred_at ], name: "index_rails_pulse_operations_on_query_and_time"
     connection.add_index :rails_pulse_operations, [ :query_id, :duration, :occurred_at ], name: "index_rails_pulse_operations_query_performance"
     connection.add_index :rails_pulse_operations, [ :occurred_at, :duration, :operation_type ], name: "index_rails_pulse_operations_on_time_duration_type"
+    # Covers the hourly summary's one read of the table (query_id and
+    # duration for a window of occurred_at) so it never touches the heap,
+    # whose rows carry unbounded text columns.
+    connection.add_index :rails_pulse_operations, [ :occurred_at, :query_id, :duration ], name: "index_rails_pulse_operations_hourly_rollup"
 
     if adapter.include?("postgres") || adapter.include?("mysql")
       connection.add_check_constraint :rails_pulse_operations,

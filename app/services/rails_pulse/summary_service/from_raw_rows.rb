@@ -3,12 +3,17 @@ module RailsPulse
     # Summary rows for an hour, computed from raw requests, operations, job
     # runs and exception occurrences.
     #
-    # Each kind is read with one query, sorted by summarizable and then
-    # duration so every summarizable's durations arrive as one consecutive,
-    # already-sorted run; the overall request row and the per-route rows
-    # share a single read. Memory is bounded by one hour's rows, and the
-    # hour costs one query per kind however many routes, queries or jobs it
-    # saw. Percentiles are exact.
+    # Each kind is read with one query bounded only by occurred_at, then
+    # sorted in Ruby by summarizable and duration so every summarizable's
+    # durations arrive as one consecutive, already-sorted run; the overall
+    # request row and the per-route rows share a single read. The sort stays
+    # out of the SQL deliberately: an ORDER BY that an existing index can
+    # satisfy (operations carry a (query_id, duration, occurred_at) index)
+    # invites the planner to walk that index across the whole table in order
+    # and filter by time, a cost that grows with retention instead of with
+    # the hour and that blows a short statement_timeout at scale. Memory is
+    # bounded by one hour's rows, and the hour costs one query per kind
+    # however many routes, queries or jobs it saw. Percentiles are exact.
     #
     # Rows carry the summarizable and its metrics; SummaryService adds the
     # period columns.
@@ -89,24 +94,23 @@ module RailsPulse
       end
 
       # One read serves the overall request row and every route's. route_id
-      # and duration are NOT NULL on requests, so ordering by (route_id,
+      # and duration are NOT NULL on requests, and sorting by (route_id,
       # duration) hands each route its durations already sorted.
       def request_data
         @request_data ||= Request
           .where(occurred_at: @time_range)
-          .order(:route_id, :duration)
           .pluck(:route_id, :duration, :status)
+          .sort_by! { |route_id, duration, _status| [ route_id, duration ] }
       end
 
       # [[summarizable_id, [[duration, *extra_columns], ...]], ...], with
       # each summarizable's rows in ascending duration order (NULL durations
-      # land at one end or the other depending on the database; callers
-      # compact them).
+      # sort first; callers compact them).
       def rows_by_summarizable(scope, column, *extra_columns)
         scope
           .where.not(column => nil)
-          .order(column, :duration)
           .pluck(column, :duration, *extra_columns)
+          .sort_by! { |row| [ row[0], row[1] || -Float::INFINITY ] }
           .slice_when { |previous, current| previous.first != current.first }
           .map { |rows| [ rows.first.first, rows.map { |row| row.drop(1) } ] }
       end
