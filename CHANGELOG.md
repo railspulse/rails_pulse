@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The navigation now links to the Requests page, which was previously reachable only by URL, and carries a "Back to <your app>" link so there is always a way back to the host application. The back link points at `config.return_to_app_url` (default `/`; set to `nil` to hide it).
+
 ## [0.5.0] - 2026-10-16
 
 ## [0.5.0.pre.2] - 2026-10-11

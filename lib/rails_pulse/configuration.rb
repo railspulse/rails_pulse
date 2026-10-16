@@ -103,6 +103,7 @@ module RailsPulse
                   :job_adapters,
                   :capture_job_arguments,
                   :mount_dashboard,
+                  :return_to_app_url,
                   :logger,
                   :async,
                   :async_queue_size,
@@ -214,6 +215,7 @@ module RailsPulse
 
       # Dashboard settings
       @mount_dashboard = true
+      @return_to_app_url = "/"
       @logger = nil
 
       # Tracking mode settings. With async, one writer thread per process
@@ -492,6 +494,10 @@ module RailsPulse
     def validate_dashboard_settings!
       unless [ true, false ].include?(@mount_dashboard)
         raise ArgumentError, "mount_dashboard must be true or false, got #{@mount_dashboard}"
+      end
+
+      unless @return_to_app_url.nil? || (@return_to_app_url.is_a?(String) && @return_to_app_url.present?)
+        raise ArgumentError, "return_to_app_url must be a non-empty string or nil, got #{@return_to_app_url.inspect}"
       end
     end
 
