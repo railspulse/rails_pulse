@@ -41,6 +41,7 @@
   <% end %>
 
   <% if @has_data %>
+    <%= render 'rails_pulse/shared/detail_capture_notice' %>
     <div data-controller="rails-pulse--table-sort">
       <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">
         <%= render 'rails_pulse/requests/table' %>

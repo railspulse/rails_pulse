@@ -20,7 +20,7 @@ module RailsPulse
           return if performed?
 
           data, meta = paginated(collection)
-          render json: { data: data.map { |request| RequestSerializer.serialize(request) }, meta: meta }
+          render json: { data: data.map { |request| RequestSerializer.serialize(request) }, meta: apply_sampled_detail(meta) }
         end
 
         private

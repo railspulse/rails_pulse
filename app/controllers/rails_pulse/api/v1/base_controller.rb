@@ -127,6 +127,15 @@ module RailsPulse
           data = collection.limit(limit).offset(offset)
           [ data, { total: total, limit: limit, offset: offset } ]
         end
+
+        # Rows and counts read straight from raw requests or operations cover
+        # only the captured subset while detail capture is on (decision 0022);
+        # the flag tells API consumers so. Aggregates from summaries stay
+        # complete and carry no flag.
+        def apply_sampled_detail(meta)
+          meta[:sampled_detail] = true if RailsPulse.configuration.detail_capture_settings
+          meta
+        end
       end
     end
   end

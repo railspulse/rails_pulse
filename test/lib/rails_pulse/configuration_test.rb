@@ -9,6 +9,70 @@ module RailsPulse
       config
     end
 
+    # Detail Capture Tests
+
+    test "detail_capture defaults to nil with no settings" do
+      config = Configuration.new
+
+      assert_nil config.detail_capture
+      assert_nil config.detail_capture_settings
+    end
+
+    test "detail_capture builds frozen normalized settings on assignment" do
+      config = Configuration.new
+      config.detail_capture = { requests_slower_than: 500, sample_rate: 0.01, errors: false }
+
+      settings = config.detail_capture_settings
+
+      assert_predicate settings, :frozen?
+      assert_in_delta 500.0, settings.requests_slower_than
+      assert_in_delta 0.01, settings.sample_rate
+      refute settings.errors
+    end
+
+    test "detail_capture defaults sample_rate to 0 and errors to true" do
+      config = Configuration.new
+      config.detail_capture = { requests_slower_than: 1000 }
+
+      settings = config.detail_capture_settings
+
+      assert_in_delta(0.0, settings.sample_rate)
+      assert settings.errors
+    end
+
+    test "setting detail_capture back to nil clears the settings" do
+      config = Configuration.new
+      config.detail_capture = { requests_slower_than: 500 }
+      config.detail_capture = nil
+
+      assert_nil config.detail_capture_settings
+    end
+
+    test "detail_capture rejects non-hashes, unknown keys and bad values" do
+      config = Configuration.new
+
+      assert_raises(ArgumentError) { config.detail_capture = "fast" }
+      assert_raises(ArgumentError) { config.detail_capture = { slower_than: 500 } }
+      assert_raises(ArgumentError) { config.detail_capture = { requests_slower_than: -5 } }
+      assert_raises(ArgumentError) { config.detail_capture = { requests_slower_than: 500, sample_rate: 1.5 } }
+      assert_raises(ArgumentError) { config.detail_capture = { requests_slower_than: 500, errors: "yes" } }
+    end
+
+    test "detail_capture refuses a config that would capture only errors" do
+      config = Configuration.new
+
+      error = assert_raises(ArgumentError) { config.detail_capture = { errors: true } }
+      assert_includes error.message, "requests_slower_than"
+    end
+
+    test "detail_capture with only a sample rate is allowed" do
+      config = Configuration.new
+      config.detail_capture = { sample_rate: 0.1 }
+
+      assert_nil config.detail_capture_settings.requests_slower_than
+      assert_in_delta 0.1, config.detail_capture_settings.sample_rate
+    end
+
     # Default Values Tests
 
     test "event_retention_period defaults to 90 days with no exempt kinds, and both are validated" do

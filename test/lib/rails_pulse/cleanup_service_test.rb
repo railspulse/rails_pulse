@@ -9,6 +9,7 @@ module RailsPulse
     def setup
       super
       RailsPulse::Summary.delete_all
+      RailsPulse::Rollup.delete_all
       RailsPulse::Operation.delete_all
       RailsPulse::JobRun.delete_all
       RailsPulse::Request.delete_all
@@ -128,6 +129,56 @@ module RailsPulse
 
       assert_operator result[:time_based][:job_runs], :>=, 1
       assert_operator result[:total_deleted], :>=, 1
+    end
+
+    # Rollup Cleanup Tests (detail capture, decision 0022)
+
+    test "time-based cleanup deletes rollups older than retention period and keeps recent ones" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      route = create_route("/rollup-cleanup")
+      create_rollup(route, period_start: 31.days.ago.beginning_of_hour)
+      create_rollup(route, period_start: 2.days.ago.beginning_of_hour, writer_id: "host:2:def")
+
+      assert_difference -> { RailsPulse::Rollup.count }, -1 do
+        CleanupService.perform
+      end
+
+      assert_equal 0, RailsPulse::Rollup.where("period_start < ?", 30.days.ago).count
+    end
+
+    test "a route referenced only by rollups is not deleted as an orphan" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      route = create_route("/rollup-route", created_at: 60.days.ago)
+      create_rollup(route, period_start: 2.days.ago.beginning_of_hour)
+
+      assert_no_difference -> { RailsPulse::Route.count } do
+        CleanupService.perform
+      end
+    end
+
+    test "a query referenced only by rollups is not deleted as an orphan" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM rollup_orphans", created_at: 60.days.ago)
+      RailsPulse::Rollup.create!(
+        rollupable_type: "RailsPulse::Query", rollupable_id: query.id,
+        period_start: 2.days.ago.beginning_of_hour, writer_id: "host:1:abc",
+        count: 1, sum_duration: 5.0, sum_square_duration: 25.0,
+        min_duration: 5.0, max_duration: 5.0, histogram: "{}"
+      )
+
+      assert_no_difference -> { RailsPulse::Query.count } do
+        CleanupService.perform
+      end
+    end
+
+    test "a route is deleted once its rollups are gone too" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      route = create_route("/rollup-expired-route", created_at: 60.days.ago)
+      create_rollup(route, period_start: 45.days.ago.beginning_of_hour)
+
+      assert_difference -> { RailsPulse::Route.count }, -1 do
+        CleanupService.perform
+      end
     end
 
     # Count-based Cleanup Tests
@@ -971,6 +1022,20 @@ module RailsPulse
       RailsPulse::Request.create!(
         route: route, duration: 100.0, status: 200, is_error: false,
         request_uuid: SecureRandom.uuid, occurred_at: occurred_at
+      )
+    end
+
+    def create_route(path, created_at: Time.current)
+      RailsPulse::Route.create!(http_methods: '["GET"]', path: path, tags: "[]", created_at: created_at)
+    end
+
+    def create_rollup(route, period_start:, writer_id: "host:1:abc")
+      RailsPulse::Rollup.create!(
+        rollupable_type: "RailsPulse::Route", rollupable_id: route.id,
+        period_start: period_start, writer_id: writer_id,
+        count: 1, status_2xx: 1,
+        sum_duration: 10.0, sum_square_duration: 100.0,
+        min_duration: 10.0, max_duration: 10.0, histogram: "{}"
       )
     end
 

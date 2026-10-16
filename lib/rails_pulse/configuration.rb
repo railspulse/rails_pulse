@@ -141,7 +141,21 @@ module RailsPulse
                 :job_thresholds,
                 :exception_thresholds,
                 :max_table_records,
-                :regression_thresholds
+                :regression_thresholds,
+                :detail_capture
+
+    # The validated, frozen form of detail_capture that the middleware reads
+    # on every request; nil whenever detail capture is off.
+    attr_reader :detail_capture_settings
+
+    DetailCaptureSettings = Struct.new(:requests_slower_than, :sample_rate, :errors)
+
+    # Validates on assignment, like the threshold setters, so the normalized
+    # settings are ready the moment the initializer line runs.
+    def detail_capture=(value)
+      @detail_capture = value
+      validate_detail_capture_settings!
+    end
 
     def initialize
       @enabled = true
@@ -256,6 +270,10 @@ module RailsPulse
         min_baseline_periods: 3
       }
 
+      # Off by default: every request is persisted in full. See decision 0022.
+      @detail_capture = nil
+      @detail_capture_settings = nil
+
       # Validate defaults eagerly so that a misconfigured initializer raises at
       # boot time rather than at the first request. Auth settings are not
       # validated against defaults — only when the user explicitly enables
@@ -322,6 +340,7 @@ module RailsPulse
       validate_query_service_level_objectives_settings!
       validate_comparison_settings!
       validate_schema_check_settings!
+      validate_detail_capture_settings!
       @cloud.validate!
     end
 
@@ -400,6 +419,50 @@ module RailsPulse
           "regression_thresholds[:ratio] must be greater than 1 — it is a multiple of the baseline, " \
           "got #{@regression_thresholds[:ratio].inspect}"
       end
+    end
+
+    DETAIL_CAPTURE_KEYS = %i[requests_slower_than sample_rate errors].freeze
+    private_constant :DETAIL_CAPTURE_KEYS
+
+    def validate_detail_capture_settings!
+      if @detail_capture.nil?
+        @detail_capture_settings = nil
+        return
+      end
+
+      unless @detail_capture.is_a?(Hash)
+        raise ArgumentError, "detail_capture must be a hash or nil, got #{@detail_capture.class}"
+      end
+
+      unknown = @detail_capture.keys.map(&:to_sym) - DETAIL_CAPTURE_KEYS
+      if unknown.any?
+        raise ArgumentError, "detail_capture has unknown keys #{unknown.inspect} (allowed: #{DETAIL_CAPTURE_KEYS.inspect})"
+      end
+
+      slower_than = @detail_capture[:requests_slower_than]
+      if slower_than && !(slower_than.is_a?(Numeric) && slower_than > 0)
+        raise ArgumentError, "detail_capture[:requests_slower_than] must be a positive number of milliseconds or nil, got #{slower_than.inspect}"
+      end
+
+      sample_rate = @detail_capture.fetch(:sample_rate, 0)
+      unless sample_rate.is_a?(Numeric) && sample_rate >= 0 && sample_rate <= 1
+        raise ArgumentError, "detail_capture[:sample_rate] must be a number between 0 and 1, got #{sample_rate.inspect}"
+      end
+
+      errors = @detail_capture.fetch(:errors, true)
+      unless [ true, false ].include?(errors)
+        raise ArgumentError, "detail_capture[:errors] must be true or false, got #{errors.inspect}"
+      end
+
+      if slower_than.nil? && sample_rate.zero?
+        raise ArgumentError,
+          "detail_capture would capture no detail beyond errors — set requests_slower_than, " \
+          "a positive sample_rate, or both"
+      end
+
+      @detail_capture_settings = DetailCaptureSettings.new(
+        slower_than&.to_f, sample_rate.to_f, errors
+      ).freeze
     end
 
     def validate_patterns!
