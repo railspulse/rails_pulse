@@ -32,6 +32,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     AddNullActionUniqueIndexToRoutes
     AddLocationToExceptionGroups
     CreateRailsPulseEvents
+    CreateRailsPulseRollups
   ].freeze
 
   def setup
@@ -280,6 +281,20 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     %w[kind subject outcome value occurred_at message metadata].each do |column|
       assert @conn.column_exists?(:rails_pulse_events, column), "#{column} missing on events"
     end
+  end
+
+  test "upgrade from v0.2.7 creates the rollups table" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    assert @conn.table_exists?(:rails_pulse_rollups), "rollups table missing"
+    %w[rollupable_type rollupable_id period_start writer_id count error_count
+       status_2xx status_3xx status_4xx status_5xx
+       sum_duration sum_square_duration min_duration max_duration histogram].each do |column|
+      assert @conn.column_exists?(:rails_pulse_rollups, column), "#{column} missing on rollups"
+    end
+    assert @conn.index_exists?(:rails_pulse_rollups, [ :rollupable_type, :rollupable_id, :period_start, :writer_id ], unique: true, name: "idx_pulse_rollups_unique"),
+      "unique rollup index missing"
   end
 
   test "upgrade from v0.2.7 creates deployments table" do
