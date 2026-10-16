@@ -406,6 +406,56 @@ module RailsPulse
 
       private
 
+      # Summary Granularity Tests
+
+      test "a week row inside the window does not skew a route's P95" do
+        travel_to Time.zone.parse("2026-06-10 12:00")
+        route = rails_pulse_routes(:api_users)
+        week_start = Time.current.beginning_of_week
+        create_route_summary(route: route, count: 240, errors: 0, p95: 200.0, period_start: week_start)
+        create_route_summary(route: route, count: 240, errors: 0, p95: 3000.0, period_type: "week", period_start: week_start)
+
+        health = HealthSummary.new(period: 7).to_health_data
+
+        assert_equal({ healthy: 1, slow: 0, critical: 0 }, health[:routes])
+      end
+
+      test "hourly rows already summarized by day do not skew a query's P95" do
+        travel_to Time.zone.parse("2026-06-10 12:00")
+        query = rails_pulse_queries(:simple_query)
+        day_start = 2.days.ago.beginning_of_day
+        24.times do |hour|
+          create_query_summary(query: query, count: 10, p95: 2000.0, period_type: "hour", period_start: day_start + hour.hours)
+        end
+        create_query_summary(query: query, count: 240, p95: 50.0, period_start: day_start)
+
+        health = HealthSummary.new(period: 7).to_health_data
+
+        assert_equal({ healthy: 1, slow: 0, critical: 0 }, health[:queries])
+      end
+
+      test "a multi-day window classifies routes on today's hourly traffic" do
+        route = rails_pulse_routes(:api_users)
+        create_route_summary(route: route, count: 100, errors: 0, p95: 200.0)
+        create_route_summary(route: route, count: 100, errors: 20, p95: 200.0, period_type: "hour", period_start: Time.current.beginning_of_hour)
+
+        health = HealthSummary.new(period: 7).to_health_data
+
+        assert_equal 1, health[:routes][:critical]
+      end
+
+      test "a window that ended before today does not classify on the days after it" do
+        travel_to Time.zone.parse("2026-06-10 12:00")
+        query = rails_pulse_queries(:simple_query)
+        create_query_summary(query: query, count: 240, p95: 50.0, period_start: 3.days.ago.beginning_of_day)
+        create_query_summary(query: query, count: 240, p95: 2000.0, period_start: 1.day.ago.beginning_of_day)
+        window = RailsPulse::TimeWindow.new(5.days.ago.beginning_of_day, 2.days.ago.end_of_day)
+
+        health = HealthSummary.new(window: window, period_type: "day").to_health_data
+
+        assert_equal({ healthy: 1, slow: 0, critical: 0 }, health[:queries])
+      end
+
       # Storage Health Badge Tests
 
       test "storage value has healthy, slow, and critical keys" do
@@ -456,14 +506,14 @@ module RailsPulse
         )
       end
 
-      def create_route_summary(route:, count:, errors:, p95:, days_ago: 2)
-        period_start = days_ago.days.ago.beginning_of_day
+      def create_route_summary(route:, count:, errors:, p95:, days_ago: 2, period_type: "day", period_start: nil)
+        period_start ||= days_ago.days.ago.beginning_of_day
         RailsPulse::Summary.create!(
           summarizable_type: "RailsPulse::Route",
           summarizable_id:   route.id,
           period_start:      period_start,
-          period_end:        period_start.end_of_day,
-          period_type:       "day",
+          period_end:        RailsPulse::Summary.calculate_period_end(period_type, period_start),
+          period_type:       period_type,
           count:             count,
           error_count:       errors,
           avg_duration:      p95 * 0.7,
@@ -471,14 +521,14 @@ module RailsPulse
         )
       end
 
-      def create_query_summary(query:, count:, p95:, days_ago: 2)
-        period_start = days_ago.days.ago.beginning_of_day
+      def create_query_summary(query:, count:, p95:, days_ago: 2, period_type: "day", period_start: nil)
+        period_start ||= days_ago.days.ago.beginning_of_day
         RailsPulse::Summary.create!(
           summarizable_type: "RailsPulse::Query",
           summarizable_id:   query.id,
           period_start:      period_start,
-          period_end:        period_start.end_of_day,
-          period_type:       "day",
+          period_end:        RailsPulse::Summary.calculate_period_end(period_type, period_start),
+          period_type:       period_type,
           count:             count,
           avg_duration:      p95 * 0.7,
           p95_duration:      p95

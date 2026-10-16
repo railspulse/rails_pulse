@@ -40,13 +40,36 @@ module RailsPulse
       assert_includes rec[:detail], "highest P95: 1000ms"
     end
 
-    test "a lowered critical threshold is never below very_slow" do
-      # ceil_to(200 * 2, 500) = 500 and 500 * 3 = 1500; very_slow 2500 wins
+    test "a lowered critical threshold stays one step above very_slow" do
+      # ceil_to(200 * 2, 500) = 500 and 500 * 3 = 1500; very_slow 2500 + 500 wins
       with_route_thresholds(slow: 500, very_slow: 2500, critical: 5000) do
         rec = recommendations(route_rows: rows(200, 150, 100)).find { |r| r[:title].include?("critical") }
 
-        assert_equal "config.route_thresholds = { slow: 500, very_slow: 2500, critical: 2500 }", rec[:config_snippet]
+        assert_equal "config.route_thresholds = { slow: 500, very_slow: 2500, critical: 3000 }", rec[:config_snippet]
       end
+    end
+
+    test "a lowered query critical threshold stays one step above very_slow" do
+      # ceil_to(5 * 2, 100) = 100 and 100 * 3 = 300; very_slow 500 + 100 wins
+      rec = recommendations(query_rows: rows(5, 4, 3)).find { |r| r[:title] == "Query critical threshold may be too permissive" }
+
+      assert_equal "config.query_thresholds = { slow: 100, very_slow: 500, critical: 600 }", rec[:config_snippet]
+    end
+
+    test "the query critical check reads the slowest query, not just the most expensive" do
+      # The sampled queries peak at 5ms, but a rarer query in the period reached 450ms:
+      # max(ceil_to(450 * 2, 100), 300, 600) = 900
+      rec = recommendations(query_rows: rows(5, 4, 3), query_max_p95: 450).find { |r| r[:title].include?("critical") }
+
+      assert_equal "config.query_thresholds = { slow: 100, very_slow: 500, critical: 900 }", rec[:config_snippet]
+      assert_includes rec[:detail], "highest P95: 450ms"
+    end
+
+    test "does not recommend a query critical threshold below a rare query it would flag" do
+      # 550ms is past critical / 2, so the critical threshold is not idle
+      recs = recommendations(query_rows: rows(5, 4, 3), query_max_p95: 550)
+
+      assert_not_includes titles(recs), "Query critical threshold may be too permissive"
     end
 
     test "does not recommend a critical threshold that fails to lower it" do
@@ -112,6 +135,21 @@ module RailsPulse
       assert_includes recs.first[:detail], "3 of 3 sampled routes"
     end
 
+    test "for_period reads the period's slowest query for the critical check" do
+      RailsPulse::Summary.delete_all
+      period_start = Time.zone.parse("2026-06-01")
+      # Three cheap, frequent queries make up the expensive sample; a rare slow
+      # one has little total time but the period's highest P95.
+      RailsPulse::Query.limit(3).each { |query| summary(query, period_start, p95: 4, count: 10_000) }
+      rare = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM rare_table WHERE id = ?")
+      summary(rare, period_start, p95: 450, count: 1)
+
+      rec = ConfigRecommendations.for_period(period_type: "week", period_start: period_start)
+        .to_recommendations.find { |r| r[:title] == "Query critical threshold may be too permissive" }
+
+      assert_includes rec[:detail], "highest P95: 450ms"
+    end
+
     # Edge Cases
 
     test "returns nothing with fewer than 3 route rows" do
@@ -139,8 +177,8 @@ module RailsPulse
 
     private
 
-    def recommendations(route_rows: [], query_rows: [])
-      ConfigRecommendations.new(route_rows: route_rows, query_rows: query_rows).to_recommendations
+    def recommendations(route_rows: [], query_rows: [], query_max_p95: nil)
+      ConfigRecommendations.new(route_rows: route_rows, query_rows: query_rows, query_max_p95: query_max_p95).to_recommendations
     end
 
     def rows(*p95s)
@@ -159,11 +197,11 @@ module RailsPulse
       RailsPulse.configuration.route_thresholds = original
     end
 
-    def summary(record, period_start, p95:)
+    def summary(record, period_start, p95:, count: 100)
       RailsPulse::Summary.create!(
         summarizable: record, period_type: "week", period_start: period_start,
-        period_end: period_start.end_of_week, count: 100, avg_duration: p95 / 2,
-        p95_duration: p95, error_count: 0, success_count: 100
+        period_end: period_start.end_of_week, count: count, avg_duration: p95 / 2,
+        p95_duration: p95, error_count: 0, success_count: count
       )
     end
   end

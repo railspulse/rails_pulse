@@ -180,6 +180,19 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, rails_pulse.storage_path
   end
 
+  test "storage panel leaves out record counts on SQLite and marks estimates elsewhere" do
+    get rails_pulse.root_path
+
+    assert_response :success
+    if RailsPulse::ApplicationRecord.connection.adapter_name.downcase.include?("sqlite")
+      assert_includes response.body, "the dashboard leaves them out"
+      refute_includes response.body, "storage-panel-tables"
+    else
+      assert_includes response.body, "storage-panel-tables"
+      assert_includes response.body, "row estimates"
+    end
+  end
+
   test "response includes deployments panel" do
     get rails_pulse.root_path
 
@@ -276,6 +289,10 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     Rails.application.config.asset_host = "https://cdn.example.com"
     Rails.application.config.action_controller.asset_host = "https://cdn.example.com"
     ActionController::Base.config.asset_host = "https://cdn.example.com"
+    # AssetServingTest installs packaged assets into the dummy app's
+    # public/assets, which parallel workers share; this test is about the
+    # middleware fallback, so it must not see them.
+    RailsPulse::PackagedAssets.stubs(:url_path).returns(nil)
 
     get rails_pulse.root_path
 

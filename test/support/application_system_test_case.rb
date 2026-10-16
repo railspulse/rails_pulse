@@ -99,6 +99,11 @@ class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
     super
   end
 
+  # The dashboard leaves storage record counts out on SQLite.
+  def sqlite_adapter?
+    RailsPulse::ApplicationRecord.connection.adapter_name.downcase.include?("sqlite")
+  end
+
   def teardown
     super
     teardown_test_database if respond_to?(:teardown_test_database)

@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-16
+
+## [0.5.0.pre.2] - 2026-10-11
+
 ### Added
 
 - **Before-and-after comparison for every deployment.** The deployments API, `rails-pulse deployments list` and the `rails_pulse_deployments` tool now say whether each release made things worse: response time or error rate materially worse in the hour after the deploy finished than in the hour before it started, or too little traffic to tell.
@@ -17,10 +21,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **A query is the same query however many values it loads.** `WHERE id IN (…)` with 3 ids and with 12 ids, and a batch insert of 2 rows and of 50, used to be tracked as separate queries, each with its own stats, N+1 flags and EXPLAIN; they are now one entry. Entries recorded by earlier versions keep their old form until retention removes them, so a query may appear twice on the Queries page for a while after upgrading.
 - **Hourly summaries are kept for 7 days instead of 2.** Deployment comparisons and hour-precise change points read them, so at 2 days a deploy from earlier in the week could no longer be compared; `config.hourly_summary_retention` tunes it.
 
 ### Fixed
 
+- **Normalised SQL no longer shows some string values.** A value written in one of SQL's less common string forms — only possible in hand-written SQL — stayed visible in the normalised query on the dashboard, the API and the MCP server, and split that query's stats into one entry per value; it is now replaced with `?` like any other value. On MySQL the same happened to any value containing an apostrophe or any double-quoted value shaped like a column name, and on every database to very small or very large decimals. (#335, #313)
+- **The dashboard no longer counts every Rails Pulse table on each load.** On PostgreSQL and MySQL its storage panel now shows the database's row estimates, and on SQLite it leaves record counts to the Storage page, so large installs no longer wait tens of seconds per page view; the storage-pressure checks also run once per page instead of four times. On MySQL 8, record counts and disk sizes on the dashboard and the Storage page are read current instead of from a statistics cache up to a day old. (#363)
+- **Needs Attention and System Health no longer overcount traffic.** Request, error, query and exception counts were added up once per summary granularity, which inflated them and could raise an exception group's severity; today's traffic now counts in windows longer than a day. (#338)
+- **Threshold recommendations no longer suggest a critical threshold equal to `very_slow` or below a rarely run slow query.** A suggested critical threshold now sits at least one step above `very_slow`, and the query check reads the period's slowest query rather than only its most expensive ones.
+- **The dashboard no longer reports cleanup as blocked when it is not.** The critical "summarize first" Storage item appeared whenever expired requests were waiting for the next daily cleanup, which deletes them by age regardless of summaries; it has been removed, and a stalled summary job is still flagged.
+- **PostgreSQL Unicode escape strings (`U&'…'`) are normalised to `?`** like other prefixed strings, instead of leaving `U&?` in the normalised query.
 - **Daily charts no longer go blank after a daylight-saving change.** In a `config.time_zone` with daylight saving, every day after the clocks changed was drawn empty in a range that crossed the change; chart days now follow the zone's calendar.
 
 ## [0.5.0.pre.1] - 2026-10-03

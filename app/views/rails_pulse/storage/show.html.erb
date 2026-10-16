@@ -75,7 +75,7 @@
   <%= render "rails_pulse/components/panel",
       title: "Cleanup",
       help_heading: "How cleanup works",
-      help_text: "Time-based cleanup deletes records older than full_retention_period, but only after that period has been summarised. Count-based cleanup then trims each table down to max_table_records. Schedule RailsPulse::CleanupJob daily." do %>
+      help_text: "Time-based cleanup deletes records older than full_retention_period. Count-based cleanup then trims each table down to max_table_records, taking requests and operations only from periods already summarised. Schedule RailsPulse::CleanupJob daily." do %>
     <dl class="descriptive-list mbs-4">
       <dt>Automatic cleanup</dt>
       <dd><%= @status.cleanup[:enabled] ? "Enabled" : "Disabled (archiving_enabled = false)" %></dd>
@@ -87,7 +87,7 @@
           <%= human_readable_occurred_at(@status.cleanup[:last_summary_at]) %>
           <span class="text-subtle">(<%= time_ago_in_words(@status.cleanup[:last_summary_at]) %>)</span>
         <% else %>
-          Never — cleanup will not delete unsummarised requests
+          Never — count-based cleanup will not trim unsummarised requests
         <% end %>
       </dd>
       <dt>Count caps</dt>
