@@ -3,7 +3,7 @@ PATH
   specs:
     rails_pulse (0.5.0)
       rails (>= 7.2.0, < 9.0.0)
-      ransack (>= 4.0, < 6)
+      ransack (>= 4.0, < 7)
       thor (~> 1.0)
 
 GEM
@@ -286,7 +286,7 @@ GEM
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.4.2)
-    ransack (5.0.2)
+    ransack (6.0.0)
       activerecord (>= 7.2)
       activesupport (>= 7.2)
       i18n
@@ -407,7 +407,7 @@ GEM
     unicode-display_width (3.1.4)
       unicode-emoji (~> 4.0, >= 4.0.4)
     unicode-emoji (4.2.0)
-    uri (1.1.1)
+    uri (1.1.2)
     useragent (0.16.11)
     websocket (1.2.11)
     websocket-driver (0.8.2)

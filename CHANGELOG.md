@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Rails Pulse now allows Ransack 6, so host apps can upgrade to it without waiting on the gem; Ransack 4 and 5 remain supported.
+
 ## [0.5.0] - 2026-10-16
 
 ## [0.5.0.pre.2] - 2026-10-11
