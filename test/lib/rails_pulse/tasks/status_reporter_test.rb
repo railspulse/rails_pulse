@@ -1,7 +1,7 @@
 require "test_helper"
 
 class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
-  fixtures :rails_pulse_summaries, :rails_pulse_events
+  fixtures :rails_pulse_summaries, :rails_pulse_events, :rails_pulse_routes
 
   def setup
     super
@@ -266,6 +266,44 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
     assert_match(/Jobs:       tracked, \d+ job class\(es\) recorded/, @output.string)
   end
 
+  test "detail capture off prints no capture rate" do
+    assume_clean_install
+
+    with_config(store_full_details: :all) { report }
+
+    assert_not_includes @output.string, "Details:"
+  end
+
+  test "detail capture with nothing folded yet has no rate" do
+    assume_clean_install
+    RailsPulse::Rollup.delete_all
+
+    with_config(store_full_details: { above: :slow }) { report }
+
+    assert_includes @output.string, "Details:    no rate yet"
+  end
+
+  test "detail capture reports the share of the last day it kept" do
+    assume_clean_install
+    capture_hour(total: 2000, folded: 1900)
+
+    with_config(store_full_details: { above: :slow }) { assert report }
+
+    assert_includes @output.string, "Details:    stored 5% of 2,000 requests in full in the last day"
+    assert_not_includes @output.string, "saves little storage"
+  end
+
+  test "detail capture keeping over a quarter of requests is a suggestion naming the settings and routes" do
+    assume_clean_install
+    route = rails_pulse_routes(:api_users)
+    capture_hour(total: 1000, folded: 400, route: route)
+
+    with_config(store_full_details: { above: :slow, sample_rate: 0.05 }) { assert report }
+
+    assert_includes @output.string, "Details:    stored 60% of 1,000 requests in full"
+    assert_match(/Suggestions:.*Full details were stored for 60% of requests in the last day, so little storage is saved. To store less, raise request_thresholds\[:slow\] \(700ms now\) or query_thresholds\[:slow\] \(100ms now\), set store_full_details\[:above\] to a higher threshold, or lower store_full_details\[:sample_rate\] \(5% now\).*Routes keeping the most: \/api\/users \(600 of 1,000\)/m, @output.string)
+  end
+
   test "suggestions follow the OK line and do not fail the report" do
     assume_clean_install
 
@@ -358,6 +396,18 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
         period_start: start, period_end: start.end_of_hour, count: 0
       )
     end
+  end
+
+  # One summarized hour in which detail capture folded `folded` of `total`
+  # requests, all on `route`
+  def capture_hour(total:, folded:, route: rails_pulse_routes(:api_users))
+    start = 1.hour.ago.beginning_of_hour
+    RailsPulse::Summary.where(period_type: "hour", period_start: start).delete_all
+    RailsPulse::Rollup.delete_all
+    [ { summarizable_type: "RailsPulse::Request", summarizable_id: 0 }, { summarizable: route } ].each do |subject|
+      RailsPulse::Summary.create!(**subject, period_type: "hour", period_start: start, period_end: start.end_of_hour, count: total)
+    end
+    RailsPulse::Rollup.create!(rollupable: route, period_start: start, writer_id: "web-1", count: folded)
   end
 
   def cleanup_run(at, deleted: 0, failed_stages: [])

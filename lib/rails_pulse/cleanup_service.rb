@@ -109,6 +109,10 @@ module RailsPulse
       run_stage(:time_based, :operations) { cleanup_operations_by_time(cutoff_time) }
       run_stage(:time_based, :job_runs)   { cleanup_job_runs_by_time(cutoff_time) }
       run_stage(:time_based, :requests)   { cleanup_requests_by_time(cutoff_time) }
+      # Rollups substitute for the raw rows detail capture never wrote, and
+      # BackfillSummariesJob reads them, so they live exactly as long as raw
+      # requests do.
+      run_stage(:time_based, :rollups)    { cleanup_rollups_by_time(cutoff_time) } if rollups_table_exists?
       run_stage(:time_based, :queries)    { cleanup_queries_by_time(cutoff_time) }
       run_stage(:time_based, :routes)     { cleanup_routes_by_time(cutoff_time) }
       run_stage(:time_based, :jobs)       { cleanup_jobs_by_time(cutoff_time) }
@@ -195,19 +199,25 @@ module RailsPulse
       )
     end
 
+    # A rollup row covers a whole hour, so only hours that ended before the
+    # cutoff go: the hour the cutoff falls in may not be summarized yet, and
+    # its summary needs every rollup to count the folded traffic.
+    def cleanup_rollups_by_time(cutoff_time)
+      delete_in_batches(
+        RailsPulse::Rollup.where("period_start <= ?", cutoff_time - 1.hour),
+        order_column: :period_start
+      )
+    end
+
     def cleanup_queries_by_time(cutoff_time)
       delete_in_batches(
-        RailsPulse::Query
-          .where("created_at < ?", cutoff_time)
-          .where("NOT EXISTS (SELECT 1 FROM rails_pulse_operations WHERE rails_pulse_operations.query_id = rails_pulse_queries.id)")
+        orphaned_queries_scope.where("created_at < ?", cutoff_time)
       )
     end
 
     def cleanup_routes_by_time(cutoff_time)
       delete_in_batches(
-        RailsPulse::Route
-          .where("created_at < ?", cutoff_time)
-          .where("NOT EXISTS (SELECT 1 FROM rails_pulse_requests WHERE rails_pulse_requests.route_id = rails_pulse_routes.id)")
+        orphaned_routes_scope.where("created_at < ?", cutoff_time)
       )
     end
 
@@ -282,17 +292,42 @@ module RailsPulse
     end
 
     def cleanup_queries_by_count
-      scope = RailsPulse::Query.where(
-        "NOT EXISTS (SELECT 1 FROM rails_pulse_operations WHERE rails_pulse_operations.query_id = rails_pulse_queries.id)"
-      )
-      cleanup_by_count(RailsPulse::Query, :rails_pulse_queries, order_column: :created_at, scope: scope)
+      cleanup_by_count(RailsPulse::Query, :rails_pulse_queries, order_column: :created_at, scope: orphaned_queries_scope)
     end
 
     def cleanup_routes_by_count
+      cleanup_by_count(RailsPulse::Route, :rails_pulse_routes, order_column: :created_at, scope: orphaned_routes_scope)
+    end
+
+    # A route or query with rollup rows is still feeding hourly summaries
+    # (detail capture folded its traffic instead of persisting it), so it is
+    # not an orphan until its rollups are pruned.
+    def orphaned_queries_scope
+      scope = RailsPulse::Query.where(
+        "NOT EXISTS (SELECT 1 FROM rails_pulse_operations WHERE rails_pulse_operations.query_id = rails_pulse_queries.id)"
+      )
+      if rollups_table_exists?
+        scope = scope.where(
+          "NOT EXISTS (SELECT 1 FROM rails_pulse_rollups WHERE rails_pulse_rollups.rollupable_type = 'RailsPulse::Query' AND rails_pulse_rollups.rollupable_id = rails_pulse_queries.id)"
+        )
+      end
+      scope
+    end
+
+    def orphaned_routes_scope
       scope = RailsPulse::Route.where(
         "NOT EXISTS (SELECT 1 FROM rails_pulse_requests WHERE rails_pulse_requests.route_id = rails_pulse_routes.id)"
       )
-      cleanup_by_count(RailsPulse::Route, :rails_pulse_routes, order_column: :created_at, scope: scope)
+      if rollups_table_exists?
+        scope = scope.where(
+          "NOT EXISTS (SELECT 1 FROM rails_pulse_rollups WHERE rails_pulse_rollups.rollupable_type = 'RailsPulse::Route' AND rails_pulse_rollups.rollupable_id = rails_pulse_routes.id)"
+        )
+      end
+      scope
+    end
+
+    def rollups_table_exists?
+      RailsPulse::Rollup.table_available?
     end
 
     def cleanup_jobs_by_count

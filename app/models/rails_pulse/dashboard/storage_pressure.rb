@@ -11,7 +11,16 @@ module RailsPulse
       # Memoized: computing the items costs several aggregate queries (one a
       # raw-request count), and one dashboard render asks for them repeatedly.
       def pressure_items
-        @pressure_items ||= summary_staleness_items + sub_hour_retention_items + writer_drop_items
+        @pressure_items ||= summary_staleness_items + sub_hour_retention_items + writer_drop_items + detail_capture_items
+      end
+
+      # Memoized (nil is a valid value: detail capture off or no rate yet) and
+      # shared with StorageStatus, which wraps this object — one storage page
+      # render would otherwise compute the rate's aggregate queries repeatedly.
+      def detail_capture_rate
+        return @detail_capture_rate if defined?(@detail_capture_rate)
+
+        @detail_capture_rate = RailsPulse::DetailCaptureRate.for
       end
 
       # Dropped requests get their own Tracking badge, not this one
@@ -98,6 +107,39 @@ module RailsPulse
                          "<strong>How to fix:</strong> raise <code>config.async_queue_size</code> in the Rails Pulse initializer, or find out " \
                          "why the writer cannot keep up: database latency, a saturated connection pool, or a burst far above normal traffic. " \
                          "<code>rails rails_pulse:status</code> reports the same numbers from the shell."
+        } ]
+      rescue ActiveRecord::ActiveRecordError
+        []
+      end
+
+      # Signal D — store_full_details keeping over a quarter of traffic, so the
+      # requests and operations tables grow almost as if it were :all
+      def detail_capture_items
+        settings = @config.detail_capture_settings
+        return [] unless settings
+
+        rate = detail_capture_rate
+        return [] unless rate&.high?
+
+        routes = RailsPulse::DetailCaptureRate.top_kept_routes_label
+        [ {
+          type:          "STORAGE",
+          name:          "Full details",
+          reason:        "Kept #{rate.share_label} of the last day's requests in full, so little storage is saved",
+          metric:        "#{rate.share_label} kept",
+          metric_sub:    "of #{rate.total.to_fs(:delimited)} requests, last day",
+          link:          "#",
+          severity:      :warning,
+          # Cleanup still runs; store_full_details only decides what it has to delete
+          cleanup:       false,
+          sort_score:    rate.share,
+          popover_title: "Full details are stored for over a quarter of requests",
+          popover_body:  "With <code>config.store_full_details</code> #{ERB::Util.html_escape(settings.description)}, only those requests " \
+                         "are stored in full; the rest are folded into hourly totals. In the last day #{rate.share_label} were stored " \
+                         "in full, so the requests and operations tables are growing almost as if every request were.<br><br>" \
+                         "<strong>How to fix:</strong> #{RailsPulse::DetailCaptureRate.retune_advice(settings).upcase_first} " \
+                         "in the Rails Pulse initializer." +
+                         (routes ? "<br><br>Routes keeping the most: #{ERB::Util.html_escape(routes)}." : "")
         } ]
       rescue ActiveRecord::ActiveRecordError
         []

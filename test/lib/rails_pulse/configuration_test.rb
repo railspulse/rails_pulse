@@ -9,6 +9,109 @@ module RailsPulse
       config
     end
 
+    # Store Full Details Tests
+
+    test "store_full_details defaults to :all" do
+      config = Configuration.new
+
+      assert_equal :all, config.store_full_details
+      assert_nil config.detail_capture_settings
+    end
+
+    test "store_full_details above a threshold reads that threshold's durations with a 1% default sample" do
+      config = Configuration.new
+      config.store_full_details = { above: :slow }
+
+      settings = config.detail_capture_settings
+
+      assert_predicate settings, :frozen?
+      assert_equal :slow, settings.threshold
+      assert_in_delta 700.0, settings.requests_slower_than
+      assert_in_delta 100.0, settings.queries_slower_than
+      assert_in_delta 0.01, settings.sample_rate
+    end
+
+    test "store_full_details accepts any threshold key and a sample rate" do
+      config = Configuration.new
+      config.store_full_details = { above: "critical", sample_rate: 0.001 }
+
+      settings = config.detail_capture_settings
+
+      assert_equal :critical, settings.threshold
+      assert_in_delta 4000.0, settings.requests_slower_than
+      assert_in_delta 1000.0, settings.queries_slower_than
+      assert_in_delta 0.001, settings.sample_rate
+    end
+
+    test "store_full_details follows custom thresholds set in either order" do
+      config = build_config do
+        self.store_full_details = { above: :warning }
+        self.request_thresholds = { warning: 400, slow: 1000 }
+        self.query_thresholds = { warning: 50, slow: 200 }
+      end
+
+      assert_in_delta 400.0, config.detail_capture_settings.requests_slower_than
+      assert_in_delta 50.0, config.detail_capture_settings.queries_slower_than
+
+      config.request_thresholds = { warning: 600, slow: 1000 }
+
+      assert_in_delta 600.0, config.detail_capture_settings.requests_slower_than
+    end
+
+    test "store_full_details describes itself for status and the storage page" do
+      config = Configuration.new
+      config.store_full_details = { above: :slow, sample_rate: 0.015 }
+
+      assert_equal "above :slow (requests over 700ms, queries over 100ms), 1.5% sample, errors", config.detail_capture_settings.description
+
+      config.store_full_details = { above: :slow, sample_rate: 0 }
+
+      assert_equal "above :slow (requests over 700ms, queries over 100ms), errors", config.detail_capture_settings.description
+    end
+
+    test "setting store_full_details back to :all clears the settings" do
+      config = Configuration.new
+      config.store_full_details = { above: :slow }
+      config.store_full_details = :all
+
+      assert_nil config.detail_capture_settings
+    end
+
+    test "store_full_details rejects anything but :all or a hash" do
+      config = Configuration.new
+
+      [ nil, :slow, true ].each do |bad|
+        error = assert_raises(ArgumentError) { config.store_full_details = bad }
+        assert_includes error.message, "store_full_details must be :all or a hash like { above: :slow }"
+      end
+    end
+
+    test "store_full_details rejects unknown keys, a number for above and a bad sample rate" do
+      config = Configuration.new
+
+      error = assert_raises(ArgumentError) { config.store_full_details = { above: :slow, errors: false } }
+      assert_includes error.message, "unknown keys [:errors]"
+
+      error = assert_raises(ArgumentError) { config.store_full_details = { above: 500 } }
+      assert_includes error.message, "must be a key from request_thresholds and query_thresholds, such as :slow"
+
+      [ -0.1, 1.5, "0.1" ].each do |bad|
+        error = assert_raises(ArgumentError) { config.store_full_details = { above: :slow, sample_rate: bad } }
+        assert_includes error.message, "store_full_details[:sample_rate]"
+      end
+    end
+
+    test "store_full_details names a threshold missing from either hash once configuration is validated" do
+      config = Configuration.new
+      config.request_thresholds = { warning: 400, slow: 1000 }
+      config.store_full_details = { above: :warning }
+
+      assert_nil config.detail_capture_settings
+
+      error = assert_raises(ArgumentError) { config.validate_configuration! }
+      assert_includes error.message, "query_thresholds has no :warning (it has :slow, :very_slow, :critical)"
+    end
+
     # Default Values Tests
 
     test "event_retention_period defaults to 90 days with no exempt kinds, and both are validated" do

@@ -83,7 +83,7 @@ module RailsPulse
             meta[:routes_with_traffic] = routes_with_traffic
           end
 
-          render json: { data: data, meta: meta }
+          render json: { data: data, meta: apply_sampled_detail(meta) }
         end
 
         def min_requests

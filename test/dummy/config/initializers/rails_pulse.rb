@@ -12,6 +12,15 @@ RailsPulse.configure do |config|
   # Suppress stale summary warning in development (summary job isn't scheduled locally)
   config.warn_on_stale_summaries = false if Rails.env.development?
 
+  # Try storing only some full details locally:
+  # STORE_FULL_DETAILS_ABOVE=slow [STORE_FULL_DETAILS_SAMPLE_RATE=0.2] bin/rails server
+  if ENV["STORE_FULL_DETAILS_ABOVE"].present?
+    config.store_full_details = {
+      above: ENV["STORE_FULL_DETAILS_ABOVE"].to_sym,
+      sample_rate: ENV.fetch("STORE_FULL_DETAILS_SAMPLE_RATE", "0.01").to_f
+    }
+  end
+
   # ====================================================================================================
   #                                         DASHBOARD CONFIGURATION
   # ====================================================================================================

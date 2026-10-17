@@ -50,6 +50,7 @@ module RailsPulse
         print_initializer
         print_tracking
         print_writer
+        print_detail_capture
         print_summaries
         print_retention
         print_cleanup
@@ -171,7 +172,7 @@ module RailsPulse
         end
 
         output.puts "Tracking:   enabled=#{config.enabled} requests=#{config.enabled} jobs=#{config.track_jobs} " \
-                    "exceptions=#{config.track_exceptions} async=#{config.async}"
+                    "exceptions=#{config.track_exceptions} async=#{config.async} store_full_details=#{detail_capture_label}"
         output.puts "Dashboard:  mount_dashboard=#{config.mount_dashboard} authentication=#{auth}"
         output.puts "API:        api_token #{config.api_token.to_s.empty? ? 'NOT set (rails-pulse CLI and MCP server refuse every request)' : 'set'}, " \
                     "deployment_token #{config.deployment_token.to_s.empty? ? 'NOT set (POST deployments refuses every request; the rake tasks still work)' : 'set'}"
@@ -196,8 +197,42 @@ module RailsPulse
         return if dropped.zero?
 
         action "The writer dropped #{dropped} request(s) in the last hour. Raise config.async_queue_size or check database latency."
+        if config.detail_capture_settings.nil?
+          suggest "At sustained high traffic, config.store_full_details = { above: :slow } stores only slow requests, " \
+                  "requests with a slow query, errors and a sample in full while dashboards still count all traffic, " \
+                  "taking most of the load off the writer."
+        end
       rescue StandardError => e
         output.puts "Writer:     could not check (#{e.class}: #{e.message})"
+      end
+
+      # A fixed threshold drifts out of date as the app's response times and
+      # traffic change; the share kept is how a host notices.
+      def print_detail_capture
+        settings = config.detail_capture_settings
+        return unless settings
+
+        rate = RailsPulse::DetailCaptureRate.for
+        if rate.nil?
+          output.puts "Details:    no rate yet (it needs an hour SummaryJob has summarized with at least one folded request)"
+          return
+        end
+
+        output.puts "Details:    stored #{rate.share_label} of #{delimited(rate.total)} requests in full in the last day " \
+                    "(#{settings.description}; the rest were folded)"
+        return unless rate.high?
+
+        routes = RailsPulse::DetailCaptureRate.top_kept_routes_label
+        suggest "Full details were stored for #{rate.share_label} of requests in the last day, so little storage is saved. " \
+                "To store less, #{RailsPulse::DetailCaptureRate.retune_advice(settings)} in config/initializers/rails_pulse.rb." +
+                (routes ? " Routes keeping the most: #{routes}." : "")
+      rescue StandardError => e
+        output.puts "Details:    could not check (#{e.class}: #{e.message})"
+      end
+
+      def detail_capture_label
+        settings = config.detail_capture_settings
+        settings ? "{ above: #{settings.threshold.inspect} } (#{settings.description})" : ":all"
       end
 
       def print_summaries
@@ -403,6 +438,10 @@ module RailsPulse
       def days(duration)
         value = (duration / 1.day.to_f).round(1)
         "#{value == value.to_i ? value.to_i : value} day#{'s' unless value == 1}"
+      end
+
+      def delimited(number)
+        ActiveSupport::NumberHelper.number_to_delimited(number)
       end
 
       def time_ago(time)

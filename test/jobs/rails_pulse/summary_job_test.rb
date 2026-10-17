@@ -572,6 +572,79 @@ module RailsPulse
       assert_equal initial_count, final_count
     end
 
+    # ============================================================================
+    # Late Rollup Tests
+    # ============================================================================
+
+    test "perform flushes this process's rollups before summarizing" do
+      RailsPulse::Tracker.expects(:flush_rollups!)
+
+      SummaryJob.new.perform(2.hours.ago.beginning_of_hour)
+    end
+
+    test "re-summarizes an hour whose rollups flushed after its summary" do
+      hour = Time.zone.parse("2024-03-04 10:00:00")
+      travel_to(hour + 10.minutes) { create_request_with_operation(duration: 100) }
+
+      travel_to hour + 1.hour + 5.seconds
+      SummaryJob.new.perform(hour)
+      summary = RailsPulse::Summary.overall_requests.find_by!(period_type: "hour", period_start: hour)
+
+      assert_equal 1, summary.count
+
+      # A straggler bucket's flush lands after the hour was summarized
+      travel_to hour + 1.hour + 2.minutes
+      RailsPulse::Rollup.create!(
+        rollupable: rails_pulse_routes(:api_users), period_start: hour,
+        writer_id: "host:1:late", count: 5, sum_duration: 500.0
+      )
+
+      travel_to hour + 2.hours + 5.seconds
+      SummaryJob.new.perform(hour + 1.hour)
+
+      assert_equal 6, summary.reload.count
+    end
+
+    test "an hour whose rollups all flushed before its summary is not re-summarized" do
+      hour = Time.zone.parse("2024-03-04 10:00:00")
+      travel_to(hour + 10.minutes) do
+        RailsPulse::Rollup.create!(
+          rollupable: rails_pulse_routes(:api_users), period_start: hour,
+          writer_id: "host:1:early", count: 5, sum_duration: 500.0
+        )
+      end
+
+      travel_to hour + 1.hour + 5.seconds
+      SummaryJob.new.perform(hour)
+      summary = RailsPulse::Summary.overall_requests.find_by!(period_type: "hour", period_start: hour)
+
+      assert_equal 5, summary.count
+      first_summarized_at = summary.updated_at
+
+      travel_to hour + 2.hours + 5.seconds
+      SummaryJob.new.perform(hour + 1.hour)
+
+      assert_equal first_summarized_at, summary.reload.updated_at
+    end
+
+    test "rollups flushed late for an hour outside the lookback are left alone" do
+      hour = Time.zone.parse("2024-03-04 02:00:00")
+      travel_to hour + 1.hour + 5.seconds
+      SummaryJob.new.perform(hour)
+      summary = RailsPulse::Summary.overall_requests.find_by!(period_type: "hour", period_start: hour)
+
+      travel_to hour + 1.hour + 2.minutes
+      RailsPulse::Rollup.create!(
+        rollupable: rails_pulse_routes(:api_users), period_start: hour,
+        writer_id: "host:1:late", count: 5, sum_duration: 500.0
+      )
+
+      travel_to hour + 6.hours + 5.seconds
+      SummaryJob.new.perform(hour + 5.hours)
+
+      assert_equal 0, summary.reload.count
+    end
+
     test "perform handles boundary conditions for time checks" do
       # Test exactly at hour 0, minute 0, second 0
       exact_midnight = Time.zone.parse("2024-03-04 00:00:00")
