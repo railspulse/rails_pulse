@@ -39,10 +39,7 @@ module RailsPulse
           # exception passes through here before anything renders it. Record
           # the request with the status the error page will send, then let
           # the exception continue to the host's error handling unchanged.
-          # The wrapper unwraps ActionView::Template::Error to its cause, as
-          # the error page does.
-          status = ActionDispatch::ExceptionWrapper.new(nil, exception).status_code
-          track(req, env, start_time, occurred_at, status, {}, nil)
+          track(req, env, start_time, occurred_at, error_status(exception), {}, nil)
           raise
         end
 
@@ -55,6 +52,16 @@ module RailsPulse
       end
 
       private
+
+      # The status the error page will send for this exception. The wrapper
+      # unwraps ActionView::Template::Error to its cause, as the error page
+      # does. This runs while the host's exception is unwinding, so it must
+      # never raise over it — anything unexpected records a 500.
+      def error_status(exception)
+        ActionDispatch::ExceptionWrapper.new(nil, exception).status_code
+      rescue
+        500
+      end
 
       # Never raises: a failure to track must not turn a host response, or a
       # host exception, into a Rails Pulse error.

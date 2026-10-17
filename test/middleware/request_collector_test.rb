@@ -162,6 +162,18 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
     assert_not tracked[:is_error]
   end
 
+  test "records a 500 and re-raises the host's exception when its status cannot be determined" do
+    collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { raise ArgumentError, "host bug" })
+    tracked = nil
+    RailsPulse::Tracker.expects(:track_request).with { |data| tracked = data }
+    ActionDispatch::ExceptionWrapper.stubs(:new).raises(RuntimeError, "wrapper bug")
+
+    error = assert_raises(ArgumentError) { collector.call(Rack::MockRequest.env_for("/boom")) }
+
+    assert_equal "host bug", error.message
+    assert_equal 500, tracked[:status]
+  end
+
   test "re-raises the host's exception even when tracking it fails" do
     collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { raise ArgumentError, "host bug" })
     RailsPulse::Tracker.expects(:track_request).raises(RuntimeError, "tracker down")
