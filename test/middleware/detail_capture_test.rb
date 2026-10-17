@@ -40,7 +40,10 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
   end
 
   test "a request past the threshold keeps full detail" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 0.000001 }
+    RailsPulse.configuration.detail_capture = { requests_slower_than: 100 }
+    # A stub app finishes in well under 0.01ms on a fast machine, which the
+    # collector rounds to 0, so the clock is fixed: the request takes 250ms.
+    Process.stubs(:clock_gettime).returns(10.0, 10.25)
 
     payload = call_middleware
 

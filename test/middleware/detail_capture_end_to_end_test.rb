@@ -48,7 +48,7 @@ class RailsPulse::Middleware::DetailCaptureEndToEndTest < ActionDispatch::Integr
     folded_get "/fast", times: 2
     RailsPulse::Tracker.flush!
 
-    query = RailsPulse::Query.find_by!(normalized_sql: 'SELECT COUNT(*) FROM "users"')
+    query = users_count_query
 
     assert_equal 2, RailsPulse::Rollup.find_by!(rollupable: query, period_start: HOUR).count
     assert_equal 0, RailsPulse::Operation.where(query: query).count
@@ -112,7 +112,7 @@ class RailsPulse::Middleware::DetailCaptureEndToEndTest < ActionDispatch::Integr
 
     summarize_hour
 
-    query = RailsPulse::Query.find_by!(normalized_sql: 'SELECT COUNT(*) FROM "users"')
+    query = users_count_query
     summary = RailsPulse::Summary.find_by!(summarizable: query, period_type: "hour", period_start: HOUR)
 
     assert_equal 4, summary.count
@@ -126,7 +126,7 @@ class RailsPulse::Middleware::DetailCaptureEndToEndTest < ActionDispatch::Integr
     summarize_hour
 
     route = RailsPulse::Route.find_by!(controller_action: "home#fast")
-    query = RailsPulse::Query.find_by!(normalized_sql: 'SELECT COUNT(*) FROM "users"')
+    query = users_count_query
 
     get rails_pulse.route_path(route)
 
@@ -192,6 +192,12 @@ class RailsPulse::Middleware::DetailCaptureEndToEndTest < ActionDispatch::Integr
 
   def summarize_hour
     travel_to(HOUR + 1.hour + 5.minutes) { RailsPulse::SummaryService.new("hour", HOUR).perform }
+  end
+
+  # The query /fast runs, as normalized SQL. Table quoting differs by
+  # adapter (backticks on MySQL), so it comes from the host's connection.
+  def users_count_query
+    RailsPulse::Query.find_by!(normalized_sql: "SELECT COUNT(*) FROM #{ActiveRecord::Base.connection.quote_table_name("users")}")
   end
 
   def route_summary(route)
