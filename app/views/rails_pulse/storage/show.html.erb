@@ -92,6 +92,23 @@
       </dd>
       <dt>Count caps</dt>
       <dd>Configured in <code>max_table_records</code>. Tables without a key have no count limit.</dd>
+      <dt>Detail capture</dt>
+      <dd>
+        <% detail_capture = @status.detail_capture %>
+        <% if !detail_capture[:enabled] %>
+          Off: every request is kept in full
+        <% else %>
+          On (<%= detail_capture[:settings_label] %>)
+          <br>
+          <span class="text-subtle">
+            <% if (rate = detail_capture[:rate]) %>
+              Kept <%= rate.share_label %> of the last day's <%= number_with_delimiter(rate.total) %> requests in full
+            <% else %>
+              Share kept appears once SummaryJob has summarized an hour with folded requests
+            <% end %>
+          </span>
+        <% end %>
+      </dd>
     </dl>
   <% end %>
 

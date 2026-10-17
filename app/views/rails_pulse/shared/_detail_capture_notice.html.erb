@@ -1,9 +1,0 @@
-<%# Shown over anything built from individual requests while detail capture is
-    on: those rows are the captured subset, but every aggregate on the
-    dashboard still counts all traffic (decision 0022). %>
-<% if RailsPulse.configuration.detail_capture_settings %>
-  <p class="flex items-center gap text-sm text-muted mb-4">
-    <%= rails_pulse_icon "info", width: "14", height: "14" %>
-    <span><%= local_assigns.fetch(:message, "Detail capture is on. This list shows only captured requests (slow, errored, or sampled). Charts and totals include all traffic.") %></span>
-  </p>
-<% end %>

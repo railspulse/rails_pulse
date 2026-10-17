@@ -30,6 +30,17 @@ module RailsPulse
       refute settings.errors
     end
 
+    test "detail_capture settings describe themselves for status and the storage page" do
+      config = Configuration.new
+      config.detail_capture = { requests_slower_than: 500, sample_rate: 0.015 }
+
+      assert_equal "slower than 500ms, 1.5% sample, errors", config.detail_capture_settings.description
+
+      config.detail_capture = { sample_rate: 0.2, errors: false }
+
+      assert_equal "20% sample", config.detail_capture_settings.description
+    end
+
     test "detail_capture defaults sample_rate to 0 and errors to true" do
       config = Configuration.new
       config.detail_capture = { requests_slower_than: 1000 }

@@ -50,6 +50,7 @@ module RailsPulse
         print_initializer
         print_tracking
         print_writer
+        print_detail_capture
         print_summaries
         print_retention
         print_cleanup
@@ -204,15 +205,33 @@ module RailsPulse
         output.puts "Writer:     could not check (#{e.class}: #{e.message})"
       end
 
+      # A fixed threshold drifts out of date as the app's response times and
+      # traffic change; the share kept is how a host notices.
+      def print_detail_capture
+        settings = config.detail_capture_settings
+        return unless settings
+
+        rate = RailsPulse::DetailCaptureRate.for
+        if rate.nil?
+          output.puts "Detail:     no rate yet (it needs an hour SummaryJob has summarized with at least one folded request)"
+          return
+        end
+
+        output.puts "Detail:     kept #{rate.share_label} of #{delimited(rate.total)} requests in the last day " \
+                    "(slow, errored or sampled; the rest were folded)"
+        return unless rate.high?
+
+        routes = RailsPulse::DetailCaptureRate.top_kept_routes_label
+        suggest "Detail capture kept #{rate.share_label} of requests in the last day, so it saves little storage. " \
+                "To store less, #{RailsPulse::DetailCaptureRate.retune_advice(settings)} in config/initializers/rails_pulse.rb." +
+                (routes ? " Routes keeping the most: #{routes}." : "")
+      rescue StandardError => e
+        output.puts "Detail:     could not check (#{e.class}: #{e.message})"
+      end
+
       def detail_capture_label
         settings = config.detail_capture_settings
-        return "off" unless settings
-
-        parts = []
-        parts << "slower than #{settings.requests_slower_than.to_i}ms" if settings.requests_slower_than
-        parts << "#{(settings.sample_rate * 100).round(2)}% sample" if settings.sample_rate.positive?
-        parts << "errors" if settings.errors
-        "on (#{parts.join(', ')})"
+        settings ? "on (#{settings.description})" : "off"
       end
 
       def print_summaries
@@ -418,6 +437,10 @@ module RailsPulse
       def days(duration)
         value = (duration / 1.day.to_f).round(1)
         "#{value == value.to_i ? value.to_i : value} day#{'s' unless value == 1}"
+      end
+
+      def delimited(number)
+        ActiveSupport::NumberHelper.number_to_delimited(number)
       end
 
       def time_ago(time)

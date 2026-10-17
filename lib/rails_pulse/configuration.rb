@@ -148,7 +148,16 @@ module RailsPulse
     # on every request; nil whenever detail capture is off.
     attr_reader :detail_capture_settings
 
-    DetailCaptureSettings = Struct.new(:requests_slower_than, :sample_rate, :errors)
+    DetailCaptureSettings = Struct.new(:requests_slower_than, :sample_rate, :errors) do
+      # "slower than 500ms, 1% sample, errors"
+      def description
+        parts = []
+        parts << "slower than #{requests_slower_than.round}ms" if requests_slower_than
+        parts << "#{(sample_rate * 100).round(2).to_s.delete_suffix('.0')}% sample" if sample_rate.positive?
+        parts << "errors" if errors
+        parts.join(", ")
+      end
+    end
 
     # Validates on assignment, like the threshold setters, so the normalized
     # settings are ready the moment the initializer line runs.

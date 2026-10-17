@@ -136,7 +136,7 @@ class RailsPulse::Middleware::DetailCaptureEndToEndTest < ActionDispatch::Integr
     get rails_pulse.query_path(query)
 
     assert_response :success
-    assert_includes response.body, "come only from captured requests"
+    assert_includes response.body, "Diagnostics, locations and raw data come only from captured requests"
   end
 
   # Edge Cases

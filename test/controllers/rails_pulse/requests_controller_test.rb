@@ -83,6 +83,45 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     RailsPulse.configuration.detail_capture = nil
   end
 
+  test "index action gives the share of all requests captured" do
+    RailsPulse.configuration.detail_capture = { requests_slower_than: 500 }
+    RailsPulse::DetailCaptureRate.stubs(:for).with(nil).returns(stub(share_label: "4.2%", high?: false))
+
+    get rails_pulse.requests_path
+
+    assert_response :success
+    assert_includes response.body, "Captured in the last day: 4.2% of all requests."
+    assert_not_includes response.body, "That&#39;s most of them"
+  ensure
+    RailsPulse.configuration.detail_capture = nil
+  end
+
+  test "index action warns when most requests are being captured" do
+    RailsPulse.configuration.detail_capture = { requests_slower_than: 500 }
+    RailsPulse::DetailCaptureRate.stubs(:for).with(nil).returns(stub(share_label: "60%", high?: true))
+
+    get rails_pulse.requests_path
+
+    assert_response :success
+    assert_includes response.body, "Captured in the last day: 60% of all requests."
+    assert_includes response.body, "That&#39;s most of them, so detail capture saves little storage"
+  ensure
+    RailsPulse.configuration.detail_capture = nil
+  end
+
+  test "index action leaves the share out until it is known" do
+    RailsPulse.configuration.detail_capture = { requests_slower_than: 500 }
+    RailsPulse::DetailCaptureRate.stubs(:for).returns(nil)
+
+    get rails_pulse.requests_path
+
+    assert_response :success
+    assert_includes response.body, "This list shows only captured requests"
+    assert_not_includes response.body, "Captured in the last day"
+  ensure
+    RailsPulse.configuration.detail_capture = nil
+  end
+
   test "index action with ransack search by status" do
     get rails_pulse.requests_path, params: { q: { status_eq: 200 } }
 

@@ -11,7 +11,7 @@ module RailsPulse
       # Memoized: computing the items costs several aggregate queries (one a
       # raw-request count), and one dashboard render asks for them repeatedly.
       def pressure_items
-        @pressure_items ||= summary_staleness_items + sub_hour_retention_items + writer_drop_items
+        @pressure_items ||= summary_staleness_items + sub_hour_retention_items + writer_drop_items + detail_capture_items
       end
 
       # Dropped requests get their own Tracking badge, not this one
@@ -98,6 +98,39 @@ module RailsPulse
                          "<strong>How to fix:</strong> raise <code>config.async_queue_size</code> in the Rails Pulse initializer, or find out " \
                          "why the writer cannot keep up: database latency, a saturated connection pool, or a burst far above normal traffic. " \
                          "<code>rails rails_pulse:status</code> reports the same numbers from the shell."
+        } ]
+      rescue ActiveRecord::ActiveRecordError
+        []
+      end
+
+      # Signal D — detail capture keeping most traffic, so the requests and
+      # operations tables grow almost as if it were off
+      def detail_capture_items
+        settings = @config.detail_capture_settings
+        return [] unless settings
+
+        rate = RailsPulse::DetailCaptureRate.for
+        return [] unless rate&.high?
+
+        routes = RailsPulse::DetailCaptureRate.top_kept_routes_label
+        [ {
+          type:          "STORAGE",
+          name:          "Detail capture",
+          reason:        "Kept #{rate.share_label} of the last day's requests in full, so it saves little storage",
+          metric:        "#{rate.share_label} kept",
+          metric_sub:    "of #{rate.total.to_fs(:delimited)} requests, last day",
+          link:          "#",
+          severity:      :warning,
+          # Cleanup still runs; detail capture only decides what it has to delete
+          cleanup:       false,
+          sort_score:    rate.share,
+          popover_title: "Detail capture is keeping most requests",
+          popover_body:  "With <code>config.detail_capture</code> on (#{ERB::Util.html_escape(settings.description)}), only slow, errored " \
+                         "and sampled requests are kept in full; the rest are folded into hourly totals. In the last day " \
+                         "#{rate.share_label} were kept, so the requests and operations tables are growing almost as if it were off.<br><br>" \
+                         "<strong>How to fix:</strong> #{RailsPulse::DetailCaptureRate.retune_advice(settings).upcase_first} " \
+                         "in the Rails Pulse initializer." +
+                         (routes ? "<br><br>Routes keeping the most: #{ERB::Util.html_escape(routes)}." : "")
         } ]
       rescue ActiveRecord::ActiveRecordError
         []
