@@ -131,7 +131,7 @@ class RailsPulse::Middleware::DetailCaptureEndToEndTest < ActionDispatch::Integr
     get rails_pulse.route_path(route)
 
     assert_response :success
-    assert_includes response.body, "this list shows only captured requests"
+    assert_includes response.body, "This list shows only captured requests"
 
     get rails_pulse.query_path(query)
 

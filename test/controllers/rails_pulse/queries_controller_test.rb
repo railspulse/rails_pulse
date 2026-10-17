@@ -649,8 +649,8 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse_engine.query_path(@query1)
 
     assert_response :success
-    assert_includes response.body, "the diagnostics, locations and raw data below come only from captured requests"
-    assert_not_includes response.body, "this list shows only captured requests"
+    assert_includes response.body, "The diagnostics, locations and raw data below come only from captured requests"
+    assert_not_includes response.body, "This list shows only captured requests"
   ensure
     RailsPulse.configuration.detail_capture = nil
   end

@@ -456,7 +456,7 @@ module RailsPulse
 
       if slower_than.nil? && sample_rate.zero?
         raise ArgumentError,
-          "detail_capture would capture no detail beyond errors — set requests_slower_than, " \
+          "detail_capture would capture no detail beyond errors; set requests_slower_than, " \
           "a positive sample_rate, or both"
       end
 

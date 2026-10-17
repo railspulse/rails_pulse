@@ -78,7 +78,7 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.requests_path
 
     assert_response :success
-    assert_includes response.body, "this list shows only captured requests"
+    assert_includes response.body, "This list shows only captured requests"
   ensure
     RailsPulse.configuration.detail_capture = nil
   end
