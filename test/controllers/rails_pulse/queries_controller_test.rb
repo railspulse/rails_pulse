@@ -644,7 +644,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
   test "show action explains that the operation sections are captured-only when detail capture is on" do
     setup_basic_test_data
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 500 }
+    RailsPulse.configuration.detail_capture = true
 
     get rails_pulse_engine.query_path(@query1)
 
@@ -652,12 +652,12 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Diagnostics, locations and raw data come only from captured requests"
     assert_not_includes response.body, "This list shows only captured requests"
   ensure
-    RailsPulse.configuration.detail_capture = nil
+    RailsPulse.configuration.detail_capture = false
   end
 
   test "show action gives the share of the query's executions captured" do
     setup_basic_test_data
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 500 }
+    RailsPulse.configuration.detail_capture = true
     RailsPulse::DetailCaptureRate.stubs(:for).with(@query1).returns(stub(share_label: "under 0.1%", high?: false))
 
     get rails_pulse_engine.query_path(@query1)
@@ -665,7 +665,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_includes response.body, "Captured in the last day: under 0.1% of this query&#39;s executions."
   ensure
-    RailsPulse.configuration.detail_capture = nil
+    RailsPulse.configuration.detail_capture = false
   end
 
   test "show action has no detail capture info when detail capture is off" do

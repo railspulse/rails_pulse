@@ -87,16 +87,18 @@ module RailsPulse
       assert_equal "/api/users (1,400 of 1,500)", DetailCaptureRate.top_kept_routes_label
     end
 
-    test "the retune advice names each setting in use with its value" do
+    test "the retune advice names each setting with its value" do
       config = RailsPulse::Configuration.new
-      config.detail_capture = { requests_slower_than: 500, sample_rate: 0.01 }
+      config.detail_capture = true
 
-      assert_equal "raise requests_slower_than (500ms now), raise queries_slower_than (100ms now) or lower sample_rate (1% now)",
+      assert_equal "raise request_thresholds[:slow] (700ms now) or query_thresholds[:slow] (100ms now), " \
+                   "or lower detail_capture_sample_rate (1% now)",
                    DetailCaptureRate.retune_advice(config.detail_capture_settings)
 
-      config.detail_capture = { requests_slower_than: 250, queries_slower_than: nil }
+      config.detail_capture_sample_rate = 0
 
-      assert_equal "raise requests_slower_than (250ms now)", DetailCaptureRate.retune_advice(config.detail_capture_settings)
+      assert_equal "raise request_thresholds[:slow] (700ms now) or query_thresholds[:slow] (100ms now)",
+                   DetailCaptureRate.retune_advice(config.detail_capture_settings)
     end
 
     # Edge Cases

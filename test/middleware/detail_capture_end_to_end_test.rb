@@ -7,17 +7,21 @@ class RailsPulse::Middleware::DetailCaptureEndToEndTest < ActionDispatch::Integr
   HOUR = Time.zone.parse("2026-10-14 10:00:00")
 
   setup do
-    @original_detail_capture = RailsPulse.configuration.detail_capture
+    config = RailsPulse.configuration
+    @original_settings = %i[detail_capture detail_capture_sample_rate request_thresholds query_thresholds].index_with { |key| config.public_send(key) }
     RailsPulse::SchemaCheck.reset!
     RailsPulse::Tracker.reset_rollups!
     # Nothing is slow enough to keep on its own; the sample roll decides.
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 60_000, sample_rate: 0.5, errors: true }
+    config.request_thresholds = config.request_thresholds.merge(slow: 60_000)
+    config.query_thresholds = config.query_thresholds.merge(slow: 60_000)
+    config.detail_capture_sample_rate = 0.5
+    config.detail_capture = true
     travel_to HOUR + 20.minutes
   end
 
   teardown do
     travel_back
-    RailsPulse.configuration.detail_capture = @original_detail_capture
+    @original_settings.each { |key, value| RailsPulse.configuration.public_send("#{key}=", value) }
     RailsPulse::Tracker.reset_rollups!
     RailsPulse::SchemaCheck.reset!
   end
@@ -142,7 +146,7 @@ class RailsPulse::Middleware::DetailCaptureEndToEndTest < ActionDispatch::Integr
   # Edge Cases
 
   test "with detail capture off every request is kept and no rollups are written" do
-    RailsPulse.configuration.detail_capture = nil
+    RailsPulse.configuration.detail_capture = false
 
     assert_difference "RailsPulse::Request.count", 3 do
       3.times { request_path("/fast") }

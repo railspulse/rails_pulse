@@ -76,7 +76,8 @@ module RailsPulse
 
       # With detail capture off the payload has no :detail key at all. With
       # it on, a request that is slow, ran a slow query, errored or was
-      # sampled gets the full payload (plus detail: true); every other
+      # sampled (by the slow request and query thresholds and
+      # detail_capture_sample_rate) gets the full payload (plus detail: true); every other
       # request is slimmed here, on the request thread, to what the writer's
       # rollups need: the route identity, duration, status, and its SQL
       # operations reduced to statement and duration. Decision 0022.
@@ -106,9 +107,9 @@ module RailsPulse
       end
 
       def capture_detail?(settings, duration, status, operations)
-        return true if settings.errors && status.to_i >= 500
-        return true if settings.requests_slower_than && duration >= settings.requests_slower_than
-        return true if settings.queries_slower_than && operations.any? { |op| op[:operation_type] == "sql" && op[:duration].to_f >= settings.queries_slower_than }
+        return true if status.to_i >= 500
+        return true if duration >= settings.requests_slower_than
+        return true if operations.any? { |op| op[:operation_type] == "sql" && op[:duration].to_f >= settings.queries_slower_than }
 
         settings.sample_rate > 0 && Kernel.rand < settings.sample_rate
       end

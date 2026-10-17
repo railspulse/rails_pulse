@@ -198,8 +198,9 @@ module RailsPulse
 
         action "The writer dropped #{dropped} request(s) in the last hour. Raise config.async_queue_size or check database latency."
         if config.detail_capture_settings.nil?
-          suggest "At sustained high traffic, config.detail_capture keeps full detail only for slow, errored and " \
-                  "sampled requests while dashboards still count all traffic, taking most of the load off the writer."
+          suggest "At sustained high traffic, config.detail_capture = true keeps full detail only for slow requests, " \
+                  "requests with a slow query, errors and a sample while dashboards still count all traffic, " \
+                  "taking most of the load off the writer."
         end
       rescue StandardError => e
         output.puts "Writer:     could not check (#{e.class}: #{e.message})"

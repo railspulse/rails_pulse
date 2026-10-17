@@ -12,13 +12,11 @@ RailsPulse.configure do |config|
   # Suppress stale summary warning in development (summary job isn't scheduled locally)
   config.warn_on_stale_summaries = false if Rails.env.development?
 
-  # Try detail capture locally: DETAIL_CAPTURE_SLOWER_THAN=<ms> bin/rails server
-  if ENV["DETAIL_CAPTURE_SLOWER_THAN"].present?
-    config.detail_capture = {
-      requests_slower_than: ENV["DETAIL_CAPTURE_SLOWER_THAN"].to_i,
-      sample_rate: ENV.fetch("DETAIL_CAPTURE_SAMPLE_RATE", "0").to_f,
-      errors: true
-    }
+  # Try detail capture locally: DETAIL_CAPTURE=1 bin/rails server
+  # (DETAIL_CAPTURE_SAMPLE_RATE=0.2 to change the sample)
+  if ENV["DETAIL_CAPTURE"].present?
+    config.detail_capture = true
+    config.detail_capture_sample_rate = ENV.fetch("DETAIL_CAPTURE_SAMPLE_RATE", "0.01").to_f
   end
 
   # ====================================================================================================

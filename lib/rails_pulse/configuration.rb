@@ -142,28 +142,34 @@ module RailsPulse
                 :exception_thresholds,
                 :max_table_records,
                 :regression_thresholds,
-                :detail_capture
+                :detail_capture,
+                :detail_capture_sample_rate
 
-    # The validated, frozen form of detail_capture that the middleware reads
-    # on every request; nil whenever detail capture is off.
+    # What detail capture keeps, resolved from the slow thresholds, for the
+    # middleware to read on every request; nil whenever detail capture is off.
     attr_reader :detail_capture_settings
 
-    DetailCaptureSettings = Struct.new(:requests_slower_than, :queries_slower_than, :sample_rate, :errors) do
-      # "slower than 500ms, a query slower than 100ms, 1% sample, errors"
+    # Errors are always kept, so they are not a field.
+    DetailCaptureSettings = Struct.new(:requests_slower_than, :queries_slower_than, :sample_rate) do
+      # "requests over 700ms, queries over 100ms, 1% sample, errors"
       def description
-        parts = []
-        parts << "slower than #{requests_slower_than.round}ms" if requests_slower_than
-        parts << "a query slower than #{queries_slower_than.round}ms" if queries_slower_than
+        parts = [ "requests over #{requests_slower_than.round}ms", "queries over #{queries_slower_than.round}ms" ]
         parts << "#{(sample_rate * 100).round(2).to_s.delete_suffix('.0')}% sample" if sample_rate.positive?
-        parts << "errors" if errors
+        parts << "errors"
         parts.join(", ")
       end
     end
 
-    # Validates on assignment, like the threshold setters, so the normalized
-    # settings are ready the moment the initializer line runs.
+    # The setters resolve the settings on assignment, like the threshold
+    # setters validate, so they are ready the moment the initializer line
+    # runs, whichever order it sets them in.
     def detail_capture=(value)
       @detail_capture = value
+      validate_detail_capture_settings!
+    end
+
+    def detail_capture_sample_rate=(value)
+      @detail_capture_sample_rate = value
       validate_detail_capture_settings!
     end
 
@@ -281,7 +287,8 @@ module RailsPulse
       }
 
       # Off by default: every request is persisted in full. See decision 0022.
-      @detail_capture = nil
+      @detail_capture = false
+      @detail_capture_sample_rate = 0.01
       @detail_capture_settings = nil
 
       # Validate defaults eagerly so that a misconfigured initializer raises at
@@ -301,14 +308,13 @@ module RailsPulse
     def request_thresholds=(value)
       validate_threshold_hash!(value, "request_thresholds")
       @request_thresholds = value
+      validate_detail_capture_settings!
     end
 
     def query_thresholds=(value)
       validate_threshold_hash!(value, "query_thresholds")
       @query_thresholds = value
-      # queries_slower_than defaults to the slow query threshold, whichever
-      # of the two the initializer sets first
-      validate_detail_capture_settings! if @detail_capture
+      validate_detail_capture_settings!
     end
 
     def job_thresholds=(value)
@@ -434,56 +440,31 @@ module RailsPulse
       end
     end
 
-    DETAIL_CAPTURE_KEYS = %i[requests_slower_than queries_slower_than sample_rate errors].freeze
-    private_constant :DETAIL_CAPTURE_KEYS
-
+    # Detail capture keeps what the dashboard calls slow (the slow request
+    # and query thresholds), errors, and a random sample, so every request or
+    # query it flags has detail behind it and p95/p99 usually land among the
+    # requests kept in full. Decision 0022.
     def validate_detail_capture_settings!
-      if @detail_capture.nil?
-        @detail_capture_settings = nil
-        return
+      unless [ true, false ].include?(@detail_capture)
+        raise ArgumentError, "detail_capture must be true or false, got #{@detail_capture.inspect}"
       end
 
-      unless @detail_capture.is_a?(Hash)
-        raise ArgumentError, "detail_capture must be a hash or nil, got #{@detail_capture.class}"
-      end
-
-      unknown = @detail_capture.keys.map(&:to_sym) - DETAIL_CAPTURE_KEYS
-      if unknown.any?
-        raise ArgumentError, "detail_capture has unknown keys #{unknown.inspect} (allowed: #{DETAIL_CAPTURE_KEYS.inspect})"
-      end
-
-      slower_than = @detail_capture[:requests_slower_than]
-      if slower_than && !(slower_than.is_a?(Numeric) && slower_than > 0)
-        raise ArgumentError, "detail_capture[:requests_slower_than] must be a positive number of milliseconds or nil, got #{slower_than.inspect}"
-      end
-
-      # Left out, a request with any query at or above the slow query
-      # threshold is kept, so every query the dashboard calls slow has
-      # requests to inspect. nil turns the query trigger off.
-      queries_slower_than = @detail_capture.fetch(:queries_slower_than) { @query_thresholds[:slow] }
-      if queries_slower_than && !(queries_slower_than.is_a?(Numeric) && queries_slower_than > 0)
-        raise ArgumentError, "detail_capture[:queries_slower_than] must be a positive number of milliseconds or nil, got #{queries_slower_than.inspect}"
-      end
-
-      sample_rate = @detail_capture.fetch(:sample_rate, 0)
+      sample_rate = @detail_capture_sample_rate
       unless sample_rate.is_a?(Numeric) && sample_rate >= 0 && sample_rate <= 1
-        raise ArgumentError, "detail_capture[:sample_rate] must be a number between 0 and 1, got #{sample_rate.inspect}"
+        raise ArgumentError, "detail_capture_sample_rate must be a number between 0 and 1, got #{sample_rate.inspect}"
       end
 
-      errors = @detail_capture.fetch(:errors, true)
-      unless [ true, false ].include?(errors)
-        raise ArgumentError, "detail_capture[:errors] must be true or false, got #{errors.inspect}"
+      if @detail_capture
+        { "request_thresholds" => @request_thresholds, "query_thresholds" => @query_thresholds }.each do |name, thresholds|
+          raise ArgumentError, "detail_capture needs #{name}[:slow], the duration it keeps detail above" unless thresholds[:slow]
+        end
       end
 
-      if slower_than.nil? && queries_slower_than.nil? && sample_rate.zero?
-        raise ArgumentError,
-          "detail_capture would capture no detail beyond errors; set requests_slower_than, " \
-          "queries_slower_than or a positive sample_rate"
+      @detail_capture_settings = if @detail_capture
+        DetailCaptureSettings.new(
+          @request_thresholds[:slow].to_f, @query_thresholds[:slow].to_f, sample_rate.to_f
+        ).freeze
       end
-
-      @detail_capture_settings = DetailCaptureSettings.new(
-        slower_than&.to_f, queries_slower_than&.to_f, sample_rate.to_f, errors
-      ).freeze
     end
 
     def validate_patterns!

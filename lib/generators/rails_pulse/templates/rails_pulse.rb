@@ -421,19 +421,18 @@ RailsPulse.configure do |config|
   config.full_retention_period = 30.days
 
   # At high traffic (millions of requests a day), keep full per-request detail
-  # only for the requests worth inspecting. With detail_capture set, a request
-  # is stored as rows only when it is slow, runs a slow query, errors, or is
-  # randomly sampled;
+  # only for the requests worth inspecting. With detail_capture on, a request
+  # is stored as rows only when it is slow (request_thresholds[:slow]), runs a
+  # slow query (query_thresholds[:slow]), errors, or is randomly sampled;
   # everything else is folded into compact per-route and per-query aggregates,
   # so dashboard counts, error rates and percentiles still cover ALL traffic.
-  # The requests list then shows captured requests only. Off (nil) by default.
-  # config.detail_capture = {
-  #   requests_slower_than: 500,  # keep requests at/above this many ms
-  #   queries_slower_than:  100,  # and any request with a query this slow
-  #                               # (default: query_thresholds[:slow]; nil = off)
-  #   sample_rate:          0.01, # plus 1% of the rest, for a representative sample
-  #   errors:               true  # and every 5xx request
-  # }
+  # The requests list then shows captured requests only. To store less, raise
+  # the slow thresholds or lower the sample rate.
+  config.detail_capture = false
+
+  # Share of the remaining requests kept in full, so fast routes and queries
+  # still have examples to inspect.
+  config.detail_capture_sample_rate = 0.01
 
   # How long rows in rails_pulse_events are kept. The background writer's
   # heartbeats are pruned after a day regardless.

@@ -1,16 +1,29 @@
 require "test_helper"
 
 # The capture decision RequestCollector makes per request when
-# config.detail_capture is set (decision 0022).
+# config.detail_capture is on (decision 0022).
 class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
+  CAPTURE_SETTINGS = %i[detail_capture detail_capture_sample_rate request_thresholds query_thresholds].freeze
+
   def setup
-    @original_detail_capture = RailsPulse.configuration.detail_capture
+    config = RailsPulse.configuration
+    @original_settings = CAPTURE_SETTINGS.index_with { |key| config.public_send(key) }
     @payload = nil
     RailsPulse::Tracker.stubs(:track_request).with { |data| @payload = data; true }
   end
 
   def teardown
-    RailsPulse.configuration.detail_capture = @original_detail_capture
+    @original_settings.each { |key, value| RailsPulse.configuration.public_send("#{key}=", value) }
+  end
+
+  # Detail capture on with slow thresholds nothing here reaches, unless a
+  # test lowers one.
+  def capture(request_slow: 10_000_000, query_slow: 10_000_000, sample_rate: 0)
+    config = RailsPulse.configuration
+    config.request_thresholds = config.request_thresholds.merge(slow: request_slow)
+    config.query_thresholds = config.query_thresholds.merge(slow: query_slow)
+    config.detail_capture_sample_rate = sample_rate
+    config.detail_capture = true
   end
 
   OPERATIONS = [
@@ -39,8 +52,8 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
     assert_equal 2, payload[:operations].size
   end
 
-  test "a request past the threshold keeps full detail" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 100 }
+  test "a request past the slow request threshold keeps full detail" do
+    capture(request_slow: 100)
     # A stub app finishes in well under 0.01ms on a fast machine, which the
     # collector rounds to 0, so the clock is fixed: the request takes 250ms.
     Process.stubs(:clock_gettime).returns(10.0, 10.25)
@@ -52,8 +65,8 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
     assert_equal 2, payload[:operations].size
   end
 
-  test "a request that ran a slow query keeps full detail" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000, queries_slower_than: 50 }
+  test "a request that ran a query at the slow query threshold keeps full detail" do
+    capture(query_slow: 50)
     slow_query = OPERATIONS.first.merge(duration: 50.0)
 
     payload = call_middleware(operations: [ slow_query, OPERATIONS.last ])
@@ -62,8 +75,8 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
     assert_equal 2, payload[:operations].size
   end
 
-  test "a request whose queries are all under queries_slower_than folds" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000, queries_slower_than: 50 }
+  test "a request whose queries are all under the slow query threshold folds" do
+    capture(query_slow: 50)
     query = OPERATIONS.first.merge(duration: 49.9)
 
     payload = call_middleware(operations: [ query, OPERATIONS.last.merge(duration: 500.0) ])
@@ -71,41 +84,16 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
     refute payload[:detail]
   end
 
-  test "a slow query keeps its request at the slow query threshold by default" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000 }
-    slow_query = OPERATIONS.first.merge(duration: RailsPulse.configuration.query_thresholds[:slow].to_f)
-
-    payload = call_middleware(operations: [ slow_query ])
-
-    assert payload[:detail]
-  end
-
-  test "queries_slower_than nil lets a request with a slow query fold" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000, queries_slower_than: nil }
-
-    payload = call_middleware(operations: [ OPERATIONS.first.merge(duration: 5_000.0) ])
-
-    refute payload[:detail]
-  end
-
   test "an errored request keeps full detail" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000 }
+    capture
 
     payload = call_middleware(status: 500)
 
     assert payload[:detail]
-  end
-
-  test "errors false lets an errored fast request fold" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000, errors: false }
-
-    payload = call_middleware(status: 500)
-
-    refute payload[:detail]
   end
 
   test "a sampled request keeps full detail" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000, sample_rate: 1.0 }
+    capture(sample_rate: 1.0)
 
     payload = call_middleware
 
@@ -113,7 +101,7 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
   end
 
   test "a fast unsampled request is slimmed to route identity and SQL" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000 }
+    capture
 
     payload = call_middleware
 
@@ -135,7 +123,7 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
   # Edge Cases
 
   test "sampling uses Kernel.rand against the configured rate" do
-    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000, sample_rate: 0.5 }
+    capture(sample_rate: 0.5)
 
     Kernel.stubs(:rand).returns(0.4)
 

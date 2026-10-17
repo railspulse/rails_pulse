@@ -269,7 +269,7 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
   test "detail capture off prints no capture rate" do
     assume_clean_install
 
-    with_config(detail_capture: nil) { report }
+    with_config(detail_capture: false) { report }
 
     assert_not_includes @output.string, "Detail:"
   end
@@ -278,7 +278,7 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
     assume_clean_install
     RailsPulse::Rollup.delete_all
 
-    with_config(detail_capture: { requests_slower_than: 500 }) { report }
+    with_config(detail_capture: true) { report }
 
     assert_includes @output.string, "Detail:     no rate yet"
   end
@@ -287,7 +287,7 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
     assume_clean_install
     capture_hour(total: 2000, folded: 1900)
 
-    with_config(detail_capture: { requests_slower_than: 500 }) { assert report }
+    with_config(detail_capture: true) { assert report }
 
     assert_includes @output.string, "Detail:     kept 5% of 2,000 requests in the last day"
     assert_not_includes @output.string, "saves little storage"
@@ -298,10 +298,10 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
     route = rails_pulse_routes(:api_users)
     capture_hour(total: 1000, folded: 400, route: route)
 
-    with_config(detail_capture: { requests_slower_than: 500, sample_rate: 0.05 }) { assert report }
+    with_config(detail_capture: true, detail_capture_sample_rate: 0.05) { assert report }
 
     assert_includes @output.string, "Detail:     kept 60% of 1,000 requests"
-    assert_match(/Suggestions:.*kept 60% of requests in the last day, so it saves little storage. To store less, raise requests_slower_than \(500ms now\), raise queries_slower_than \(100ms now\) or lower sample_rate \(5% now\).*Routes keeping the most: \/api\/users \(600 of 1,000\)/m, @output.string)
+    assert_match(/Suggestions:.*kept 60% of requests in the last day, so it saves little storage. To store less, raise request_thresholds\[:slow\] \(700ms now\) or query_thresholds\[:slow\] \(100ms now\), or lower detail_capture_sample_rate \(5% now\).*Routes keeping the most: \/api\/users \(600 of 1,000\)/m, @output.string)
   end
 
   test "suggestions follow the OK line and do not fail the report" do

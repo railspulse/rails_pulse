@@ -18,7 +18,8 @@ module RailsPulse
       end
 
       def teardown
-        RailsPulse.configuration.detail_capture = nil
+        RailsPulse.configuration.detail_capture = false
+        RailsPulse.configuration.detail_capture_sample_rate = 0.01
         RailsPulse.configuration.full_retention_period = @original_retention
         RailsPulse.configuration.archiving_enabled     = @original_archiving
         travel_back
@@ -53,7 +54,8 @@ module RailsPulse
 
       test "detail capture keeping over a quarter of requests is a storage warning naming the settings and routes" do
         create_fresh_summary
-        RailsPulse.configuration.detail_capture = { requests_slower_than: 500, sample_rate: 0.05 }
+        RailsPulse.configuration.detail_capture = true
+        RailsPulse.configuration.detail_capture_sample_rate = 0.05
         rate = stub(high?: true, share: 0.6, share_label: "60%", total: 1000)
         RailsPulse::DetailCaptureRate.stubs(:for).returns(rate)
         RailsPulse::DetailCaptureRate.stubs(:top_kept_routes_label).returns("/reports (590 of 600)")
@@ -65,7 +67,7 @@ module RailsPulse
         assert_equal "STORAGE", item[:type]
         assert_equal :warning, item[:severity]
         assert_equal "60% kept", item[:metric]
-        assert_includes item[:popover_body], "Raise requests_slower_than (500ms now), raise queries_slower_than (100ms now) or lower sample_rate (5% now)"
+        assert_includes item[:popover_body], "Raise request_thresholds[:slow] (700ms now) or query_thresholds[:slow] (100ms now), or lower detail_capture_sample_rate (5% now)"
         assert_includes item[:popover_body], "/reports (590 of 600)"
         assert_equal({ healthy: 0, slow: 1, critical: 0 }, pressure.storage_counts)
         assert_equal :healthy, StorageStatus.new(storage_pressure: pressure).cleanup[:health]
@@ -73,7 +75,7 @@ module RailsPulse
 
       test "detail capture at a normal share is not a pressure item" do
         create_fresh_summary
-        RailsPulse.configuration.detail_capture = { requests_slower_than: 500 }
+        RailsPulse.configuration.detail_capture = true
         RailsPulse::DetailCaptureRate.stubs(:for).returns(stub(high?: false))
 
         assert_empty StoragePressure.new.pressure_items
@@ -81,7 +83,7 @@ module RailsPulse
 
       test "detail capture with no rate yet is not a pressure item" do
         create_fresh_summary
-        RailsPulse.configuration.detail_capture = { requests_slower_than: 500 }
+        RailsPulse.configuration.detail_capture = true
         RailsPulse::DetailCaptureRate.stubs(:for).returns(nil)
 
         assert_empty StoragePressure.new.pressure_items

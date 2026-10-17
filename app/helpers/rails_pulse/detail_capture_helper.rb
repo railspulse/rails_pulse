@@ -26,8 +26,7 @@ module RailsPulse
 
     def detail_capture_retune_sentence
       advice = DetailCaptureRate.retune_advice(RailsPulse.configuration.detail_capture_settings)
-      sentence = "That's over a quarter of them, so detail capture saves little storage."
-      advice.present? ? "#{sentence} To store less, #{advice}." : sentence
+      "That's over a quarter of them, so detail capture saves little storage. To store less, #{advice}."
     end
 
     def detail_capture_rate_sentence(rate, subject)
