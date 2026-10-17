@@ -48,8 +48,12 @@
           <% has_requests = @table_data && @table_data.any? %>
           <% has_archived_summaries = @archived_summary_data && @archived_summary_data.any? %>
 
+          <%# Shown even when the table is empty: under detail capture a route
+              whose every request was folded has traffic on the charts but no
+              captured requests to list. %>
+          <%= render 'rails_pulse/shared/detail_capture_notice' %>
+
           <% if has_requests %>
-            <%= render 'rails_pulse/shared/detail_capture_notice' %>
             <%= render 'rails_pulse/routes/requests_table' %>
           <% end %>
 
