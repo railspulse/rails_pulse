@@ -72,6 +72,17 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:pagination)
   end
 
+  test "index action says the list is captured-only when detail capture is on" do
+    RailsPulse.configuration.detail_capture = { requests_slower_than: 500 }
+
+    get rails_pulse.requests_path
+
+    assert_response :success
+    assert_includes response.body, "this list shows only captured requests"
+  ensure
+    RailsPulse.configuration.detail_capture = nil
+  end
+
   test "index action with ransack search by status" do
     get rails_pulse.requests_path, params: { q: { status_eq: 200 } }
 

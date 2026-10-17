@@ -642,6 +642,28 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:table_data)
   end
 
+  test "show action explains that the operation sections are captured-only when detail capture is on" do
+    setup_basic_test_data
+    RailsPulse.configuration.detail_capture = { requests_slower_than: 500 }
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_response :success
+    assert_includes response.body, "the diagnostics, locations and raw data below come only from captured requests"
+    assert_not_includes response.body, "this list shows only captured requests"
+  ensure
+    RailsPulse.configuration.detail_capture = nil
+  end
+
+  test "show action has no detail capture notice when detail capture is off" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.query_path(@query1)
+
+    assert_response :success
+    assert_not_includes response.body, "Detail capture is on"
+  end
+
   test "show action assigns all required instance variables" do
     setup_basic_test_data
 
