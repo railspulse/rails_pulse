@@ -32,16 +32,40 @@ module RailsPulse
         start_time = Process.clock_gettime(Process::CLOCK_MONOTONIC)
         occurred_at = Time.current
 
-        # Process request
-        status, headers, response = @app.call(env)
+        begin
+          status, headers, response = @app.call(env)
+        rescue Exception => exception # rubocop:disable Lint/RescueException
+          # This middleware sits inside ShowExceptions, so an unhandled
+          # exception passes through here before anything renders it. Record
+          # the request with the status the error page will send, then let
+          # the exception continue to the host's error handling unchanged.
+          status = ActionDispatch::ExceptionWrapper.status_code_for_exception(exception.class.name)
+          track(req, env, start_time, occurred_at, status, {}, nil)
+          raise
+        end
+
+        track(req, env, start_time, occurred_at, status, headers, response)
+        [ status, headers, response ]
+      ensure
+        RailsPulse::Current.skip_recording_rails_pulse_activity = false
+        RailsPulse::Current.rails_pulse_request_id = nil
+        RailsPulse::Current.rails_pulse_operations = nil
+      end
+
+      private
+
+      # Never raises: a failure to track must not turn a host response, or a
+      # host exception, into a Rails Pulse error.
+      def track(req, env, start_time, occurred_at, status, headers, response)
         duration = ((Process.clock_gettime(Process::CLOCK_MONOTONIC) - start_time) * 1000).round(2)
 
-        # Collect all tracking data. Operations are copied because the writer
-        # thread annotates them (N+1 detection) after this request has moved on.
+        # Operations are copied because the writer thread annotates them (N+1
+        # detection) after this request has moved on.
         operations = RailsPulse::Current.rails_pulse_operations || []
         path_params = env["action_dispatch.request.path_parameters"] || {}
         controller_action = [ path_params[:controller], path_params[:action] ].compact.join("#").presence
-        tracking_data = {
+
+        RailsPulse::Tracker.track_request(
           method: req.request_method,
           path: RailsPulse::RoutePathNormalizer.normalize(req.path, path_params),
           duration: duration,
@@ -52,23 +76,10 @@ module RailsPulse
           occurred_at: occurred_at,
           response_size_bytes: response_size_bytes(headers, response),
           operations: operations.map(&:dup)
-        }
-
-        # Send to tracker — rescue ensures Pulse never 500s a host request.
-        begin
-          RailsPulse::Tracker.track_request(tracking_data)
-        rescue => e
-          RailsPulse.logger.error("RailsPulse tracking failed: #{e.class} - #{e.message}")
-        end
-
-        [ status, headers, response ]
-      ensure
-        RailsPulse::Current.skip_recording_rails_pulse_activity = false
-        RailsPulse::Current.rails_pulse_request_id = nil
-        RailsPulse::Current.rails_pulse_operations = nil
+        )
+      rescue => e
+        RailsPulse.logger.error("RailsPulse tracking failed: #{e.class} - #{e.message}")
       end
-
-      private
 
       def with_recording_suppressed
         RailsPulse::Current.skip_recording_rails_pulse_activity = true

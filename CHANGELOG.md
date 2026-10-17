@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Requests whose controller raises an unhandled exception are now recorded, with the status the error page sends, so error rates and request counts include them; previously only the exception was tracked and the request was missing.
+
 ## [0.5.0] - 2026-10-16
 
 ## [0.5.0.pre.2] - 2026-10-11
