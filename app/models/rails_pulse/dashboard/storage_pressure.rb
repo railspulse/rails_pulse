@@ -103,8 +103,8 @@ module RailsPulse
         []
       end
 
-      # Signal D — detail capture keeping most traffic, so the requests and
-      # operations tables grow almost as if it were off
+      # Signal D — store_full_details keeping over a quarter of traffic, so the
+      # requests and operations tables grow almost as if it were :all
       def detail_capture_items
         settings = @config.detail_capture_settings
         return [] unless settings
@@ -115,19 +115,19 @@ module RailsPulse
         routes = RailsPulse::DetailCaptureRate.top_kept_routes_label
         [ {
           type:          "STORAGE",
-          name:          "Detail capture",
-          reason:        "Kept #{rate.share_label} of the last day's requests in full, so it saves little storage",
+          name:          "Full details",
+          reason:        "Kept #{rate.share_label} of the last day's requests in full, so little storage is saved",
           metric:        "#{rate.share_label} kept",
           metric_sub:    "of #{rate.total.to_fs(:delimited)} requests, last day",
           link:          "#",
           severity:      :warning,
-          # Cleanup still runs; detail capture only decides what it has to delete
+          # Cleanup still runs; store_full_details only decides what it has to delete
           cleanup:       false,
           sort_score:    rate.share,
-          popover_title: "Detail capture is keeping over a quarter of requests",
-          popover_body:  "With <code>config.detail_capture</code> on (#{ERB::Util.html_escape(settings.description)}), only slow, errored " \
-                         "and sampled requests, and those with a slow query, are kept in full; the rest are folded into hourly totals. In the last day " \
-                         "#{rate.share_label} were kept, so the requests and operations tables are growing almost as if it were off.<br><br>" \
+          popover_title: "Full details are stored for over a quarter of requests",
+          popover_body:  "With <code>config.store_full_details</code> #{ERB::Util.html_escape(settings.description)}, only those requests " \
+                         "are stored in full; the rest are folded into hourly totals. In the last day #{rate.share_label} were stored " \
+                         "in full, so the requests and operations tables are growing almost as if every request were.<br><br>" \
                          "<strong>How to fix:</strong> #{RailsPulse::DetailCaptureRate.retune_advice(settings).upcase_first} " \
                          "in the Rails Pulse initializer." +
                          (routes ? "<br><br>Routes keeping the most: #{ERB::Util.html_escape(routes)}." : "")

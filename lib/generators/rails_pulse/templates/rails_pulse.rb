@@ -420,19 +420,18 @@ RailsPulse.configure do |config|
   # Time-based retention - delete records older than this period
   config.full_retention_period = 30.days
 
-  # At high traffic (millions of requests a day), keep full per-request detail
-  # only for the requests worth inspecting. With detail_capture on, a request
-  # is stored as rows only when it is slow (request_thresholds[:slow]), runs a
-  # slow query (query_thresholds[:slow]), errors, or is randomly sampled;
-  # everything else is folded into compact per-route and per-query aggregates,
-  # so dashboard counts, error rates and percentiles still cover ALL traffic.
-  # The requests list then shows captured requests only. To store less, raise
-  # the slow thresholds or lower the sample rate.
-  config.detail_capture = false
-
-  # Share of the remaining requests kept in full, so fast routes and queries
-  # still have examples to inspect.
-  config.detail_capture_sample_rate = 0.01
+  # Which requests are stored in full, with every query and render. :all
+  # stores every request. At high traffic (millions of requests a day), name
+  # a threshold instead: a request is then stored in full only when it is at
+  # or above request_thresholds[above], runs a query at or above
+  # query_thresholds[above], errors, or falls in sample_rate (default 1%).
+  # Everything else is folded into compact per-route and per-query
+  # aggregates, so dashboard counts, error rates and percentiles still cover
+  # ALL traffic; the requests list then shows the stored requests only.
+  #
+  #   config.store_full_details = { above: :slow }
+  #   config.store_full_details = { above: :critical, sample_rate: 0.001 }
+  config.store_full_details = :all
 
   # How long rows in rails_pulse_events are kept. The background writer's
   # heartbeats are pruned after a day regardless.

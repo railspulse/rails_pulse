@@ -1,5 +1,5 @@
 module RailsPulse
-  # What share of the last day's traffic detail capture kept in full
+  # What share of the last day's traffic store_full_details kept in full
   # (decision 0022), for all requests, one route or one query.
   #
   # Reads summaries and rollups only, never the requests table: an hour's
@@ -7,14 +7,14 @@ module RailsPulse
   # difference was kept. That limits it to hours SummaryJob has summarized.
   #
   # The window starts at the first hour with any rollup, so hours from before
-  # detail capture was turned on (when everything was kept) don't count. With
-  # no rollup at all in the last day the rate is unknown: detail capture was
-  # turned on too recently, or nothing is being folded.
+  # store_full_details was set (when everything was kept) don't count. With
+  # no rollup at all in the last day the rate is unknown: it was set too
+  # recently, or nothing is being folded.
   class DetailCaptureRate
     WINDOW = 24.hours
 
-    # Above this share detail capture saves little of what it would store
-    # without it; a slow threshold likely sits below typical timings.
+    # Above this share, storing only some full details saves little; the
+    # named threshold likely sits below typical timings.
     HIGH_SHARE = 0.25
 
     attr_reader :kept, :total
@@ -28,13 +28,15 @@ module RailsPulse
 
     # What to change when the share is high, e.g. "raise
     # request_thresholds[:slow] (700ms now) or query_thresholds[:slow] (100ms
-    # now), or lower detail_capture_sample_rate (1% now)"
+    # now), set above: to a higher threshold, or lower sample_rate (1% now)"
     def self.retune_advice(settings)
-      advice = "raise request_thresholds[:slow] (#{settings.requests_slower_than.round}ms now) " \
-               "or query_thresholds[:slow] (#{settings.queries_slower_than.round}ms now)"
+      key = settings.threshold.inspect
+      advice = "raise request_thresholds[#{key}] (#{settings.requests_slower_than.round}ms now) " \
+               "or query_thresholds[#{key}] (#{settings.queries_slower_than.round}ms now), " \
+               "set store_full_details[:above] to a higher threshold"
       return advice unless settings.sample_rate.positive?
 
-      "#{advice}, or lower detail_capture_sample_rate (#{(settings.sample_rate * 100).round(2).to_s.delete_suffix('.0')}% now)"
+      "#{advice}, or lower store_full_details[:sample_rate] (#{settings.sample_percent} now)"
     end
 
     # "/reports (2,900 of 3,000), /search (400 of 1,200)", or nil when no

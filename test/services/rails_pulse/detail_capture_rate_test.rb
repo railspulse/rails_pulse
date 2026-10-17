@@ -89,15 +89,16 @@ module RailsPulse
 
     test "the retune advice names each setting with its value" do
       config = RailsPulse::Configuration.new
-      config.detail_capture = true
+      config.store_full_details = { above: :slow }
 
       assert_equal "raise request_thresholds[:slow] (700ms now) or query_thresholds[:slow] (100ms now), " \
-                   "or lower detail_capture_sample_rate (1% now)",
+                   "set store_full_details[:above] to a higher threshold, or lower store_full_details[:sample_rate] (1% now)",
                    DetailCaptureRate.retune_advice(config.detail_capture_settings)
 
-      config.detail_capture_sample_rate = 0
+      config.store_full_details = { above: :critical, sample_rate: 0 }
 
-      assert_equal "raise request_thresholds[:slow] (700ms now) or query_thresholds[:slow] (100ms now)",
+      assert_equal "raise request_thresholds[:critical] (4000ms now) or query_thresholds[:critical] (1000ms now), " \
+                   "set store_full_details[:above] to a higher threshold",
                    DetailCaptureRate.retune_advice(config.detail_capture_settings)
     end
 

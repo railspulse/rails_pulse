@@ -4,7 +4,7 @@ class CreateRailsPulseRollups < ActiveRecord::Migration[7.0]
 
     create_table :rails_pulse_rollups do |t|
       # Per-writer per-hour aggregates of the requests and SQL operations that
-      # detail capture (config.detail_capture) folded instead of persisting
+      # config.store_full_details folded instead of persisting
       t.references :rollupable, polymorphic: true, null: false, index: false, comment: "Link to Route or Query"
       t.datetime :period_start, null: false, comment: "Start of the hour the folded requests occurred in"
       t.string :writer_id, null: false, comment: "host:pid:uuid of the writer incarnation that owns the row"

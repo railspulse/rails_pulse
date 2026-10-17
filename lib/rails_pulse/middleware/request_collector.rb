@@ -74,10 +74,10 @@ module RailsPulse
         RailsPulse.logger.error("RailsPulse tracking failed: #{e.class} - #{e.message}")
       end
 
-      # With detail capture off the payload has no :detail key at all. With
-      # it on, a request that is slow, ran a slow query, errored or was
-      # sampled (by the slow request and query thresholds and
-      # detail_capture_sample_rate) gets the full payload (plus detail: true); every other
+      # With store_full_details at :all the payload has no :detail key at all.
+      # Otherwise a request at or above the named request threshold, one that
+      # ran a query at or above the named query threshold, an error, or a
+      # sampled request gets the full payload (plus detail: true); every other
       # request is slimmed here, on the request thread, to what the writer's
       # rollups need: the route identity, duration, status, and its SQL
       # operations reduced to statement and duration. Decision 0022.

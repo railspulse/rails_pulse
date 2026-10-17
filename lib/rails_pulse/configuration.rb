@@ -142,34 +142,38 @@ module RailsPulse
                 :exception_thresholds,
                 :max_table_records,
                 :regression_thresholds,
-                :detail_capture,
-                :detail_capture_sample_rate
+                :store_full_details
 
-    # What detail capture keeps, resolved from the slow thresholds, for the
-    # middleware to read on every request; nil whenever detail capture is off.
+    # What store_full_details keeps, resolved from the named thresholds, for
+    # the middleware to read on every request; nil while it is :all.
     attr_reader :detail_capture_settings
 
-    # Errors are always kept, so they are not a field.
-    DetailCaptureSettings = Struct.new(:requests_slower_than, :queries_slower_than, :sample_rate) do
-      # "requests over 700ms, queries over 100ms, 1% sample, errors"
+    # Errors are always kept, so they are not a field. threshold is the
+    # store_full_details[:above] key the durations were read from.
+    DetailCaptureSettings = Struct.new(:threshold, :requests_slower_than, :queries_slower_than, :sample_rate) do
+      # "above :slow (requests over 700ms, queries over 100ms), 1% sample, errors"
       def description
-        parts = [ "requests over #{requests_slower_than.round}ms", "queries over #{queries_slower_than.round}ms" ]
-        parts << "#{(sample_rate * 100).round(2).to_s.delete_suffix('.0')}% sample" if sample_rate.positive?
+        parts = [ "above #{threshold.inspect} (requests over #{requests_slower_than.round}ms, queries over #{queries_slower_than.round}ms)" ]
+        parts << "#{sample_percent} sample" if sample_rate.positive?
         parts << "errors"
         parts.join(", ")
       end
+
+      # "1%", "0.5%"
+      def sample_percent
+        "#{(sample_rate * 100).round(2).to_s.delete_suffix('.0')}%"
+      end
     end
 
-    # The setters resolve the settings on assignment, like the threshold
-    # setters validate, so they are ready the moment the initializer line
-    # runs, whichever order it sets them in.
-    def detail_capture=(value)
-      @detail_capture = value
-      validate_detail_capture_settings!
-    end
+    STORE_FULL_DETAILS_KEYS = %i[above sample_rate].freeze
+    DEFAULT_FULL_DETAILS_SAMPLE_RATE = 0.01
 
-    def detail_capture_sample_rate=(value)
-      @detail_capture_sample_rate = value
+    # Resolved on assignment, and again whenever a threshold changes, so the
+    # settings are ready the moment the initializer line runs, whichever
+    # order it sets them in. A threshold key the thresholds don't define
+    # (yet) is only an error once the configure block has finished.
+    def store_full_details=(value)
+      @store_full_details = value
       validate_detail_capture_settings!
     end
 
@@ -287,8 +291,7 @@ module RailsPulse
       }
 
       # Off by default: every request is persisted in full. See decision 0022.
-      @detail_capture = false
-      @detail_capture_sample_rate = 0.01
+      @store_full_details = :all
       @detail_capture_settings = nil
 
       # Validate defaults eagerly so that a misconfigured initializer raises at
@@ -359,7 +362,7 @@ module RailsPulse
       validate_query_service_level_objectives_settings!
       validate_comparison_settings!
       validate_schema_check_settings!
-      validate_detail_capture_settings!
+      validate_detail_capture_settings!(require_threshold: true)
       @cloud.validate!
     end
 
@@ -440,31 +443,52 @@ module RailsPulse
       end
     end
 
-    # Detail capture keeps what the dashboard calls slow (the slow request
-    # and query thresholds), errors, and a random sample, so every request or
-    # query it flags has detail behind it and p95/p99 usually land among the
-    # requests kept in full. Decision 0022.
-    def validate_detail_capture_settings!
-      unless [ true, false ].include?(@detail_capture)
-        raise ArgumentError, "detail_capture must be true or false, got #{@detail_capture.inspect}"
+    # store_full_details[:above] names a threshold key: requests and queries
+    # at or above it, errors, and a random sample keep full detail. Naming a
+    # level the dashboard flags means everything it flags at that level has
+    # detail behind it, and p95/p99 usually land among the requests kept in
+    # full. Decision 0022.
+    def validate_detail_capture_settings!(require_threshold: false)
+      if @store_full_details == :all
+        @detail_capture_settings = nil
+        return
       end
 
-      sample_rate = @detail_capture_sample_rate
+      unless @store_full_details.is_a?(Hash)
+        raise ArgumentError, "store_full_details must be :all or a hash like { above: :slow }, got #{@store_full_details.inspect}"
+      end
+
+      options = @store_full_details.transform_keys(&:to_sym)
+      unknown = options.keys - STORE_FULL_DETAILS_KEYS
+      if unknown.any?
+        raise ArgumentError, "store_full_details has unknown keys #{unknown.inspect} (allowed: #{STORE_FULL_DETAILS_KEYS.inspect})"
+      end
+
+      above = options[:above]
+      above = above.to_sym if above.is_a?(String)
+      unless above.is_a?(Symbol)
+        raise ArgumentError, "store_full_details[:above] must be a key from request_thresholds and query_thresholds, " \
+                             "such as :slow, got #{above.inspect}"
+      end
+
+      sample_rate = options.fetch(:sample_rate, DEFAULT_FULL_DETAILS_SAMPLE_RATE)
       unless sample_rate.is_a?(Numeric) && sample_rate >= 0 && sample_rate <= 1
-        raise ArgumentError, "detail_capture_sample_rate must be a number between 0 and 1, got #{sample_rate.inspect}"
+        raise ArgumentError, "store_full_details[:sample_rate] must be a number between 0 and 1, got #{sample_rate.inspect}"
       end
 
-      if @detail_capture
-        { "request_thresholds" => @request_thresholds, "query_thresholds" => @query_thresholds }.each do |name, thresholds|
-          raise ArgumentError, "detail_capture needs #{name}[:slow], the duration it keeps detail above" unless thresholds[:slow]
-        end
+      { "request_thresholds" => @request_thresholds, "query_thresholds" => @query_thresholds }.each do |name, thresholds|
+        next if thresholds.key?(above)
+
+        @detail_capture_settings = nil
+        return unless require_threshold
+
+        raise ArgumentError, "store_full_details[:above] is #{above.inspect}, but #{name} has no #{above.inspect} " \
+                             "(it has #{thresholds.keys.map(&:inspect).join(', ')})"
       end
 
-      @detail_capture_settings = if @detail_capture
-        DetailCaptureSettings.new(
-          @request_thresholds[:slow].to_f, @query_thresholds[:slow].to_f, sample_rate.to_f
-        ).freeze
-      end
+      @detail_capture_settings = DetailCaptureSettings.new(
+        above, @request_thresholds[above].to_f, @query_thresholds[above].to_f, sample_rate.to_f
+      ).freeze
     end
 
     def validate_patterns!

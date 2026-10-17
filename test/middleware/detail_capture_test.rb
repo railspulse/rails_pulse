@@ -1,9 +1,9 @@
 require "test_helper"
 
 # The capture decision RequestCollector makes per request when
-# config.detail_capture is on (decision 0022).
+# config.store_full_details names a threshold (decision 0022).
 class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
-  CAPTURE_SETTINGS = %i[detail_capture detail_capture_sample_rate request_thresholds query_thresholds].freeze
+  CAPTURE_SETTINGS = %i[store_full_details request_thresholds query_thresholds].freeze
 
   def setup
     config = RailsPulse.configuration
@@ -16,14 +16,13 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
     @original_settings.each { |key, value| RailsPulse.configuration.public_send("#{key}=", value) }
   end
 
-  # Detail capture on with slow thresholds nothing here reaches, unless a
-  # test lowers one.
+  # Full details above :slow, with slow thresholds nothing here reaches
+  # unless a test lowers one.
   def capture(request_slow: 10_000_000, query_slow: 10_000_000, sample_rate: 0)
     config = RailsPulse.configuration
     config.request_thresholds = config.request_thresholds.merge(slow: request_slow)
     config.query_thresholds = config.query_thresholds.merge(slow: query_slow)
-    config.detail_capture_sample_rate = sample_rate
-    config.detail_capture = true
+    config.store_full_details = { above: :slow, sample_rate: sample_rate }
   end
 
   OPERATIONS = [
@@ -43,7 +42,7 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
 
   # Capture Decision Tests
 
-  test "with detail capture off the payload has no detail key and keeps everything" do
+  test "with store_full_details :all the payload has no detail key and keeps everything" do
     payload = call_middleware
 
     assert_not payload.key?(:detail)

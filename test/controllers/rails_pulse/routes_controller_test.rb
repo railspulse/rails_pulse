@@ -91,7 +91,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
   test "show action gives the share of the route's requests captured, without warning" do
     setup_basic_test_data
-    RailsPulse.configuration.detail_capture = true
+    RailsPulse.configuration.store_full_details = { above: :slow }
     RailsPulse::DetailCaptureRate.stubs(:for).with(@route).returns(stub(share_label: "90%", high?: true))
 
     get rails_pulse.route_path(@route)
@@ -100,7 +100,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     assert_includes response.body, "Captured in the last day: 90% of this route&#39;s requests."
     assert_not_includes response.body, "That&#39;s over a quarter of them"
   ensure
-    RailsPulse.configuration.detail_capture = false
+    RailsPulse.configuration.store_full_details = :all
   end
 
   test "show action assigns all required instance variables" do

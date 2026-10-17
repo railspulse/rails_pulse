@@ -269,27 +269,27 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
   test "detail capture off prints no capture rate" do
     assume_clean_install
 
-    with_config(detail_capture: false) { report }
+    with_config(store_full_details: :all) { report }
 
-    assert_not_includes @output.string, "Detail:"
+    assert_not_includes @output.string, "Details:"
   end
 
   test "detail capture with nothing folded yet has no rate" do
     assume_clean_install
     RailsPulse::Rollup.delete_all
 
-    with_config(detail_capture: true) { report }
+    with_config(store_full_details: { above: :slow }) { report }
 
-    assert_includes @output.string, "Detail:     no rate yet"
+    assert_includes @output.string, "Details:    no rate yet"
   end
 
   test "detail capture reports the share of the last day it kept" do
     assume_clean_install
     capture_hour(total: 2000, folded: 1900)
 
-    with_config(detail_capture: true) { assert report }
+    with_config(store_full_details: { above: :slow }) { assert report }
 
-    assert_includes @output.string, "Detail:     kept 5% of 2,000 requests in the last day"
+    assert_includes @output.string, "Details:    stored 5% of 2,000 requests in full in the last day"
     assert_not_includes @output.string, "saves little storage"
   end
 
@@ -298,10 +298,10 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
     route = rails_pulse_routes(:api_users)
     capture_hour(total: 1000, folded: 400, route: route)
 
-    with_config(detail_capture: true, detail_capture_sample_rate: 0.05) { assert report }
+    with_config(store_full_details: { above: :slow, sample_rate: 0.05 }) { assert report }
 
-    assert_includes @output.string, "Detail:     kept 60% of 1,000 requests"
-    assert_match(/Suggestions:.*kept 60% of requests in the last day, so it saves little storage. To store less, raise request_thresholds\[:slow\] \(700ms now\) or query_thresholds\[:slow\] \(100ms now\), or lower detail_capture_sample_rate \(5% now\).*Routes keeping the most: \/api\/users \(600 of 1,000\)/m, @output.string)
+    assert_includes @output.string, "Details:    stored 60% of 1,000 requests in full"
+    assert_match(/Suggestions:.*Full details were stored for 60% of requests in the last day, so little storage is saved. To store less, raise request_thresholds\[:slow\] \(700ms now\) or query_thresholds\[:slow\] \(100ms now\), set store_full_details\[:above\] to a higher threshold, or lower store_full_details\[:sample_rate\] \(5% now\).*Routes keeping the most: \/api\/users \(600 of 1,000\)/m, @output.string)
   end
 
   test "suggestions follow the OK line and do not fail the report" do

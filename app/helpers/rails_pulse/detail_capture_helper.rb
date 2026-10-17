@@ -1,9 +1,9 @@
 module RailsPulse
   module DetailCaptureHelper
     # The panel info (see components/_panel) for a panel built from
-    # individual requests while detail capture is on: those rows are the
+    # individual requests while store_full_details names a threshold: those rows are the
     # captured subset, but every aggregate still counts all traffic
-    # (decision 0022). nil when detail capture is off.
+    # (decision 0022). nil while store_full_details is :all.
     #
     # subject is the route or query the page is about, or nil for all requests.
     def detail_capture_info(text, subject: nil)
@@ -13,7 +13,7 @@ module RailsPulse
       lines = [ text, detail_capture_rate_sentence(rate, subject) ]
       lines << detail_capture_retune_sentence if detail_capture_rate_high?(rate, subject)
 
-      { heading: "Detail capture", lines: lines.compact }
+      { heading: "Full details", lines: lines.compact }
     end
 
     private
@@ -26,7 +26,7 @@ module RailsPulse
 
     def detail_capture_retune_sentence
       advice = DetailCaptureRate.retune_advice(RailsPulse.configuration.detail_capture_settings)
-      "That's over a quarter of them, so detail capture saves little storage. To store less, #{advice}."
+      "That's over a quarter of them, so little storage is saved. To store less, #{advice}."
     end
 
     def detail_capture_rate_sentence(rate, subject)
