@@ -218,7 +218,7 @@ module RailsPulse
         end
 
         output.puts "Detail:     kept #{rate.share_label} of #{delimited(rate.total)} requests in the last day " \
-                    "(slow, errored or sampled; the rest were folded)"
+                    "(slow, with a slow query, errored or sampled; the rest were folded)"
         return unless rate.high?
 
         routes = RailsPulse::DetailCaptureRate.top_kept_routes_label

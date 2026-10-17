@@ -74,9 +74,9 @@ module RailsPulse
         RailsPulse.logger.error("RailsPulse tracking failed: #{e.class} - #{e.message}")
       end
 
-      # With detail capture off the payload is exactly what it always was —
-      # no :detail key at all. With it on, a request that is slow, errored or
-      # sampled still gets the full payload (plus detail: true); every other
+      # With detail capture off the payload has no :detail key at all. With
+      # it on, a request that is slow, ran a slow query, errored or was
+      # sampled gets the full payload (plus detail: true); every other
       # request is slimmed here, on the request thread, to what the writer's
       # rollups need: the route identity, duration, status, and its SQL
       # operations reduced to statement and duration. Decision 0022.
@@ -91,7 +91,7 @@ module RailsPulse
           occurred_at: occurred_at
         }
 
-        if settings.nil? || capture_detail?(settings, duration, status)
+        if settings.nil? || capture_detail?(settings, duration, status, operations)
           full = base.merge(
             is_error: status.to_i >= 500,
             request_uuid: req.uuid,
@@ -105,9 +105,10 @@ module RailsPulse
         base.merge(detail: false, operations: slim_sql_operations(operations))
       end
 
-      def capture_detail?(settings, duration, status)
+      def capture_detail?(settings, duration, status, operations)
         return true if settings.errors && status.to_i >= 500
         return true if settings.requests_slower_than && duration >= settings.requests_slower_than
+        return true if settings.queries_slower_than && operations.any? { |op| op[:operation_type] == "sql" && op[:duration].to_f >= settings.queries_slower_than }
 
         settings.sample_rate > 0 && Kernel.rand < settings.sample_rate
       end

@@ -34,9 +34,9 @@ module RailsPulse
       config = Configuration.new
       config.detail_capture = { requests_slower_than: 500, sample_rate: 0.015 }
 
-      assert_equal "slower than 500ms, 1.5% sample, errors", config.detail_capture_settings.description
+      assert_equal "slower than 500ms, a query slower than 100ms, 1.5% sample, errors", config.detail_capture_settings.description
 
-      config.detail_capture = { sample_rate: 0.2, errors: false }
+      config.detail_capture = { sample_rate: 0.2, queries_slower_than: nil, errors: false }
 
       assert_equal "20% sample", config.detail_capture_settings.description
     end
@@ -72,8 +72,51 @@ module RailsPulse
     test "detail_capture refuses a config that would capture only errors" do
       config = Configuration.new
 
-      error = assert_raises(ArgumentError) { config.detail_capture = { errors: true } }
+      error = assert_raises(ArgumentError) { config.detail_capture = { queries_slower_than: nil, errors: true } }
       assert_includes error.message, "requests_slower_than"
+    end
+
+    test "detail_capture with only the default query trigger is allowed" do
+      config = Configuration.new
+      config.detail_capture = { errors: true }
+
+      assert_in_delta(100.0, config.detail_capture_settings.queries_slower_than)
+    end
+
+    test "queries_slower_than defaults to the slow query threshold whichever is set first" do
+      config = Configuration.new
+      config.query_thresholds = { slow: 80, very_slow: 400, critical: 900 }
+      config.detail_capture = { requests_slower_than: 500 }
+
+      assert_in_delta(80.0, config.detail_capture_settings.queries_slower_than)
+
+      config.query_thresholds = { slow: 150, very_slow: 400, critical: 900 }
+
+      assert_in_delta(150.0, config.detail_capture_settings.queries_slower_than)
+    end
+
+    test "an explicit queries_slower_than wins over the slow query threshold" do
+      config = Configuration.new
+      config.detail_capture = { requests_slower_than: 500, queries_slower_than: 250 }
+      config.query_thresholds = { slow: 80, very_slow: 400, critical: 900 }
+
+      assert_in_delta(250.0, config.detail_capture_settings.queries_slower_than)
+    end
+
+    test "queries_slower_than nil turns the query trigger off" do
+      config = Configuration.new
+      config.detail_capture = { requests_slower_than: 500, queries_slower_than: nil }
+
+      assert_nil config.detail_capture_settings.queries_slower_than
+    end
+
+    test "detail_capture refuses a queries_slower_than that is not a positive number" do
+      config = Configuration.new
+
+      [ 0, -5, "100" ].each do |bad|
+        error = assert_raises(ArgumentError) { config.detail_capture = { requests_slower_than: 500, queries_slower_than: bad } }
+        assert_includes error.message, "queries_slower_than"
+      end
     end
 
     test "detail_capture with only a sample rate is allowed" do

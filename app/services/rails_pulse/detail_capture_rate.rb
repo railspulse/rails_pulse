@@ -13,8 +13,8 @@ module RailsPulse
   class DetailCaptureRate
     WINDOW = 24.hours
 
-    # Above this share detail capture stores most of what it would without
-    # it; requests_slower_than likely sits below typical response times.
+    # Above this share detail capture saves little of what it would store
+    # without it; a capture threshold likely sits below typical timings.
     HIGH_SHARE = 0.25
 
     attr_reader :kept, :total
@@ -27,12 +27,14 @@ module RailsPulse
     end
 
     # What to change when the share is high, e.g. "raise
-    # requests_slower_than (500ms now) or lower sample_rate (1% now)"
+    # requests_slower_than (500ms now), raise queries_slower_than (100ms now)
+    # or lower sample_rate (1% now)"
     def self.retune_advice(settings)
       knobs = []
       knobs << "raise requests_slower_than (#{settings.requests_slower_than.round}ms now)" if settings.requests_slower_than
+      knobs << "raise queries_slower_than (#{settings.queries_slower_than.round}ms now)" if settings.queries_slower_than
       knobs << "lower sample_rate (#{(settings.sample_rate * 100).round(2).to_s.delete_suffix('.0')}% now)" if settings.sample_rate.positive?
-      knobs.join(" or ")
+      knobs.to_sentence(two_words_connector: " or ", last_word_connector: " or ")
     end
 
     # "/reports (2,900 of 3,000), /search (400 of 1,200)", or nil when no

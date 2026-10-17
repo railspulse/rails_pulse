@@ -1,7 +1,8 @@
 # Orchestrates comprehensive query analysis using modular analyzers.
 # Coordinates multiple specialized analyzers and consolidates results into
 # actionable insights. Reads persisted operations, which under detail capture
-# come from slow, errored and sampled requests only — a slow-biased sample,
+# come from requests that were slow, ran a slow query, errored or were
+# sampled — a slow-biased sample,
 # which is the right input for analysis that hunts problems.
 module RailsPulse
   class QueryAnalysisService

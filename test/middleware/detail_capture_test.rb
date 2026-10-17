@@ -18,9 +18,9 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
     { operation_type: "template", label: "widgets/index.html.erb", duration: 2.0 }
   ].freeze
 
-  def call_middleware(status: 200)
+  def call_middleware(status: 200, operations: OPERATIONS)
     app = lambda do |_env|
-      RailsPulse::Current.rails_pulse_operations = OPERATIONS.map(&:dup)
+      RailsPulse::Current.rails_pulse_operations = operations.map(&:dup)
       [ status, { "Content-Length" => "12" }, [ "hello world!" ] ]
     end
     collector = RailsPulse::Middleware::RequestCollector.new(app)
@@ -50,6 +50,42 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
     assert payload[:detail]
     assert payload.key?(:request_uuid)
     assert_equal 2, payload[:operations].size
+  end
+
+  test "a request that ran a slow query keeps full detail" do
+    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000, queries_slower_than: 50 }
+    slow_query = OPERATIONS.first.merge(duration: 50.0)
+
+    payload = call_middleware(operations: [ slow_query, OPERATIONS.last ])
+
+    assert payload[:detail]
+    assert_equal 2, payload[:operations].size
+  end
+
+  test "a request whose queries are all under queries_slower_than folds" do
+    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000, queries_slower_than: 50 }
+    query = OPERATIONS.first.merge(duration: 49.9)
+
+    payload = call_middleware(operations: [ query, OPERATIONS.last.merge(duration: 500.0) ])
+
+    refute payload[:detail]
+  end
+
+  test "a slow query keeps its request at the slow query threshold by default" do
+    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000 }
+    slow_query = OPERATIONS.first.merge(duration: RailsPulse.configuration.query_thresholds[:slow].to_f)
+
+    payload = call_middleware(operations: [ slow_query ])
+
+    assert payload[:detail]
+  end
+
+  test "queries_slower_than nil lets a request with a slow query fold" do
+    RailsPulse.configuration.detail_capture = { requests_slower_than: 10_000_000, queries_slower_than: nil }
+
+    payload = call_middleware(operations: [ OPERATIONS.first.merge(duration: 5_000.0) ])
+
+    refute payload[:detail]
   end
 
   test "an errored request keeps full detail" do

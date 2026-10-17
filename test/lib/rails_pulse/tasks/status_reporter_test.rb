@@ -293,7 +293,7 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
     assert_not_includes @output.string, "saves little storage"
   end
 
-  test "detail capture keeping most requests is a suggestion naming the settings and routes" do
+  test "detail capture keeping over a quarter of requests is a suggestion naming the settings and routes" do
     assume_clean_install
     route = rails_pulse_routes(:api_users)
     capture_hour(total: 1000, folded: 400, route: route)
@@ -301,7 +301,7 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
     with_config(detail_capture: { requests_slower_than: 500, sample_rate: 0.05 }) { assert report }
 
     assert_includes @output.string, "Detail:     kept 60% of 1,000 requests"
-    assert_match(/Suggestions:.*kept 60% of requests in the last day, so it saves little storage. To store less, raise requests_slower_than \(500ms now\) or lower sample_rate \(5% now\).*Routes keeping the most: \/api\/users \(600 of 1,000\)/m, @output.string)
+    assert_match(/Suggestions:.*kept 60% of requests in the last day, so it saves little storage. To store less, raise requests_slower_than \(500ms now\), raise queries_slower_than \(100ms now\) or lower sample_rate \(5% now\).*Routes keeping the most: \/api\/users \(600 of 1,000\)/m, @output.string)
   end
 
   test "suggestions follow the OK line and do not fail the report" do

@@ -2,7 +2,7 @@
 
 <%= render 'rails_pulse/components/panel', {
   title: 'Requests',
-  info: detail_capture_info("This list shows only captured requests: slow, errored or sampled. Charts and totals count all traffic.")
+  info: detail_capture_info("This list shows only captured requests: slow, with a slow query, errored or sampled. Charts and totals count all traffic.")
 } do %>
   <%= search_form_for @ransack_query, url: requests_path, class: "flex items-center justify-between gap mb-4" do |form| %>
     <div class="flex items-center grow gap">

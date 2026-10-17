@@ -148,11 +148,12 @@ module RailsPulse
     # on every request; nil whenever detail capture is off.
     attr_reader :detail_capture_settings
 
-    DetailCaptureSettings = Struct.new(:requests_slower_than, :sample_rate, :errors) do
-      # "slower than 500ms, 1% sample, errors"
+    DetailCaptureSettings = Struct.new(:requests_slower_than, :queries_slower_than, :sample_rate, :errors) do
+      # "slower than 500ms, a query slower than 100ms, 1% sample, errors"
       def description
         parts = []
         parts << "slower than #{requests_slower_than.round}ms" if requests_slower_than
+        parts << "a query slower than #{queries_slower_than.round}ms" if queries_slower_than
         parts << "#{(sample_rate * 100).round(2).to_s.delete_suffix('.0')}% sample" if sample_rate.positive?
         parts << "errors" if errors
         parts.join(", ")
@@ -305,6 +306,9 @@ module RailsPulse
     def query_thresholds=(value)
       validate_threshold_hash!(value, "query_thresholds")
       @query_thresholds = value
+      # queries_slower_than defaults to the slow query threshold, whichever
+      # of the two the initializer sets first
+      validate_detail_capture_settings! if @detail_capture
     end
 
     def job_thresholds=(value)
@@ -430,7 +434,7 @@ module RailsPulse
       end
     end
 
-    DETAIL_CAPTURE_KEYS = %i[requests_slower_than sample_rate errors].freeze
+    DETAIL_CAPTURE_KEYS = %i[requests_slower_than queries_slower_than sample_rate errors].freeze
     private_constant :DETAIL_CAPTURE_KEYS
 
     def validate_detail_capture_settings!
@@ -453,6 +457,14 @@ module RailsPulse
         raise ArgumentError, "detail_capture[:requests_slower_than] must be a positive number of milliseconds or nil, got #{slower_than.inspect}"
       end
 
+      # Left out, a request with any query at or above the slow query
+      # threshold is kept, so every query the dashboard calls slow has
+      # requests to inspect. nil turns the query trigger off.
+      queries_slower_than = @detail_capture.fetch(:queries_slower_than) { @query_thresholds[:slow] }
+      if queries_slower_than && !(queries_slower_than.is_a?(Numeric) && queries_slower_than > 0)
+        raise ArgumentError, "detail_capture[:queries_slower_than] must be a positive number of milliseconds or nil, got #{queries_slower_than.inspect}"
+      end
+
       sample_rate = @detail_capture.fetch(:sample_rate, 0)
       unless sample_rate.is_a?(Numeric) && sample_rate >= 0 && sample_rate <= 1
         raise ArgumentError, "detail_capture[:sample_rate] must be a number between 0 and 1, got #{sample_rate.inspect}"
@@ -463,14 +475,14 @@ module RailsPulse
         raise ArgumentError, "detail_capture[:errors] must be true or false, got #{errors.inspect}"
       end
 
-      if slower_than.nil? && sample_rate.zero?
+      if slower_than.nil? && queries_slower_than.nil? && sample_rate.zero?
         raise ArgumentError,
           "detail_capture would capture no detail beyond errors; set requests_slower_than, " \
-          "a positive sample_rate, or both"
+          "queries_slower_than or a positive sample_rate"
       end
 
       @detail_capture_settings = DetailCaptureSettings.new(
-        slower_than&.to_f, sample_rate.to_f, errors
+        slower_than&.to_f, queries_slower_than&.to_f, sample_rate.to_f, errors
       ).freeze
     end
 

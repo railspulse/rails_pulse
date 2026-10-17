@@ -104,13 +104,13 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "Captured in the last day: 60% of all requests."
-    assert_includes response.body, "That&#39;s over a quarter of them, so detail capture saves little storage. To store less, raise requests_slower_than (500ms now)."
+    assert_includes response.body, "That&#39;s over a quarter of them, so detail capture saves little storage. To store less, raise requests_slower_than (500ms now) or raise queries_slower_than (100ms now)."
   ensure
     RailsPulse.configuration.detail_capture = nil
   end
 
   test "index action names the sample rate when that is the only setting to change" do
-    RailsPulse.configuration.detail_capture = { sample_rate: 0.5 }
+    RailsPulse.configuration.detail_capture = { sample_rate: 0.5, queries_slower_than: nil }
     RailsPulse::DetailCaptureRate.stubs(:for).with(nil).returns(stub(share_label: "52%", high?: true))
 
     get rails_pulse.requests_path

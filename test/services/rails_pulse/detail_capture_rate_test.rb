@@ -91,10 +91,10 @@ module RailsPulse
       config = RailsPulse::Configuration.new
       config.detail_capture = { requests_slower_than: 500, sample_rate: 0.01 }
 
-      assert_equal "raise requests_slower_than (500ms now) or lower sample_rate (1% now)",
+      assert_equal "raise requests_slower_than (500ms now), raise queries_slower_than (100ms now) or lower sample_rate (1% now)",
                    DetailCaptureRate.retune_advice(config.detail_capture_settings)
 
-      config.detail_capture = { requests_slower_than: 250 }
+      config.detail_capture = { requests_slower_than: 250, queries_slower_than: nil }
 
       assert_equal "raise requests_slower_than (250ms now)", DetailCaptureRate.retune_advice(config.detail_capture_settings)
     end

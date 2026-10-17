@@ -124,9 +124,9 @@ module RailsPulse
           # Cleanup still runs; detail capture only decides what it has to delete
           cleanup:       false,
           sort_score:    rate.share,
-          popover_title: "Detail capture is keeping most requests",
+          popover_title: "Detail capture is keeping over a quarter of requests",
           popover_body:  "With <code>config.detail_capture</code> on (#{ERB::Util.html_escape(settings.description)}), only slow, errored " \
-                         "and sampled requests are kept in full; the rest are folded into hourly totals. In the last day " \
+                         "and sampled requests, and those with a slow query, are kept in full; the rest are folded into hourly totals. In the last day " \
                          "#{rate.share_label} were kept, so the requests and operations tables are growing almost as if it were off.<br><br>" \
                          "<strong>How to fix:</strong> #{RailsPulse::DetailCaptureRate.retune_advice(settings).upcase_first} " \
                          "in the Rails Pulse initializer." +

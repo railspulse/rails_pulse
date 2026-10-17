@@ -39,7 +39,7 @@ class RailsPulse::StorageControllerTest < ActionDispatch::IntegrationTest
     get rails_pulse.storage_path
 
     assert_response :success
-    assert_includes response.body, "On (slower than 500ms, 1% sample, errors)"
+    assert_includes response.body, "On (slower than 500ms, a query slower than 100ms, 1% sample, errors)"
     assert_includes response.body, "Kept 4.2% of the last day's 12,000 requests in full"
   ensure
     RailsPulse.configuration.detail_capture = nil

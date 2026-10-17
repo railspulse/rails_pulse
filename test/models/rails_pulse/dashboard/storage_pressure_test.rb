@@ -51,7 +51,7 @@ module RailsPulse
 
       # Detail Capture Tests
 
-      test "detail capture keeping most requests is a storage warning naming the settings and routes" do
+      test "detail capture keeping over a quarter of requests is a storage warning naming the settings and routes" do
         create_fresh_summary
         RailsPulse.configuration.detail_capture = { requests_slower_than: 500, sample_rate: 0.05 }
         rate = stub(high?: true, share: 0.6, share_label: "60%", total: 1000)
@@ -65,7 +65,7 @@ module RailsPulse
         assert_equal "STORAGE", item[:type]
         assert_equal :warning, item[:severity]
         assert_equal "60% kept", item[:metric]
-        assert_includes item[:popover_body], "Raise requests_slower_than (500ms now) or lower sample_rate (5% now)"
+        assert_includes item[:popover_body], "Raise requests_slower_than (500ms now), raise queries_slower_than (100ms now) or lower sample_rate (5% now)"
         assert_includes item[:popover_body], "/reports (590 of 600)"
         assert_equal({ healthy: 0, slow: 1, critical: 0 }, pressure.storage_counts)
         assert_equal :healthy, StorageStatus.new(storage_pressure: pressure).cleanup[:health]
