@@ -136,7 +136,7 @@ module RailsPulse
       def detail_capture
         @detail_capture ||= begin
           settings = @config.detail_capture_settings
-          { enabled: settings.present?, settings_label: settings&.description, rate: settings && RailsPulse::DetailCaptureRate.for }
+          { enabled: settings.present?, settings_label: settings&.description, rate: settings && @pressure.detail_capture_rate }
         end
       end
 

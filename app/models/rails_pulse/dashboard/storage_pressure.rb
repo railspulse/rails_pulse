@@ -14,6 +14,15 @@ module RailsPulse
         @pressure_items ||= summary_staleness_items + sub_hour_retention_items + writer_drop_items + detail_capture_items
       end
 
+      # Memoized (nil is a valid value: detail capture off or no rate yet) and
+      # shared with StorageStatus, which wraps this object — one storage page
+      # render would otherwise compute the rate's aggregate queries repeatedly.
+      def detail_capture_rate
+        return @detail_capture_rate if defined?(@detail_capture_rate)
+
+        @detail_capture_rate = RailsPulse::DetailCaptureRate.for
+      end
+
       # Dropped requests get their own Tracking badge, not this one
       def storage_counts
         items    = pressure_items.reject { |i| i[:type] == "TRACKING" }
@@ -109,7 +118,7 @@ module RailsPulse
         settings = @config.detail_capture_settings
         return [] unless settings
 
-        rate = RailsPulse::DetailCaptureRate.for
+        rate = detail_capture_rate
         return [] unless rate&.high?
 
         routes = RailsPulse::DetailCaptureRate.top_kept_routes_label

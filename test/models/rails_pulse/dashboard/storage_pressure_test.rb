@@ -87,6 +87,19 @@ module RailsPulse
         assert_empty StoragePressure.new.pressure_items
       end
 
+      test "the capture rate is computed once per instance and shared with StorageStatus" do
+        create_fresh_summary
+        RailsPulse.configuration.store_full_details = { above: :slow }
+        rate = stub(high?: false)
+        RailsPulse::DetailCaptureRate.expects(:for).once.returns(rate)
+
+        pressure = StoragePressure.new
+        pressure.pressure_items
+
+        assert_same rate, pressure.detail_capture_rate
+        assert_same rate, StorageStatus.new(storage_pressure: pressure).detail_capture[:rate]
+      end
+
       test "detail capture off is not a pressure item and computes no rate" do
         create_fresh_summary
         RailsPulse::DetailCaptureRate.expects(:for).never
