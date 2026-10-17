@@ -11,7 +11,7 @@ module RailsPulse
 
       rate = DetailCaptureRate.for(subject)
       lines = [ text, detail_capture_rate_sentence(rate, subject) ]
-      lines << "That's most of them, so detail capture saves little storage. Raise requests_slower_than to store less." if detail_capture_rate_high?(rate, subject)
+      lines << detail_capture_retune_sentence if detail_capture_rate_high?(rate, subject)
 
       { heading: "Detail capture", lines: lines.compact }
     end
@@ -22,6 +22,12 @@ module RailsPulse
     # always slow is meant to be captured in full.
     def detail_capture_rate_high?(rate, subject = nil)
       subject.nil? && rate.present? && rate.high?
+    end
+
+    def detail_capture_retune_sentence
+      advice = DetailCaptureRate.retune_advice(RailsPulse.configuration.detail_capture_settings)
+      sentence = "That's over a quarter of them, so detail capture saves little storage."
+      advice.present? ? "#{sentence} To store less, #{advice}." : sentence
     end
 
     def detail_capture_rate_sentence(rate, subject)

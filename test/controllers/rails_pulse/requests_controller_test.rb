@@ -91,12 +91,12 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "Captured in the last day: 4.2% of all requests."
-    assert_not_includes response.body, "That&#39;s most of them"
+    assert_not_includes response.body, "That&#39;s over a quarter of them"
   ensure
     RailsPulse.configuration.detail_capture = nil
   end
 
-  test "index action warns when most requests are being captured" do
+  test "index action warns when over a quarter of requests are captured and says what to change" do
     RailsPulse.configuration.detail_capture = { requests_slower_than: 500 }
     RailsPulse::DetailCaptureRate.stubs(:for).with(nil).returns(stub(share_label: "60%", high?: true))
 
@@ -104,7 +104,20 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "Captured in the last day: 60% of all requests."
-    assert_includes response.body, "That&#39;s most of them, so detail capture saves little storage"
+    assert_includes response.body, "That&#39;s over a quarter of them, so detail capture saves little storage. To store less, raise requests_slower_than (500ms now)."
+  ensure
+    RailsPulse.configuration.detail_capture = nil
+  end
+
+  test "index action names the sample rate when that is the only setting to change" do
+    RailsPulse.configuration.detail_capture = { sample_rate: 0.5 }
+    RailsPulse::DetailCaptureRate.stubs(:for).with(nil).returns(stub(share_label: "52%", high?: true))
+
+    get rails_pulse.requests_path
+
+    assert_response :success
+    assert_includes response.body, "To store less, lower sample_rate (50% now)."
+    assert_not_includes response.body, "requests_slower_than"
   ensure
     RailsPulse.configuration.detail_capture = nil
   end

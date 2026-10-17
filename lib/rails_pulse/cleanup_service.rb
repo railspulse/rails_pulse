@@ -199,9 +199,12 @@ module RailsPulse
       )
     end
 
+    # A rollup row covers a whole hour, so only hours that ended before the
+    # cutoff go: the hour the cutoff falls in may not be summarized yet, and
+    # its summary needs every rollup to count the folded traffic.
     def cleanup_rollups_by_time(cutoff_time)
       delete_in_batches(
-        RailsPulse::Rollup.where("period_start < ?", cutoff_time),
+        RailsPulse::Rollup.where("period_start <= ?", cutoff_time - 1.hour),
         order_column: :period_start
       )
     end

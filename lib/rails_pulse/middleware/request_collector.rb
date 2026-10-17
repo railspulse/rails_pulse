@@ -39,7 +39,9 @@ module RailsPulse
           # exception passes through here before anything renders it. Record
           # the request with the status the error page will send, then let
           # the exception continue to the host's error handling unchanged.
-          status = ActionDispatch::ExceptionWrapper.status_code_for_exception(exception.class.name)
+          # The wrapper unwraps ActionView::Template::Error to its cause, as
+          # the error page does.
+          status = ActionDispatch::ExceptionWrapper.new(nil, exception).status_code
           track(req, env, start_time, occurred_at, status, {}, nil)
           raise
         end

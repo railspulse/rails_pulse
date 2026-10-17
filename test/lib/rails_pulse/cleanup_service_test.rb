@@ -146,6 +146,21 @@ module RailsPulse
       assert_equal 0, RailsPulse::Rollup.where("period_start < ?", 30.days.ago).count
     end
 
+    test "time-based cleanup keeps the rollups of the hour the cutoff falls in" do
+      RailsPulse.configuration.full_retention_period = 30.days
+      travel_to Time.zone.local(2026, 10, 17, 14, 0, 30)
+      route = create_route("/rollup-boundary")
+      boundary_hour = create_rollup(route, period_start: 30.days.ago.beginning_of_hour)
+      ended_hour = create_rollup(route, period_start: 30.days.ago.beginning_of_hour - 1.hour, writer_id: "host:2:def")
+
+      CleanupService.perform
+
+      assert RailsPulse::Rollup.exists?(boundary_hour.id)
+      assert_not RailsPulse::Rollup.exists?(ended_hour.id)
+    ensure
+      travel_back
+    end
+
     test "a route referenced only by rollups is not deleted as an orphan" do
       RailsPulse.configuration.full_retention_period = 30.days
       route = create_route("/rollup-route", created_at: 60.days.ago)

@@ -146,6 +146,22 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
     assert_not tracked[:is_error]
   end
 
+  test "records a missing record raised from a view as the 404 the user gets" do
+    view_error = begin
+      raise ActiveRecord::RecordNotFound
+    rescue ActiveRecord::RecordNotFound
+      ActionView::Template::Error.new("show.html.erb")
+    end
+    collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { raise view_error })
+    tracked = nil
+    RailsPulse::Tracker.expects(:track_request).with { |data| tracked = data }
+
+    assert_raises(ActionView::Template::Error) { collector.call(Rack::MockRequest.env_for("/missing")) }
+
+    assert_equal 404, tracked[:status]
+    assert_not tracked[:is_error]
+  end
+
   test "re-raises the host's exception even when tracking it fails" do
     collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { raise ArgumentError, "host bug" })
     RailsPulse::Tracker.expects(:track_request).raises(RuntimeError, "tracker down")

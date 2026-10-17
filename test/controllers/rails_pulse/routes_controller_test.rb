@@ -98,7 +98,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_includes response.body, "Captured in the last day: 90% of this route&#39;s requests."
-    assert_not_includes response.body, "That&#39;s most of them"
+    assert_not_includes response.body, "That&#39;s over a quarter of them"
   ensure
     RailsPulse.configuration.detail_capture = nil
   end
