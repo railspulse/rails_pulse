@@ -16,8 +16,8 @@ RailsPulse.configure do |config|
   # STORE_FULL_DETAILS_ABOVE=slow [STORE_FULL_DETAILS_SAMPLE_RATE=0.2] bin/rails server
   if ENV["STORE_FULL_DETAILS_ABOVE"].present?
     config.store_full_details = {
-      above: ENV["STORE_FULL_DETAILS_ABOVE"].to_sym,
-      sample_rate: ENV.fetch("STORE_FULL_DETAILS_SAMPLE_RATE", "0.01").to_f
+      above_threshold: ENV["STORE_FULL_DETAILS_ABOVE"].to_sym,
+      sample_rate_below: ENV.fetch("STORE_FULL_DETAILS_SAMPLE_RATE", "0.01").to_f
     }
   end
 

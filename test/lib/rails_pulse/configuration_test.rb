@@ -20,7 +20,7 @@ module RailsPulse
 
     test "store_full_details above a threshold reads that threshold's durations with a 1% default sample" do
       config = Configuration.new
-      config.store_full_details = { above: :slow }
+      config.store_full_details = { above_threshold: :slow }
 
       settings = config.detail_capture_settings
 
@@ -33,7 +33,7 @@ module RailsPulse
 
     test "store_full_details accepts any threshold key and a sample rate" do
       config = Configuration.new
-      config.store_full_details = { above: "critical", sample_rate: 0.001 }
+      config.store_full_details = { above_threshold: "critical", sample_rate_below: 0.001 }
 
       settings = config.detail_capture_settings
 
@@ -45,7 +45,7 @@ module RailsPulse
 
     test "store_full_details follows custom thresholds set in either order" do
       config = build_config do
-        self.store_full_details = { above: :warning }
+        self.store_full_details = { above_threshold: :warning }
         self.request_thresholds = { warning: 400, slow: 1000 }
         self.query_thresholds = { warning: 50, slow: 200 }
       end
@@ -60,18 +60,18 @@ module RailsPulse
 
     test "store_full_details describes itself for status and the storage page" do
       config = Configuration.new
-      config.store_full_details = { above: :slow, sample_rate: 0.015 }
+      config.store_full_details = { above_threshold: :slow, sample_rate_below: 0.015 }
 
       assert_equal "above :slow (requests over 700ms, queries over 100ms), 1.5% sample, errors", config.detail_capture_settings.description
 
-      config.store_full_details = { above: :slow, sample_rate: 0 }
+      config.store_full_details = { above_threshold: :slow, sample_rate_below: 0 }
 
       assert_equal "above :slow (requests over 700ms, queries over 100ms), errors", config.detail_capture_settings.description
     end
 
     test "setting store_full_details back to :all clears the settings" do
       config = Configuration.new
-      config.store_full_details = { above: :slow }
+      config.store_full_details = { above_threshold: :slow }
       config.store_full_details = :all
 
       assert_nil config.detail_capture_settings
@@ -82,29 +82,29 @@ module RailsPulse
 
       [ nil, :slow, true ].each do |bad|
         error = assert_raises(ArgumentError) { config.store_full_details = bad }
-        assert_includes error.message, "store_full_details must be :all or a hash like { above: :slow }"
+        assert_includes error.message, "store_full_details must be :all or a hash like { above_threshold: :slow }"
       end
     end
 
     test "store_full_details rejects unknown keys, a number for above and a bad sample rate" do
       config = Configuration.new
 
-      error = assert_raises(ArgumentError) { config.store_full_details = { above: :slow, errors: false } }
+      error = assert_raises(ArgumentError) { config.store_full_details = { above_threshold: :slow, errors: false } }
       assert_includes error.message, "unknown keys [:errors]"
 
-      error = assert_raises(ArgumentError) { config.store_full_details = { above: 500 } }
+      error = assert_raises(ArgumentError) { config.store_full_details = { above_threshold: 500 } }
       assert_includes error.message, "must be a key from request_thresholds and query_thresholds, such as :slow"
 
       [ -0.1, 1.5, "0.1" ].each do |bad|
-        error = assert_raises(ArgumentError) { config.store_full_details = { above: :slow, sample_rate: bad } }
-        assert_includes error.message, "store_full_details[:sample_rate]"
+        error = assert_raises(ArgumentError) { config.store_full_details = { above_threshold: :slow, sample_rate_below: bad } }
+        assert_includes error.message, "store_full_details[:sample_rate_below]"
       end
     end
 
     test "store_full_details names a threshold missing from either hash once configuration is validated" do
       config = Configuration.new
       config.request_thresholds = { warning: 400, slow: 1000 }
-      config.store_full_details = { above: :warning }
+      config.store_full_details = { above_threshold: :warning }
 
       assert_nil config.detail_capture_settings
 

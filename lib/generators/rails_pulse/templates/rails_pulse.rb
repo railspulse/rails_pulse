@@ -423,14 +423,14 @@ RailsPulse.configure do |config|
   # Which requests are stored in full, with every query and render. :all
   # stores every request. At high traffic (millions of requests a day), name
   # a threshold instead: a request is then stored in full only when it is at
-  # or above request_thresholds[above], runs a query at or above
-  # query_thresholds[above], errors, or falls in sample_rate (default 1%).
+  # or above that request threshold, runs a query at or above that query
+  # threshold, errors, or falls in the random sample_rate_below (default 1%).
   # Everything else is folded into compact per-route and per-query
   # aggregates, so dashboard counts, error rates and percentiles still cover
   # ALL traffic; the requests list then shows the stored requests only.
   #
-  #   config.store_full_details = { above: :slow }
-  #   config.store_full_details = { above: :critical, sample_rate: 0.001 }
+  #   config.store_full_details = { above_threshold: :slow }
+  #   config.store_full_details = { above_threshold: :critical, sample_rate_below: 0.001 }
   config.store_full_details = :all
 
   # How long rows in rails_pulse_events are kept. The background writer's

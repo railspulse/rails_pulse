@@ -22,7 +22,7 @@ class RailsPulse::Middleware::DetailCaptureTest < ActiveSupport::TestCase
     config = RailsPulse.configuration
     config.request_thresholds = config.request_thresholds.merge(slow: request_slow)
     config.query_thresholds = config.query_thresholds.merge(slow: query_slow)
-    config.store_full_details = { above: :slow, sample_rate: sample_rate }
+    config.store_full_details = { above_threshold: :slow, sample_rate_below: sample_rate }
   end
 
   OPERATIONS = [

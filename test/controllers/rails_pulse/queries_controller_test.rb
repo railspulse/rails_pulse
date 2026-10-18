@@ -644,7 +644,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
   test "show action explains that the operation sections are captured-only when detail capture is on" do
     setup_basic_test_data
-    RailsPulse.configuration.store_full_details = { above: :slow }
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
 
     get rails_pulse_engine.query_path(@query1)
 
@@ -657,7 +657,7 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
 
   test "show action gives the share of the query's executions captured" do
     setup_basic_test_data
-    RailsPulse.configuration.store_full_details = { above: :slow }
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
     RailsPulse::DetailCaptureRate.stubs(:for).with(@query1).returns(stub(share_label: "under 0.1%", high?: false))
 
     get rails_pulse_engine.query_path(@query1)

@@ -91,7 +91,7 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
 
   test "show action gives the share of the route's requests captured, without warning" do
     setup_basic_test_data
-    RailsPulse.configuration.store_full_details = { above: :slow }
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
     RailsPulse::DetailCaptureRate.stubs(:for).with(@route).returns(stub(share_label: "90%", high?: true))
 
     get rails_pulse.route_path(@route)

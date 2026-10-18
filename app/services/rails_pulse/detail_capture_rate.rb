@@ -28,15 +28,15 @@ module RailsPulse
 
     # What to change when the share is high, e.g. "raise
     # request_thresholds[:slow] (700ms now) or query_thresholds[:slow] (100ms
-    # now), set above: to a higher threshold, or lower sample_rate (1% now)"
+    # now), set above_threshold: higher, or lower sample_rate_below (1% now)"
     def self.retune_advice(settings)
       key = settings.threshold.inspect
       advice = "raise request_thresholds[#{key}] (#{settings.requests_slower_than.round}ms now) " \
                "or query_thresholds[#{key}] (#{settings.queries_slower_than.round}ms now), " \
-               "set store_full_details[:above] to a higher threshold"
+               "set store_full_details[:above_threshold] to a higher threshold"
       return advice unless settings.sample_rate.positive?
 
-      "#{advice}, or lower store_full_details[:sample_rate] (#{settings.sample_percent} now)"
+      "#{advice}, or lower store_full_details[:sample_rate_below] (#{settings.sample_percent} now)"
     end
 
     # "/reports (2,900 of 3,000), /search (400 of 1,200)", or nil when no

@@ -198,7 +198,7 @@ module RailsPulse
 
         action "The writer dropped #{dropped} request(s) in the last hour. Raise config.async_queue_size or check database latency."
         if config.detail_capture_settings.nil?
-          suggest "At sustained high traffic, config.store_full_details = { above: :slow } stores only slow requests, " \
+          suggest "At sustained high traffic, config.store_full_details = { above_threshold: :slow } stores only slow requests, " \
                   "requests with a slow query, errors and a sample in full while dashboards still count all traffic, " \
                   "taking most of the load off the writer."
         end
@@ -232,7 +232,7 @@ module RailsPulse
 
       def detail_capture_label
         settings = config.detail_capture_settings
-        settings ? "{ above: #{settings.threshold.inspect} } (#{settings.description})" : ":all"
+        settings ? "{ above_threshold: #{settings.threshold.inspect} } (#{settings.description})" : ":all"
       end
 
       def print_summaries

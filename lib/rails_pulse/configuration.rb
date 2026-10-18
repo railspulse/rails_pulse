@@ -149,7 +149,7 @@ module RailsPulse
     attr_reader :detail_capture_settings
 
     # Errors are always kept, so they are not a field. threshold is the
-    # store_full_details[:above] key the durations were read from.
+    # store_full_details[:above_threshold] key the durations were read from.
     DetailCaptureSettings = Struct.new(:threshold, :requests_slower_than, :queries_slower_than, :sample_rate) do
       # "above :slow (requests over 700ms, queries over 100ms), 1% sample, errors"
       def description
@@ -165,7 +165,7 @@ module RailsPulse
       end
     end
 
-    STORE_FULL_DETAILS_KEYS = %i[above sample_rate].freeze
+    STORE_FULL_DETAILS_KEYS = %i[above_threshold sample_rate_below].freeze
     DEFAULT_FULL_DETAILS_SAMPLE_RATE = 0.01
 
     # Resolved on assignment, and again whenever a threshold changes, so the
@@ -443,7 +443,7 @@ module RailsPulse
       end
     end
 
-    # store_full_details[:above] names a threshold key: requests and queries
+    # store_full_details[:above_threshold] names a threshold key: requests and queries
     # at or above it, errors, and a random sample keep full detail. Naming a
     # level the dashboard flags means everything it flags at that level has
     # detail behind it, and p95/p99 usually land among the requests kept in
@@ -455,7 +455,7 @@ module RailsPulse
       end
 
       unless @store_full_details.is_a?(Hash)
-        raise ArgumentError, "store_full_details must be :all or a hash like { above: :slow }, got #{@store_full_details.inspect}"
+        raise ArgumentError, "store_full_details must be :all or a hash like { above_threshold: :slow }, got #{@store_full_details.inspect}"
       end
 
       options = @store_full_details.transform_keys(&:to_sym)
@@ -464,16 +464,16 @@ module RailsPulse
         raise ArgumentError, "store_full_details has unknown keys #{unknown.inspect} (allowed: #{STORE_FULL_DETAILS_KEYS.inspect})"
       end
 
-      above = options[:above]
+      above = options[:above_threshold]
       above = above.to_sym if above.is_a?(String)
       unless above.is_a?(Symbol)
-        raise ArgumentError, "store_full_details[:above] must be a key from request_thresholds and query_thresholds, " \
+        raise ArgumentError, "store_full_details[:above_threshold] must be a key from request_thresholds and query_thresholds, " \
                              "such as :slow, got #{above.inspect}"
       end
 
-      sample_rate = options.fetch(:sample_rate, DEFAULT_FULL_DETAILS_SAMPLE_RATE)
+      sample_rate = options.fetch(:sample_rate_below, DEFAULT_FULL_DETAILS_SAMPLE_RATE)
       unless sample_rate.is_a?(Numeric) && sample_rate >= 0 && sample_rate <= 1
-        raise ArgumentError, "store_full_details[:sample_rate] must be a number between 0 and 1, got #{sample_rate.inspect}"
+        raise ArgumentError, "store_full_details[:sample_rate_below] must be a number between 0 and 1, got #{sample_rate.inspect}"
       end
 
       { "request_thresholds" => @request_thresholds, "query_thresholds" => @query_thresholds }.each do |name, thresholds|
@@ -482,7 +482,7 @@ module RailsPulse
         @detail_capture_settings = nil
         return unless require_threshold
 
-        raise ArgumentError, "store_full_details[:above] is #{above.inspect}, but #{name} has no #{above.inspect} " \
+        raise ArgumentError, "store_full_details[:above_threshold] is #{above.inspect}, but #{name} has no #{above.inspect} " \
                              "(it has #{thresholds.keys.map(&:inspect).join(', ')})"
       end
 

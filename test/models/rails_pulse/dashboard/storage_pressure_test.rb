@@ -53,7 +53,7 @@ module RailsPulse
 
       test "detail capture keeping over a quarter of requests is a storage warning naming the settings and routes" do
         create_fresh_summary
-        RailsPulse.configuration.store_full_details = { above: :slow, sample_rate: 0.05 }
+        RailsPulse.configuration.store_full_details = { above_threshold: :slow, sample_rate_below: 0.05 }
         rate = stub(high?: true, share: 0.6, share_label: "60%", total: 1000)
         RailsPulse::DetailCaptureRate.stubs(:for).returns(rate)
         RailsPulse::DetailCaptureRate.stubs(:top_kept_routes_label).returns("/reports (590 of 600)")
@@ -65,7 +65,7 @@ module RailsPulse
         assert_equal "STORAGE", item[:type]
         assert_equal :warning, item[:severity]
         assert_equal "60% kept", item[:metric]
-        assert_includes item[:popover_body], "Raise request_thresholds[:slow] (700ms now) or query_thresholds[:slow] (100ms now), set store_full_details[:above] to a higher threshold, or lower store_full_details[:sample_rate] (5% now)"
+        assert_includes item[:popover_body], "Raise request_thresholds[:slow] (700ms now) or query_thresholds[:slow] (100ms now), set store_full_details[:above_threshold] to a higher threshold, or lower store_full_details[:sample_rate_below] (5% now)"
         assert_includes item[:popover_body], "/reports (590 of 600)"
         assert_equal({ healthy: 0, slow: 1, critical: 0 }, pressure.storage_counts)
         assert_equal :healthy, StorageStatus.new(storage_pressure: pressure).cleanup[:health]
@@ -73,7 +73,7 @@ module RailsPulse
 
       test "detail capture at a normal share is not a pressure item" do
         create_fresh_summary
-        RailsPulse.configuration.store_full_details = { above: :slow }
+        RailsPulse.configuration.store_full_details = { above_threshold: :slow }
         RailsPulse::DetailCaptureRate.stubs(:for).returns(stub(high?: false))
 
         assert_empty StoragePressure.new.pressure_items
@@ -81,7 +81,7 @@ module RailsPulse
 
       test "detail capture with no rate yet is not a pressure item" do
         create_fresh_summary
-        RailsPulse.configuration.store_full_details = { above: :slow }
+        RailsPulse.configuration.store_full_details = { above_threshold: :slow }
         RailsPulse::DetailCaptureRate.stubs(:for).returns(nil)
 
         assert_empty StoragePressure.new.pressure_items
@@ -89,7 +89,7 @@ module RailsPulse
 
       test "the capture rate is computed once per instance and shared with StorageStatus" do
         create_fresh_summary
-        RailsPulse.configuration.store_full_details = { above: :slow }
+        RailsPulse.configuration.store_full_details = { above_threshold: :slow }
         rate = stub(high?: false)
         RailsPulse::DetailCaptureRate.expects(:for).once.returns(rate)
 

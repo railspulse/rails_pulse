@@ -14,7 +14,7 @@ class RailsPulse::Middleware::DetailCaptureEndToEndTest < ActionDispatch::Integr
     # Nothing is slow enough to keep on its own; the sample roll decides.
     config.request_thresholds = config.request_thresholds.merge(slow: 60_000)
     config.query_thresholds = config.query_thresholds.merge(slow: 60_000)
-    config.store_full_details = { above: :slow, sample_rate: 0.5 }
+    config.store_full_details = { above_threshold: :slow, sample_rate_below: 0.5 }
     travel_to HOUR + 20.minutes
   end
 

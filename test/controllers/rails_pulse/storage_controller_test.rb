@@ -33,7 +33,7 @@ class RailsPulse::StorageControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "show gives the detail capture settings and the share kept" do
-    RailsPulse.configuration.store_full_details = { above: :slow }
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
     RailsPulse::DetailCaptureRate.stubs(:for).returns(stub(share_label: "4.2%", total: 12_000, high?: false))
 
     get rails_pulse.storage_path
@@ -46,7 +46,7 @@ class RailsPulse::StorageControllerTest < ActionDispatch::IntegrationTest
   end
 
   test "show waits for a summarized hour before giving the share kept" do
-    RailsPulse.configuration.store_full_details = { above: :slow }
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
     RailsPulse::DetailCaptureRate.stubs(:for).returns(nil)
 
     get rails_pulse.storage_path
