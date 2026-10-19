@@ -103,8 +103,8 @@ module RailsPulse
       max_id = RailsPulse::Route.maximum(:id).to_i
       return if max_id.zero?
 
-      case connection.adapter_name.downcase
-      when /postgres/
+      case RailsPulse::DatabaseAdapter.family(connection)
+      when :postgresql
         sequence = connection.select_value(
           "SELECT pg_get_serial_sequence(#{connection.quote(table)}, 'id')"
         )
@@ -113,7 +113,7 @@ module RailsPulse
         connection.execute(
           "SELECT setval(#{connection.quote(sequence)}, #{max_id}, true)"
         )
-      when /mysql/
+      when :mysql
         # ALTER TABLE implicitly commits on MySQL and destroys SAVEPOINTs used by
         # transactional tests / nested transactions. Skip while nested.
         return if connection.open_transactions.positive?
@@ -121,7 +121,7 @@ module RailsPulse
         connection.execute(
           "ALTER TABLE #{connection.quote_table_name(table)} AUTO_INCREMENT = #{max_id + 1}"
         )
-      when /sqlite/
+      when :sqlite
         quoted_table = connection.quote(table)
         exists = connection.select_value(
           "SELECT 1 FROM sqlite_sequence WHERE name = #{quoted_table}"

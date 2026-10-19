@@ -1,6 +1,7 @@
 require "rails_pulse/version"
 require "rails_pulse/statistics"
 require "rails_pulse/duration_histogram"
+require "rails_pulse/database_adapter"
 require "rails_pulse/route_indexes"
 require "rails_pulse/middleware/request_collector"
 require "rails_pulse/middleware/asset_server"

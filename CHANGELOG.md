@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Databases behind an adapter built on PostgreSQL, MySQL or SQLite are recognised.** With activerecord-postgis-adapter (or Trilogy for MySQL) the dashboard's storage panel failed on every table, the Storage page showed no sizes and EXPLAIN analysis was skipped; Rails Pulse now treats them as the database they run on.
+
 ## [0.5.0] - 2026-10-16
 
 ## [0.5.0.pre.2] - 2026-10-11

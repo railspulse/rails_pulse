@@ -5,7 +5,6 @@
 require "rails_pulse/route_indexes" unless defined?(RailsPulse::RouteIndexes)
 
 RailsPulse::Schema = lambda do |connection|
-  adapter = connection.adapter_name.downcase
   # Skip if all tables already exist to prevent conflicts
   required_tables = [ :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests, :rails_pulse_operations, :rails_pulse_jobs, :rails_pulse_job_runs, :rails_pulse_summaries, :rails_pulse_deployments, :rails_pulse_exception_groups, :rails_pulse_exception_occurrences, :rails_pulse_events ]
 
@@ -151,7 +150,7 @@ RailsPulse::Schema = lambda do |connection|
     connection.add_index :rails_pulse_operations, [ :query_id, :duration, :occurred_at ], name: "index_rails_pulse_operations_query_performance"
     connection.add_index :rails_pulse_operations, [ :occurred_at, :duration, :operation_type ], name: "index_rails_pulse_operations_on_time_duration_type"
 
-    if adapter.include?("postgres") || adapter.include?("mysql")
+    if RailsPulse::DatabaseAdapter.postgresql?(connection) || RailsPulse::DatabaseAdapter.mysql?(connection)
       connection.add_check_constraint :rails_pulse_operations,
         "(request_id IS NOT NULL OR job_run_id IS NOT NULL)",
         name: "rails_pulse_operations_request_or_job_run"
