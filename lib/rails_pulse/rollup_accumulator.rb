@@ -13,10 +13,16 @@ module RailsPulse
   # same live bucket. Whenever buckets are discarded — a stale hour, the key
   # cap, a fork — the accumulator takes a fresh writer_id, so later counts
   # accumulate under a new row instead of overwriting the finished one.
+  #
+  # A drain whose write fails is handed back via retain_failed and retried by
+  # the next drain, so no fold is lost to a transient database error: a
+  # retained row either carries a retired writer_id (final, safe to write any
+  # time) or is superseded by the fresher row the same bucket drains next.
   class RollupAccumulator
     FLUSH_INTERVAL = 60                 # seconds between drains
     STALE_HOUR_GRACE = 10 * 60          # keep a bucket this long past its hour, for backfill of stragglers
     MAX_KEYS = 5_000                    # buckets held before rotating, bounding memory
+    MAX_RETAINED_ROWS = 5_000           # failed-flush rows kept for retry, bounding memory while the database is down
 
     ROUTE_TYPE = "RailsPulse::Route"
     QUERY_TYPE = "RailsPulse::Query"
@@ -45,15 +51,16 @@ module RailsPulse
     def flush_due?
       @mutex.synchronize do
         ensure_current_process
-        @dirty.any? && monotonic_now - @last_flush_at >= FLUSH_INTERVAL
+        (@dirty.any? || @failed_rows.any?) && monotonic_now - @last_flush_at >= FLUSH_INTERVAL
       end
     end
 
     # Rows for every bucket touched since the last drain, carrying cumulative
-    # totals. Also the only place buckets retire: after the rows are built, a
-    # stale hour or a full table clears everything under a fresh writer_id.
-    # A failed upsert therefore loses at most the folds since the previous
-    # successful drain of buckets that never fold again.
+    # totals, plus any rows retained from a failed write. Also the only place
+    # buckets retire: after the rows are built, a stale hour or a full table
+    # clears everything under a fresh writer_id. The rows built here outlive
+    # that rotation — a write that fails is handed back via retain_failed and
+    # the rows ride along with the next drain.
     def drain_rows(now: Time.current)
       @mutex.synchronize do
         ensure_current_process
@@ -61,7 +68,23 @@ module RailsPulse
         rows = @dirty.map { |key| row_for(key, now) }
         @dirty.clear
         rotate! if rotation_due?(now)
-        rows
+        merge_failed_rows(rows)
+      end
+    end
+
+    # Rows from a drain whose write failed, kept to be retried by the next
+    # drain. Bounded: past MAX_RETAINED_ROWS the oldest are dropped, so only
+    # an outage that outlasts the cap loses counts — the same trade the
+    # writer queue makes.
+    def retain_failed(rows)
+      @mutex.synchronize do
+        if @pid == Process.pid
+          @failed_rows = rows.last(MAX_RETAINED_ROWS)
+        else
+          # A forked child never retries the parent's rows; the parent still
+          # owns them.
+          reset_state
+        end
       end
     end
 
@@ -131,6 +154,24 @@ module RailsPulse
       }
     end
 
+    # A retained row is retried unless this drain carries a fresher row for
+    # the same bucket (the bucket folded again, so its cumulative totals
+    # supersede the failed snapshot). A rotated-away bucket's retained row
+    # carries a retired writer_id no fresh row can share, so it always
+    # survives to be retried.
+    def merge_failed_rows(fresh_rows)
+      return fresh_rows if @failed_rows.empty?
+
+      fresh_keys = fresh_rows.map { |row| row_key(row) }.to_set
+      retries = @failed_rows.reject { |row| fresh_keys.include?(row_key(row)) }
+      @failed_rows = []
+      retries + fresh_rows
+    end
+
+    def row_key(row)
+      [ row[:rollupable_type], row[:rollupable_id], row[:period_start].to_i, row[:writer_id] ]
+    end
+
     def rotation_due?(now)
       return true if @buckets.size > MAX_KEYS
 
@@ -156,6 +197,7 @@ module RailsPulse
       @pid = Process.pid
       @buckets = {}
       @dirty = Set.new
+      @failed_rows = []
       @writer_id = new_writer_id
       @last_flush_at = monotonic_now
     end

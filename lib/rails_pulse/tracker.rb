@@ -236,15 +236,16 @@ module RailsPulse
       end
 
       # Upsert every dirty rollup bucket's cumulative totals. Errors are
-      # logged, never raised: a lost flush is recovered by the next one as
-      # long as the buckets keep folding, and dropped otherwise — the same
-      # trade the writer queue makes.
+      # logged, never raised: the drained rows are handed back to the
+      # accumulator and retried by a later flush, so a failed write loses
+      # nothing unless the outage outlasts the retention cap.
       def flush_rollups!
         rows = @rollups&.drain_rows
         return if rows.blank?
 
         with_writer_connection { RailsPulse::Rollup.upsert_rows(rows) }
       rescue => e
+        @rollups&.retain_failed(rows) if rows.present?
         log_error(e)
       end
 

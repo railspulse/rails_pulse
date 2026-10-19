@@ -90,6 +90,24 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     end
   end
 
+  test "rows from a failed flush are written by the next flush" do
+    RailsPulse::Tracker.track_request(folded_tracking_data(operations: []))
+
+    RailsPulse::Rollup.stubs(:upsert_rows).raises(ActiveRecord::StatementInvalid, "connection lost")
+
+    assert_no_difference "RailsPulse::Rollup.count" do
+      RailsPulse::Tracker.flush_rollups!
+    end
+
+    RailsPulse::Rollup.unstub(:upsert_rows)
+
+    assert_difference "RailsPulse::Rollup.count", 1 do
+      RailsPulse::Tracker.flush_rollups!
+    end
+
+    assert_equal 1, RailsPulse::Rollup.where(rollupable_type: "RailsPulse::Route").sum(:count)
+  end
+
   private
 
   def tracking_data

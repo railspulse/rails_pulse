@@ -117,7 +117,85 @@ module RailsPulse
       assert_equal 0, @accumulator.bucket_count
     end
 
+    # Failed Write Retry Tests
+
+    test "rows from a failed write are retried by the next drain" do
+      @accumulator.fold_route(route_id: 1, occurred_at: @hour, duration: 10.0, status: 200)
+      rows = @accumulator.drain_rows
+
+      @accumulator.retain_failed(rows)
+
+      assert_equal rows, @accumulator.drain_rows
+      assert_empty @accumulator.drain_rows
+    end
+
+    test "a retried row is superseded by the bucket's fresher cumulative row" do
+      @accumulator.fold_route(route_id: 1, occurred_at: @hour, duration: 10.0, status: 200)
+      @accumulator.retain_failed(@accumulator.drain_rows)
+
+      @accumulator.fold_route(route_id: 1, occurred_at: @hour, duration: 30.0, status: 200)
+      rows = @accumulator.drain_rows
+
+      assert_equal 1, rows.size
+      assert_equal 2, rows.first[:count]
+      assert_in_delta 40.0, rows.first[:sum_duration], 1e-6
+    end
+
+    test "a retained row survives bucket rotation under its retired writer id" do
+      @accumulator.fold_route(route_id: 1, occurred_at: @hour, duration: 10.0, status: 200)
+      old_writer_id = @accumulator.writer_id
+      rows = @accumulator.drain_rows(now: @hour + 2.hours)
+      @accumulator.retain_failed(rows)
+
+      assert_equal 0, @accumulator.bucket_count
+
+      @accumulator.fold_route(route_id: 1, occurred_at: @hour + 2.hours, duration: 20.0, status: 200)
+      retried = @accumulator.drain_rows(now: @hour + 2.hours)
+
+      assert_equal 2, retried.size
+      retired_row = retried.find { |r| r[:writer_id] == old_writer_id }
+
+      assert_equal 1, retired_row[:count]
+      assert_equal @hour, retired_row[:period_start]
+    end
+
+    test "flush becomes due with only retained rows pending" do
+      @accumulator.fold_route(route_id: 1, occurred_at: @hour, duration: 10.0, status: 200)
+      @accumulator.retain_failed(@accumulator.drain_rows)
+
+      refute_predicate @accumulator, :flush_due?
+
+      later = Process.clock_gettime(Process::CLOCK_MONOTONIC) + RollupAccumulator::FLUSH_INTERVAL + 1
+      Process.stubs(:clock_gettime).returns(later)
+
+      assert_predicate @accumulator, :flush_due?
+    end
+
+    test "retained rows are capped at the newest MAX_RETAINED_ROWS" do
+      cap = RollupAccumulator::MAX_RETAINED_ROWS
+      rows = (cap + 2).times.map do |i|
+        { rollupable_type: "RailsPulse::Query", rollupable_id: i, period_start: @hour, writer_id: "w" }
+      end
+
+      @accumulator.retain_failed(rows)
+      retried = @accumulator.drain_rows
+
+      assert_equal cap, retried.size
+      assert_equal rows.last(cap), retried
+    end
+
     # Fork Safety Tests
+
+    test "a forked child discards the parent's retained rows" do
+      @accumulator.fold_route(route_id: 1, occurred_at: @hour, duration: 10.0, status: 200)
+      rows = @accumulator.drain_rows
+
+      child_pid = Process.pid + 1
+      Process.stubs(:pid).returns(child_pid)
+      @accumulator.retain_failed(rows)
+
+      assert_empty @accumulator.drain_rows
+    end
 
     test "a forked child discards inherited buckets and takes a new writer id" do
       @accumulator.fold_route(route_id: 1, occurred_at: @hour, duration: 10.0, status: 200)
