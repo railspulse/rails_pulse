@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- **Active Job jobs on Sidekiq are no longer tracked twice.** With the Sidekiq adapter enabled (the default), every Active Job job was recorded once under its own class and again as `Sidekiq::ActiveJob::Wrapper` (or `ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper`), doubling job runs, failures and captured exceptions and putting the wrapper at the top of the Jobs page. The Sidekiq middleware now leaves Active Job jobs to Active Job and only tracks plain `Sidekiq::Job` workers. Wrapper rows recorded by earlier versions stay until retention removes them.
+
 ## [0.5.0] - 2026-10-16
 
 ## [0.5.0.pre.2] - 2026-10-11

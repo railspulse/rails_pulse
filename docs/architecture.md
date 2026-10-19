@@ -44,7 +44,7 @@ The per-event subscriber cost is not in this table because the pass-through app 
 
 ## Job path
 
-`ActiveJobExtensions` (`lib/rails_pulse/active_job_extensions.rb`) wraps `perform` in `JobRunCollector.track` (`lib/rails_pulse/job_run_collector.rb`), which creates the `Job` aggregate row and a `JobRun`, collects operations exactly as the request path does, records status, attempts and queue wait, and on failure calls `ExceptionCaptureService` before re-raising. Adapters that bypass Active Job get their own hook: `adapters/sidekiq_middleware.rb`, `adapters/delayed_job_plugin.rb`, `adapters/job_wrapper.rb`. `config.job_adapters` switches each one off.
+`ActiveJobExtensions` (`lib/rails_pulse/active_job_extensions.rb`) wraps `perform` in `JobRunCollector.track` (`lib/rails_pulse/job_run_collector.rb`), which creates the `Job` aggregate row and a `JobRun`, collects operations exactly as the request path does, records status, attempts and queue wait, and on failure calls `ExceptionCaptureService` before re-raising. Adapters that bypass Active Job get their own hook: `adapters/sidekiq_middleware.rb` (which skips jobs Sidekiq marks as `wrapped`, since those are Active Job jobs already tracked), `adapters/delayed_job_plugin.rb`, `adapters/job_wrapper.rb`. `config.job_adapters` switches each one off.
 
 ## Aggregation
 
