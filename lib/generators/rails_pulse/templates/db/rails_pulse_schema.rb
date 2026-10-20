@@ -245,7 +245,7 @@ RailsPulse::Schema = lambda do |connection|
                    comment: "FK to the group this occurrence belongs to"
       t.string   :exception_class, null: false
       t.text     :message
-        t.text     :backtrace,       comment: "JSON array of {file, line, method} frames (first 50)"
+      t.text     :backtrace,       comment: "JSON array of {file, line, method} frames (first 50)"
       t.string   :request_url,     comment: "Nullable — web requests only"
       t.string   :request_method,  comment: "GET, POST, etc."
       t.string   :environment,     comment: "production, staging, etc."
