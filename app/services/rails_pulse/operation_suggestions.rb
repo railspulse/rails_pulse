@@ -1,4 +1,7 @@
 module RailsPulse
+  # Works on persisted operations, which under detail capture are the slow,
+  # errored and sampled requests' — a slow-biased sample, which is the right
+  # input for suggestion tooling.
   class OperationSuggestions
     VIEW_TYPES = %w[template partial layout collection].freeze
 

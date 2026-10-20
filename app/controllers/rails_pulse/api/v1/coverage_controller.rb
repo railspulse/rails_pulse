@@ -14,13 +14,16 @@ module RailsPulse
         SUMMARY_GRACE = 2.hours
 
         def show
-          render json: {
+          payload = {
             as_of: Time.current.utc.iso8601,
             telemetry: telemetry,
             summaries: summaries,
             retention: retention,
             collection: collection
           }
+          # Raw request counts cover only captured requests under detail capture
+          payload[:sampled_detail] = true if RailsPulse.configuration.detail_capture_settings
+          render json: payload
         end
 
         private

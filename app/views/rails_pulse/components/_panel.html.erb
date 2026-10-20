@@ -2,6 +2,9 @@
   title ||= nil
   help_heading ||= nil
   help_text ||= nil
+  # { heading:, lines: [...] } — a note about the panel's data, shown from
+  # an info icon
+  info ||= nil
   link_to ||= nil
   actions ||= nil
   card_classes ||= ""
@@ -26,6 +29,26 @@
             data-rails-pulse--series-toggle-chart-id-value="<%= series_toggles_chart_id %>"
             data-action="click->rails-pulse--series-toggle#toggle"
           ><%= toggle[:name] %></button>
+        <% end %>
+        <% if info %>
+          <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-end">
+            <a href="#"
+              title="<%= info[:heading] %>"
+              data-rails-pulse--popover-target="button"
+              data-action="rails-pulse--popover#toggle"
+              data-popovertarget="popover">
+              <%= rails_pulse_icon 'info', height: "20px" %>
+            </a>
+
+            <div popover class="popover card" data-rails-pulse--popover-target="menu" style="max-width: 20rem">
+              <div class="flex flex-col">
+                <h3 class="font-semibold leading-none mbe-2 uppercase text-sm"><%= info[:heading] %></h3>
+                <% info[:lines].each_with_index do |line, index| %>
+                  <p class="text-sm text-subtle<%= ' mbe-2' if index < info[:lines].size - 1 %>"><%= line %></p>
+                <% end %>
+              </div>
+            </div>
+          </div>
         <% end %>
         <% if help_heading %>
           <div data-controller="rails-pulse--popover" data-rails-pulse--popover-placement-value="bottom-start">

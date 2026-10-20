@@ -28,6 +28,7 @@ module Statistics
     puts "  Jobs: #{RailsPulse::Job.count}"
     puts "  Job Runs: #{RailsPulse::JobRun.count}"
     puts "  Summaries: #{RailsPulse::Summary.count}"
+    puts "  Rollups: #{RailsPulse::Rollup.count}" if RailsPulse::Rollup.table_available?
 
     if RailsPulse::Request.any?
       avg_request_duration = RailsPulse::Request.average(:duration).to_f.round(2)
