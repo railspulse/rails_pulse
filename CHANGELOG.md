@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-10-16
+
+## [0.5.0.pre.2] - 2026-10-11
+
 ### Added
 
 - **Before-and-after comparison for every deployment.** The deployments API, `rails-pulse deployments list` and the `rails_pulse_deployments` tool now say whether each release made things worse: response time or error rate materially worse in the hour after the deploy finished than in the hour before it started, or too little traffic to tell.
