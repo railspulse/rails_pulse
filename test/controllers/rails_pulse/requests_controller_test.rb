@@ -72,6 +72,56 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:pagination)
   end
 
+  test "index action says the list is captured-only when detail capture is on" do
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
+
+    get rails_pulse.requests_path
+
+    assert_response :success
+    assert_includes response.body, "This list shows only captured requests"
+  ensure
+    RailsPulse.configuration.store_full_details = :all
+  end
+
+  test "index action gives the share of all requests captured" do
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
+    RailsPulse::DetailCaptureRate.stubs(:for).with(nil).returns(stub(share_label: "4.2%", high?: false))
+
+    get rails_pulse.requests_path
+
+    assert_response :success
+    assert_includes response.body, "Captured in the last day: 4.2% of all requests."
+    assert_not_includes response.body, "That&#39;s over a quarter of them"
+  ensure
+    RailsPulse.configuration.store_full_details = :all
+  end
+
+  test "index action warns when over a quarter of requests are captured and says what to change" do
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
+    RailsPulse::DetailCaptureRate.stubs(:for).with(nil).returns(stub(share_label: "60%", high?: true))
+
+    get rails_pulse.requests_path
+
+    assert_response :success
+    assert_includes response.body, "Captured in the last day: 60% of all requests."
+    assert_includes response.body, "That&#39;s over a quarter of them, so little storage is saved. To store less, raise request_thresholds[:slow] (700ms now) or query_thresholds[:slow] (100ms now), set store_full_details[:above_threshold] to a higher threshold, or lower store_full_details[:sample_rate_below] (1% now)."
+  ensure
+    RailsPulse.configuration.store_full_details = :all
+  end
+
+  test "index action leaves the share out until it is known" do
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
+    RailsPulse::DetailCaptureRate.stubs(:for).returns(nil)
+
+    get rails_pulse.requests_path
+
+    assert_response :success
+    assert_includes response.body, "This list shows only captured requests"
+    assert_not_includes response.body, "Captured in the last day"
+  ensure
+    RailsPulse.configuration.store_full_details = :all
+  end
+
   test "index action with ransack search by status" do
     get rails_pulse.requests_path, params: { q: { status_eq: 200 } }
 
