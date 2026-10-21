@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1.pre.1] - 2026-10-21
+
+### Added
+
+- **Detail capture for high-traffic installs.** With `config.store_full_details = { above_threshold: :slow }`, only requests and queries past the named threshold, errors and a 1% sample are stored in full, while dashboards still count all traffic from compact hourly aggregates. Off by default; upgrading adds a table, so run `rails generate rails_pulse:upgrade && rails db:migrate`.
+- **How much detail capture keeps.** `rails rails_pulse:status`, the Storage page and the info icon on lists of captured requests show what share of the last day's traffic was kept in full; when it is over a quarter, the dashboard's Storage badge warns and says which setting to change.
+
+### Fixed
+
+- Requests whose controller raises an unhandled exception are now recorded, with the status the error page sends, so error rates and request counts include them; previously only the exception was tracked and the request was missing.
+
 ## [0.5.0] - 2026-10-16
 
 ## [0.5.0.pre.2] - 2026-10-11
