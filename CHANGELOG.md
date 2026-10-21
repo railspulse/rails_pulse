@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
-- Hourly summary maintenance now stays fast as retained data grows: its reads no longer sort in SQL (which could make the database scan an entire index across all retained rows) and a new covering index on operations serves the hour's query metrics without touching the table, so SummaryService works under a short `statement_timeout` at scale. Run `rails rails_pulse:install:migrations && rails db:migrate` after upgrading to add the index.
+- Hourly summary maintenance now stays fast as retained data grows: a covering index on operations serves the hour's query metrics without reading the table, fixing `statement_timeout` failures on large installs (#375). Run `rails rails_pulse:install:migrations && rails db:migrate` after upgrading to add the index.
+
 ## [0.5.1.pre.1] - 2026-10-21
 
 ### Added
