@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Time range presets now cover exactly the period their label names: "Last 7 Days" previously spanned 8 days and "Last 24 Hours" 25 hours. Dashboard totals, charts and period-over-period comparisons may show slightly lower numbers after upgrading because the oldest day or hour is no longer included (#355).
+
 ## [0.5.1.pre.1] - 2026-10-21
 
 ### Added
