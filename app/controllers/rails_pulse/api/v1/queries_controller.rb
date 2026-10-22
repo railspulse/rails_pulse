@@ -65,7 +65,7 @@ module RailsPulse
             QuerySerializer.serialize(query, stats: stats_for(row, locations[row.query_id])) if query
           end
 
-          render json: { data: data, meta: { total: total, limit: limit, offset: offset } }
+          render json: { data: data, meta: apply_sampled_detail({ total: total, limit: limit, offset: offset }) }
         end
 
         # Restricts the operations to those issued while serving one route, so

@@ -32,6 +32,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     AddNullActionUniqueIndexToRoutes
     AddLocationToExceptionGroups
     CreateRailsPulseEvents
+    CreateRailsPulseRollups
   ].freeze
 
   def setup
@@ -282,6 +283,20 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     end
   end
 
+  test "upgrade from v0.2.7 creates the rollups table" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    assert @conn.table_exists?(:rails_pulse_rollups), "rollups table missing"
+    %w[rollupable_type rollupable_id period_start writer_id count error_count
+       status_2xx status_3xx status_4xx status_5xx
+       sum_duration sum_square_duration min_duration max_duration histogram].each do |column|
+      assert @conn.column_exists?(:rails_pulse_rollups, column), "#{column} missing on rollups"
+    end
+    assert @conn.index_exists?(:rails_pulse_rollups, [ :rollupable_type, :rollupable_id, :period_start, :writer_id ], unique: true, name: "idx_pulse_rollups_unique"),
+      "unique rollup index missing"
+  end
+
   test "upgrade from v0.2.7 creates deployments table" do
     load_baseline(RailsPulse::TestSchemas::V027)
     run_all_migrations
@@ -422,8 +437,16 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     Dir.glob("#{MIGRATE_DIR}/*.rb").sort.each { |f| load f }
   end
 
+  # The Cloud tables are opt-in (db/rails_pulse_cloud_schema.rb, decision 0021
+  # era) and no migration under db/rails_pulse_migrate creates them, so they
+  # are not part of this suite's baseline-and-upgrade cycle. Dropping them
+  # here would leave the shared test database without them for the next
+  # `rake test` run's Cloud tests, since restore_current_schema reloads only
+  # the engine schema.
+  CLOUD_TABLES = %w[rails_pulse_cloud_installations rails_pulse_cloud_batches].freeze
+
   def drop_all_rails_pulse_tables
-    tables = @conn.tables.select { |t| t.start_with?("rails_pulse_") }
+    tables = @conn.tables.select { |t| t.start_with?("rails_pulse_") } - CLOUD_TABLES
     @conn.disable_referential_integrity do
       tables.each { |t| @conn.drop_table(t, force: :cascade) }
     end

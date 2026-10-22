@@ -45,7 +45,7 @@ class RailsPulse::TimeRangeTest < ActiveSupport::TestCase
     result = resolve
 
     assert_equal "last_24_hours", result.selected_time_range
-    assert_in_delta 1.day.ago.beginning_of_hour.to_i, result.window.start_time.to_i, 10
+    assert_in_delta 23.hours.ago.beginning_of_hour.to_i, result.window.start_time.to_i, 10
     assert_in_delta @now.end_of_hour.to_i, result.window.end_time.to_i, 10
   end
 
@@ -61,7 +61,7 @@ class RailsPulse::TimeRangeTest < ActiveSupport::TestCase
     result = resolve(q: { period_start_range: "last_7_days" })
 
     assert_equal "last_7_days", result.selected_time_range
-    assert_in_delta 1.week.ago.beginning_of_day.to_i, result.window.start_time.to_i, 10
+    assert_in_delta 6.days.ago.beginning_of_day.to_i, result.window.start_time.to_i, 10
     assert_in_delta @now.end_of_day.to_i, result.window.end_time.to_i, 10
   end
 
@@ -75,7 +75,28 @@ class RailsPulse::TimeRangeTest < ActiveSupport::TestCase
     result = resolve(q: { period_start_range: "unknown_range" })
 
     assert_equal "unknown_range", result.selected_time_range
-    assert_in_delta 1.day.ago.beginning_of_hour.to_i, result.window.start_time.to_i, 10
+    assert_in_delta 23.hours.ago.beginning_of_hour.to_i, result.window.start_time.to_i, 10
+  end
+
+  test "preset windows include exactly the number of periods named" do
+    expected_periods = {
+      "last_24_hours" => 24,
+      "last_7_days" => 7,
+      "last_14_days" => 14,
+      "last_30_days" => 30
+    }
+
+    actual_periods = expected_periods.to_h do |preset, _expected_count|
+      result = resolve(q: { period_start_range: preset })
+      actual_count = if preset == "last_24_hours"
+        ((result.window.end_time.beginning_of_hour - result.window.start_time.beginning_of_hour) / 1.hour).to_i + 1
+      else
+        (result.window.end_time.to_date - result.window.start_time.to_date).to_i + 1
+      end
+      [ preset, actual_count ]
+    end
+
+    assert_equal expected_periods, actual_periods
   end
 
   # Priority 2: Page-Specific Custom Range Tests

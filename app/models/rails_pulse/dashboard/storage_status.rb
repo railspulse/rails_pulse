@@ -132,6 +132,14 @@ module RailsPulse
         }
       end
 
+      # rate is nil while detail capture is off or its rate is not known yet
+      def detail_capture
+        @detail_capture ||= begin
+          settings = @config.detail_capture_settings
+          { enabled: settings.present?, settings_label: settings&.description, rate: settings && @pressure.detail_capture_rate }
+        end
+      end
+
       def database
         @database ||= {
           adapter: adapter_label,
@@ -280,7 +288,7 @@ module RailsPulse
       end
 
       def estimated_count(table_name)
-        if connection.adapter_name.downcase.include?("postgres")
+        if postgresql?
           estimate = connection.select_value(
             "SELECT reltuples::bigint FROM pg_class WHERE oid = to_regclass(#{connection.quote(table_name.to_s)})"
           ).to_i
@@ -405,9 +413,7 @@ module RailsPulse
       end
 
       def table_bytes(table_name)
-        adapter = connection.adapter_name.downcase
-
-        if adapter.include?("postgres")
+        if postgresql?
           connection.select_value(
             "SELECT pg_total_relation_size(#{connection.quote(table_name.to_s)})"
           ).to_i
@@ -420,7 +426,7 @@ module RailsPulse
                 AND TABLE_NAME = ?
             SQL
           )&.to_i
-        elsif adapter.include?("sqlite")
+        elsif sqlite?
           sqlite_table_bytes(table_name)
         end
       rescue ActiveRecord::StatementInvalid
@@ -439,7 +445,7 @@ module RailsPulse
       end
 
       def sqlite_file_size
-        return unless connection.adapter_name.downcase.include?("sqlite")
+        return unless sqlite?
         return unless RailsPulse.connects_to.present?
 
         path = database_name
@@ -457,22 +463,20 @@ module RailsPulse
         nil
       end
 
+      def postgresql?
+        RailsPulse::DatabaseAdapter.postgresql?(connection)
+      end
+
       def mysql?
-        connection.adapter_name.downcase.match?(/mysql|trilogy/)
+        RailsPulse::DatabaseAdapter.mysql?(connection)
       end
 
       def sqlite?
-        connection.adapter_name.downcase.include?("sqlite")
+        RailsPulse::DatabaseAdapter.sqlite?(connection)
       end
 
       def adapter_label
-        name = connection.adapter_name
-        case name.downcase
-        when /postgres/ then "PostgreSQL"
-        when /mysql|trilogy/ then "MySQL"
-        when /sqlite/ then "SQLite"
-        else name
-        end
+        RailsPulse::DatabaseAdapter.label(connection)
       end
 
       def tables_with_size?
@@ -491,12 +495,11 @@ module RailsPulse
       end
 
       def size_note
-        adapter = connection.adapter_name.downcase
-        if adapter.include?("sqlite") && RailsPulse.connects_to.blank?
+        if sqlite? && RailsPulse.connects_to.blank?
           "SQLite is sharing the host database, so file size would include the rest of the app. Per-table size is shown when SQLite dbstat is available."
-        elsif adapter.include?("sqlite") && RailsPulse.connects_to.present?
+        elsif sqlite? && RailsPulse.connects_to.present?
           "File size of the dedicated Rails Pulse SQLite database."
-        elsif adapter.include?("postgres")
+        elsif postgresql?
           "PostgreSQL relation size including indexes (pg_total_relation_size)."
         elsif mysql?
           "MySQL data + index length from information_schema."
@@ -514,7 +517,7 @@ module RailsPulse
       end
 
       def cleanup_health
-        items = pressure_items
+        items = pressure_items.reject { |item| item[:cleanup] == false }
         return :critical if items.any? { |item| item[:severity] == :critical }
         return :warning if items.any? { |item| item[:severity] == :warning }
         return :disabled unless @config.archiving_enabled
