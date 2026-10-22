@@ -167,6 +167,18 @@ module RailsPulse
         assert_includes [ "sqlite", "postgresql", "mysql", "mysql2" ], result
       end
 
+      test "database_adapter reports postgresql for a PostgreSQL adapter with its own name" do
+        require "active_record/connection_adapters/postgresql_adapter"
+        # activerecord-postgis-adapter's connection: a PostgreSQLAdapter named
+        # "PostGIS". Allocated, never connected.
+        postgis = Class.new(ActiveRecord::ConnectionAdapters::PostgreSQLAdapter) { const_set(:ADAPTER_NAME, "PostGIS") }
+        RailsPulse::ApplicationRecord.stubs(:connection).returns(postgis.allocate)
+        analyzer = TestAnalyzer.new(@query, @operations)
+
+        assert_equal "postgresql", analyzer.database_adapter
+        assert_predicate analyzer, :postgresql?
+      end
+
       test "postgresql? returns true for postgresql adapter" do
         analyzer = TestAnalyzer.new(@query, @operations)
         analyzer.mock_database_adapter = "postgresql"

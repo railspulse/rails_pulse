@@ -135,6 +135,22 @@ module RailsPulse
         end
       end
 
+      test "estimated status on a PostgreSQL adapter with its own name reads PostgreSQL estimates and sizes" do
+        skip "PostgreSQL only" unless RailsPulse::ApplicationRecord.connection.adapter_name.downcase.include?("postgres")
+        connection = RailsPulse::ApplicationRecord.connection
+        StorageStatus::TABLE_CATALOG.each { |definition| connection.execute("ANALYZE #{definition[:name]}") }
+        # activerecord-postgis-adapter's connection is a PostgreSQLAdapter that
+        # reports "PostGIS".
+        connection.stubs(:adapter_name).returns("PostGIS")
+
+        status = StorageStatus.new(estimated: true)
+
+        assert status.tables.all? { |table| table[:count].is_a?(Integer) && table[:count] >= 0 }
+        assert status.tables.all? { |table| table[:bytes].to_i.positive? }
+        assert_equal "PostgreSQL", status.database[:adapter]
+        assert_match(/pg_total_relation_size/, status.database[:size_note])
+      end
+
       test "an adapter without the MySQL statistics variable still lists every table" do
         skip "SQLite only: a failed statement would abort the PostgreSQL test transaction" unless sqlite?
         RailsPulse::ApplicationRecord.connection.stubs(:adapter_name).returns("Mysql2")
