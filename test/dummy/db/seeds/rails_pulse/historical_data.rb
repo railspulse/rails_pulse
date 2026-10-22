@@ -49,6 +49,10 @@ module RailsPulse
         ::RailsPulse::Request.delete_all
         ::RailsPulse::JobRun.delete_all
         ::RailsPulse::Job.delete_all
+        # Rollups reference routes and queries by id without a foreign key, and
+        # summarizing an hour merges every rollup row for it, so leftovers from
+        # a detail-capture session would inflate the reseeded summaries.
+        ::RailsPulse::Rollup.delete_all if ::RailsPulse::Rollup.table_available?
         ::RailsPulse::Query.delete_all
         ::RailsPulse::Route.delete_all
         ::RailsPulse::Summary.delete_all

@@ -132,6 +132,14 @@ module RailsPulse
         }
       end
 
+      # rate is nil while detail capture is off or its rate is not known yet
+      def detail_capture
+        @detail_capture ||= begin
+          settings = @config.detail_capture_settings
+          { enabled: settings.present?, settings_label: settings&.description, rate: settings && @pressure.detail_capture_rate }
+        end
+      end
+
       def database
         @database ||= {
           adapter: adapter_label,
@@ -509,7 +517,7 @@ module RailsPulse
       end
 
       def cleanup_health
-        items = pressure_items
+        items = pressure_items.reject { |item| item[:cleanup] == false }
         return :critical if items.any? { |item| item[:severity] == :critical }
         return :warning if items.any? { |item| item[:severity] == :warning }
         return :disabled unless @config.archiving_enabled

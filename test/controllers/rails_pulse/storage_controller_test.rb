@@ -26,6 +26,37 @@ class RailsPulse::StorageControllerTest < ActionDispatch::IntegrationTest
     assert_kind_of RailsPulse::Dashboard::StorageStatus, assigns(:status)
   end
 
+  test "show says detail capture is off" do
+    get rails_pulse.storage_path
+
+    assert_includes response.body, "All requests are stored in full"
+  end
+
+  test "show gives the detail capture settings and the share kept" do
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
+    RailsPulse::DetailCaptureRate.stubs(:for).returns(stub(share_label: "4.2%", total: 12_000, high?: false))
+
+    get rails_pulse.storage_path
+
+    assert_response :success
+    assert_includes response.body, "Above :slow (requests over 700ms, queries over 100ms), 1% sample, errors"
+    assert_includes response.body, "Stored 4.2% of the last day's 12,000 requests in full"
+  ensure
+    RailsPulse.configuration.store_full_details = :all
+  end
+
+  test "show waits for a summarized hour before giving the share kept" do
+    RailsPulse.configuration.store_full_details = { above_threshold: :slow }
+    RailsPulse::DetailCaptureRate.stubs(:for).returns(nil)
+
+    get rails_pulse.storage_path
+
+    assert_response :success
+    assert_includes response.body, "Share kept appears once SummaryJob has summarized an hour with folded requests"
+  ensure
+    RailsPulse.configuration.store_full_details = :all
+  end
+
   test "show lists pulse tables" do
     get rails_pulse.storage_path
 

@@ -1,5 +1,8 @@
 <%= render 'rails_pulse/components/panel', {
   title: 'Diagnostics',
+  # Built, like the locations and raw data below, from operation rows, which
+  # folded requests never create.
+  info: detail_capture_info("Diagnostics, locations and raw data come only from captured requests: slow, with a slow query, errored or sampled. The charts and cards above count all traffic.", subject: query),
   help_heading: 'Query Diagnostics',
   help_text: 'Automatically generated analysis for this query. Includes N+1 detection (from live request data), query characteristics, detected issues, optimization suggestions, and a database EXPLAIN plan. Click Re-analyze to regenerate.',
   actions: [ { url: reanalyze_query_path(query), method: :post, title: 'Re-analyze', icon: 'refresh-cw' } ]

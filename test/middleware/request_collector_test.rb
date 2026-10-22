@@ -119,6 +119,89 @@ class RailsPulse::Middleware::RequestCollectorTest < ActiveSupport::TestCase
     refute_equal ops[0][:repeated_query_group], ops[2][:repeated_query_group]
   end
 
+  # Unhandled Exception Tests
+
+  test "records a request whose controller raises as a 500 and re-raises the exception" do
+    collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { raise StandardError, "boom" })
+    tracked = nil
+    RailsPulse::Tracker.expects(:track_request).with { |data| tracked = data }
+
+    error = assert_raises(StandardError) { collector.call(Rack::MockRequest.env_for("/boom")) }
+
+    assert_equal "boom", error.message
+    assert_equal 500, tracked[:status]
+    assert tracked[:is_error]
+    assert_equal "/boom", tracked[:path]
+    assert_operator tracked[:duration], :>=, 0
+  end
+
+  test "records the status the error page will send, not always 500" do
+    collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { raise ActiveRecord::RecordNotFound })
+    tracked = nil
+    RailsPulse::Tracker.expects(:track_request).with { |data| tracked = data }
+
+    assert_raises(ActiveRecord::RecordNotFound) { collector.call(Rack::MockRequest.env_for("/missing")) }
+
+    assert_equal 404, tracked[:status]
+    assert_not tracked[:is_error]
+  end
+
+  test "records a missing record raised from a view as the 404 the user gets" do
+    view_error = begin
+      raise ActiveRecord::RecordNotFound
+    rescue ActiveRecord::RecordNotFound
+      ActionView::Template::Error.new("show.html.erb")
+    end
+    collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { raise view_error })
+    tracked = nil
+    RailsPulse::Tracker.expects(:track_request).with { |data| tracked = data }
+
+    assert_raises(ActionView::Template::Error) { collector.call(Rack::MockRequest.env_for("/missing")) }
+
+    assert_equal 404, tracked[:status]
+    assert_not tracked[:is_error]
+  end
+
+  test "records a 500 and re-raises the host's exception when its status cannot be determined" do
+    collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { raise ArgumentError, "host bug" })
+    tracked = nil
+    RailsPulse::Tracker.expects(:track_request).with { |data| tracked = data }
+    ActionDispatch::ExceptionWrapper.stubs(:new).raises(RuntimeError, "wrapper bug")
+
+    error = assert_raises(ArgumentError) { collector.call(Rack::MockRequest.env_for("/boom")) }
+
+    assert_equal "host bug", error.message
+    assert_equal 500, tracked[:status]
+  end
+
+  test "re-raises the host's exception even when tracking it fails" do
+    collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { raise ArgumentError, "host bug" })
+    RailsPulse::Tracker.expects(:track_request).raises(RuntimeError, "tracker down")
+
+    error = assert_raises(ArgumentError) { collector.call(Rack::MockRequest.env_for("/boom")) }
+
+    assert_equal "host bug", error.message
+  end
+
+  test "a tracking failure never breaks a successful response" do
+    collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { [ 200, { "Content-Length" => "2" }, [ "ok" ] ] })
+    RailsPulse::Tracker.expects(:track_request).raises(RuntimeError, "tracker down")
+
+    status, _headers, _body = collector.call(Rack::MockRequest.env_for("/fine"))
+
+    assert_equal 200, status
+  end
+
+  test "clears request state after an exception" do
+    collector = RailsPulse::Middleware::RequestCollector.new(->(_env) { raise StandardError })
+    RailsPulse::Tracker.stubs(:track_request)
+
+    assert_raises(StandardError) { collector.call(Rack::MockRequest.env_for("/boom")) }
+
+    assert_nil RailsPulse::Current.rails_pulse_request_id
+    assert_nil RailsPulse::Current.rails_pulse_operations
+  end
+
   # response_size_bytes Tests
 
   test "returns Content-Length header as integer when present" do
