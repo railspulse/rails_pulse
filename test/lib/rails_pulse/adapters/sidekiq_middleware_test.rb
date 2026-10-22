@@ -67,6 +67,50 @@ module RailsPulse
         end
       end
 
+      # Active Job on Sidekiq: ActiveJobExtensions tracks the real class, so the
+      # middleware must not add a second run for the wrapper.
+
+      test "call skips Active Job jobs wrapped by Sidekiq" do
+        @job_data["class"] = "Sidekiq::ActiveJob::Wrapper"
+        @job_data["wrapped"] = "ReportJob"
+        yielded = false
+
+        assert_no_difference -> { RailsPulse::JobRun.count } do
+          @middleware.call(@worker, @job_data, "default") { yielded = true }
+        end
+
+        assert yielded
+      end
+
+      test "call skips Active Job jobs wrapped by the Rails Sidekiq adapter" do
+        @job_data["class"] = "ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper"
+        @job_data["wrapped"] = "ReportJob"
+
+        assert_no_difference -> { RailsPulse::JobRun.count } do
+          @middleware.call(@worker, @job_data, "default") { }
+        end
+      end
+
+      test "call lets a wrapped job's failure through without recording it" do
+        @job_data["wrapped"] = "ReportJob"
+
+        assert_no_difference -> { RailsPulse::JobRun.count } do
+          assert_raises RuntimeError do
+            @middleware.call(@worker, @job_data, "default") { raise "fail" }
+          end
+        end
+      end
+
+      test "call still tracks plain Sidekiq jobs" do
+        @job_data["class"] = "FakeSidekiqWorker"
+
+        assert_difference -> { RailsPulse::JobRun.count }, 1 do
+          @middleware.call(@worker, @job_data, "default") { }
+        end
+
+        assert_equal "sidekiq", RailsPulse::JobRun.order(:created_at).last.adapter
+      end
+
       test "call still yields the block when disabled" do
         RailsPulse.configuration.enabled = false
         yielded = false

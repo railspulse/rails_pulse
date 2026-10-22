@@ -8,8 +8,7 @@ class ChangeRailsPulseRoutesToMultiVerbModel < ActiveRecord::Migration[7.0]
 
     # Step 2: Backfill http_methods from the existing single method column
     if column_exists?(:rails_pulse_routes, :method) && column_exists?(:rails_pulse_routes, :http_methods)
-      adapter = connection.adapter_name.downcase
-      if adapter.include?("mysql")
+      if RailsPulse::DatabaseAdapter.mysql?(connection)
         execute("UPDATE rails_pulse_routes SET http_methods = CONCAT('[\"', method, '\"]') WHERE http_methods IS NULL AND method IS NOT NULL")
       else
         execute("UPDATE rails_pulse_routes SET http_methods = '[\"' || method || '\"]' WHERE http_methods IS NULL AND method IS NOT NULL")
