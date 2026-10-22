@@ -10,6 +10,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - **Active Job jobs on Sidekiq are no longer tracked twice.** With the Sidekiq adapter enabled (the default), every Active Job job was recorded once under its own class and again as `Sidekiq::ActiveJob::Wrapper` (or `ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper`), doubling job runs, failures and captured exceptions and putting the wrapper at the top of the Jobs page. The Sidekiq middleware now leaves Active Job jobs to Active Job and only tracks plain `Sidekiq::Job` workers. Wrapper rows recorded by earlier versions stay until retention removes them.
+- Time range presets now cover exactly the period their label names: "Last 7 Days" previously spanned 8 days and "Last 24 Hours" 25 hours. Dashboard totals, charts and period-over-period comparisons may show slightly lower numbers after upgrading because the oldest day or hour is no longer included (#355).
+
+## [0.5.1.pre.1] - 2026-10-21
+
+### Added
+
+- **Detail capture for high-traffic installs.** With `config.store_full_details = { above_threshold: :slow }`, only requests and queries past the named threshold, errors and a 1% sample are stored in full, while dashboards still count all traffic from compact hourly aggregates. Off by default; upgrading adds a table, so run `rails generate rails_pulse:upgrade && rails db:migrate`.
+- **How much detail capture keeps.** `rails rails_pulse:status`, the Storage page and the info icon on lists of captured requests show what share of the last day's traffic was kept in full; when it is over a quarter, the dashboard's Storage badge warns and says which setting to change.
+
+### Fixed
+
+- Requests whose controller raises an unhandled exception are now recorded, with the status the error page sends, so error rates and request counts include them; previously only the exception was tracked and the request was missing.
 
 ## [0.5.0] - 2026-10-16
 
