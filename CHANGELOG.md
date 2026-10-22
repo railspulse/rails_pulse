@@ -9,6 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Active Job jobs on Sidekiq are no longer tracked twice: each run was also recorded under Sidekiq's wrapper class (`Sidekiq::ActiveJob::Wrapper`), doubling job runs, failures and captured exceptions on the Jobs page. Wrapper rows recorded by earlier versions stay until retention removes them (#386).
 - Time range presets now cover exactly the period their label names: "Last 7 Days" previously spanned 8 days and "Last 24 Hours" 25 hours. Dashboard totals, charts and period-over-period comparisons may show slightly lower numbers after upgrading because the oldest day or hour is no longer included (#355).
 
 ## [0.5.1.pre.1] - 2026-10-21
