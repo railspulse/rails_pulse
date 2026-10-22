@@ -208,7 +208,9 @@ RailsPulse.configure do |config|
   # Job tracking mode: :universal (all jobs) or :opt_in (only explicitly tracked jobs)
   # config.job_tracking_mode = :universal
 
-  # Per-adapter settings. Disable adapters or opt into queue-depth tracking:
+  # Per-adapter settings. Disable adapters or opt into queue-depth tracking.
+  # Active Job jobs are always tracked through Active Job; the Sidekiq adapter only
+  # adds plain Sidekiq::Job workers, so it is safe to leave on with Active Job.
   # config.job_adapters = {
   #   sidekiq: { enabled: true, track_queue_depth: false },
   #   solid_queue: { enabled: true, track_recurring: false },
