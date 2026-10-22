@@ -2,6 +2,7 @@
 # This file contains the complete schema for Rails Pulse tables
 # Load with: rails db:schema:load_rails_pulse or db:prepare
 
+require "rails_pulse/database_adapter" unless defined?(RailsPulse::DatabaseAdapter)
 require "rails_pulse/route_indexes" unless defined?(RailsPulse::RouteIndexes)
 
 RailsPulse::Schema = lambda do |connection|
