@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Hourly summary maintenance now stays fast as retained data grows: a covering index on operations serves the hour's query metrics without reading the table, fixing `statement_timeout` failures on large installs (#375). Run `rails rails_pulse:install:migrations && rails db:migrate` after upgrading to add the index.
+- Databases behind an adapter built on PostgreSQL, MySQL or SQLite are now recognised: with activerecord-postgis-adapter (or Trilogy for MySQL) the dashboard's storage panel failed on every table, the Storage page showed no sizes and EXPLAIN analysis was skipped; Rails Pulse now treats them as the database they run on (#387).
+- Active Job jobs on Sidekiq are no longer tracked twice: each run was also recorded under Sidekiq's wrapper class (`Sidekiq::ActiveJob::Wrapper`), doubling job runs, failures and captured exceptions on the Jobs page. Wrapper rows recorded by earlier versions stay until retention removes them (#386).
+- Time range presets now cover exactly the period their label names: "Last 7 Days" previously spanned 8 days and "Last 24 Hours" 25 hours. Dashboard totals, charts and period-over-period comparisons may show slightly lower numbers after upgrading because the oldest day or hour is no longer included (#355).
 
 ## [0.5.1.pre.1] - 2026-10-21
 
