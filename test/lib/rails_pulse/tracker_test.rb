@@ -153,8 +153,33 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     ActiveSupport::Notifications.unsubscribe(subscriber)
   end
 
-  test "a folded batch whose SQL resolution fails still folds its routes" do
+  test "a folded batch whose batched SQL resolution fails falls back to per-request resolution" do
+    # resolve_sql_durations delegates to resolve_sql_durations_many, so the
+    # fallback goes through the same method: fail the first (batched) call
+    # only, then restore the real implementation for the per-request calls.
+    operation_singleton = RailsPulse::Operation.singleton_class
+    operation_singleton.send(:alias_method, :real_resolve_sql_durations_many, :resolve_sql_durations_many)
+    calls = 0
+    operation_singleton.send(:define_method, :resolve_sql_durations_many) do |ops_lists|
+      calls += 1
+      raise ActiveRecord::StatementInvalid, "boom" if calls == 1
+
+      real_resolve_sql_durations_many(ops_lists)
+    end
+
+    RailsPulse::Tracker.perform_tracking_batch([ folded_tracking_data, folded_tracking_data(operations: gadget_operations) ])
+    RailsPulse::Tracker.flush_rollups!
+
+    assert RailsPulse::Rollup.exists?(rollupable_type: "RailsPulse::Route")
+    assert_equal 2, RailsPulse::Rollup.where(rollupable_type: "RailsPulse::Query").count
+  ensure
+    operation_singleton.send(:alias_method, :resolve_sql_durations_many, :real_resolve_sql_durations_many)
+    operation_singleton.send(:remove_method, :real_resolve_sql_durations_many)
+  end
+
+  test "a folded batch whose SQL resolution fails entirely still folds its routes" do
     RailsPulse::Operation.stubs(:resolve_sql_durations_many).raises(ActiveRecord::StatementInvalid, "boom")
+    RailsPulse::Operation.stubs(:resolve_sql_durations).raises(ActiveRecord::StatementInvalid, "boom")
 
     RailsPulse::Tracker.perform_tracking_batch([ folded_tracking_data ])
     RailsPulse::Tracker.flush_rollups!
@@ -163,6 +188,7 @@ class RailsPulse::TrackerTest < ActiveSupport::TestCase
     assert_not RailsPulse::Rollup.exists?(rollupable_type: "RailsPulse::Query")
   ensure
     RailsPulse::Operation.unstub(:resolve_sql_durations_many)
+    RailsPulse::Operation.unstub(:resolve_sql_durations)
   end
 
   test "flush with nothing folded writes nothing" do

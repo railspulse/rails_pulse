@@ -283,7 +283,7 @@ RailsPulse::Schema = lambda do |connection|
       # config.store_full_details folded instead of persisting
       t.references :rollupable, polymorphic: true, null: false, index: false, comment: "Link to Route or Query"
       t.datetime :period_start, null: false, comment: "Start of the hour the folded requests occurred in"
-      t.string :writer_id, null: false, comment: "host:pid:uuid of the writer incarnation that owns the row"
+      t.string :writer_id, null: false, comment: "host:pid:uuid of the writer incarnation that owns the row; merged:<rollup id> once a route merge retires it"
 
       t.integer :count, default: 0, null: false, comment: "Folded requests (route rows) or operations (query rows)"
       t.integer :error_count, default: 0, null: false, comment: "Folded 5xx requests; always 0 on query rows"
