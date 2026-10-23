@@ -1,5 +1,7 @@
 # frozen_string_literal: true
 
+require "rails_pulse/database_adapter"
+
 module RailsPulse
   # Adapter-specific unique index that groups unrecognized routes (404s, middleware
   # short-circuits) by path. PostgreSQL and SQLite use a partial unique index;
@@ -21,9 +23,7 @@ module RailsPulse
     def self.ensure_null_action_uniqueness!(connection)
       return if exists?(connection)
 
-      adapter = connection.adapter_name.downcase
-
-      if adapter.include?("mysql")
+      if RailsPulse::DatabaseAdapter.mysql?(connection)
         version_string = connection.select_value("SELECT VERSION()")
         if version_string.to_s.include?("MariaDB")
           raise "Rails Pulse requires MySQL >= 8.0.13 for functional indexes. " \

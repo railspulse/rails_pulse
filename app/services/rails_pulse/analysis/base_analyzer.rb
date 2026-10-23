@@ -27,9 +27,13 @@ module RailsPulse
         @recent_operations ||= operations.select { |op| op.occurred_at > RECENT_OPERATIONS_WINDOW.ago }
       end
 
-      # Utility method for database adapter detection
+      # "postgresql", "mysql" or "sqlite" for any adapter built on one of them
+      # (PostGIS, Trilogy, ...), otherwise the adapter's own name in lowercase.
       def database_adapter
-        @database_adapter ||= RailsPulse::ApplicationRecord.connection.adapter_name.downcase
+        @database_adapter ||= begin
+          connection = RailsPulse::ApplicationRecord.connection
+          (RailsPulse::DatabaseAdapter.family(connection) || connection.adapter_name.downcase).to_s
+        end
       end
 
       def postgresql?

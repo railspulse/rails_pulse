@@ -6,6 +6,11 @@ module RailsPulse
       def call(worker, job_data, queue)
         return yield unless RailsPulse.configuration.enabled
         return yield unless RailsPulse.configuration.track_jobs
+        # Active Job jobs arrive wrapped (Sidekiq::ActiveJob::Wrapper, or
+        # ActiveJob::QueueAdapters::SidekiqAdapter::JobWrapper before Sidekiq 7.3)
+        # with the real class in "wrapped". ActiveJobExtensions already tracks
+        # them, so tracking the wrapper too would count every run twice.
+        return yield if job_data["wrapped"]
 
         # Create ActiveJob-like wrapper for tracking
         job_wrapper = JobWrapper.new(

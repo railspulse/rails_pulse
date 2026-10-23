@@ -40,6 +40,19 @@ module RailsPulse
         assert_equal 404, request.status
       end
 
+      test "middleware records a request whose controller raises an unhandled exception" do
+        # show_exceptions is :rescuable in the dummy's test environment, so the
+        # StandardError reaches the test; the request must be recorded anyway.
+        assert_difference -> { RailsPulse::Request.where(status: 500).count }, 1 do
+          assert_raises(StandardError) { post "/errors/raise" }
+        end
+
+        request = RailsPulse::Request.order(:id).last
+
+        assert request.is_error
+        assert_equal "home#raise_error", request.route.controller_action
+      end
+
       test "middleware passes complete tracking data to tracker" do
         captured_data = nil
         original_method = RailsPulse::Tracker.method(:track_request)

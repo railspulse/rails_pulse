@@ -2,11 +2,9 @@ class ExpandNormalizedQueryColumn < ActiveRecord::Migration[7.0]
   def up
     return unless table_exists?(:rails_pulse_queries)
 
-    adapter = connection.adapter_name.downcase
-
     # SQLite doesn't enforce string length limits, so no migration needed there.
     # change_column is also not supported on SQLite.
-    return unless adapter.include?("postgresql") || adapter.include?("mysql")
+    return unless RailsPulse::DatabaseAdapter.postgresql?(connection) || RailsPulse::DatabaseAdapter.mysql?(connection)
 
     column = connection.columns(:rails_pulse_queries).find { |c| c.name == "normalized_sql" }
     return unless column
@@ -20,8 +18,7 @@ class ExpandNormalizedQueryColumn < ActiveRecord::Migration[7.0]
   def down
     return unless table_exists?(:rails_pulse_queries)
 
-    adapter = connection.adapter_name.downcase
-    return unless adapter.include?("postgresql") || adapter.include?("mysql")
+    return unless RailsPulse::DatabaseAdapter.postgresql?(connection) || RailsPulse::DatabaseAdapter.mysql?(connection)
 
     change_column :rails_pulse_queries, :normalized_sql, :string, limit: 1000, null: false
   end
