@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Rails Pulse now allows Ransack 6, so host apps can upgrade to it without waiting on the gem; Ransack 4 and 5 remain supported.
+- Rails Pulse now allows Ransack 6, so host apps can upgrade to it without waiting on the gem; Ransack 4 and 5 remain supported (#344).
+
 ### Fixed
 
 - Databases behind an adapter built on PostgreSQL, MySQL or SQLite are now recognised: with activerecord-postgis-adapter (or Trilogy for MySQL) the dashboard's storage panel failed on every table, the Storage page showed no sizes and EXPLAIN analysis was skipped; Rails Pulse now treats them as the database they run on (#387).
