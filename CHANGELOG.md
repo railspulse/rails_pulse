@@ -9,7 +9,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- The navigation now links to the Requests page, which was previously reachable only by URL, and carries a "Back to <your app>" link so there is always a way back to the host application. The back link points at `config.return_to_app_url` (default `/`; set to `nil` to hide it).
+- The navigation now carries a "Back to <your app>" link so there is always a way back to the host application. It points at `config.return_to_app_url` (default `/`; set to `nil` to hide it).
 ### Fixed
 
 - Databases behind an adapter built on PostgreSQL, MySQL or SQLite are now recognised: with activerecord-postgis-adapter (or Trilogy for MySQL) the dashboard's storage panel failed on every table, the Storage page showed no sizes and EXPLAIN analysis was skipped; Rails Pulse now treats them as the database they run on (#387).

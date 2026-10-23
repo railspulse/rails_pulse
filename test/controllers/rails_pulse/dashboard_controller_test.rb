@@ -114,13 +114,6 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
 
   # Navigation Tests
 
-  test "navigation links to the requests page" do
-    get rails_pulse.root_path
-
-    assert_response :success
-    assert_select "nav a[href=?]", rails_pulse.requests_path
-  end
-
   test "navigation links back to the host application" do
     get rails_pulse.root_path
 
