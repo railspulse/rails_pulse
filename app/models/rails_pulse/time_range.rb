@@ -25,10 +25,10 @@ module RailsPulse
     )
 
     PRESET_START = {
-      "last_24_hours" => -> { 1.day.ago },
-      "last_7_days"   => -> { 1.week.ago },
-      "last_14_days"  => -> { 2.weeks.ago },
-      "last_30_days"  => -> { 1.month.ago }
+      "last_24_hours" => -> { 23.hours.ago },
+      "last_7_days"   => -> { 6.days.ago },
+      "last_14_days"  => -> { 13.days.ago },
+      "last_30_days"  => -> { 29.days.ago }
     }.freeze
 
     # Human-readable label for the zone daily/weekly/monthly summaries are

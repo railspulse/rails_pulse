@@ -6,8 +6,15 @@ module RailsPulse
     def perform(target_hour = nil)
       target_hour ||= 1.hour.ago.beginning_of_hour
 
+      # Rollup buckets flush on their own clock, so make this process's
+      # folded traffic visible before the hour is read. Other processes'
+      # buckets are healed by resummarize_hours_with_late_rollups next run.
+      Tracker.flush_rollups!
+
       # Always run hourly summary
       process_hourly_summary(target_hour)
+
+      resummarize_hours_with_late_rollups(target_hour)
 
       # Check if we should run daily summary (at the start of a new day)
       if midnight?(target_hour)
@@ -26,7 +33,45 @@ module RailsPulse
       raise
     end
 
+    # A bucket stops accepting folds STALE_HOUR_GRACE past its hour and is
+    # flushed within FLUSH_INTERVAL, so nothing lands later than this after
+    # the hour it counts.
+    LATE_ROLLUP_LOOKBACK = 3.hours
+
     private
+
+    # Rollups flush about once a minute per process, and a long request that
+    # started in an hour folds only after it finishes, so rows for an hour can
+    # land after that hour was summarized — summaries would otherwise
+    # permanently undercount each hour's folded tail. A recent hour whose
+    # summary no longer matches its raw request count plus its folded route
+    # counts is summarized again; the upsert makes that idempotent. Counts are
+    # compared rather than timestamps because the summary's updated_at is
+    # written by the database and rollup timestamps by Ruby, which clock skew
+    # can order either way. Runs before the daily rollup so a corrected hour
+    # feeds its day. Healing is best-effort: a failure here must not stop the
+    # current hour's summaries or the period rollups.
+    def resummarize_hours_with_late_rollups(target_hour)
+      return unless RailsPulse::Rollup.table_available?
+
+      window = (target_hour - LATE_ROLLUP_LOOKBACK)...target_hour
+      hours = RailsPulse::Rollup.where(period_start: window).distinct.pluck(:period_start)
+
+      hours.each do |hour|
+        summarized_count = RailsPulse::Summary.overall_requests
+          .where(period_type: "hour", period_start: hour).pick(:count)
+        next unless summarized_count
+
+        current_count = RailsPulse::Request.where(occurred_at: hour...(hour + 1.hour)).count +
+          RailsPulse::Rollup.where(rollupable_type: "RailsPulse::Route", period_start: hour).sum(:count)
+        next if current_count == summarized_count
+
+        RailsPulse.logger.info "Re-summarizing hour #{hour}: rollups or requests landed after its summary"
+        SummaryService.new("hour", hour).perform
+      end
+    rescue StandardError => e
+      RailsPulse.logger.error "Could not re-summarize hours with late rollups: #{e.class} - #{e.message}"
+    end
 
     # Cloud receives an hour only once it is summarized, so the sync follows
     # this job rather than running on a schedule of its own. A queue that

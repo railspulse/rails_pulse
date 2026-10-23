@@ -52,25 +52,7 @@ module RailsPulse
     def self.persist_bulk(ops, context)
       return if ops.empty?
 
-      # Phase 1: normalise each unique SQL source once.
-      # norm_cache avoids re-normalising repeated SQL (e.g. N+1 queries).
-      # norm_map feeds the bulk Query resolver: { hashed_sql => normalized_sql }.
-      norm_cache = {}
-      norm_map = {}
-      ops.each do |op|
-        next unless op[:operation_type] == "sql"
-        sql_source = op[:actual_sql].presence || op[:label].presence
-        next unless sql_source
-        unless norm_cache.key?(sql_source)
-          normalized = RailsPulse::SqlQueryNormalizer.normalize(sql_source)
-          hashed = Digest::MD5.hexdigest(normalized)
-          norm_cache[sql_source] = [ hashed, normalized ]
-          norm_map[hashed] ||= normalized
-        end
-      end
-
-      # Phase 2: resolve Query IDs in bulk (1 SELECT in steady state).
-      query_id_map = RailsPulse::Query.bulk_find_or_create(norm_map)
+      norm_cache, query_id_map = normalize_and_resolve(ops)
 
       now = Time.current
       rows = ops.map do |op|
@@ -95,6 +77,50 @@ module RailsPulse
       rows = rows.map { |r| all_keys.each_with_object({}) { |k, h| h[k] = r.fetch(k) { k == :cache_hit ? false : nil } } }
       insert_all!(rows)
     end
+
+    # The (query_id, duration) pairs of a batch's SQL operations, resolving
+    # (or creating) the Query records exactly as persist_bulk would, without
+    # persisting the operations themselves. Detail capture folds these pairs
+    # into per-query rollups so the Queries page keeps counting every request.
+    def self.resolve_sql_durations(ops)
+      ops = Array(ops).select { |op| op[:operation_type] == "sql" }
+      return [] if ops.empty?
+
+      norm_cache, query_id_map = normalize_and_resolve(ops)
+      ops.filter_map do |op|
+        sql_source = op[:actual_sql].presence || op[:label].presence
+        next unless sql_source && (meta = norm_cache[sql_source])
+
+        query_id = query_id_map[meta.first]
+        next unless query_id
+
+        [ query_id, op[:duration].to_f ]
+      end
+    end
+
+    # Phase 1: normalise each unique SQL source once.
+    # norm_cache avoids re-normalising repeated SQL (e.g. N+1 queries) and maps
+    # sql_source => [hashed, normalized]; norm_map feeds the bulk Query
+    # resolver with { hashed_sql => normalized_sql }.
+    # Phase 2: resolve Query IDs in bulk (1 SELECT in steady state).
+    def self.normalize_and_resolve(ops)
+      norm_cache = {}
+      norm_map = {}
+      ops.each do |op|
+        next unless op[:operation_type] == "sql"
+        sql_source = op[:actual_sql].presence || op[:label].presence
+        next unless sql_source
+        unless norm_cache.key?(sql_source)
+          normalized = RailsPulse::SqlQueryNormalizer.normalize(sql_source)
+          hashed = Digest::MD5.hexdigest(normalized)
+          norm_cache[sql_source] = [ hashed, normalized ]
+          norm_map[hashed] ||= normalized
+        end
+      end
+
+      [ norm_cache, RailsPulse::Query.bulk_find_or_create(norm_map) ]
+    end
+    private_class_method :normalize_and_resolve
 
     def self.ransackable_attributes(auth_object = nil)
       %w[id occurred_at label duration start_time average_query_time_ms query_count operation_type query_id]

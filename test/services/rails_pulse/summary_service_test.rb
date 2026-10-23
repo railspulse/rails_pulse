@@ -19,6 +19,155 @@ module RailsPulse
     end
 
     # ============================================================================
+    # Rollup Merge Tests (detail capture, decision 0022)
+    # ============================================================================
+
+    test "an hour with no rollups summarizes exactly as before" do
+      travel_to @hour_start + 1.minute do
+        [ 10.0, 20.0, 30.0, 40.0 ].each do |duration|
+          RailsPulse::Request.create!(
+            route: @route, duration: duration, status: 200,
+            request_uuid: SecureRandom.uuid, occurred_at: Time.current
+          )
+        end
+      end
+
+      SummaryService.new("hour", @hour_start).perform
+
+      summary = overall_summary
+
+      assert_equal 4, summary.count
+      assert_in_delta 25.0, summary.avg_duration, 1e-6
+      assert_in_delta Statistics.calculate_percentile([ 10.0, 20.0, 30.0, 40.0 ], 0.95), summary.p95_duration, 1e-6
+      # 0.001: MySQL stores summary metrics in single-precision float columns
+      assert_in_delta Statistics.calculate_stddev([ 10.0, 20.0, 30.0, 40.0 ], 25.0), summary.stddev_duration, 0.001
+    end
+
+    test "route counts, sums and status counts merge raw rows with rollups exactly" do
+      raw = [ 100.0, 300.0 ]
+      folded = [ 10.0, 20.0, 30.0 ]
+      travel_to @hour_start + 1.minute do
+        raw.each do |duration|
+          RailsPulse::Request.create!(
+            route: @route, duration: duration, status: 200,
+            request_uuid: SecureRandom.uuid, occurred_at: Time.current
+          )
+        end
+      end
+      write_route_rollup(folded, statuses: [ 200, 200, 503 ])
+
+      SummaryService.new("hour", @hour_start).perform
+
+      all = raw + folded
+      summary = route_summary
+
+      assert_equal 5, summary.count
+      assert_in_delta all.sum, summary.total_duration, 1e-6
+      assert_in_delta all.sum / 5, summary.avg_duration, 1e-6
+      assert_in_delta 10.0, summary.min_duration, 1e-6
+      assert_in_delta 300.0, summary.max_duration, 1e-6
+      assert_equal 1, summary.error_count
+      assert_equal 4, summary.success_count
+      assert_equal 4, summary.status_2xx
+      assert_equal 1, summary.status_5xx
+      # 0.001: MySQL stores summary metrics in single-precision float columns
+      assert_in_delta Statistics.calculate_stddev(all, all.sum / 5), summary.stddev_duration, 0.001
+    end
+
+    test "merged percentiles stay within the histogram tolerance and are exact in the kept tail" do
+      folded = Array.new(95) { |i| 10.0 + i }           # fast traffic, rolled up
+      raw = [ 1_000.0, 2_000.0, 3_000.0, 4_000.0, 5_000.0 ] # the kept slow tail
+      travel_to @hour_start + 1.minute do
+        raw.each do |duration|
+          RailsPulse::Request.create!(
+            route: @route, duration: duration, status: 200,
+            request_uuid: SecureRandom.uuid, occurred_at: Time.current
+          )
+        end
+      end
+      write_route_rollup(folded)
+
+      SummaryService.new("hour", @hour_start).perform
+
+      all = (raw + folded).sort
+      summary = route_summary
+      # p99 of 100 values lands among the exactly-kept slow requests
+      assert_in_delta Statistics.calculate_percentile(all, 0.99), summary.p99_duration, 1e-6
+      # p50 lands in the folded traffic: approximate within the bucket width
+      p50_exact = Statistics.calculate_percentile(all, 0.5)
+      tolerance = p50_exact * (Math.sqrt(DurationHistogram::GROWTH) - 1)
+
+      assert_in_delta p50_exact, summary.p50_duration, tolerance
+    end
+
+    test "a route whose every request was folded still gets a summary row" do
+      write_route_rollup([ 15.0, 25.0 ])
+
+      SummaryService.new("hour", @hour_start).perform
+
+      summary = route_summary
+
+      assert_equal 2, summary.count
+      assert_in_delta 20.0, summary.avg_duration, 1e-6
+    end
+
+    test "the overall row folds every route's rollups together with raw rows" do
+      other_route = rails_pulse_routes(:api_posts)
+      travel_to @hour_start + 1.minute do
+        RailsPulse::Request.create!(
+          route: other_route, duration: 100.0, status: 200,
+          request_uuid: SecureRandom.uuid, occurred_at: Time.current
+        )
+      end
+      write_route_rollup([ 10.0 ])
+      write_route_rollup([ 20.0 ], route_id: other_route.id, writer_id: "host:2:def")
+
+      SummaryService.new("hour", @hour_start).perform
+
+      summary = overall_summary
+
+      assert_equal 3, summary.count
+      assert_in_delta 130.0, summary.total_duration, 1e-6
+    end
+
+    test "rollup rows from several writers are summed" do
+      write_route_rollup([ 10.0 ], writer_id: "host:1:abc")
+      write_route_rollup([ 20.0, 30.0 ], writer_id: "host:2:def")
+
+      SummaryService.new("hour", @hour_start).perform
+
+      assert_equal 3, route_summary.count
+    end
+
+    test "query summaries merge raw operations with query rollups" do
+      query = RailsPulse::Query.create!(normalized_sql: "SELECT * FROM widgets WHERE id = ?")
+      travel_to @hour_start + 1.minute do
+        request = RailsPulse::Request.create!(
+          route: @route, duration: 50.0, status: 200,
+          request_uuid: SecureRandom.uuid, occurred_at: Time.current
+        )
+        RailsPulse::Operation.create!(
+          request: request, query: query, operation_type: "sql",
+          label: "SELECT * FROM widgets WHERE id = ?", duration: 40.0,
+          start_time: 0.0, occurred_at: Time.current
+        )
+      end
+      write_query_rollup(query.id, [ 2.0, 4.0 ])
+
+      SummaryService.new("hour", @hour_start).perform
+
+      summary = Summary.find_by!(
+        summarizable_type: "RailsPulse::Query", summarizable_id: query.id,
+        period_type: "hour", period_start: @hour_start
+      )
+
+      assert_equal 3, summary.count
+      assert_in_delta 46.0, summary.total_duration, 1e-6
+      assert_in_delta 2.0, summary.min_duration, 1e-6
+      assert_in_delta 40.0, summary.max_duration, 1e-6
+    end
+
+    # ============================================================================
     # Error Count Tests
     # ============================================================================
 
@@ -243,6 +392,55 @@ module RailsPulse
       RailsPulse::Request.create!(
         route: route, duration: duration, status: status,
         request_uuid: SecureRandom.uuid, occurred_at: @hour_start + 1.minute
+      )
+    end
+
+    # A rollup row shaped exactly as RollupAccumulator writes it.
+    def write_rollup(type, id, durations, statuses: nil, writer_id: "host:1:abc")
+      histogram = DurationHistogram.new
+      durations.each { |d| histogram.record(d) }
+      statuses ||= []
+      Rollup.upsert_rows([ {
+        rollupable_type: type,
+        rollupable_id: id,
+        period_start: @hour_start,
+        writer_id: writer_id,
+        count: durations.size,
+        error_count: statuses.count { |s| s >= 500 },
+        status_2xx: statuses.count { |s| s.between?(200, 299) },
+        status_3xx: statuses.count { |s| s.between?(300, 399) },
+        status_4xx: statuses.count { |s| s.between?(400, 499) },
+        status_5xx: statuses.count { |s| s.between?(500, 599) },
+        sum_duration: durations.sum,
+        sum_square_duration: durations.sum { |d| d * d },
+        min_duration: durations.min,
+        max_duration: durations.max,
+        histogram: histogram.dump,
+        created_at: Time.current,
+        updated_at: Time.current
+      } ])
+    end
+
+    def write_route_rollup(durations, statuses: nil, route_id: @route.id, writer_id: "host:1:abc")
+      statuses ||= [ 200 ] * durations.size
+      write_rollup("RailsPulse::Route", route_id, durations, statuses: statuses, writer_id: writer_id)
+    end
+
+    def write_query_rollup(query_id, durations, writer_id: "host:1:abc")
+      write_rollup("RailsPulse::Query", query_id, durations, writer_id: writer_id)
+    end
+
+    def overall_summary
+      Summary.find_by!(
+        summarizable_type: "RailsPulse::Request", summarizable_id: 0,
+        period_type: "hour", period_start: @hour_start
+      )
+    end
+
+    def route_summary(route_id = @route.id)
+      Summary.find_by!(
+        summarizable_type: "RailsPulse::Route", summarizable_id: route_id,
+        period_type: "hour", period_start: @hour_start
       )
     end
   end
