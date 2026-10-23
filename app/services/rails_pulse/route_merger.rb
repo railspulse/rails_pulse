@@ -27,11 +27,30 @@ module RailsPulse
       RailsPulse::Route.transaction do
         @source.requests.update_all(route_id: @target.id)
         reassign_or_merge_summaries!
+        reassign_rollups!
         @source.destroy!
       end
     end
 
     private
+
+    # Rollup rows move to the target under fresh writer ids. Keeping the
+    # original id could collide with a target-route row the same writer owns
+    # for the same hour, and would let that writer's next replace-upsert of
+    # its live bucket overwrite the moved totals. A fresh id makes each moved
+    # row retired: readers sum it like any other, no writer touches it again.
+    def reassign_rollups!
+      return unless RailsPulse::Rollup.table_available?
+
+      RailsPulse::Rollup
+        .where(rollupable_type: "RailsPulse::Route", rollupable_id: @source.id)
+        .find_each do |rollup|
+          rollup.update_columns(
+            rollupable_id: @target.id,
+            writer_id: "merged:#{SecureRandom.uuid}"
+          )
+        end
+    end
 
     def reassign_or_merge_summaries!
       source_summaries = RailsPulse::Summary.where(
