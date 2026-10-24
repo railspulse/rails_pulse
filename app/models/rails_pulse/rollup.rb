@@ -6,8 +6,10 @@ module RailsPulse
   # Rows are written by replace-upsert: a writer incarnation owns the rows
   # carrying its writer_id and overwrites them with its running totals, so
   # flushing twice is harmless and two processes never contend. Readers sum
-  # across writer_ids. Sums, counts, min and max are exact; only the duration
-  # histogram (for percentiles) is approximate.
+  # across writer_ids. A route merge re-keys moved rows under merged:<row id>
+  # writer ids, which no writer incarnation ever uses, so a moved row is
+  # final. Sums, counts, min and max are exact; only the duration histogram
+  # (for percentiles) is approximate.
   class Rollup < RailsPulse::ApplicationRecord
     self.table_name = "rails_pulse_rollups"
 

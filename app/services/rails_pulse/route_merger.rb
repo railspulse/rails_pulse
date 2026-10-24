@@ -11,6 +11,13 @@ module RailsPulse
       avg_duration p50_duration p95_duration p99_duration
     ].freeze
 
+    # A rollup bucket for hour H keeps replace-upserting its row until the
+    # first drain after H + 1 hour + STALE_HOUR_GRACE retires it; drains come
+    # at most FLUSH_INTERVAL apart while the writer sees traffic. Rows younger
+    # than this may still be rewritten by a live writer and cannot be moved.
+    LIVE_ROLLUP_WINDOW = 1.hour + RollupAccumulator::STALE_HOUR_GRACE +
+      (2 * RollupAccumulator::FLUSH_INTERVAL)
+
     def self.call(target:, source:)
       new(target, source).call
     end
@@ -27,11 +34,43 @@ module RailsPulse
       RailsPulse::Route.transaction do
         @source.requests.update_all(route_id: @target.id)
         reassign_or_merge_summaries!
+        reassign_rollups!
         @source.destroy!
       end
     end
 
     private
+
+    # Retired rollup rows move to the target under fresh writer ids. Keeping
+    # the original id could collide with a target-route row the same writer
+    # owns for the same hour; "merged:<row id>" is unique by construction and
+    # never written again, so readers sum a moved row like any other.
+    #
+    # Rows inside LIVE_ROLLUP_WINDOW stay keyed to the source: their bucket's
+    # next flush would re-insert the same cumulative totals under the source
+    # id, double-counting the hour. Readers sum every rollup in an hour
+    # whether or not its route still exists, so the stay-behind traffic still
+    # counts in overall summaries — attributed to the merged-away route until
+    # retention prunes it.
+    def reassign_rollups!
+      return unless RailsPulse::Rollup.table_available?
+
+      RailsPulse::Rollup
+        .where(rollupable_type: "RailsPulse::Route", rollupable_id: @source.id)
+        .where(period_start: ...LIVE_ROLLUP_WINDOW.ago)
+        .in_batches do |batch|
+          batch.update_all([ "rollupable_id = ?, writer_id = #{merged_writer_id_sql}", @target.id ])
+        end
+    end
+
+    # Cross-database "merged:<row id>" expression; MySQL has no || operator.
+    def merged_writer_id_sql
+      if RailsPulse::DatabaseAdapter.mysql?(RailsPulse::Rollup.connection)
+        "CONCAT('merged:', id)"
+      else
+        "'merged:' || id"
+      end
+    end
 
     def reassign_or_merge_summaries!
       source_summaries = RailsPulse::Summary.where(

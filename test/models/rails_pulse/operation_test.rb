@@ -304,4 +304,53 @@ class RailsPulse::OperationTest < ActiveSupport::TestCase
     assert_not_nil operation.query
     assert_equal "SELECT * FROM users WHERE id = ?", operation.label
   end
+
+  # resolve_sql_durations_many Tests
+
+  test "resolve_sql_durations_many returns one pairs list per input list, in order" do
+    widgets = [ sql_op("SELECT * FROM widgets WHERE id = 1", duration: 3.0) ]
+    gadgets = [ sql_op("SELECT * FROM gadgets WHERE id = 2", duration: 1.5) ]
+
+    results = RailsPulse::Operation.resolve_sql_durations_many([ widgets, [], gadgets ])
+
+    assert_equal 3, results.size
+    assert_empty results[1]
+
+    widget_query = RailsPulse::Query.find_by!(normalized_sql: "SELECT * FROM widgets WHERE id = ?")
+    gadget_query = RailsPulse::Query.find_by!(normalized_sql: "SELECT * FROM gadgets WHERE id = ?")
+
+    assert_equal [ [ widget_query.id, 3.0 ] ], results[0]
+    assert_equal [ [ gadget_query.id, 1.5 ] ], results[2]
+  end
+
+  test "resolve_sql_durations_many creates one query for a statement shared across lists" do
+    lists = [
+      [ sql_op("SELECT * FROM widgets WHERE id = 1", duration: 3.0) ],
+      [ sql_op("SELECT * FROM widgets WHERE id = 2", duration: 4.0) ]
+    ]
+
+    results = nil
+    assert_difference "RailsPulse::Query.count", 1 do
+      results = RailsPulse::Operation.resolve_sql_durations_many(lists)
+    end
+
+    query = RailsPulse::Query.find_by!(normalized_sql: "SELECT * FROM widgets WHERE id = ?")
+
+    assert_equal [ [ [ query.id, 3.0 ] ], [ [ query.id, 4.0 ] ] ], results
+  end
+
+  test "resolve_sql_durations_many ignores non-sql operations and handles empty input" do
+    template = { operation_type: "template", label: "users/index", duration: 2.0 }
+
+    assert_no_difference "RailsPulse::Query.count" do
+      assert_equal [ [], [] ], RailsPulse::Operation.resolve_sql_durations_many([ [ template ], nil ])
+      assert_empty RailsPulse::Operation.resolve_sql_durations_many([])
+    end
+  end
+
+  private
+
+  def sql_op(sql, duration:)
+    { operation_type: "sql", actual_sql: sql, label: sql, duration: duration }
+  end
 end

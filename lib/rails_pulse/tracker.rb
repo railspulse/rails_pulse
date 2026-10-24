@@ -34,6 +34,12 @@ module RailsPulse
     ROUTE_CACHE_MAX = 2_000
     private_constant :ROUTE_CACHE_MAX
 
+    # ... and expired wholesale on this interval. Cleanup can delete an idle
+    # route whose id is still cached here; expiring bounds how long folds keep
+    # landing on the deleted id (the next fold recreates the route).
+    ROUTE_CACHE_TTL = 10.minutes
+    private_constant :ROUTE_CACHE_TTL
+
     # The background writer: one thread, one bounded queue, one connection.
     class Writer
       BATCH_SIZE = 50
@@ -228,7 +234,7 @@ module RailsPulse
       # into the next test. For tests.
       def reset_rollups!
         @writer_mutex.synchronize { @rollups = nil }
-        @route_cache_mutex.synchronize { @route_id_cache.clear }
+        @route_cache_mutex.synchronize { clear_route_cache(cleared_at: nil) }
       end
 
       def flush_rollups_if_due
@@ -301,11 +307,7 @@ module RailsPulse
         with_writer_connection do
           detailed, folded = batch.partition { |data| data[:detail] != false }
 
-          folded.each do |data|
-            fold_rollup(data)
-          rescue => e
-            log_error(e)
-          end
+          fold_batch(folded)
 
           persisted = detailed.filter_map do |data|
             request = persist_request(data)
@@ -337,11 +339,33 @@ module RailsPulse
         end
       end
 
+      # Fold a batch's non-captured requests into the rollups. Their SQL is
+      # resolved together — one SELECT for the whole batch — and when that
+      # one lookup fails each request falls back to resolving its own, so a
+      # transient error costs at most one request's query folds, not the
+      # whole batch's.
+      def fold_batch(folded)
+        return if folded.empty?
+
+        sql_durations = begin
+          RailsPulse::Operation.resolve_sql_durations_many(folded.map { |data| data[:operations] })
+        rescue => e
+          log_error(e)
+          nil
+        end
+
+        folded.each_with_index do |data, index|
+          fold_rollup(data, sql_durations: sql_durations&.fetch(index))
+        rescue => e
+          log_error(e)
+        end
+      end
+
       # Fold one non-captured request into the rollups: the request itself
       # into its route's bucket, its SQL operations into their queries'
       # buckets. Query rows are still created by resolve_sql_durations, so a
       # query first seen in a fast request exists before it ever appears slow.
-      def fold_rollup(data)
+      def fold_rollup(data, sql_durations: nil)
         route_id = cached_route_id(data[:method], data[:path], data[:controller_action])
         rollups.fold_route(
           route_id: route_id,
@@ -350,25 +374,54 @@ module RailsPulse
           status: data[:status]
         )
 
-        RailsPulse::Operation.resolve_sql_durations(data[:operations]).each do |query_id, duration|
+        sql_durations ||= RailsPulse::Operation.resolve_sql_durations(data[:operations])
+        sql_durations.each do |query_id, duration|
           rollups.fold_query(query_id: query_id, occurred_at: data[:occurred_at], duration: duration)
         end
       end
 
       # (method, path, controller_action) => route id, capped and cleared
-      # wholesale when full. A new HTTP verb on a known path misses once,
-      # which is when find_or_create_for_request appends the verb.
+      # wholesale when full or when ROUTE_CACHE_TTL passes. A new HTTP verb on
+      # a known path misses once, which is when find_or_create_for_request
+      # appends the verb.
       def cached_route_id(method, path, controller_action)
         key = [ method, path, controller_action ]
-        cached = @route_cache_mutex.synchronize { @route_id_cache[key] }
+        cached, generation = @route_cache_mutex.synchronize do
+          expire_route_cache_if_due
+          [ @route_id_cache[key], @route_cache_generation ]
+        end
         return cached if cached
 
         route = RailsPulse::Route.find_or_create_for_request(method, path, controller_action: controller_action)
         @route_cache_mutex.synchronize do
-          @route_id_cache.clear if @route_id_cache.size >= ROUTE_CACHE_MAX
-          @route_id_cache[key] = route.id
+          clear_route_cache if @route_id_cache.size >= ROUTE_CACHE_MAX
+          # A clear since the lookup started may mean cleanup just deleted
+          # this route; caching the id now would carry a possibly-dead id
+          # past the clear that was meant to drop it, stretching staleness
+          # beyond the TTL. The skipped miss just resolves again next fold.
+          @route_id_cache[key] = route.id if @route_cache_generation == generation
         end
         route.id
+      end
+
+      # Must be called holding @route_cache_mutex.
+      def expire_route_cache_if_due
+        now = Time.current
+        @route_cache_cleared_at ||= now
+        return if now - @route_cache_cleared_at < ROUTE_CACHE_TTL
+
+        clear_route_cache
+      end
+
+      # Must be called holding @route_cache_mutex. Every clear restarts the
+      # TTL window (the cache is empty, so nothing in it can be stale) and
+      # bumps the generation so in-flight lookups cannot re-insert ids the
+      # clear was meant to drop. A nil cleared_at restarts the window at the
+      # next lookup instead.
+      def clear_route_cache(cleared_at: Time.current)
+        @route_id_cache.clear
+        @route_cache_generation += 1
+        @route_cache_cleared_at = cleared_at
       end
 
       def prune_heartbeats_if_due
@@ -465,6 +518,8 @@ module RailsPulse
     @writer_mutex = Mutex.new
     @rollups = nil
     @route_id_cache = {}
+    @route_cache_cleared_at = nil
+    @route_cache_generation = 0
     @route_cache_mutex = Mutex.new
   end
 end

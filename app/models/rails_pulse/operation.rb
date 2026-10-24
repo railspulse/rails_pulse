@@ -83,18 +83,29 @@ module RailsPulse
     # persisting the operations themselves. Detail capture folds these pairs
     # into per-query rollups so the Queries page keeps counting every request.
     def self.resolve_sql_durations(ops)
-      ops = Array(ops).select { |op| op[:operation_type] == "sql" }
-      return [] if ops.empty?
+      resolve_sql_durations_many([ ops ]).first
+    end
 
-      norm_cache, query_id_map = normalize_and_resolve(ops)
-      ops.filter_map do |op|
-        sql_source = op[:actual_sql].presence || op[:label].presence
-        next unless sql_source && (meta = norm_cache[sql_source])
+    # resolve_sql_durations for many requests' operation lists at once,
+    # returning one pairs list per input list, in order. Every list shares a
+    # single normalization pass and a single bulk Query resolution, so a
+    # batch of folded requests costs one SELECT, not one per request.
+    def self.resolve_sql_durations_many(ops_lists)
+      sql_ops_lists = ops_lists.map { |ops| Array(ops).select { |op| op[:operation_type] == "sql" } }
+      all_ops = sql_ops_lists.flatten(1)
+      return sql_ops_lists if all_ops.empty?
 
-        query_id = query_id_map[meta.first]
-        next unless query_id
+      norm_cache, query_id_map = normalize_and_resolve(all_ops)
+      sql_ops_lists.map do |ops|
+        ops.filter_map do |op|
+          sql_source = op[:actual_sql].presence || op[:label].presence
+          next unless sql_source && (meta = norm_cache[sql_source])
 
-        [ query_id, op[:duration].to_f ]
+          query_id = query_id_map[meta.first]
+          next unless query_id
+
+          [ query_id, op[:duration].to_f ]
+        end
       end
     end
 
