@@ -249,6 +249,14 @@ module RailsPulse
       assert config.mount_dashboard
     end
 
+    test "return_to_app_url defaults to the host app root and accepts nil or a non-empty string" do
+      assert_equal "/", Configuration.new.return_to_app_url
+      assert_nil build_config { @return_to_app_url = nil }.return_to_app_url
+      assert_equal "/admin", build_config { @return_to_app_url = "/admin" }.return_to_app_url
+      assert_raises(ArgumentError) { build_config { @return_to_app_url = "" } }
+      assert_raises(ArgumentError) { build_config { @return_to_app_url = :root } }
+    end
+
     test "route_thresholds has slow very_slow and critical keys" do
       config = Configuration.new
 

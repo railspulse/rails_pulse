@@ -7,11 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The navigation now carries a "Back to <your app>" link so there is always a way back to the host application. It points at `config.return_to_app_url` (default `/`; set to `nil` to hide it).
+### Changed
+
+- Rails Pulse now allows Ransack 6, so host apps can upgrade to it without waiting on the gem; Ransack 4 and 5 remain supported (#344).
+
 ### Fixed
 
 - Merging routes with `rails rails_pulse:migrate_routes` now moves detail capture's hourly aggregates to the surviving route; previously that folded traffic disappeared from its charts. Aggregates from roughly the last hour, which running apps may still be updating, stay behind so nothing is counted twice.
 - Detail capture no longer counts traffic against a route that cleanup has deleted: the writer re-checks its remembered routes every 10 minutes, so at most 10 minutes of folded traffic could go missing instead of everything until the next restart.
 - With detail capture on, folded requests now resolve their SQL in one lookup per write batch instead of one per request, reducing the writer's database load on high-traffic installs.
+- Hourly summary maintenance now stays fast as retained data grows: a covering index on operations serves the hour's query metrics without reading the table, fixing `statement_timeout` failures on large installs (#375). Run `rails rails_pulse:install:migrations && rails db:migrate` after upgrading to add the index.
+- Dashboard and detail-page charts are no longer clamped to 60px tall on phone-width screens; they now keep their aspect ratio, so mobile charts are readable.
 - Databases behind an adapter built on PostgreSQL, MySQL or SQLite are now recognised: with activerecord-postgis-adapter (or Trilogy for MySQL) the dashboard's storage panel failed on every table, the Storage page showed no sizes and EXPLAIN analysis was skipped; Rails Pulse now treats them as the database they run on (#387).
 - Active Job jobs on Sidekiq are no longer tracked twice: each run was also recorded under Sidekiq's wrapper class (`Sidekiq::ActiveJob::Wrapper`), doubling job runs, failures and captured exceptions on the Jobs page. Wrapper rows recorded by earlier versions stay until retention removes them (#386).
 - Time range presets now cover exactly the period their label names: "Last 7 Days" previously spanned 8 days and "Last 24 Hours" 25 hours. Dashboard totals, charts and period-over-period comparisons may show slightly lower numbers after upgrading because the oldest day or hour is no longer included (#355).

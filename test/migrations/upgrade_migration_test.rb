@@ -33,6 +33,7 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     AddLocationToExceptionGroups
     CreateRailsPulseEvents
     CreateRailsPulseRollups
+    AddHourlyRollupIndexToOperations
   ].freeze
 
   def setup
@@ -55,6 +56,15 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     col = @conn.columns(:rails_pulse_routes).find { |c| c.name == "controller_action" }
 
     assert col.null, "controller_action should be nullable"
+  end
+
+  test "upgrade from v0.2.7 adds the hourly rollup covering index to operations" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    assert @conn.index_exists?(:rails_pulse_operations, [ :occurred_at, :query_id, :duration ],
+      name: "index_rails_pulse_operations_hourly_rollup"),
+      "hourly rollup covering index missing on operations"
   end
 
     test "upgrade from v0.3.3 converts routes to multi-verb model" do

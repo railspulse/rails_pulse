@@ -13,6 +13,7 @@ const REQUIRED_ICONS = [
   'menu',
   'sun',
   'moon',
+  'arrow-left',
   'chevron-right',
   'chevron-left',
   'chevron-down',

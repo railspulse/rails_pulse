@@ -101,6 +101,9 @@
 @media (max-width: 768px) {
   .breadcrumb-container {
     flex-direction: column;
+    /* The base rule's wrap would turn the stacked layout into side-by-side
+       columns (column + wrap wraps into new columns). */
+    flex-wrap: nowrap;
     align-items: flex-start;
   }
 

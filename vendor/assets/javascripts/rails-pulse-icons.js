@@ -1,5 +1,5 @@
 // Rails Pulse Icons Bundle - Auto-generated
-// Contains 41 SVG icons for Rails Pulse
+// Contains 42 SVG icons for Rails Pulse
 
 (function() {
   'use strict';
@@ -9,6 +9,7 @@
   "menu": "<path d=\"M4 5h16\" /><path d=\"M4 12h16\" /><path d=\"M4 19h16\" />",
   "sun": "<circle cx=\"12\" cy=\"12\" r=\"4\" /><path d=\"M12 2v2\" /><path d=\"M12 20v2\" /><path d=\"m4.93 4.93 1.41 1.41\" /><path d=\"m17.66 17.66 1.41 1.41\" /><path d=\"M2 12h2\" /><path d=\"M20 12h2\" /><path d=\"m6.34 17.66-1.41 1.41\" /><path d=\"m19.07 4.93-1.41 1.41\" />",
   "moon": "<path d=\"M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401\" />",
+  "arrow-left": "<path d=\"m12 19-7-7 7-7\" /><path d=\"M19 12H5\" />",
   "chevron-right": "<path d=\"m9 18 6-6-6-6\" />",
   "chevron-left": "<path d=\"m15 18-6-6 6-6\" />",
   "chevron-down": "<path d=\"m6 9 6 6 6-6\" />",

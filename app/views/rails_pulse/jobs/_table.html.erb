@@ -8,43 +8,45 @@
   { field: nil, label: 'Tags', class: 'w-32', sortable: false }
 ] %>
 
-<table class="table table-fixed mbs-4">
-  <%= render "rails_pulse/components/table_head", columns: columns %>
+<div class="table-scroll">
+  <table class="table table-fixed mbs-4">
+    <%= render "rails_pulse/components/table_head", columns: columns %>
 
-  <tbody>
-    <% @table_data.each do |row| %>
-      <tr>
-        <td class="truncate-cell">
-          <%= link_to row.name, job_path(row.job_id) %>
-        </td>
-        <td>
-          <span class="badge badge--primary"><%= row.queue_name || 'default' %></span>
-        </td>
-        <td>
-          <%= number_with_delimiter(row.count) %>
-        </td>
-        <td>
-          <%= number_with_delimiter(row.error_count) %>
-        </td>
-        <td>
-          <%= row.p95_duration ? "#{row.p95_duration.round(0)} ms" : "—" %>
-        </td>
-        <td>
-          <%= row.p99_duration ? "#{row.p99_duration.round(0)} ms" : "—" %>
-        </td>
-        <td>
-          <% tags = JSON.parse(row.tags || "[]") rescue [] %>
-          <% if tags.any? %>
-            <% tags.each do |tag| %>
-              <span class="badge badge--secondary"><%= tag %></span>
+    <tbody>
+      <% @table_data.each do |row| %>
+        <tr>
+          <td class="truncate-cell">
+            <%= link_to row.name, job_path(row.job_id) %>
+          </td>
+          <td>
+            <span class="badge badge--primary"><%= row.queue_name || 'default' %></span>
+          </td>
+          <td>
+            <%= number_with_delimiter(row.count) %>
+          </td>
+          <td>
+            <%= number_with_delimiter(row.error_count) %>
+          </td>
+          <td>
+            <%= row.p95_duration ? "#{row.p95_duration.round(0)} ms" : "—" %>
+          </td>
+          <td>
+            <%= row.p99_duration ? "#{row.p99_duration.round(0)} ms" : "—" %>
+          </td>
+          <td>
+            <% tags = JSON.parse(row.tags || "[]") rescue [] %>
+            <% if tags.any? %>
+              <% tags.each do |tag| %>
+                <span class="badge badge--secondary"><%= tag %></span>
+              <% end %>
+            <% else %>
+              —
             <% end %>
-          <% else %>
-            —
-          <% end %>
-        </td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+          </td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
 
 <%= render "rails_pulse/components/table_pagination" %>

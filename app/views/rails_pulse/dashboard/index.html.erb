@@ -134,7 +134,7 @@
   </div>
 
   <div class="card">
-    <div class="flex items-center justify-between mbe-3">
+    <div class="panel-header flex items-center justify-between mbe-3">
       <div class="flex items-center">
         <h2 class="font-semibold leading-none uppercase text-xs">Needs Attention</h2>
         <% if @needs_attention[:total] > 0 %>
@@ -143,10 +143,11 @@
             <%= @needs_attention[:total] == 1 ? "issue" : "issues" %>
           </span>
         <% end %>
-        <span class="text-xs text-subtle mis-2">Ranked by severity ·
+        <span class="panel-header__meta text-xs text-subtle mis-2">Ranked by severity ·
           <%= humanize_time_range(@time_range.selected_time_range) %></span>
       </div>
       <div
+        class="panel-icon-bar flex gap items-center"
         data-controller="rails-pulse--popover"
         data-rails-pulse--popover-placement-value="bottom-end"
       >

@@ -518,4 +518,9 @@ RailsPulse.configure do |config|
   # Set to false to skip dashboard middleware and asset serving entirely.
   # Useful for standalone/API-only deployments that use a separate dashboard app.
   # config.mount_dashboard = true
+
+  # Where the dashboard's "Back to <your app>" navigation link points, so
+  # there is always a way back from Rails Pulse to the host application.
+  # Set to nil to hide the link. The standalone dashboard never shows it.
+  # config.return_to_app_url = "/"
 end

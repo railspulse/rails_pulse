@@ -112,6 +112,27 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_operator response.body.length, :>, 0
   end
 
+  # Navigation Tests
+
+  test "navigation links back to the host application" do
+    get rails_pulse.root_path
+
+    assert_response :success
+    assert_select "nav a[href=?]", "/", text: /Back to Dummy/
+  end
+
+  test "back link is hidden when return_to_app_url is nil" do
+    original = RailsPulse.configuration.return_to_app_url
+    RailsPulse.configuration.return_to_app_url = nil
+
+    get rails_pulse.root_path
+
+    assert_response :success
+    assert_no_match(/Back to Dummy/, response.body)
+  ensure
+    RailsPulse.configuration.return_to_app_url = original
+  end
+
   # Configuration Tests
 
   test "handles jobs tracking disabled" do
