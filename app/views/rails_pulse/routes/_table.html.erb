@@ -8,32 +8,34 @@
   { field: nil,                      label: "Tags",     class: "w-32" },
 ] %>
 
-<table class="table table-fixed mbs-4">
-  <%= render "rails_pulse/components/table_head", columns: columns %>
+<div class="table-scroll">
+  <table class="table table-fixed mbs-4">
+    <%= render "rails_pulse/components/table_head", columns: columns %>
 
-  <tbody>
-    <% @table_data.each do |summary| %>
-      <tr>
-        <td class="truncate-cell">
-          <%= link_to route_path(summary.route_id), class: 'no-underline' do %>
-            <%= summary.path %>
-          <% end %>
-        </td>
-        <td class="whitespace-nowrap">
-          <% (JSON.parse(summary.route_methods || "[]") rescue []).sort.each do |verb| %>
-            <span class="badge badge--<%= verb.downcase %>"><%= verb %></span>
-          <% end %>
-        </td>
-        <td class="truncate-cell text-muted"><%= summary.controller_action %></td>
-        <td class="whitespace-nowrap"><%= summary.p95_duration.to_i %>
-          ms</td>
-        <td class="whitespace-nowrap"><%= summary.p99_duration.to_i %>
-          ms</td>
-        <td class="whitespace-nowrap"><%= number_with_delimiter summary.count %></td>
-        <td class="whitespace-nowrap"><%= display_tag_badges(summary.tags) %></td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+    <tbody>
+      <% @table_data.each do |summary| %>
+        <tr>
+          <td class="truncate-cell">
+            <%= link_to route_path(summary.route_id), class: 'no-underline' do %>
+              <%= summary.path %>
+            <% end %>
+          </td>
+          <td class="whitespace-nowrap">
+            <% (JSON.parse(summary.route_methods || "[]") rescue []).sort.each do |verb| %>
+              <span class="badge badge--<%= verb.downcase %>"><%= verb %></span>
+            <% end %>
+          </td>
+          <td class="truncate-cell text-muted"><%= summary.controller_action %></td>
+          <td class="whitespace-nowrap"><%= summary.p95_duration.to_i %>
+            ms</td>
+          <td class="whitespace-nowrap"><%= summary.p99_duration.to_i %>
+            ms</td>
+          <td class="whitespace-nowrap"><%= number_with_delimiter summary.count %></td>
+          <td class="whitespace-nowrap"><%= display_tag_badges(summary.tags) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
 
 <%= render "rails_pulse/components/table_pagination" %>

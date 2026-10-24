@@ -6,41 +6,43 @@
   { field: nil, label: 'Tags', class: 'w-32' }
 ] %>
 
-<table class="table mbs-4">
-  <%= render "rails_pulse/components/table_head", columns: columns %>
+<div class="table-scroll">
+  <table class="table mbs-4">
+    <%= render "rails_pulse/components/table_head", columns: columns %>
 
-  <tbody>
-    <% @table_data.each do |request| %>
-      <tr>
-        <td class="whitespace-nowrap">
-          <%= link_to human_readable_occurred_at(request.occurred_at), request_path(request) %>
-        </td>
-        <td class="whitespace-nowrap">
-          <% verb = request.method %>
-          <span class="badge badge--<%= verb&.downcase %>"><%= verb %></span>
-        </td>
-        <td class="whitespace-nowrap">
-          <% performance_class = case request.duration
-            when 0..100 then "text-green-600"
-            when 100..300 then "text-yellow-600"
-            when 300..1000 then "text-orange-600"
-            else "text-red-600"
-            end %>
-          <span class="<%= performance_class %> font-medium">
-            <%= request.duration.round(2) %> ms
-          </span>
-        </td>
-        <td class="whitespace-nowrap">
-          <% if request.is_error? %>
-            <span class="text-red-600">Error (<%= request.status %>)</span>
-          <% else %>
-            <span class="text-green-600"><%= request.status %></span>
-          <% end %>
-        </td>
-        <td class="whitespace-nowrap"><%= display_tag_badges(request) %></td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+    <tbody>
+      <% @table_data.each do |request| %>
+        <tr>
+          <td class="whitespace-nowrap">
+            <%= link_to human_readable_occurred_at(request.occurred_at), request_path(request) %>
+          </td>
+          <td class="whitespace-nowrap">
+            <% verb = request.method %>
+            <span class="badge badge--<%= verb&.downcase %>"><%= verb %></span>
+          </td>
+          <td class="whitespace-nowrap">
+            <% performance_class = case request.duration
+              when 0..100 then "text-green-600"
+              when 100..300 then "text-yellow-600"
+              when 300..1000 then "text-orange-600"
+              else "text-red-600"
+              end %>
+            <span class="<%= performance_class %> font-medium">
+              <%= request.duration.round(2) %> ms
+            </span>
+          </td>
+          <td class="whitespace-nowrap">
+            <% if request.is_error? %>
+              <span class="text-red-600">Error (<%= request.status %>)</span>
+            <% else %>
+              <span class="text-green-600"><%= request.status %></span>
+            <% end %>
+          </td>
+          <td class="whitespace-nowrap"><%= display_tag_badges(request) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
 
 <%= render "rails_pulse/components/table_pagination" %>

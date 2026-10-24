@@ -84,6 +84,9 @@
 .attention-item__content {
   flex: 1;
   min-width: 0;
+  /* Job and route names are single long words; without this they refuse to
+     shrink and overflow onto the metric column on narrow screens. */
+  overflow-wrap: anywhere;
 }
 
 .attention-item__metric {

@@ -25,29 +25,31 @@
   table_classes << 'table-fixed' if has_truncation
 %>
 
-<table class="<%= table_classes.join(' ') %>">
-  <thead>
-    <tr>
-      <% columns.each do |column| %>
-        <th class="<%= column[:class] %>"><%= column[:label] %></th>
-      <% end %>
-    </tr>
-  </thead>
-  <tbody>
-    <% if data_rows.any? %>
-      <% data_rows.each do |row_data| %>
+<div class="table-scroll">
+  <table class="<%= table_classes.join(' ') %>">
+    <thead>
+      <tr>
+        <% columns.each do |column| %>
+          <th class="<%= column[:class] %>"><%= column[:label] %></th>
+        <% end %>
+      </tr>
+    </thead>
+    <tbody>
+      <% if data_rows.any? %>
+        <% data_rows.each do |row_data| %>
+          <tr>
+            <% columns.each do |column| %>
+              <td class="<%= column[:cell_class] %> <%= cell_highlight_class(row_data, column) %>">
+                <%= render_cell_content(row_data, column) %>
+              </td>
+            <% end %>
+          </tr>
+        <% end %>
+      <% else %>
         <tr>
-          <% columns.each do |column| %>
-            <td class="<%= column[:cell_class] %> <%= cell_highlight_class(row_data, column) %>">
-              <%= render_cell_content(row_data, column) %>
-            </td>
-          <% end %>
+          <td colspan="<%= colspan %>" class="text-center text-subtle">No data available for the selected time period</td>
         </tr>
       <% end %>
-    <% else %>
-      <tr>
-        <td colspan="<%= colspan %>" class="text-center text-subtle">No data available for the selected time period</td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+    </tbody>
+  </table>
+</div>
