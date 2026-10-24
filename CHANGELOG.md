@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Rails Pulse now allows Ransack 6, so host apps can upgrade to it without waiting on the gem; Ransack 4 and 5 remain supported (#344).
+
 ### Fixed
 
 - Hourly summary maintenance now stays fast as retained data grows: a covering index on operations serves the hour's query metrics without reading the table, fixing `statement_timeout` failures on large installs (#375). Run `rails rails_pulse:install:migrations && rails db:migrate` after upgrading to add the index.
