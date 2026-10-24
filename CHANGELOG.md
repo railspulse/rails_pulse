@@ -7,11 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1.pre.2] - 2026-10-24
+
 ### Added
 
 - The navigation now carries a "Back to <your app>" link so there is always a way back to the host application. It points at `config.return_to_app_url` (default `/`; set to `nil` to hide it).
 ### Changed
-
 - Rails Pulse now allows Ransack 6, so host apps can upgrade to it without waiting on the gem; Ransack 4 and 5 remain supported (#344).
 
 ### Fixed
