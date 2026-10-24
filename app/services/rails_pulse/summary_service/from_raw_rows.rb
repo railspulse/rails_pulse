@@ -6,9 +6,13 @@ module RailsPulse
     # Each kind is read with one query, sorted by summarizable and then
     # duration so every summarizable's durations arrive as one consecutive,
     # already-sorted run; the overall request row and the per-route rows
-    # share a single read. Memory is bounded by one hour's rows, and the
-    # hour costs one query per kind however many routes, queries or jobs it
-    # saw. Percentiles are exact.
+    # share a single read. The operations read is served entirely by the
+    # (occurred_at, query_id, duration) covering index, so its cost is
+    # bounded by the hour however much history is retained — without it the
+    # read does scattered fetches of wide rows (actual_sql is unbounded) and
+    # degrades as the table outgrows the database's cache. Memory is bounded
+    # by one hour's rows, and the hour costs one query per kind however many
+    # routes, queries or jobs it saw. Percentiles are exact.
     #
     # When detail capture folded part of the hour into rails_pulse_rollups
     # (decision 0022), each subject's raw rows are merged with its rollups:
