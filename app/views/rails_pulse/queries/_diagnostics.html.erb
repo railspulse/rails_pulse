@@ -14,22 +14,24 @@
     <h5 style="margin: 0;">N+1 Detection</h5>
     <span class="badge badge--negative"><%= n_plus_one_groups.size %> <%= n_plus_one_groups.size == 1 ? 'pattern' : 'patterns' %> detected</span>
   </div>
-    <table class="table mbe-6">
-      <thead>
-        <tr>
-          <th>Repeated Query Pattern</th>
-          <th class="w-32">Max Repetitions</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% n_plus_one_groups.each do |pattern, max_count| %>
+    <div class="table-scroll">
+      <table class="table mbe-6">
+        <thead>
           <tr>
-            <td><code class="text-sm"><%= pattern.truncate(120) %></code></td>
-            <td class="text-center"><%= max_count %></td>
+            <th>Repeated Query Pattern</th>
+            <th class="w-32">Max Repetitions</th>
           </tr>
-        <% end %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% n_plus_one_groups.each do |pattern, max_count| %>
+            <tr>
+              <td><code class="text-sm"><%= pattern.truncate(120) %></code></td>
+              <td class="text-center"><%= max_count %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   <% end %>
 
   <%# Query Characteristics — available if query analysis has been run %>
