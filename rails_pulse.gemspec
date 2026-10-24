@@ -65,7 +65,7 @@ Gem::Specification.new do |spec|
   MSG
 
   spec.add_dependency "rails", ">= 7.2.0", "< 9.0.0"
-  spec.add_dependency "ransack", ">= 4.0", "< 6"
+  spec.add_dependency "ransack", ">= 4.0", "< 7"
   # The rails-pulse CLI (exe/rails-pulse, lib/rails_pulse/cli). Its MCP server
   # (lib/rails_pulse/mcp) needs the `mcp` gem, which is left to the host's
   # Gemfile: it runs on a developer's machine, and its five transitive gems

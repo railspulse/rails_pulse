@@ -6,28 +6,30 @@
   { field: :occurrence_count, label: 'Count',     class: 'w-24' }
 ] %>
 
-<table class="table table-fixed mbs-4">
-  <%= render "rails_pulse/components/table_head", columns: columns %>
+<div class="table-scroll">
+  <table class="table table-fixed mbs-4">
+    <%= render "rails_pulse/components/table_head", columns: columns %>
 
-  <tbody>
-    <% @table_data.each do |group| %>
-      <tr>
-        <td class="truncate-cell">
-          <%= link_to group.exception_class, exception_path(group) %>
-          <% if group.location.present? %>
-            <div class="text-subtle text-xs truncate"><code><%= group.location %></code></div>
-          <% end %>
-          <% if group.message.present? %>
-            <div class="text-subtle text-xs truncate"><%= group.message %></div>
-          <% end %>
-        </td>
-        <td><%= render 'rails_pulse/exceptions/status_badge', group: group %></td>
-        <td class="whitespace-nowrap"><%= human_readable_occurred_at(group.last_seen_at) %></td>
-        <td class="whitespace-nowrap"><%= human_readable_occurred_at(group.first_seen_at) %></td>
-        <td class="whitespace-nowrap"><%= number_with_delimiter(group.occurrence_count) %></td>
-      </tr>
-    <% end %>
-  </tbody>
-</table>
+    <tbody>
+      <% @table_data.each do |group| %>
+        <tr>
+          <td class="truncate-cell">
+            <%= link_to group.exception_class, exception_path(group) %>
+            <% if group.location.present? %>
+              <div class="text-subtle text-xs truncate"><code><%= group.location %></code></div>
+            <% end %>
+            <% if group.message.present? %>
+              <div class="text-subtle text-xs truncate"><%= group.message %></div>
+            <% end %>
+          </td>
+          <td><%= render 'rails_pulse/exceptions/status_badge', group: group %></td>
+          <td class="whitespace-nowrap"><%= human_readable_occurred_at(group.last_seen_at) %></td>
+          <td class="whitespace-nowrap"><%= human_readable_occurred_at(group.first_seen_at) %></td>
+          <td class="whitespace-nowrap"><%= number_with_delimiter(group.occurrence_count) %></td>
+        </tr>
+      <% end %>
+    </tbody>
+  </table>
+</div>
 
 <%= render "rails_pulse/components/table_pagination" %>

@@ -30,6 +30,46 @@
   padding: 0;
 }
 
+@media (max-width: 640px) {
+  .panel-header,
+  .panel-header > .flex {
+    flex-wrap: wrap;
+  }
+
+  /* Secondary text ("Ranked by severity · last 7 days") takes its own line
+     instead of squeezing the title. */
+  .panel-header__meta {
+    flex-basis: 100%;
+    margin-inline-start: 0;
+    margin-top: var(--size-1);
+  }
+
+  /* A bar with series toggles or action buttons is too wide for the card
+     corner: it lands on the title, and the chart container below — positioned
+     and later in the DOM — paints over its lower half and swallows taps. Put
+     it in the flow on its own full-width row. Icon-only bars are narrow and
+     stay put. */
+  .panel-icon-bar:has(.series-toggle),
+  .panel-icon-bar:has(.btn) {
+    position: static;
+    flex-basis: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    margin-top: var(--size-2);
+  }
+
+  .panel-icon-bar .series-toggle {
+    padding: 7px 14px 6px;
+  }
+
+  /* Finger-sized hit areas without moving the 16px icons. */
+  .panel-icon-bar > a,
+  .panel-icon-bar > div > a {
+    padding: var(--size-2);
+    margin: calc(-1 * var(--size-2));
+  }
+}
+
 .series-toggle {
   display: inline-flex;
   padding: 4px 10px 3px;
@@ -152,6 +192,17 @@
 
 .filter-bar__form a.btn {
   text-decoration: none;
+}
+
+/* Selects shrink to useless slivers rather than wrap; stack every filter
+   field full-width instead. */
+@media (max-width: 640px) {
+  .filter-bar__form .input,
+  .filter-bar__form input.input,
+  .filter-bar__form select.input {
+    flex: 1 1 100%;
+    max-inline-size: none;
+  }
 }
 
 .chart-container {

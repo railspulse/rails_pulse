@@ -46,7 +46,8 @@
     white-space: nowrap;
   }
 
-  td.truncate-cell a {
+  td.truncate-cell a,
+  td.truncate-cell div {
     display: block;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -57,5 +58,21 @@
     background-color: rgba(0, 0, 0, 0.05);
     border-block-start-width: var(--border);
     font-weight: var(--font-medium);
+  }
+}
+
+/* A wide table pans inside this wrapper instead of making #main — and with it
+   the whole page — scroll sideways. */
+.table-scroll {
+  overflow-x: auto;
+}
+
+@media (max-width: 640px) {
+  /* In a fixed-layout table a column with no width utility gets whatever the
+     fixed columns leave over, which on a phone is nothing — give it a real
+     width and let the wrapper scroll instead. */
+  .table-fixed th.w-auto,
+  .table-fixed th[class=""] {
+    width: 16rem;
   }
 }
