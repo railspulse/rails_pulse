@@ -4,8 +4,8 @@
   title: 'Requests',
   info: detail_capture_info("This list shows only captured requests: slow, with a slow query, errored or sampled. Charts and totals count all traffic.")
 } do %>
-  <%= search_form_for @ransack_query, url: requests_path, class: "flex items-center justify-between gap mb-4" do |form| %>
-    <div class="flex items-center grow gap">
+  <div class="filter-bar">
+    <%= search_form_for @ransack_query, url: requests_path, class: "filter-bar__form" do |form| %>
       <%= form.search_field :route_path_cont,
         placeholder: "Filter by route",
         autocomplete: "off",
@@ -38,10 +38,10 @@
         class: "input"
       %>
 
-      <%= link_to "Reset", requests_path, class: "btn btn--borderless show@md" if params.has_key?(:q) || params[:min_size_kb].present? %>
-      <%= form.submit "Search", class: "btn show@sm" %>
-    </div>
-  <% end %>
+      <%= link_to "Reset", requests_path, class: "btn btn--borderless" if params.has_key?(:q) || params[:min_size_kb].present? %>
+      <%= form.submit "Search", class: "btn" %>
+    <% end %>
+  </div>
 
   <% if @has_data %>
     <div data-controller="rails-pulse--table-sort">

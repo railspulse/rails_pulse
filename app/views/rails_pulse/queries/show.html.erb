@@ -70,26 +70,28 @@
     location_groups = @all_query_operations.group_by(&:codebase_location)
   %>
   <% if location_groups.any? %>
-    <table class="table">
-      <thead>
-        <tr>
-          <th>Location</th>
-          <th>P95 Duration (ms)</th>
-          <th>P95 Row Count</th>
-          <th>Count</th>
-        </tr>
-      </thead>
-      <tbody>
-        <% location_groups.each do |codebase_location, ops| %>
+    <div class="table-scroll">
+      <table class="table">
+        <thead>
           <tr>
-            <td><code class="text-sm"><%= codebase_location.presence || 'Unknown' %></code></td>
-            <td><%= p95.call(ops.map(&:duration))&.round(2) %></td>
-            <td><%= p95.call(ops.map(&:row_count)) || '—' %></td>
-            <td><%= ops.count %></td>
+            <th>Location</th>
+            <th>P95 Duration (ms)</th>
+            <th>P95 Row Count</th>
+            <th>Count</th>
           </tr>
-        <% end %>
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          <% location_groups.each do |codebase_location, ops| %>
+            <tr>
+              <td><code class="text-sm"><%= codebase_location.presence || 'Unknown' %></code></td>
+              <td><%= p95.call(ops.map(&:duration))&.round(2) %></td>
+              <td><%= p95.call(ops.map(&:row_count)) || '—' %></td>
+              <td><%= ops.count %></td>
+            </tr>
+          <% end %>
+        </tbody>
+      </table>
+    </div>
   <% else %>
     <%= render 'rails_pulse/components/empty_state',
         title: 'No location data available.',
