@@ -302,6 +302,53 @@ class RailsPulse::TimeRangeTest < ActiveSupport::TestCase
     ENV["TZ"] = original_tz
   end
 
+  # Maximum Span Tests
+
+  test "a custom picker range longer than MAX_SPAN keeps its end and is cut to MAX_SPAN" do
+    result = resolve(q: { period_start_range: "custom", custom_date_range: "1900-01-01 to 2100-01-01" })
+    expected_end = Time.zone.parse("2100-01-01").end_of_day
+
+    assert_equal "custom", result.selected_time_range
+    assert_equal expected_end.to_i, result.window.end_time.to_i
+    assert_equal (Time.zone.parse("2100-01-01") - RailsPulse::TimeRange::MAX_SPAN).beginning_of_day.to_i,
+      result.window.start_time.to_i
+    assert_operator result.window.bucket_timestamps(result.period_type).size, :<=, 368
+  end
+
+  test "a far-future custom range resolves to a bounded window" do
+    result = resolve(q: { period_start_range: "custom", custom_date_range: "9999-01-01 to 99999-01-01" })
+
+    assert_operator result.window.days, :<=, 368
+    assert_operator result.window.dates.size, :<=, 368
+  end
+
+  test "a chart zoom range longer than MAX_SPAN is cut to MAX_SPAN" do
+    result = resolve(q: { occurred_at_gteq: "1900-01-01", occurred_at_lt: "2100-01-01" })
+
+    assert_operator result.window.days, :<=, 368
+  end
+
+  test "a session custom range longer than MAX_SPAN is cut to MAX_SPAN" do
+    session = { time_range_preference: { "type" => "custom", "start_time" => "1900-01-01", "end_time" => "2100-01-01" } }
+    result = resolve(session: session)
+
+    assert_equal "custom", result.selected_time_range
+    assert_operator result.window.days, :<=, 368
+  end
+
+  test "a global filter range longer than MAX_SPAN is cut to MAX_SPAN" do
+    result = resolve(session: { global_filters: { "start_time" => "1900-01-01", "end_time" => "2100-01-01" } })
+
+    assert_operator result.window.days, :<=, 368
+  end
+
+  test "a range of exactly MAX_SPAN is not cut" do
+    start_at = (@now - RailsPulse::TimeRange::MAX_SPAN).beginning_of_day
+    result = resolve(q: { occurred_at_gteq: start_at.iso8601, occurred_at_lt: @now.iso8601 })
+
+    assert_equal start_at.to_i, result.window.start_time.to_i
+  end
+
   # -- Zoom / table window --------------------------------------------------
 
   test "zoom params normalize the table window without moving the chart window" do

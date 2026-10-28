@@ -31,6 +31,13 @@ module RailsPulse
       "last_30_days"  => -> { 29.days.ago }
     }.freeze
 
+    # Longest window any source may resolve to. Charts and card sparklines
+    # build one bucket per day of the window, so an unbounded custom range
+    # (a hand-edited URL, a saved session preference, a chart-zoom link)
+    # costs time and memory in proportion to its length. Daily summaries are
+    # never cleaned up, so a year back is still a useful view.
+    MAX_SPAN = 366.days
+
     # Human-readable label for the zone daily/weekly/monthly summaries are
     # bucketed in and custom ranges are rounded in (see class comment above)
     # — the host app's config.time_zone, not the browser's zone. "UTC" or,
@@ -81,6 +88,7 @@ module RailsPulse
 
     def resolve
       start_time, end_time, selected_time_range = resolve_window
+      start_time = clamp_start(start_time, end_time)
       start_time, end_time, time_diff_hours = normalize(start_time, end_time)
       period_type = time_diff_hours <= 25 ? "hour" : "day"
 
@@ -221,6 +229,13 @@ module RailsPulse
       end
     rescue ArgumentError, TypeError, RangeError
       nil
+    end
+
+    # Keeps the end of an over-long range and pulls the start forward to
+    # MAX_SPAN before it: the most recent part is the part with data.
+    def clamp_start(start_time, end_time)
+      earliest = end_time - MAX_SPAN
+      start_time < earliest ? earliest : start_time
     end
 
     # Rounds to hour or day boundaries in Time.zone (summaries are always

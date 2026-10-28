@@ -363,6 +363,17 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "index renders a bounded window for a centuries-wide custom range" do
+    get rails_pulse.routes_path, params: {
+      q: { period_start_range: "custom", custom_date_range: "9999-01-01 to 99999-01-01" }
+    }
+
+    assert_response :success
+    window = assigns(:time_range).window
+
+    assert_operator window.end_time - window.start_time, :<=, RailsPulse::TimeRange::MAX_SPAN + 2.days
+  end
+
   # Instance Variable Assignment Tests
 
   test "index assigns percentile_response_times_metric_card" do
