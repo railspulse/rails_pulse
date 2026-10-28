@@ -52,13 +52,17 @@ module RailsPulse
                config.cloud.api_key = ENV["RAILS_PULSE_CLOUD_API_KEY"]
                config.cloud.application = "your-app"
 
-          3. Schedule the health update every minute, for example in config/recurring.yml:
+          3. Schedule both jobs, for example in config/recurring.yml. Nothing reaches
+             Rails Pulse Cloud until they run: RailsPulse::SummaryJob starts the hourly
+             sync, and RailsPulse::CloudHealthJob sends the health update every minute.
 
+               rails_pulse_summary:
+                 class: RailsPulse::SummaryJob
+                 schedule: "5 * * * *"
                rails_pulse_cloud_health:
                  class: RailsPulse::CloudHealthJob
                  schedule: every minute
 
-             The hourly sync needs no schedule: RailsPulse::SummaryJob starts it.
           4. Check what will be sent: rails rails_pulse:cloud:preview
           5. Restart your Rails server and workers
 

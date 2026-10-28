@@ -388,8 +388,12 @@ RailsPulse.configure do |config|
   # Cloud keeps its state in two tables of its own. Add them with
   # `rails generate rails_pulse:install_cloud`, then migrate.
   #
-  # The hourly sync runs after RailsPulse::SummaryJob. Schedule the health update every minute:
+  # Nothing reaches Cloud until both jobs are scheduled: RailsPulse::SummaryJob starts the hourly
+  # sync, and RailsPulse::CloudHealthJob sends the health update every minute:
   #   # config/recurring.yml
+  #   rails_pulse_summary:
+  #     class: RailsPulse::SummaryJob
+  #     schedule: "5 * * * *"
   #   rails_pulse_cloud_health:
   #     class: RailsPulse::CloudHealthJob
   #     schedule: every minute
