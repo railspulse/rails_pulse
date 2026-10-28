@@ -9,7 +9,7 @@ module PaginationConcern
   # Sets pagination limit in session with validation
   # Used for both index and show pages via PATCH requests
   def set_pagination_limit(limit = nil)
-    limit = limit || params[:limit]
+    limit = scalar_pagination_param(limit || params[:limit])
     validated_limit = validate_pagination_limit(limit)
     session[:pagination_limit] = validated_limit if limit.present?
 
@@ -25,7 +25,7 @@ module PaginationConcern
   # Falls back to default of 10 if not set
   def session_pagination_limit
     # Use URL param if present, otherwise session, otherwise default
-    limit = params[:limit].presence || session[:pagination_limit] || 10
+    limit = scalar_pagination_param(params[:limit]).presence || session[:pagination_limit] || 10
     # Always validate the limit before returning
     validate_pagination_limit(limit)
   end
@@ -33,7 +33,7 @@ module PaginationConcern
   # Paginates a collection using offset/limit
   # Returns a Paginator object and the paginated records
   def paginate(collection, limit:)
-    page       = [ params[:page].to_i, 1 ].max
+    page       = [ scalar_pagination_param(params[:page]).to_i, 1 ].max
     raw        = collection.count(:all)
     count      = raw.is_a?(Hash) ? raw.size : raw
     paginator  = RailsPulse::Paginator.new(count: count, page: page, limit: limit)
@@ -47,5 +47,11 @@ module PaginationConcern
   # Maximum 50 to prevent performance issues
   def validate_pagination_limit(limit)
     limit.to_i.clamp(5, 50)
+  end
+
+  # A hand-edited URL can send `page[]=` or `limit[a]=`; treat an array or
+  # hash as absent so the default applies.
+  def scalar_pagination_param(value)
+    value unless value.is_a?(Array) || value.is_a?(Hash) || value.is_a?(ActionController::Parameters)
   end
 end

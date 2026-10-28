@@ -121,7 +121,7 @@ module RailsPulse
 
     # Priority 1: page-specific preset from the dropdown.
     def from_page_preset
-      range = ransack_params[:period_start_range]
+      range = scalar(ransack_params[:period_start_range])
       return nil unless range.present? && range.to_sym != :custom
 
       [ preset_start(range), Time.zone.now, range ]
@@ -130,14 +130,15 @@ module RailsPulse
     # Priority 2: page-specific custom datetime range from the picker (only
     # when period_start_range is explicitly "custom").
     def from_page_custom_range
-      return nil unless ransack_params[:period_start_range].present? &&
-        ransack_params[:period_start_range].to_sym == :custom &&
-        ransack_params[:custom_date_range].present? &&
-        ransack_params[:custom_date_range].include?(" to ")
+      range = scalar(ransack_params[:period_start_range])
+      return nil unless range.present? && range.to_sym == :custom
 
-      dates = ransack_params[:custom_date_range].split(" to ")
-      custom_start = parse_time_param(dates[0].strip)
-      custom_end = parse_time_param(dates[1].strip)
+      custom_range = ransack_params[:custom_date_range]
+      return nil unless custom_range.is_a?(String) && custom_range.include?(" to ")
+
+      start_param, end_param = custom_range.split(" to ", 2)
+      custom_start = parse_time_param(start_param.strip)
+      custom_end = parse_time_param(end_param.strip)
       return nil unless custom_start && custom_end
 
       [ custom_start, custom_end, :custom ]
@@ -187,6 +188,13 @@ module RailsPulse
       q.respond_to?(:permit) ? q : ActionController::Parameters.new({})
     end
 
+    # A hand-edited URL can turn any value into an array or hash
+    # (`q[period_start_range][]=x`, `zoom_start_time[a]=1`). Those are
+    # treated as absent so the default applies.
+    def scalar(value)
+      value unless value.is_a?(Array) || value.is_a?(Hash) || value.is_a?(ActionController::Parameters)
+    end
+
     def session_time_range_preference
       RailsPulse::TimeRangePreference.normalize(session[:time_range_preference])
     end
@@ -232,9 +240,9 @@ module RailsPulse
     # -- Zoom / table window --------------------------------------------------
 
     def resolve_zoom(main_start, main_end)
-      selected_column_time = params[:selected_column_time]
-      zoom_start = params.delete(:zoom_start_time)
-      zoom_end = params.delete(:zoom_end_time)
+      selected_column_time = scalar(params[:selected_column_time])
+      zoom_start = scalar(params.delete(:zoom_start_time))
+      zoom_end = scalar(params.delete(:zoom_end_time))
 
       if selected_column_time
         table_start, table_end = normalize_column_time(selected_column_time.to_i, main_start, main_end)
@@ -286,7 +294,7 @@ module RailsPulse
 
     def resolve_duration
       thresholds = RailsPulse.configuration.public_send("#{duration_range_type}_thresholds")
-      duration_param = ransack_params[:avg_duration] || ransack_params[:duration] || ransack_params[:duration_gteq]
+      duration_param = %i[avg_duration duration duration_gteq].filter_map { |key| scalar(ransack_params[key]) }.first
 
       if duration_param.present?
         [ threshold_for(thresholds, duration_param), duration_param ]
