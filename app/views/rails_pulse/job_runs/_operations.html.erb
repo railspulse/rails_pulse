@@ -31,6 +31,9 @@
                   <span class="text-link" style="color: <%= event_color(bar.operation.operation_type) %>;">
                     <%= html_escape(bar.operation.label) %>
                   </span>
+                  <% if bar.repeated? %>
+                    <span class="badge" title="<%= bar.count %> consecutive operations; links open the slowest">×<%= bar.count %></span>
+                  <% end %>
                 </td>
 
                 <td class="whitespace-nowrap">
@@ -38,7 +41,7 @@
                 </td>
 
                 <td class="whitespace-nowrap">
-                  <% impact_percentage = total_run_duration > 0 ? (bar.operation.duration / total_run_duration * 100).round(1) : 0 %>
+                  <% impact_percentage = total_run_duration > 0 ? (bar.total_duration / total_run_duration * 100).round(1) : 0 %>
                   <%= impact_percentage %>%
                 </td>
 
@@ -75,6 +78,8 @@
         </tbody>
       </table>
     </div>
+
+    <%= render 'rails_pulse/components/operations_truncated_notice', timeline: @operation_timeline %>
   <% else %>
     <%= render 'rails_pulse/components/empty_state',
         title: 'No operations found for this job run.',

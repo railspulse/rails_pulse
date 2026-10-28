@@ -1,0 +1,7 @@
+<% if timeline.truncated? %>
+  <p class="text-sm text-subtle mbs-2">
+    Showing the <%= pluralize(timeline.bars.size, 'slowest group') %> of operations.
+    <%= pluralize(timeline.hidden_operations_count, 'faster operation') %>
+    out of <%= timeline.operations_count %> are not shown.
+  </p>
+<% end %>

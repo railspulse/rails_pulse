@@ -12,7 +12,7 @@ module RailsPulse
     end
 
     def show
-      @operations = @run.operations.order(:start_time)
+      @operations = @run.operations.includes(:query).order(:start_time)
       @operation_timeline = RailsPulse::Charts::OperationsChart.new(@operations)
 
       # Group operations by type
