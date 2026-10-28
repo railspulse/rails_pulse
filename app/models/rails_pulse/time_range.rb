@@ -38,6 +38,10 @@ module RailsPulse
     # never cleaned up, so a year back is still a useful view.
     MAX_SPAN = 366.days
 
+    # Years every supported database can compare against: MySQL's DATETIME
+    # stops at 1000-9999 and raises on a bound outside it.
+    STORABLE_YEARS = 1000..9999
+
     # Human-readable label for the zone daily/weekly/monthly summaries are
     # bucketed in and custom ranges are rounded in (see class comment above)
     # — the host app's config.time_zone, not the browser's zone. "UTC" or,
@@ -212,9 +216,15 @@ module RailsPulse
       filters.is_a?(Hash) ? filters : {}
     end
 
-    # Returns nil for anything that does not parse, so a hand-edited or stale
-    # value falls back to the default range instead of raising.
+    # Returns nil for anything that does not parse, or that parses to a year
+    # outside STORABLE_YEARS, so a hand-edited or stale value falls back to
+    # the default range instead of raising.
     def parse_time_param(param)
+      time = parse_time(param)
+      time if time && STORABLE_YEARS.cover?(time.year)
+    end
+
+    def parse_time(param)
       case param
       when Time, DateTime
         param.in_time_zone

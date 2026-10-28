@@ -315,11 +315,30 @@ class RailsPulse::TimeRangeTest < ActiveSupport::TestCase
     assert_operator result.window.bucket_timestamps(result.period_type).size, :<=, 368
   end
 
-  test "a far-future custom range resolves to a bounded window" do
+  test "a custom range with a bound past year 9999 falls back to the default range" do
     result = resolve(q: { period_start_range: "custom", custom_date_range: "9999-01-01 to 99999-01-01" })
 
-    assert_operator result.window.days, :<=, 368
-    assert_operator result.window.dates.size, :<=, 368
+    assert_equal "last_24_hours", result.selected_time_range
+    assert_in_delta 23.hours.ago.beginning_of_hour.to_i, result.window.start_time.to_i, 10
+  end
+
+  test "a chart zoom with a bound before year 1000 is ignored" do
+    result = resolve(q: { occurred_at_gteq: "0999-12-31", occurred_at_lt: "2026-01-01" })
+
+    assert_equal "last_24_hours", result.selected_time_range
+  end
+
+  test "a session custom range with an end past year 9999 ends now" do
+    session = { time_range_preference: { "type" => "custom", "start_time" => 3.days.ago.iso8601, "end_time" => "99999-01-01" } }
+    result = resolve(session: session)
+
+    assert_equal @now.end_of_day.to_i, result.window.end_time.to_i
+  end
+
+  test "a range inside year 9999 is accepted" do
+    result = resolve(q: { occurred_at_gteq: "9999-01-01", occurred_at_lt: "9999-12-31" })
+
+    assert_equal 9999, result.window.start_time.year
   end
 
   test "a chart zoom range longer than MAX_SPAN is cut to MAX_SPAN" do
