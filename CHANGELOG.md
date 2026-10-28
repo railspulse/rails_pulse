@@ -10,6 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Dashboard pages no longer return a 500 when a hand-edited URL turns a filter, sort, page, limit, zoom or tag param into an array or hash; the value is ignored and the default applies.
+- `rails generate rails_pulse:install_cloud` and the initializer template now say to schedule both `RailsPulse::SummaryJob` and `RailsPulse::CloudHealthJob`; the hourly Cloud sync only runs after `SummaryJob`, so nothing reached Cloud without it.
 
 ## [0.5.1.pre.2] - 2026-10-24
 
