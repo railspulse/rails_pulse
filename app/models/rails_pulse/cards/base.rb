@@ -81,7 +81,14 @@ module RailsPulse
         show_trend? ? previous_window_start : current_window_start
       end
 
-      # Base query helper for common summary query pattern
+      # Base query helper for common summary query pattern.
+      #
+      # When the trend is shown, the range reaches back through the previous
+      # window as well, so the period-over-period comparison costs one query
+      # instead of two. Headline values must therefore come from the
+      # :current_start CASE WHEN aggregates (window_sql), never from a plain
+      # SUM over the whole relation — that would silently average the selected
+      # window together with the one before it.
       def base_summary_query(summarizable_type)
         query = RailsPulse::Summary.where(
           summarizable_type: summarizable_type,
@@ -114,25 +121,83 @@ module RailsPulse
       end
 
       # Enhanced sparkline generation (support hour and day)
-      def sparkline_from(grouped_values)
+      #
+      # ghost_incomplete: summaries are only written once a period ends, so
+      # for summary-backed cards an absent value in a still-running period
+      # means "not summarized yet", not "zero" — those buckets are drawn as a
+      # ghost placeholder. Cards whose values come from live tables (where an
+      # absent bucket is a genuine zero) pass false.
+      #
+      # An optional block decorates each real bucket ({ value: } hash in,
+      # ECharts data item out); ghost buckets are not decorated, since their
+      # height carries no meaning for a color or style to reflect.
+      def sparkline_from(grouped_values, ghost_incomplete: true, &decorate)
         if period_type_hours?
-          build_hourly_sparkline(grouped_values)
+          build_hourly_sparkline(grouped_values, ghost_incomplete: ghost_incomplete, &decorate)
         else
-          build_daily_sparkline(grouped_values)
+          build_daily_sparkline(grouped_values, ghost_incomplete: ghost_incomplete, &decorate)
         end
       end
 
-      def build_hourly_sparkline(grouped_values)
+      def build_hourly_sparkline(grouped_values, ghost_incomplete: true, &decorate)
+        ghost_height = ghost_height_for(grouped_values)
         sparkline_hours.each_with_object({}) do |current_time, hash|
+          value = grouped_values[current_time]
           # Use timestamp in milliseconds for JS compatibility
-          hash[current_time.to_i * 1000] = { value: grouped_values[current_time] || 0 }
+          hash[current_time.to_i * 1000] = if ghost_incomplete && value.nil? && incomplete_period?(current_time)
+            ghost_bucket(ghost_height)
+          else
+            sparkline_bucket(value, &decorate)
+          end
         end
       end
 
-      def build_daily_sparkline(grouped_values)
+      def build_daily_sparkline(grouped_values, ghost_incomplete: true, &decorate)
+        ghost_height = ghost_height_for(grouped_values)
         sparkline_dates.each_with_object({}) do |day, hash|
-          hash[day.strftime("%b %-d")] = { value: grouped_values[day] || 0 }
+          value = grouped_values[day]
+          hash[day.strftime("%b %-d")] = if ghost_incomplete && value.nil? && incomplete_period?(day)
+            ghost_bucket(ghost_height)
+          else
+            sparkline_bucket(value, &decorate)
+          end
         end
+      end
+
+      def sparkline_bucket(value, &decorate)
+        bucket = { value: value || 0 }
+        decorate ? decorate.call(bucket) : bucket
+      end
+
+      # True when the bucket's period has not finished yet, so a summary for
+      # it cannot exist (SummaryService refuses to summarize a period before
+      # it ends — the summary row doubles as cleanup's "fully aggregated"
+      # heartbeat).
+      def incomplete_period?(bucket_start)
+        if bucket_start.is_a?(Date)
+          bucket_start >= Time.current.to_date
+        else
+          bucket_start + 1.hour > Time.current
+        end
+      end
+
+      # Placeholder for a bucket whose period is still running. A plain zero
+      # would render no bar at all and read as "no traffic"; instead
+      # chart_controller.js draws the slot as a dashed outline whose height
+      # carries no meaning (applyGhostStyle), and the sparkline tooltip shows
+      # incompleteLabel instead of a number.
+      def ghost_bucket(height)
+        {
+          value: height,
+          incomplete: true,
+          incompleteLabel: "#{period_type_hours? ? "Hour" : "Day"} in progress"
+        }
+      end
+
+      # Tallest real value, so the ghost reads as a full slot rather than a
+      # data point. Zero (no bar) when the card has no data at all.
+      def ghost_height_for(grouped_values)
+        grouped_values.values.compact.max || 0
       end
 
       # Subclasses can override to customize sparkline start date

@@ -11,8 +11,6 @@ module RailsPulse
           base_query = base_summary_query("RailsPulse::Query")
 
           metrics = base_query.select(
-            "SUM(avg_duration * count) AS total_weighted_duration",
-            "SUM(count) AS total_requests",
             window_sql("SUM(CASE WHEN period_start >= :current_start THEN avg_duration * count ELSE 0 END) AS current_weighted_duration"),
             window_sql("SUM(CASE WHEN period_start >= :current_start THEN count ELSE 0 END) AS current_requests"),
             window_sql("SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN avg_duration * count ELSE 0 END) AS previous_weighted_duration"),
@@ -20,9 +18,10 @@ module RailsPulse
           ).take
 
           # Calculate metrics from single query result
-          average_query_time = metrics.total_requests.to_i > 0 ? (metrics.total_weighted_duration / metrics.total_requests).round(0) : 0
-          current_period_avg = metrics.current_requests.to_i > 0 ? (metrics.current_weighted_duration / metrics.current_requests) : 0
+          current_requests = metrics.current_requests.to_i
+          current_period_avg = current_requests > 0 ? (metrics.current_weighted_duration / current_requests) : 0
           previous_period_avg = metrics.previous_requests.to_i > 0 ? (metrics.previous_weighted_duration / metrics.previous_requests) : 0
+          average_query_time = current_period_avg.round(0)
 
           # Use base class trend calculation
           trend_icon, trend_amount = trend_for(current_period_avg, previous_period_avg) if show_trend?
@@ -32,9 +31,8 @@ module RailsPulse
           grouped_counts = bucket_by_period(base_query) { |relation| relation.sum(:count) }
 
           # Calculate weighted averages for each period
-          averages_by_period = grouped_weighted.transform_values.with_index do |(weighted, day), _|
-            count = grouped_counts[day] || 0
-            count > 0 ? (weighted.to_f / count).round(0) : 0
+          averages_by_period = grouped_counts.each_with_object({}) do |(period, count), hash|
+            hash[period] = count > 0 ? (grouped_weighted[period].to_f / count).round(0) : 0
           end
 
           # Use base class sparkline generation
@@ -49,7 +47,7 @@ module RailsPulse
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: (show_trend? ? comparison_period_text : nil),
-            period_stat: metrics.total_requests.to_i > 0 ? "Across #{format_number(metrics.total_requests.to_i)} queries" : period_date_range
+            period_stat: current_requests > 0 ? "Across #{format_number(current_requests)} queries" : period_date_range
           }
         end
       end

@@ -20,12 +20,10 @@ module RailsPulse
             .where(period_type: @period_type, period_start: range_start..now)
 
           metrics = base_query.select(
-            "SUM(rails_pulse_summaries.count) AS total_count",
             window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :current_start THEN rails_pulse_summaries.count ELSE 0 END) AS current_count"),
             window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :range_start AND rails_pulse_summaries.period_start < :current_start THEN rails_pulse_summaries.count ELSE 0 END) AS previous_count")
           ).take
 
-          total    = metrics&.total_count.to_i
           current  = metrics&.current_count.to_i
           previous = metrics&.previous_count.to_i
 
@@ -42,7 +40,7 @@ module RailsPulse
             chart_color: RailsPulse::ChartColors::DEFAULT,
             context: "exceptions",
             title: "Occurrences",
-            summary: "#{format_number(total)} raised",
+            summary: "#{format_number(current)} raised",
             chart_data: sparkline_from(grouped),
             trend_icon: trend_icon,
             trend_amount: trend_amount,

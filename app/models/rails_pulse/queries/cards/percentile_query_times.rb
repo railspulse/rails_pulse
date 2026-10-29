@@ -11,16 +11,16 @@ module RailsPulse
           base_query = base_summary_query("RailsPulse::Query")
 
           metrics = base_query.select(
-            "SUM(p95_duration * count) / NULLIF(SUM(count), 0) AS overall_p95",
-            "SUM(count) AS total_count",
             window_sql("SUM(CASE WHEN period_start >= :current_start THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= :current_start THEN count ELSE 0 END), 0) AS current_p95"),
-            window_sql("SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN count ELSE 0 END), 0) AS previous_p95")
+            window_sql("SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN count ELSE 0 END), 0) AS previous_p95"),
+            window_sql("SUM(CASE WHEN period_start >= :current_start THEN count ELSE 0 END) AS current_count")
           ).take
 
           # Calculate metrics from single query result
-          p95_query_time = (metrics.overall_p95 || 0).round(0)
           current_period_p95 = metrics.current_p95 || 0
           previous_period_p95 = metrics.previous_p95 || 0
+          current_count = metrics.current_count.to_i
+          p95_query_time = current_period_p95.round(0)
 
           baseline = baseline_trend_for(@subject, metric: :p95)
 
@@ -62,7 +62,7 @@ module RailsPulse
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: trend_caption || (show_trend? ? comparison_period_text : nil),
-            period_stat: metrics.total_count.to_i > 0 ? "Across #{format_number(metrics.total_count.to_i)} queries" : period_date_range,
+            period_stat: current_count > 0 ? "Across #{format_number(current_count)} queries" : period_date_range,
             help_heading: "P95 Query Time",
             help_text: "The 95th percentile database query duration — 95% of queries complete faster than this. Weighted by execution frequency across all queries. Slow queries are often caused by missing indexes or N+1 patterns."
           }

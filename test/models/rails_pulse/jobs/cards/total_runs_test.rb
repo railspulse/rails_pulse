@@ -69,8 +69,8 @@ module RailsPulse
           card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
-          # Total: 15 runs
-          assert_equal "15 runs", result[:summary]
+          # Headline covers the selected window only
+          assert_equal "10 runs", result[:summary]
 
           # Trend: current 10 vs previous 5 = +100%
           assert_equal "trending-up", result[:trend_icon]
@@ -108,8 +108,8 @@ module RailsPulse
           card = RailsPulse::Jobs::Cards::TotalRuns.new(job: nil, period: 7)
           result = card.to_metric_card
 
-          # Total: 10 + 20 + 5 + 15 = 50 runs
-          assert_equal "50 runs", result[:summary]
+          # Headline covers the selected window only: 10 + 20 runs
+          assert_equal "30 runs", result[:summary]
 
           # Trend: current 30 vs previous 20 = +50%
           assert_equal "trending-up", result[:trend_icon]
@@ -191,8 +191,9 @@ module RailsPulse
           card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
-          # Find days with data
-          days_with_data = result[:chart_data].values.select { |v| v[:value] > 0 }
+          # Find days with data — today's ghost placeholder has a height but
+          # is not data
+          days_with_data = result[:chart_data].values.select { |v| v[:value] > 0 && !v[:incomplete] }
 
           # Should have 2 days with data
           assert_equal 2, days_with_data.length
@@ -240,7 +241,8 @@ module RailsPulse
           card = RailsPulse::Jobs::Cards::TotalRuns.new(job: @job, period: 7)
           result = card.to_metric_card
 
-          assert_equal "20 runs", result[:summary]
+          # Previous-window data informs the trend but not the headline
+          assert_equal "0 runs", result[:summary]
           # Current is 0, previous is 20, so trending down 100%
           assert_equal "trending-down", result[:trend_icon]
           assert_equal "100.0%", result[:trend_amount]

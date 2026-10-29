@@ -403,6 +403,38 @@ module RailsPulse
             DatabaseLoad.new.to_metric_card
           end
         end
+
+        test "headline covers the selected window only, not the previous one" do
+          RailsPulse::Summary.delete_all
+          route = rails_pulse_routes(:api_users)
+          query = rails_pulse_queries(:complex_query)
+
+          # Current window: 3000 / 10000 = 30% DB load
+          create_load_summary(route, 3.days.ago.beginning_of_day, total_duration: 10000.0)
+          create_load_summary(query, 3.days.ago.beginning_of_day, total_duration: 3000.0)
+          # Previous window: 9000 / 10000 = 90% DB load, must not leak in
+          create_load_summary(route, 10.days.ago.beginning_of_day, total_duration: 10000.0)
+          create_load_summary(query, 10.days.ago.beginning_of_day, total_duration: 9000.0)
+
+          card = DatabaseLoad.new(period: 7).to_metric_card
+
+          assert_equal "30.0%", card[:summary]
+          # The previous window still feeds the trend: 30% against 90% is a drop
+          assert_equal "trending-down", card[:trend_icon]
+        end
+
+        private
+
+        def create_load_summary(summarizable, day, total_duration:)
+          RailsPulse::Summary.create!(
+            summarizable: summarizable,
+            period_type: "day",
+            period_start: day,
+            period_end: day.end_of_day,
+            count: 100,
+            total_duration: total_duration
+          )
+        end
       end
     end
   end

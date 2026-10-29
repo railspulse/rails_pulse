@@ -173,7 +173,7 @@ module RailsPulse
 
           assert_equal "15 requests", unfiltered[:period_stat]
           assert_equal "5 requests", users_disabled[:period_stat]
-          assert_equal 5, users_disabled[:chart_data].values.sum { |point| point[:value] }
+          assert_equal 5, users_disabled[:chart_data].values.reject { |point| point[:incomplete] }.sum { |point| point[:value] }
           assert_equal "10 requests", tagged_only[:period_stat]
         end
 

@@ -7,7 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Metric card sparklines now draw the still-in-progress day (or hour) as a dashed outline "ghost" bar with a tooltip saying the period is in progress, instead of an invisible zero bar, so "Last 14 days" visibly shows all 14 days.
+
 ### Fixed
+
+- Metric card headline figures (P95 times, error and failure rates, totals, database load) now cover only the selected time range; when a trend was shown they aggregated the selected and previous ranges together.
 
 - Dashboard pages no longer return a 500 when a hand-edited URL turns a filter, sort, page, limit, zoom or tag param into an array or hash; the value is ignored and the default applies.
 - `rails generate rails_pulse:install_cloud` and the initializer template now say to schedule both `RailsPulse::SummaryJob` and `RailsPulse::CloudHealthJob`; the hourly Cloud sync only runs after `SummaryJob`, so nothing reached Cloud without it.

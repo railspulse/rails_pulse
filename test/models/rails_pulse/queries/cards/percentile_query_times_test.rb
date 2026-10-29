@@ -191,6 +191,30 @@ module RailsPulse
 
           assert_kind_of Hash, result
         end
+
+        test "headline covers the selected window only, not the previous one" do
+          RailsPulse::Summary.delete_all
+          query = rails_pulse_queries(:simple_query)
+          create_day_summary(query, 3.days.ago.beginning_of_day, p95: 100.0, count: 10)
+          create_day_summary(query, 10.days.ago.beginning_of_day, p95: 500.0, count: 10)
+
+          result = PercentileQueryTimes.new(period: 7).to_metric_card
+
+          assert_equal "100 ms", result[:summary]
+          assert_equal "Across 10 queries", result[:period_stat]
+          # The previous window still feeds the trend: 100 against 500 is a drop
+          assert_equal "trending-down", result[:trend_icon]
+        end
+
+        private
+
+        def create_day_summary(query, day, p95:, count:)
+          RailsPulse::Summary.create!(
+            summarizable: query,
+            period_type: "day", period_start: day, period_end: day.end_of_day,
+            count: count, avg_duration: p95, p95_duration: p95
+          )
+        end
       end
     end
   end

@@ -175,6 +175,31 @@ module RailsPulse
             assert_match(/[A-Z][a-z]{2} \d{1,2}/, label)
           end
         end
+
+        test "headline covers the selected window only, not the previous one" do
+          RailsPulse::Summary.delete_all
+          route = rails_pulse_routes(:api_users)
+          create_day_summary(route, 3.days.ago.beginning_of_day, p95: 100.0, count: 10)
+          create_day_summary(route, 10.days.ago.beginning_of_day, p95: 500.0, count: 10)
+
+          card = RailsPulse::Routes::Cards::PercentileResponseTimes.new(period: 7).to_metric_card
+
+          assert_equal "100 ms", card[:summary]
+          assert_equal "Across 10 requests", card[:period_stat]
+          # The previous window still feeds the trend: 100 against 500 is a drop
+          assert_equal "trending-down", card[:trend_icon]
+        end
+
+        private
+
+        def create_day_summary(route, day, p95:, count:)
+          RailsPulse::Summary.create!(
+            summarizable_type: "RailsPulse::Route", summarizable_id: route.id,
+            period_type: "day", period_start: day, period_end: day.end_of_day,
+            count: count, success_count: count, error_count: 0,
+            avg_duration: p95, p95_duration: p95
+          )
+        end
       end
     end
   end

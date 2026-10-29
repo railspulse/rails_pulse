@@ -11,18 +11,18 @@ module RailsPulse
           base_query = base_summary_query("RailsPulse::Route")
 
           metrics = base_query.select(
-            "SUM(p95_duration * count) / NULLIF(SUM(count), 0) AS overall_p95",
             window_sql("SUM(CASE WHEN period_start >= :current_start THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= :current_start THEN count ELSE 0 END), 0) AS current_p95"),
             window_sql("SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN p95_duration * count ELSE 0 END) / NULLIF(SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN count ELSE 0 END), 0) AS previous_p95"),
-            "SUM(count) AS total_count"
+            window_sql("SUM(CASE WHEN period_start >= :current_start THEN count ELSE 0 END) AS current_count")
           ).take
 
           # Calculate metrics from single query result
-          p95_response_time = (metrics&.overall_p95 || 0).round(0)
           current_period_p95 = metrics&.current_p95 || 0
           previous_period_p95 = metrics&.previous_p95 || 0
+          current_count = metrics&.current_count.to_i
+          p95_response_time = current_period_p95.round(0)
 
-          has_data = metrics.total_count.to_i > 0
+          has_data = current_count > 0
 
           # Prefer a comparison against this route's own history; fall back to
           # period-over-period on the index, where there is no single subject.
@@ -58,7 +58,7 @@ module RailsPulse
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: trend_caption || (show_trend? ? comparison_period_text : nil),
-            period_stat: has_data ? "Across #{format_number(metrics.total_count.to_i)} requests" : period_date_range,
+            period_stat: has_data ? "Across #{format_number(current_count)} requests" : period_date_range,
             help_heading: "P95 Response Time",
             help_text: "The 95th percentile response time — 95% of requests are faster than this. Weighted by request volume across all routes. A rising P95 indicates increasing slowness affecting your users."
           }

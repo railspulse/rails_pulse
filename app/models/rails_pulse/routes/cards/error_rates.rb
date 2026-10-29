@@ -11,23 +11,16 @@ module RailsPulse
           base_query = base_summary_query("RailsPulse::Route")
 
           metrics = base_query.select(
-            "SUM(error_count) AS total_errors",
-            "SUM(status_4xx) AS total_4xx",
-            "SUM(count) AS total_requests",
+            window_sql("SUM(CASE WHEN period_start >= :current_start THEN count ELSE 0 END) AS current_count"),
             window_sql("SUM(CASE WHEN period_start >= :current_start THEN error_count + status_4xx ELSE 0 END) AS current_total_errors"),
             window_sql("SUM(CASE WHEN period_start >= :range_start AND period_start < :current_start THEN error_count + status_4xx ELSE 0 END) AS previous_total_errors")
           ).take
 
-          total_errors = metrics.total_errors || 0
-          total_4xx = metrics.total_4xx || 0
-          total_requests = metrics.total_requests || 0
-          current_total = metrics.current_total_errors || 0
-          previous_total = metrics.previous_total_errors || 0
+          current_count = metrics&.current_count.to_i
+          current_total = metrics&.current_total_errors.to_i
+          previous_total = metrics&.previous_total_errors.to_i
 
-          has_data = total_requests > 0
-
-          server_rate = has_data ? (total_errors.to_f / total_requests * 100).round(2) : 0
-          client_rate = has_data ? (total_4xx.to_f / total_requests * 100).round(2) : 0
+          has_data = current_count > 0
 
           baseline = baseline_trend_for(@subject, metric: :error_rate)
 
@@ -44,7 +37,7 @@ module RailsPulse
           grouped_4xx    = group_sparkline_by_period(sparkline_query, :status_4xx)
           sparkline_data = sparkline_from_error_rates(grouped_errors, grouped_4xx, grouped_counts)
 
-          total_rate = has_data ? (server_rate + client_rate).round(2) : 0
+          total_rate = has_data ? (current_total.to_f / current_count * 100).round(2) : 0
           summary = has_data ? "#{total_rate}% of requests" : "—"
 
           {
@@ -58,30 +51,22 @@ module RailsPulse
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: trend_caption || (show_trend? ? comparison_period_text : nil),
-            period_stat: has_data ? "#{format_number(total_errors + total_4xx)} errors" : period_date_range,
+            period_stat: has_data ? "#{format_number(current_total)} errors" : period_date_range,
             help_heading: "Error Rates",
-            help_text: "Combined 5xx and 4xx error rate over the last 2 weeks. 5xx server errors indicate bugs or infrastructure issues. 4xx client errors may indicate broken API consumers or deprecated endpoints."
+            help_text: "Combined 5xx and 4xx error rate over the selected range. 5xx server errors indicate bugs or infrastructure issues. 4xx client errors may indicate broken API consumers or deprecated endpoints."
           }
         end
 
         private
 
+        # Rates are keyed by the periods that actually have a summary row;
+        # sparkline_from fills the remaining buckets with zero or a ghost.
         def sparkline_from_error_rates(errors_by_period, client_errors_by_period, counts_by_period)
-          if @period_type == "hour"
-            sparkline_hours.each_with_object({}) do |current_time, result|
-              errors = errors_by_period[current_time].to_f + client_errors_by_period[current_time].to_f
-              total  = counts_by_period[current_time].to_f
-              rate   = total.zero? ? 0.0 : (errors / total * 100).round(2)
-              result[current_time.to_i * 1000] = { value: rate }
-            end
-          else
-            sparkline_dates.each_with_object({}) do |day, hash|
-              errors = errors_by_period[day].to_f + client_errors_by_period[day].to_f
-              total  = counts_by_period[day].to_f
-              rate   = total.zero? ? 0.0 : (errors / total * 100).round(2)
-              hash[day.strftime("%b %-d")] = { value: rate }
-            end
+          rates = counts_by_period.each_with_object({}) do |(period, total), hash|
+            errors = errors_by_period[period].to_f + client_errors_by_period[period].to_f
+            hash[period] = total.to_f.zero? ? 0.0 : (errors / total.to_f * 100).round(2)
           end
+          sparkline_from(rates)
         end
       end
     end
