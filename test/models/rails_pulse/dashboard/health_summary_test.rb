@@ -298,7 +298,7 @@ module RailsPulse
       # Job Tier Assignment
 
       test "job below failure rate and p95 thresholds is healthy" do
-        RailsPulse::Job.create!(name: "HealthyJob", runs_count: 100, failures_count: 2, p95_duration: 1000.0)
+        create_job_summary(job: create_job("HealthyJob"), count: 100, errors: 2, p95: 1000.0)
 
         result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
 
@@ -308,7 +308,7 @@ module RailsPulse
       end
 
       test "job with failure rate >= 5% and < 10% is slow" do
-        RailsPulse::Job.create!(name: "SlowJob", runs_count: 100, failures_count: 7, p95_duration: 1000.0)
+        create_job_summary(job: create_job("SlowJob"), count: 100, errors: 7, p95: 1000.0)
 
         result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
 
@@ -317,7 +317,7 @@ module RailsPulse
       end
 
       test "job with failure rate >= 10% is critical" do
-        RailsPulse::Job.create!(name: "CriticalJob", runs_count: 100, failures_count: 10, p95_duration: 1000.0)
+        create_job_summary(job: create_job("CriticalJob"), count: 100, errors: 10, p95: 1000.0)
 
         result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
 
@@ -326,7 +326,7 @@ module RailsPulse
       end
 
       test "job with p95 >= slow threshold is slow" do
-        RailsPulse::Job.create!(name: "SlowDurationJob", runs_count: 100, failures_count: 0, p95_duration: 6000.0)
+        create_job_summary(job: create_job("SlowDurationJob"), count: 100, errors: 0, p95: 6000.0)
 
         result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
 
@@ -335,15 +335,45 @@ module RailsPulse
       end
 
       test "job with p95 >= critical threshold is critical" do
-        RailsPulse::Job.create!(name: "CriticalDurationJob", runs_count: 100, failures_count: 0, p95_duration: 60_000.0)
+        create_job_summary(job: create_job("CriticalDurationJob"), count: 100, errors: 0, p95: 60_000.0)
 
         result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
 
         assert_equal 1, result[:jobs][:critical]
       end
 
+      test "jobs are classified on runs in the period, not lifetime counters" do
+        job = create_job("LifetimeFailureJob")
+        job.update_columns(runs_count: 11, failures_count: 2, p95_duration: 60_000.0)
+        create_job_summary(job: job, count: 50, errors: 0, p95: 1000.0)
+
+        result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
+
+        assert_equal({ healthy: 1, slow: 0, critical: 0 }, result[:jobs])
+      end
+
+      test "jobs with no runs in the period are not counted" do
+        job = create_job("OldFailureJob")
+        job.update_columns(runs_count: 11, failures_count: 2)
+        create_job_summary(job: job, count: 11, errors: 2, p95: 1000.0, days_ago: 30)
+
+        result = RailsPulse::Dashboard::HealthSummary.new(period: 7).to_health_data
+
+        assert_equal({ healthy: 0, slow: 0, critical: 0 }, result[:jobs])
+      end
+
+      test "jobs with a disabled tag are excluded" do
+        create_job_summary(job: create_job("TaggedJob", tags: [ "reports" ]), count: 100, errors: 20, p95: 1000.0)
+        create_job_summary(job: create_job("UntaggedJob"), count: 100, errors: 0, p95: 1000.0)
+
+        result = RailsPulse::Dashboard::HealthSummary.new(disabled_tags: [ "reports" ]).to_health_data
+
+        assert_equal({ healthy: 1, slow: 0, critical: 0 }, result[:jobs])
+      end
+
       test "jobs with zero runs are excluded" do
-        # All jobs already have runs_count: 0 from setup, none should appear
+        create_job_summary(job: create_job("IdleJob"), count: 0, errors: 0, p95: 0.0)
+
         result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
 
         assert_equal 0, result[:jobs][:healthy]
@@ -354,7 +384,7 @@ module RailsPulse
       # Edge Case — All Healthy Jobs
 
       test "all healthy jobs returns all in healthy bucket" do
-        3.times { |i| RailsPulse::Job.create!(name: "HealthyJob#{i}", runs_count: 100, failures_count: 1) }
+        3.times { |i| create_job_summary(job: create_job("HealthyJob#{i}"), count: 100, errors: 1, p95: 100.0) }
 
         result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
 
@@ -366,7 +396,7 @@ module RailsPulse
       # Edge Case — All Critical Jobs
 
       test "all critical jobs returns all in critical bucket" do
-        3.times { |i| RailsPulse::Job.create!(name: "CriticalJob#{i}", runs_count: 100, failures_count: 15) }
+        3.times { |i| create_job_summary(job: create_job("CriticalJob#{i}"), count: 100, errors: 15, p95: 100.0) }
 
         result = RailsPulse::Dashboard::HealthSummary.new.to_health_data
 
@@ -503,6 +533,25 @@ module RailsPulse
           period_end:        period_end,
           count:             1,
           avg_duration:      100.0
+        )
+      end
+
+      def create_job(name, tags: [])
+        RailsPulse::Job.create!(name: name, tag_list: tags)
+      end
+
+      def create_job_summary(job:, count:, errors:, p95:, days_ago: 2)
+        period_start = days_ago.days.ago.beginning_of_day
+        RailsPulse::Summary.create!(
+          summarizable_type: "RailsPulse::Job",
+          summarizable_id:   job.id,
+          period_start:      period_start,
+          period_end:        RailsPulse::Summary.calculate_period_end("day", period_start),
+          period_type:       "day",
+          count:             count,
+          error_count:       errors,
+          avg_duration:      p95 * 0.7,
+          p95_duration:      p95
         )
       end
 
