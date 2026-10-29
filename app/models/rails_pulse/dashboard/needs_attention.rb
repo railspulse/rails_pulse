@@ -163,26 +163,48 @@ module RailsPulse
         items
       end
 
+      # Read from summaries for the selected window and tag filters rather
+      # than Job's runs_count, failures_count and p95_duration, which are
+      # lifetime counters: a job that failed last year would otherwise be
+      # listed against any range, including one with no runs at all.
       def job_items
         return [] unless RailsPulse.configuration.track_jobs
 
+        job_data = RailsPulse::Summary
+          .with_tag_filters(@disabled_tags, @show_non_tagged)
+          .joins("INNER JOIN rails_pulse_jobs ON rails_pulse_jobs.id = rails_pulse_summaries.summarizable_id")
+          .where(summarizable_type: "RailsPulse::Job")
+          .merge(period_summaries)
+          .group("rails_pulse_summaries.summarizable_id, rails_pulse_jobs.name, rails_pulse_jobs.queue_name")
+          .having("SUM(rails_pulse_summaries.count) > 0")
+          .select(
+            "rails_pulse_summaries.summarizable_id as job_id",
+            "rails_pulse_jobs.name",
+            "rails_pulse_jobs.queue_name",
+            "SUM(rails_pulse_summaries.p95_duration * rails_pulse_summaries.count) / NULLIF(SUM(rails_pulse_summaries.count), 0) as p95_duration",
+            "SUM(rails_pulse_summaries.count) as total_count",
+            "SUM(rails_pulse_summaries.error_count) as total_errors"
+          )
+
         items = []
-        RailsPulse::Job.where("runs_count > 0").each do |job|
-          failure_rate = job.failure_rate
-          p95          = job.p95_duration.to_f
+        job_data.each do |record|
+          runs         = record.total_count.to_i
+          failures     = record.total_errors.to_i
+          failure_rate = (failures * 100.0 / runs).round(2)
+          p95          = record.p95_duration.to_f
 
           severity, reason, metric, metric_sub, sort_score = classify_job(
-            failure_rate, p95, job.runs_count, job.failures_count, job.queue_name.presence || "default"
+            failure_rate, p95, runs, failures, record.queue_name.presence || "default"
           )
           next unless severity
 
           items << {
             type:       "JOB",
-            name:       job.name,
+            name:       record.name,
             reason:     reason,
             metric:     metric,
             metric_sub: metric_sub,
-            link:       url_helpers.job_path(job.id),
+            link:       url_helpers.job_path(record.job_id),
             severity:   severity,
             sort_score: sort_score
           }

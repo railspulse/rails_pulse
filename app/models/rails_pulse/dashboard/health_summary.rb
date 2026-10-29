@@ -120,13 +120,29 @@ module RailsPulse
         { healthy: healthy, slow: slow, critical: critical }
       end
 
+      # Read from summaries for the selected window and tag filters rather
+      # than Job's lifetime runs_count, failures_count and p95_duration, so a
+      # job with no runs in the window is not counted at all.
       def job_counts
         return nil unless RailsPulse.configuration.track_jobs
 
+        data = RailsPulse::Summary
+          .with_tag_filters(@disabled_tags, @show_non_tagged)
+          .where(summarizable_type: "RailsPulse::Job")
+          .merge(period_summaries)
+          .group("summarizable_id")
+          .having("SUM(count) > 0")
+          .select(
+            "summarizable_id",
+            "SUM(p95_duration * count) / NULLIF(SUM(count), 0) as p95_duration",
+            "SUM(count) as total_count",
+            "SUM(error_count) as total_errors"
+          )
+
         healthy = slow = critical = 0
-        RailsPulse::Job.where("runs_count > 0").each do |job|
-          failure_rate = job.failure_rate
-          p95          = job.p95_duration.to_f
+        data.each do |r|
+          failure_rate = r.total_errors.to_i * 100.0 / r.total_count.to_i
+          p95          = r.p95_duration.to_f
 
           if failure_rate >= CRITICAL_JOB_FAILURE_RATE || p95 >= @job_thresholds[:critical]
             critical += 1
