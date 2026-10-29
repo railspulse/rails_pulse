@@ -21,6 +21,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated the pg development dependency to 1.7.0 for running the gem's own PostgreSQL test suite; host applications are unaffected.
 
+### Changed
+
+- Updated the development-only test dependency `timecop` from 0.9.10 to 0.9.11 (gem dev/CI only); no effect on host apps.
+
 ## [0.5.1.pre.2] - 2026-10-24
 
 ### Added
