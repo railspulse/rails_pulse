@@ -10,7 +10,8 @@ module RailsPulse
     end
 
     def show
-      @operation_timeline = RailsPulse::Charts::OperationsChart.new(@request.operations)
+      @operations = @request.operations.includes(:query).order(:start_time)
+      @operation_timeline = RailsPulse::Charts::OperationsChart.new(@operations)
     end
 
     private

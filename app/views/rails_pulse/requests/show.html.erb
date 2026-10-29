@@ -22,7 +22,7 @@
 
   <div class="grid-item">
     <%= render 'rails_pulse/components/panel', title: 'Performance Breakdown' do %>
-      <% breakdown = operations_performance_breakdown(@request.operations) %>
+      <% breakdown = operations_performance_breakdown(@operations) %>
       <dl class="descriptive-list mbs-4">
         <dt>Database</dt>
         <dd><%= breakdown[:database] %>% (<%= pluralize(@request.operations.by_type('sql').count, 'query') %>)</dd>
@@ -43,4 +43,4 @@
 
 <%= render 'flame_graph' %>
 
-<%= render 'operations', operations: @request.operations %>
+<%= render 'operations', operations: @operations %>

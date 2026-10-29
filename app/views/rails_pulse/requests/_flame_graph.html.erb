@@ -46,12 +46,13 @@
             <%
               top_px = bar.depth * row_height + 3
               width_pct = [bar.width_pct, 0.3].max
-              impact = request_duration > 0 ? (bar.operation.duration / request_duration * 100).round(1) : 0
+              impact = request_duration > 0 ? (bar.total_duration / request_duration * 100).round(1) : 0
+              op_label = bar.repeated? ? "#{bar.operation.label} (×#{bar.count})" : bar.operation.label
             %>
             <div class="flame-bar"
                  style="left: <%= bar.left_pct %>%; width: <%= width_pct %>%; top: <%= top_px %>px; background-color: <%= event_color(bar.operation.operation_type) %>;"
                  data-action="mouseenter->rails-pulse--flame-graph#showTooltip mousemove->rails-pulse--flame-graph#moveTooltip mouseleave->rails-pulse--flame-graph#hideTooltip click->rails-pulse--flame-graph#navigate"
-                 data-op-label="<%= html_escape(bar.operation.label) %>"
+                 data-op-label="<%= op_label %>"
                  data-op-duration="<%= bar.duration %>"
                  data-op-type="<%= bar.operation.operation_type %>"
                  data-op-impact="<%= impact %>"
@@ -77,6 +78,8 @@
         </div>
       </div>
     </div>
+
+    <%= render 'rails_pulse/components/operations_truncated_notice', timeline: @operation_timeline %>
   <% else %>
     <%= render 'rails_pulse/components/empty_state',
         title: 'No trace data available.',
