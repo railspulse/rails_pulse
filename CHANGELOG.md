@@ -25,6 +25,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Updated the development-only test dependency `timecop` from 0.9.10 to 0.9.11 (gem dev/CI only); no effect on host apps.
 - Updated the `rubocop-minitest` development dependency from 0.38.2 to 0.41.0 (gem development/CI only; no effect on host apps).
+- The MCP server is now developed and tested against mcp 1.8.1, which tightens the gem's JSON-RPC conformance. Hosts keep choosing their own mcp version in their Gemfile; any 1.x release continues to work.
 
 ## [0.5.1.pre.2] - 2026-10-24
 
