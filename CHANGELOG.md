@@ -18,6 +18,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Request rate and query execution rate are now averaged over the selected range rather than over twice its length.
 - The dashboard's job health counts and Needs Attention job entries now follow the selected time range and tag filters instead of each job's all-time failure rate and P95, so they agree with the Jobs page.
 
+### Changed
+
+- Updated the development-only test dependency `timecop` from 0.9.10 to 0.9.11 (gem dev/CI only); no effect on host apps.
+
 ## [0.5.1.pre.2] - 2026-10-24
 
 ### Added
