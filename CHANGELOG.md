@@ -14,7 +14,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Metric card headline figures (P95 times, error and failure rates, totals, database load) now cover only the selected time range; when a trend was shown they aggregated the selected and previous ranges together.
-
 - Dashboard pages no longer return a 500 when a hand-edited URL turns a filter, sort, page, limit, zoom or tag param into an array or hash; the value is ignored and the default applies.
 - `rails generate rails_pulse:install_cloud` and the initializer template now say to schedule both `RailsPulse::SummaryJob` and `RailsPulse::CloudHealthJob`; the hourly Cloud sync only runs after `SummaryJob`, so nothing reached Cloud without it.
 - Dashboard time ranges are now capped at one year, so a very wide custom range, chart zoom or saved time-range preference shows the most recent year instead of tying up the server building a chart point for every day.
@@ -23,15 +22,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The summary cards on the routes, queries, jobs and exceptions pages now follow the selected time range, so a past range shows that range's figures and the cards agree with the main dashboard for the same range.
 - Request rate and query execution rate are now averaged over the selected range rather than over twice its length.
 - The dashboard's job health counts and Needs Attention job entries now follow the selected time range and tag filters instead of each job's all-time failure rate and P95, so they agree with the Jobs page.
-### Changed
-
-- Updated the pg development dependency to 1.7.0 for running the gem's own PostgreSQL test suite; host applications are unaffected.
 
 ### Changed
 
-- Updated the development-only test dependency `timecop` from 0.9.10 to 0.9.11 (gem dev/CI only); no effect on host apps.
-- Updated the `rubocop-minitest` development dependency from 0.38.2 to 0.41.0 (gem development/CI only; no effect on host apps).
 - The MCP server is now developed and tested against mcp 1.8.1, which tightens the gem's JSON-RPC conformance. Hosts keep choosing their own mcp version in their Gemfile; any 1.x release continues to work.
+- Updated development-only dependencies (`pg` 1.7.0, `timecop` 0.9.11, `rubocop-minitest` 0.41.0); gem development/CI only, no effect on host apps.
 
 ## [0.5.1.pre.2] - 2026-10-24
 
