@@ -177,6 +177,32 @@ module RailsPulse
           assert_equal "10 requests", tagged_only[:period_stat]
         end
 
+        test "rate covers the selected window only, not the previous one" do
+          RailsPulse::Summary.delete_all
+          window = RailsPulse::TimeWindow.new(7.days.ago.beginning_of_day, 1.day.ago.end_of_day)
+          route = rails_pulse_routes(:api_users)
+          create_day_summary(route, 3.days.ago.beginning_of_day, count: 168)  # selected window
+          create_day_summary(route, 10.days.ago.beginning_of_day, count: 840) # previous window
+
+          card = RailsPulse::Routes::Cards::RequestCountTotals.new(period: 7, window: window).to_metric_card
+
+          assert_equal "1.0 / hour", card[:summary]
+          assert_equal "168 requests", card[:period_stat]
+        end
+
+        test "a past window ignores requests after it" do
+          RailsPulse::Summary.delete_all
+          window = RailsPulse::TimeWindow.new(30.days.ago.beginning_of_day, 24.days.ago.end_of_day)
+          route = rails_pulse_routes(:api_users)
+          create_day_summary(route, 27.days.ago.beginning_of_day, count: 42)
+          create_day_summary(route, 1.day.ago.beginning_of_day, count: 1_000)
+
+          card = RailsPulse::Routes::Cards::RequestCountTotals.new(period: 7, window: window).to_metric_card
+
+          assert_equal "42 requests", card[:period_stat]
+          assert_equal 42, card[:chart_data].values.sum { |point| point[:value] }
+        end
+
         test "uses daily summaries for period_type day" do
           card = RailsPulse::Routes::Cards::RequestCountTotals.new(period: 7, period_type: "day").to_metric_card
 

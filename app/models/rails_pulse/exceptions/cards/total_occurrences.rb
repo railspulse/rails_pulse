@@ -10,7 +10,7 @@ module RailsPulse
       class TotalOccurrences < RailsPulse::Cards::Base
         SUMMARIZABLE_TYPE = "RailsPulse::ExceptionGroup".freeze
 
-        def initialize(disabled_tags: [], show_non_tagged: true, period: 14, period_type: "day")
+        def initialize(disabled_tags: [], show_non_tagged: true, period: 14, period_type: "day", window: nil)
           super
         end
 

@@ -42,7 +42,7 @@ module RailsPulse
             trend_text: (show_trend? ? comparison_period_text : nil),
             period_stat: period_date_range,
             help_heading: "Job Runs",
-            help_text: "Total background job executions over the last 14 days. Includes all job classes and queues. Use this to understand job throughput and spot unexpected spikes or drops in processing volume."
+            help_text: "Total background job executions over the selected range. Includes all job classes and queues. Use this to understand job throughput and spot unexpected spikes or drops in processing volume."
           }
         end
       end

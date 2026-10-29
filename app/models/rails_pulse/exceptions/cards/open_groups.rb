@@ -8,7 +8,7 @@ module RailsPulse
       # each firing once are both worth knowing about, and neither number tells
       # you about the other.
       class OpenGroups < RailsPulse::Cards::Base
-        def initialize(disabled_tags: [], show_non_tagged: true, period: 14, period_type: "day")
+        def initialize(disabled_tags: [], show_non_tagged: true, period: 14, period_type: "day", window: nil)
           super
         end
 
