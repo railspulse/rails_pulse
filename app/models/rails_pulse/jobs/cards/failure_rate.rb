@@ -17,22 +17,17 @@ module RailsPulse
           base_query = base_query.where(summarizable_id: @subject.id) if @subject
 
           metrics = base_query.select(
-            "SUM(rails_pulse_summaries.count) AS total_count",
-            "SUM(rails_pulse_summaries.error_count) AS total_errors",
             window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :current_start THEN rails_pulse_summaries.count ELSE 0 END) AS current_count"),
             window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :current_start THEN rails_pulse_summaries.error_count ELSE 0 END) AS current_errors"),
             window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :range_start AND rails_pulse_summaries.period_start < :current_start THEN rails_pulse_summaries.count ELSE 0 END) AS previous_count"),
             window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :range_start AND rails_pulse_summaries.period_start < :current_start THEN rails_pulse_summaries.error_count ELSE 0 END) AS previous_errors")
           ).take
 
-          total_runs = metrics&.total_count.to_i
-          total_errors = metrics&.total_errors.to_i
           current_runs = metrics&.current_count.to_i
           current_errors = metrics&.current_errors.to_i
           previous_runs = metrics&.previous_count.to_i
           previous_errors = metrics&.previous_errors.to_i
 
-          failure_rate = rate_for(total_errors, total_runs)
           current_rate = rate_for(current_errors, current_runs)
           previous_rate = rate_for(previous_errors, previous_runs)
 
@@ -58,12 +53,12 @@ module RailsPulse
             chart_color: RailsPulse::ChartColors::DEFAULT,
             context: "jobs",
             title: "Failure Rate",
-            summary: "#{format_percentage(failure_rate, 1)}",
+            summary: "#{format_percentage(current_rate, 1)}",
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: (show_trend? ? comparison_period_text : nil),
-            period_stat: total_runs > 0 ? "#{format_number(total_errors)} failures · #{format_number(total_runs)} runs" : period_date_range,
+            period_stat: current_runs > 0 ? "#{format_number(current_errors)} failures · #{format_number(current_runs)} runs" : period_date_range,
             help_heading: "Failure Rate",
             help_text: "Percentage of job executions that raised an error over the selected range. A rising failure rate may indicate bugs, external dependency issues, or jobs receiving invalid data."
           }
@@ -78,23 +73,10 @@ module RailsPulse
         end
 
         def sparkline_from_failure_rates(errors_by_period, counts_by_period)
-          if @period_type == "hour"
-            sparkline_hours.each_with_object({}) do |current_time, result|
-              errors = errors_by_period[current_time].to_f
-              total = counts_by_period[current_time].to_f
-              rate = total.zero? ? 0.0 : (errors / total * 100).round(1)
-              # Use timestamp in milliseconds as key to preserve uniqueness across days
-              result[current_time.to_i * 1000] = { value: rate }
-            end
-          else
-            sparkline_dates.each_with_object({}) do |day, hash|
-              errors = errors_by_period[day].to_f
-              total = counts_by_period[day].to_f
-              rate = total.zero? ? 0.0 : (errors / total * 100).round(1)
-              label = day.strftime("%b %-d")
-              hash[label] = { value: rate }
-            end
+          rates = counts_by_period.each_with_object({}) do |(period, total), hash|
+            hash[period] = rate_for(errors_by_period[period].to_f, total.to_f)
           end
+          sparkline_from(rates)
         end
       end
     end

@@ -144,6 +144,32 @@ module RailsPulse
           assert_equal "move-right", card_data[:trend_icon]
           assert_equal "0.0%", card_data[:trend_amount]
         end
+
+        test "headline covers the selected window only, not the previous one" do
+          create_day_summary(3.days.ago.beginning_of_day, count: 10, p95: 100)
+          create_day_summary(10.days.ago.beginning_of_day, count: 10, p95: 500)
+
+          card_data = @card.to_metric_card
+
+          assert_equal "100 ms", card_data[:summary]
+          assert_equal "Across 10 runs", card_data[:period_stat]
+          assert_equal "trending-down", card_data[:trend_icon]
+        end
+
+        private
+
+        def create_day_summary(period_start, count:, p95:)
+          RailsPulse::Summary.create!(
+            summarizable: @job,
+            period_type: "day",
+            period_start: period_start,
+            period_end: period_start.end_of_day,
+            count: count,
+            p95_duration: p95,
+            p99_duration: p95,
+            avg_duration: p95
+          )
+        end
       end
     end
   end

@@ -33,7 +33,8 @@ module RailsPulse
             context: "exceptions",
             title: "Open Groups",
             summary: "#{format_number(open_count)} open",
-            chart_data: sparkline_from(grouped),
+            # Live-sourced, so an empty bucket is a genuine zero
+            chart_data: sparkline_from(grouped, ghost_incomplete: false),
             trend_text: nil,
             period_stat: "#{format_number(new_in_window)} new this period",
             help_heading: "Open Exception Groups",

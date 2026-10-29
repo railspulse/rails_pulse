@@ -183,6 +183,31 @@ module RailsPulse
           assert_nil card[:trend_amount]
           assert_nil card[:trend_icon]
         end
+
+        test "headline covers the selected window only, not the previous one" do
+          RailsPulse::Summary.delete_all
+          route = rails_pulse_routes(:api_users)
+          create_day_summary(route, 3.days.ago.beginning_of_day, count: 100, error_count: 2, status_4xx: 3)
+          create_day_summary(route, 10.days.ago.beginning_of_day, count: 100, error_count: 50, status_4xx: 0)
+
+          card = RailsPulse::Routes::Cards::ErrorRates.new(period: 7).to_metric_card
+
+          assert_equal "5.0% of requests", card[:summary]
+          assert_equal "5 errors", card[:period_stat]
+          assert_equal "trending-down", card[:trend_icon]
+        end
+
+        private
+
+        def create_day_summary(route, day, count:, error_count:, status_4xx:)
+          RailsPulse::Summary.create!(
+            summarizable_type: "RailsPulse::Route", summarizable_id: route.id,
+            period_type: "day", period_start: day, period_end: day.end_of_day,
+            count: count, success_count: count - error_count - status_4xx,
+            error_count: error_count, status_4xx: status_4xx,
+            avg_duration: 100.0, p95_duration: 100.0
+          )
+        end
       end
     end
   end

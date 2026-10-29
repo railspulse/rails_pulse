@@ -25,18 +25,12 @@ module RailsPulse
               period_start: previous_n_units..now
             )
 
-          # Calculate totals
-          total_query_time = query_summaries.sum(:total_duration)
-          total_request_time = route_summaries.sum(:total_duration)
-
-          has_data = total_request_time > 0
-
-          overall_db_percentage = has_data ? (total_query_time.to_f / total_request_time * 100).round(1) : 0
-
           # Calculate current and previous period percentages using base class quote helper
           current_query_time = query_summaries.where("period_start >= ?", last_n_units).sum(:total_duration)
           current_request_time = route_summaries.where("period_start >= ?", last_n_units).sum(:total_duration)
-          current_percentage = current_request_time > 0 ? (current_query_time.to_f / current_request_time * 100) : 0
+
+          has_data = current_request_time > 0
+          current_percentage = has_data ? (current_query_time.to_f / current_request_time * 100) : 0
 
           if show_trend?
             previous_query_time = query_summaries.where("period_start >= ? AND period_start < ?", previous_n_units, last_n_units).sum(:total_duration)
@@ -54,92 +48,24 @@ module RailsPulse
             end
           end
 
-          # Sparkline data - group by hour or day depending on period_type
-          if period_type_hours?
-            start_time = sparkline_hours.first
-            end_time = sparkline_hours.last
+          sparkline_window = { period_start: current_window_start..now }
+          grouped_query_time = bucket_by_period(query_summaries.where(sparkline_window)) { |relation| relation.sum(:total_duration) }
+          grouped_request_time = bucket_by_period(route_summaries.where(sparkline_window)) { |relation| relation.sum(:total_duration) }
 
-            # Create separate queries for sparkline data using only the current period
-            sparkline_query_summaries = RailsPulse::Summary
-              .with_tag_filters(@disabled_tags, @show_non_tagged)
-              .where(
-                summarizable_type: "RailsPulse::Query",
-                period_type: @period_type,
-                period_start: start_time..end_time
-              )
+          percentages = grouped_request_time.each_with_object({}) do |(period, request_time), hash|
+            query_time = grouped_query_time[period] || 0
+            hash[period] = request_time > 0 ? (query_time.to_f / request_time * 100).round(1) : 0
+          end
 
-            sparkline_route_summaries = RailsPulse::Summary
-              .with_tag_filters(@disabled_tags, @show_non_tagged)
-              .where(
-                summarizable_type: "RailsPulse::Route",
-                period_type: @period_type,
-                period_start: start_time..end_time
-              )
-
-            # Group by hour
-            hourly_query_time = sparkline_query_summaries.group_by { |s| s.period_start }
-              .transform_values { |summaries| summaries.sum { |s| s.total_duration || 0 } }
-
-            hourly_request_time = sparkline_route_summaries.group_by { |s| s.period_start }
-              .transform_values { |summaries| summaries.sum { |s| s.total_duration || 0 } }
-
-            sparkline_data = {}
-            sparkline_hours.each do |current_time|
-              query_time = hourly_query_time[current_time] || 0
-              request_time = hourly_request_time[current_time] || 0
-              percentage = request_time > 0 ? (query_time.to_f / request_time * 100).round(1) : 0
-
-              # Color based on threshold
-              color = if percentage < 25
-                "rgb(34, 197, 94)"  # green
-              elsif percentage < 40
-                "rgb(234, 179, 8)"  # yellow
-              else
-                "rgb(239, 68, 68)"  # red
-              end
-
-              # Use timestamp in milliseconds as key to preserve uniqueness
-              sparkline_data[current_time.to_i * 1000] = {
-                value: percentage,
-                itemStyle: { color: color }
-              }
-            end
-          else
-            # Group by day
-            daily_query_time = query_summaries.group_by { |s| s.period_start.to_date }
-              .transform_values { |summaries| summaries.sum { |s| s.total_duration || 0 } }
-
-            daily_request_time = route_summaries.group_by { |s| s.period_start.to_date }
-              .transform_values { |summaries| summaries.sum { |s| s.total_duration || 0 } }
-
-            sparkline_data = {}
-            sparkline_dates.each do |day|
-              query_time = daily_query_time[day] || 0
-              request_time = daily_request_time[day] || 0
-              percentage = request_time > 0 ? (query_time.to_f / request_time * 100).round(1) : 0
-
-              # Color based on threshold
-              color = if percentage < 25
-                "rgb(34, 197, 94)"  # green
-              elsif percentage < 40
-                "rgb(234, 179, 8)"  # yellow
-              else
-                "rgb(239, 68, 68)"  # red
-              end
-
-              label = day.strftime("%b %-d")
-              sparkline_data[label] = {
-                value: percentage,
-                itemStyle: { color: color }
-              }
-            end
+          sparkline_data = sparkline_from(percentages) do |bucket|
+            bucket.merge(itemStyle: { color: load_color(bucket[:value]) })
           end
 
           {
             id: "database_load",
             context: "queries",
             title: "Database Load",
-            summary: has_data ? format_percentage(overall_db_percentage) : "—",
+            summary: has_data ? format_percentage(current_percentage.round(1)) : "—",
             chart_data: sparkline_data,
             trend_icon: trend_icon,
             trend_amount: trend_amount,
@@ -148,6 +74,18 @@ module RailsPulse
             help_heading: "Database Load",
             help_text: "Percentage of total response time spent executing database queries. <25% is healthy (Ruby/views are the bottleneck, as expected). >40% means your database is your bottleneck — focus on query optimization, indexes, and N+1 elimination."
           }
+        end
+
+        private
+
+        def load_color(percentage)
+          if percentage < 25
+            "rgb(34, 197, 94)"  # green
+          elsif percentage < 40
+            "rgb(234, 179, 8)"  # yellow
+          else
+            "rgb(239, 68, 68)"  # red
+          end
         end
       end
     end

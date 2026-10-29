@@ -272,6 +272,76 @@ module RailsPulse
         assert_includes result.keys, expected_key
       end
 
+      # Ghost Bucket Tests
+
+      test "sparkline_from ghosts today's bucket when it has no summary yet" do
+        card = TestCard.new(period: 7, period_type: "day")
+        grouped_values = { 3.days.ago.to_date => 10, 2.days.ago.to_date => 25 }
+
+        result = card.send(:sparkline_from, grouped_values)
+        today = result[Time.current.strftime("%b %-d")]
+
+        assert today[:incomplete]
+        assert_equal 25, today[:value], "ghost height is the tallest real value"
+        assert_equal "Day in progress", today[:incompleteLabel]
+      end
+
+      test "sparkline_from keeps a real value for today over a ghost" do
+        card = TestCard.new(period: 7, period_type: "day")
+        grouped_values = { Time.current.to_date => 10 }
+
+        result = card.send(:sparkline_from, grouped_values)
+
+        assert_equal({ value: 10 }, result[Time.current.strftime("%b %-d")])
+      end
+
+      test "sparkline_from does not ghost when ghost_incomplete is false" do
+        card = TestCard.new(period: 7, period_type: "day")
+
+        result = card.send(:sparkline_from, { 3.days.ago.to_date => 10 }, ghost_incomplete: false)
+
+        assert_equal({ value: 0 }, result[Time.current.strftime("%b %-d")])
+      end
+
+      test "sparkline_from ghosts the current hour for hour type" do
+        card = TestCard.new(period: 1, period_type: "hour")
+        grouped_values = { 3.hours.ago.beginning_of_hour => 10 }
+
+        result = card.send(:sparkline_from, grouped_values)
+        current_hour = result[Time.current.beginning_of_hour.to_i * 1000]
+
+        assert current_hour[:incomplete]
+        assert_equal "Hour in progress", current_hour[:incompleteLabel]
+      end
+
+      test "sparkline_from does not ghost a window that ends in the past" do
+        sparkline = ranged_card.send(:sparkline_from, {})
+
+        sparkline.each_value do |entry|
+          assert_equal({ value: 0 }, entry)
+        end
+      end
+
+      test "sparkline_from ghost has no bar when there is no data at all" do
+        card = TestCard.new(period: 7, period_type: "day")
+
+        result = card.send(:sparkline_from, {})
+
+        assert_equal 0, result[Time.current.strftime("%b %-d")][:value]
+      end
+
+      test "sparkline_from decorates real buckets but not ghosts" do
+        card = TestCard.new(period: 7, period_type: "day")
+        grouped_values = { 3.days.ago.to_date => 10 }
+
+        result = card.send(:sparkline_from, grouped_values) do |bucket|
+          bucket.merge(itemStyle: { color: "red" })
+        end
+
+        assert_equal({ value: 10, itemStyle: { color: "red" } }, result[3.days.ago.strftime("%b %-d")])
+        refute result[Time.current.strftime("%b %-d")].key?(:itemStyle)
+      end
+
       # Format Helper Tests
 
       test "format_duration returns milliseconds with ms suffix" do

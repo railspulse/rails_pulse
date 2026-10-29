@@ -112,6 +112,8 @@ export default class extends Controller {
     // Set data (xAxis and series)
     this.setChartData(config)
 
+    this.applyGhostStyle(config)
+
     // Add hidden legend so series can be toggled programmatically via dispatchAction
     // Initialize series visibility from toggle button data-active attributes, defaulting to true
     if (!config.legend) {
@@ -241,6 +243,27 @@ export default class extends Controller {
         }]
       }
     }
+  }
+
+  // Not-yet-summarized periods (Cards::Base#ghost_bucket) get a dashed
+  // outline with no fill, so the placeholder cannot be misread as data.
+  applyGhostStyle(config) {
+    const seriesList = Array.isArray(config.series) ? config.series : []
+    seriesList.forEach(series => {
+      const color = series.itemStyle?.color ||
+        (Array.isArray(config.color) ? config.color[0] : '#9ca3af')
+      ;(series.data || []).forEach(point => {
+        if (point && typeof point === 'object' && point.incomplete) {
+          point.itemStyle = {
+            color: 'transparent',
+            borderColor: color,
+            borderWidth: 1,
+            borderType: 'dashed',
+            opacity: 0.6
+          }
+        }
+      })
+    })
   }
 
   _usesTimeAxisData(data = this.dataValue) {
@@ -690,6 +713,10 @@ export default class extends Controller {
         // silently lose it.
         axisValue = this.withZoneSuffix(axisValue)
 
+        if (data.data && data.data.incomplete) {
+          return `${axisValue}<br/>${data.data.incompleteLabel || 'In progress'}`
+        }
+
         // Show marker, series name, and value (e.g., "● P95: 150")
         return `${axisValue}<br/>${data.marker} ${seriesName}: ${value}`
       },
@@ -713,6 +740,10 @@ export default class extends Controller {
           }
         }
         axisValue = this.withZoneSuffix(axisValue)
+
+        if (data.data && data.data.incomplete) {
+          return `${axisValue}<br/>${data.data.incompleteLabel || 'In progress'}`
+        }
 
         return `${axisValue}<br/>${data.marker} ${seriesName}: ${value}`
       },

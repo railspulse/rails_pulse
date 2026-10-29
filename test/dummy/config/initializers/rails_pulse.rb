@@ -12,6 +12,9 @@ RailsPulse.configure do |config|
   # Suppress stale summary warning in development (summary job isn't scheduled locally)
   config.warn_on_stale_summaries = false if Rails.env.development?
 
+  # Opt-in API access for local CLI/MCP testing
+  config.api_token = ENV["RAILS_PULSE_API_TOKEN"] if ENV["RAILS_PULSE_API_TOKEN"].present?
+
   # Try storing only some full details locally:
   # STORE_FULL_DETAILS_ABOVE=slow [STORE_FULL_DETAILS_SAMPLE_RATE=0.2] bin/rails server
   if ENV["STORE_FULL_DETAILS_ABOVE"].present?

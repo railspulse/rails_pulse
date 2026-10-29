@@ -463,6 +463,40 @@ module RailsPulse
 
           assert_kind_of Hash, result
         end
+
+        test "headline covers the selected window only, not the previous one" do
+          RailsPulse::Summary.delete_all
+          query = rails_pulse_queries(:simple_query)
+          create_day_summary(query, 3.days.ago.beginning_of_day, avg: 100.0, count: 10)
+          create_day_summary(query, 10.days.ago.beginning_of_day, avg: 500.0, count: 10)
+
+          result = AverageQueryTimes.new(period: 7).to_metric_card
+
+          assert_equal "100 ms", result[:summary]
+          assert_equal "Across 10 queries", result[:period_stat]
+          assert_equal "trending-down", result[:trend_icon]
+        end
+
+        test "sparkline shows the weighted average for days with data" do
+          RailsPulse::Summary.delete_all
+          query = rails_pulse_queries(:simple_query)
+          create_day_summary(query, 3.days.ago.beginning_of_day, avg: 100.0, count: 10)
+
+          result = AverageQueryTimes.new(period: 7).to_metric_card
+          label = 3.days.ago.strftime("%b %-d")
+
+          assert_equal 100, result[:chart_data][label][:value]
+        end
+
+        private
+
+        def create_day_summary(query, day, avg:, count:)
+          RailsPulse::Summary.create!(
+            summarizable: query,
+            period_type: "day", period_start: day, period_end: day.end_of_day,
+            count: count, avg_duration: avg, p95_duration: avg
+          )
+        end
       end
     end
   end

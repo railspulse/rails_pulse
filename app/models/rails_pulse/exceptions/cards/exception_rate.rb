@@ -23,7 +23,7 @@ module RailsPulse
           exceptions = window_totals(RailsPulse::Summary.overall_exceptions)
           requests   = window_totals(RailsPulse::Summary.overall_requests)
 
-          rate = rate_for(exceptions[:total], requests[:total])
+          rate = rate_for(exceptions[:current], requests[:current])
 
           # More exceptions per request is worse, so the arrow reads the
           # opposite way round from a throughput card — the strip already
@@ -45,7 +45,7 @@ module RailsPulse
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: (show_trend? ? comparison_period_text : nil),
-            period_stat: period_stat(exceptions[:total], requests[:total]),
+            period_stat: period_stat(exceptions[:current], requests[:current]),
             help_heading: "Exception Rate",
             help_text: "Exceptions raised per 1,000 requests over the period. Occurrence counts on their own rise and fall with traffic; this figure does not, so it is the one to watch when you want to know whether the application itself got worse. Reads the all-groups exception rollup against the overall request summary. Exceptions raised inside background jobs are counted in the numerator but have no request to divide by, so a job-heavy application will read high."
           }
@@ -53,20 +53,16 @@ module RailsPulse
 
         private
 
-        # Total, current-window and previous-window counts in one pass, so the
-        # rate can be compared across windows without four separate queries.
         def window_totals(scope)
           row = scope
             .where(period_type: @period_type, period_start: range_start..now)
             .select(
-              "SUM(rails_pulse_summaries.count) AS total_count",
               window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :current_start THEN rails_pulse_summaries.count ELSE 0 END) AS current_count"),
               window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :range_start AND rails_pulse_summaries.period_start < :current_start THEN rails_pulse_summaries.count ELSE 0 END) AS previous_count")
             )
             .take
 
           {
-            total:    row&.total_count.to_i,
             current:  row&.current_count.to_i,
             previous: row&.previous_count.to_i
           }

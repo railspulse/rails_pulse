@@ -403,6 +403,35 @@ module RailsPulse
             DatabaseLoad.new.to_metric_card
           end
         end
+
+        test "headline covers the selected window only, not the previous one" do
+          RailsPulse::Summary.delete_all
+          route = rails_pulse_routes(:api_users)
+          query = rails_pulse_queries(:complex_query)
+
+          create_load_summary(route, 3.days.ago.beginning_of_day, total_duration: 10000.0)
+          create_load_summary(query, 3.days.ago.beginning_of_day, total_duration: 3000.0)
+          create_load_summary(route, 10.days.ago.beginning_of_day, total_duration: 10000.0)
+          create_load_summary(query, 10.days.ago.beginning_of_day, total_duration: 9000.0)
+
+          card = DatabaseLoad.new(period: 7).to_metric_card
+
+          assert_equal "30.0%", card[:summary]
+          assert_equal "trending-down", card[:trend_icon]
+        end
+
+        private
+
+        def create_load_summary(summarizable, day, total_duration:)
+          RailsPulse::Summary.create!(
+            summarizable: summarizable,
+            period_type: "day",
+            period_start: day,
+            period_end: day.end_of_day,
+            count: 100,
+            total_duration: total_duration
+          )
+        end
       end
     end
   end

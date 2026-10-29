@@ -46,6 +46,19 @@ module RailsPulse
           assert_equal "5.0 per 1,000", card.to_metric_card[:summary]
         end
 
+        test "headline covers the selected window only, not the previous one" do
+          create_summary("RailsPulse::ExceptionGroup", 3.days.ago, count: 10)
+          create_summary("RailsPulse::Request", 3.days.ago, count: 1_000)
+          create_summary("RailsPulse::ExceptionGroup", 10.days.ago, count: 500)
+          create_summary("RailsPulse::Request", 10.days.ago, count: 1_000)
+
+          result = card.to_metric_card
+
+          assert_equal "10.0 per 1,000", result[:summary]
+          assert_equal "10 raised · 1,000 requests", result[:period_stat]
+          assert_equal "trending-down", result[:trend_icon]
+        end
+
         test "card reports both raw totals in the period stat" do
           create_summary("RailsPulse::ExceptionGroup", 1.day.ago, count: 20)
           create_summary("RailsPulse::Request", 1.day.ago, count: 4_000)

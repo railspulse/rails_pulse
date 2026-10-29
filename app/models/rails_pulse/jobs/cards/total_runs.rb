@@ -17,12 +17,10 @@ module RailsPulse
           base_query = base_query.where(summarizable_id: @subject.id) if @subject
 
           metrics = base_query.select(
-            "SUM(rails_pulse_summaries.count) AS total_count",
             window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :current_start THEN rails_pulse_summaries.count ELSE 0 END) AS current_count"),
             window_sql("SUM(CASE WHEN rails_pulse_summaries.period_start >= :range_start AND rails_pulse_summaries.period_start < :current_start THEN rails_pulse_summaries.count ELSE 0 END) AS previous_count")
           ).take
 
-          total_runs = metrics&.total_count.to_i
           current_runs = metrics&.current_count.to_i
           previous_runs = metrics&.previous_count.to_i
 
@@ -35,7 +33,7 @@ module RailsPulse
             chart_color: RailsPulse::ChartColors::DEFAULT,
             context: "jobs",
             title: "Job Runs",
-            summary: "#{format_number(total_runs)} runs",
+            summary: "#{format_number(current_runs)} runs",
             chart_data: sparkline_from(grouped_runs),
             trend_icon: trend_icon,
             trend_amount: trend_amount,
