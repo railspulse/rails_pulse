@@ -59,8 +59,6 @@ module RailsPulse
 
         private
 
-        # Rates are keyed by the periods that actually have a summary row;
-        # sparkline_from fills the remaining buckets with zero or a ghost.
         def sparkline_from_error_rates(errors_by_period, client_errors_by_period, counts_by_period)
           rates = counts_by_period.each_with_object({}) do |(period, total), hash|
             errors = errors_by_period[period].to_f + client_errors_by_period[period].to_f

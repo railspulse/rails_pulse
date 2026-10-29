@@ -53,8 +53,6 @@ module RailsPulse
 
         private
 
-        # Current-window and previous-window counts in one pass, so the rate
-        # can be compared across windows without four separate queries.
         def window_totals(scope)
           row = scope
             .where(period_type: @period_type, period_start: range_start..now)

@@ -33,8 +33,7 @@ module RailsPulse
             context: "exceptions",
             title: "Open Groups",
             summary: "#{format_number(open_count)} open",
-            # Counted live from ExceptionGroup rather than summaries, so an
-            # empty bucket today is a genuine zero, not "not summarized yet".
+            # Live-sourced, so an empty bucket is a genuine zero
             chart_data: sparkline_from(grouped, ghost_incomplete: false),
             trend_text: nil,
             period_stat: "#{format_number(new_in_window)} new this period",

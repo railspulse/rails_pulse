@@ -112,7 +112,6 @@ export default class extends Controller {
     // Set data (xAxis and series)
     this.setChartData(config)
 
-    // Restyle ghost buckets now that series colors are resolved
     this.applyGhostStyle(config)
 
     // Add hidden legend so series can be toggled programmatically via dispatchAction
@@ -246,10 +245,8 @@ export default class extends Controller {
     }
   }
 
-  // Ghost buckets mark periods that have not been summarized yet (see
-  // Cards::Base#ghost_bucket). They are styled here, where the series color
-  // is known: a dashed outline with no fill, so the placeholder cannot be
-  // misread as a real (solid) bar — its height carries no meaning.
+  // Not-yet-summarized periods (Cards::Base#ghost_bucket) get a dashed
+  // outline with no fill, so the placeholder cannot be misread as data.
   applyGhostStyle(config) {
     const seriesList = Array.isArray(config.series) ? config.series : []
     seriesList.forEach(series => {
@@ -716,8 +713,6 @@ export default class extends Controller {
         // silently lose it.
         axisValue = this.withZoneSuffix(axisValue)
 
-        // A ghost bucket: its period has no summary yet, so the faint bar's
-        // height is a placeholder, not a value (see Cards::Base#ghost_bucket).
         if (data.data && data.data.incomplete) {
           return `${axisValue}<br/>${data.data.incompleteLabel || 'In progress'}`
         }
@@ -746,8 +741,6 @@ export default class extends Controller {
         }
         axisValue = this.withZoneSuffix(axisValue)
 
-        // A ghost bucket: its period has no summary yet, so the faint bar's
-        // height is a placeholder, not a value (see Cards::Base#ghost_bucket).
         if (data.data && data.data.incomplete) {
           return `${axisValue}<br/>${data.data.incompleteLabel || 'In progress'}`
         }

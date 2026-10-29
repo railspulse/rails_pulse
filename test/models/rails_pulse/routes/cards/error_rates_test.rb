@@ -194,7 +194,6 @@ module RailsPulse
 
           assert_equal "5.0% of requests", card[:summary]
           assert_equal "5 errors", card[:period_stat]
-          # The previous window still feeds the trend: 5 against 50 is a drop
           assert_equal "trending-down", card[:trend_icon]
         end
 

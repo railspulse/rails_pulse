@@ -36,7 +36,6 @@ module RailsPulse
           result = card.to_metric_card
 
           assert_equal "10 raised", result[:summary]
-          # The previous window still feeds the trend: 10 against 500 is a drop
           assert_equal "trending-down", result[:trend_icon]
         end
 

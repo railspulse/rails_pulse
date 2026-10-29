@@ -56,7 +56,6 @@ module RailsPulse
 
           assert_equal "10.0 per 1,000", result[:summary]
           assert_equal "10 raised · 1,000 requests", result[:period_stat]
-          # The previous window still feeds the trend: 10 against 500 is a drop
           assert_equal "trending-down", result[:trend_icon]
         end
 

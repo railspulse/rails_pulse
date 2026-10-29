@@ -48,9 +48,6 @@ module RailsPulse
             end
           end
 
-          # Sparkline: percentage of request time spent in the database per
-          # bucket, keyed by the periods that actually have a route summary;
-          # sparkline_from fills the remaining buckets with zero or a ghost.
           sparkline_window = { period_start: current_window_start..now }
           grouped_query_time = bucket_by_period(query_summaries.where(sparkline_window)) { |relation| relation.sum(:total_duration) }
           grouped_request_time = bucket_by_period(route_summaries.where(sparkline_window)) { |relation| relation.sum(:total_duration) }
@@ -81,8 +78,6 @@ module RailsPulse
 
         private
 
-        # Matches the thresholds in the card's help text: <25% is healthy,
-        # >40% means the database is the bottleneck.
         def load_color(percentage)
           if percentage < 25
             "rgb(34, 197, 94)"  # green

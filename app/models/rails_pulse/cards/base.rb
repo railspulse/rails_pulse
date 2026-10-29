@@ -83,12 +83,9 @@ module RailsPulse
 
       # Base query helper for common summary query pattern.
       #
-      # When the trend is shown, the range reaches back through the previous
-      # window as well, so the period-over-period comparison costs one query
-      # instead of two. Headline values must therefore come from the
-      # :current_start CASE WHEN aggregates (window_sql), never from a plain
-      # SUM over the whole relation — that would silently average the selected
-      # window together with the one before it.
+      # When the trend is shown the range also spans the previous window, so
+      # headline values must come from the :current_start CASE WHEN aggregates
+      # (window_sql), never a plain SUM over the whole relation.
       def base_summary_query(summarizable_type)
         query = RailsPulse::Summary.where(
           summarizable_type: summarizable_type,
@@ -122,15 +119,8 @@ module RailsPulse
 
       # Enhanced sparkline generation (support hour and day)
       #
-      # ghost_incomplete: summaries are only written once a period ends, so
-      # for summary-backed cards an absent value in a still-running period
-      # means "not summarized yet", not "zero" — those buckets are drawn as a
-      # ghost placeholder. Cards whose values come from live tables (where an
-      # absent bucket is a genuine zero) pass false.
-      #
-      # An optional block decorates each real bucket ({ value: } hash in,
-      # ECharts data item out); ghost buckets are not decorated, since their
-      # height carries no meaning for a color or style to reflect.
+      # ghost_incomplete: an absent value in a still-running period means
+      # "not summarized yet", not zero; live-sourced cards pass false.
       def sparkline_from(grouped_values, ghost_incomplete: true, &decorate)
         if period_type_hours?
           build_hourly_sparkline(grouped_values, ghost_incomplete: ghost_incomplete, &decorate)
@@ -169,10 +159,7 @@ module RailsPulse
         decorate ? decorate.call(bucket) : bucket
       end
 
-      # True when the bucket's period has not finished yet, so a summary for
-      # it cannot exist (SummaryService refuses to summarize a period before
-      # it ends — the summary row doubles as cleanup's "fully aggregated"
-      # heartbeat).
+      # A summary cannot exist until its period has ended.
       def incomplete_period?(bucket_start)
         if bucket_start.is_a?(Date)
           bucket_start >= Time.current.to_date
@@ -181,11 +168,8 @@ module RailsPulse
         end
       end
 
-      # Placeholder for a bucket whose period is still running. A plain zero
-      # would render no bar at all and read as "no traffic"; instead
       # chart_controller.js draws the slot as a dashed outline whose height
-      # carries no meaning (applyGhostStyle), and the sparkline tooltip shows
-      # incompleteLabel instead of a number.
+      # carries no meaning, with incompleteLabel as the tooltip.
       def ghost_bucket(height)
         {
           value: height,
@@ -194,8 +178,6 @@ module RailsPulse
         }
       end
 
-      # Tallest real value, so the ghost reads as a full slot rather than a
-      # data point. Zero (no bar) when the card has no data at all.
       def ghost_height_for(grouped_values)
         grouped_values.values.compact.max || 0
       end

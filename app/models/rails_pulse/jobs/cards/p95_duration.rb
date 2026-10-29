@@ -68,8 +68,6 @@ module RailsPulse
           (weighted_duration.to_f / total_runs).round(1)
         end
 
-        # Averages are keyed by the periods that actually have a summary row;
-        # sparkline_from fills the remaining buckets with zero or a ghost.
         def sparkline_from_averages(weighted_by_period, counts_by_period)
           averages = counts_by_period.each_with_object({}) do |(period, count), hash|
             hash[period] = count.to_f.zero? ? 0.0 : (weighted_by_period[period].to_f / count).round(1)

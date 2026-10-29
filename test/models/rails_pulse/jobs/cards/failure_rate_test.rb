@@ -64,7 +64,6 @@ module RailsPulse
           card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
-          # Headline covers the selected window only: 2 errors / 10 runs = 20%
           assert_equal "20.0%", result[:summary]
 
           # Trend: current 20% vs previous 10% = +100% (worse)
@@ -87,7 +86,6 @@ module RailsPulse
           card = RailsPulse::Jobs::Cards::FailureRate.new(job: nil, period: 7)
           result = card.to_metric_card
 
-          # Headline covers the selected window only: 5 errors / 20 runs = 25%
           assert_equal "25.0%", result[:summary]
         end
 
@@ -236,7 +234,6 @@ module RailsPulse
           card = RailsPulse::Jobs::Cards::FailureRate.new(job: @job, period: 7)
           result = card.to_metric_card
 
-          # Previous-window data informs the trend but not the headline
           assert_equal "0.0%", result[:summary]
           # Current is 0%, previous is 30%, so trending down 100%
           assert_equal "trending-down", result[:trend_icon]

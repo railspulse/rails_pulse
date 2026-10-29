@@ -153,7 +153,6 @@ module RailsPulse
 
           assert_equal "100 ms", card_data[:summary]
           assert_equal "Across 10 runs", card_data[:period_stat]
-          # The previous window still feeds the trend: 100 against 500 is a drop
           assert_equal "trending-down", card_data[:trend_icon]
         end
 
