@@ -51,7 +51,7 @@ module RailsPulse
         period_type: @time_range.period_type
       ).to_chart_data
 
-      card_params = { period: period_days, period_type: @time_range.period_type }
+      card_params = { period: period_days, period_type: @time_range.period_type, window: @time_range.window }
 
       @total_occurrences_metric_card = Exceptions::Cards::TotalOccurrences.new(**card_params).to_metric_card
       @exception_rate_metric_card    = Exceptions::Cards::ExceptionRate.new(**card_params).to_metric_card

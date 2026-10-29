@@ -43,24 +43,7 @@ module RailsPulse
           # Use base class sparkline generation (handles hour vs day automatically)
           sparkline_data = sparkline_from(grouped_data)
 
-          # Calculate appropriate rate display based on frequency
-          if has_data
-            total_minutes = (period_type_hours? ? (@period * 48).hours : (@period * 2).days) / 1.minute.to_f
-            requests_per_minute = total_request_count.to_f / total_minutes
-
-            # Choose appropriate time unit for display
-            if requests_per_minute >= 1
-              summary = "#{requests_per_minute.round(2)} / min"
-            elsif requests_per_minute * 60 >= 1
-              requests_per_hour = requests_per_minute * 60
-              summary = "#{requests_per_hour.round(2)} / hour"
-            else
-              requests_per_day = requests_per_minute * 60 * 24
-              summary = "#{requests_per_day.round(2)} / day"
-            end
-          else
-            summary = "—"
-          end
+          summary = has_data ? format_rate(current_period_count, current_window_minutes) : "—"
 
           {
             id: "request_count_totals",
@@ -72,9 +55,9 @@ module RailsPulse
             trend_icon: trend_icon,
             trend_amount: trend_amount,
             trend_text: (show_trend? ? comparison_period_text : nil),
-            period_stat: has_data ? "#{format_number(total_request_count)} requests" : period_date_range,
+            period_stat: has_data ? "#{format_number(current_period_count)} requests" : period_date_range,
             help_heading: "Request Throughput",
-            help_text: "Total HTTP requests served over the last 14 days, expressed as an average rate. Use this to understand traffic patterns and capacity planning needs."
+            help_text: "Total HTTP requests served over the selected range, expressed as an average rate. Use this to understand traffic patterns and capacity planning needs."
           }
         end
       end

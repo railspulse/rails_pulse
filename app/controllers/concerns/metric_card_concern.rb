@@ -33,20 +33,19 @@ module MetricCardConcern
     end
   end
 
-  # Common parameters passed to all metric card classes. Deliberately does
-  # NOT pass window: — these cards show a "trailing period" figure, not the
-  # exact selected range (ChartTableConcern's charts get the exact window;
-  # see Cards::Base#window_days).
+  # Common parameters passed to all metric card classes. The cards get the
+  # selected window, as the dashboard's do, so a past range shows that range's
+  # figures and the same range reads the same on every page.
   def metric_card_params
     window = @time_range&.window
-    period_days = window ? ((window.end_time - window.start_time) / 1.day).round : 7
 
     {
       resource_key => current_resource,
       disabled_tags: session_disabled_tags,
       show_non_tagged: session[:show_non_tagged] != false,
-      period: period_days,
-      period_type: period_type.to_s
+      period: window ? window.days : 7,
+      period_type: period_type.to_s,
+      window: window
     }
   end
 

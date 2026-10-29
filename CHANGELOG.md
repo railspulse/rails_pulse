@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- Dashboard pages no longer return a 500 when a hand-edited URL turns a filter, sort, page, limit, zoom or tag param into an array or hash; the value is ignored and the default applies.
+- `rails generate rails_pulse:install_cloud` and the initializer template now say to schedule both `RailsPulse::SummaryJob` and `RailsPulse::CloudHealthJob`; the hourly Cloud sync only runs after `SummaryJob`, so nothing reached Cloud without it.
+- Dashboard time ranges are now capped at one year, so a very wide custom range, chart zoom or saved time-range preference shows the most recent year instead of tying up the server building a chart point for every day.
+- Request and job run pages stay small and fast when an N+1 records thousands of operations: runs of the same operation collapse into one trace bar and one table row with a count, and at most the 250 slowest groups are shown.
+- With no time range chosen, the header's time range selector now names the range each page actually shows (24 hours on the dashboard and requests, 7 days on queries, jobs and exceptions, 14 days on routes) instead of always reading "Last 14 days".
+- The summary cards on the routes, queries, jobs and exceptions pages now follow the selected time range, so a past range shows that range's figures and the cards agree with the main dashboard for the same range.
+- Request rate and query execution rate are now averaged over the selected range rather than over twice its length.
+- The dashboard's job health counts and Needs Attention job entries now follow the selected time range and tag filters instead of each job's all-time failure rate and P95, so they agree with the Jobs page.
+
 ## [0.5.1.pre.2] - 2026-10-24
 
 ### Added

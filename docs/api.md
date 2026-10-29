@@ -234,7 +234,8 @@ Each is an `ActiveJob`; enqueue it the same way as any other job in the host app
   — backfills summaries for an existing date range.
 - `RailsPulse::CloudSyncJob` — queues newly summarized hours, changed exception groups and
   deployments for Rails Pulse Cloud and sends what is due. `SummaryJob` enqueues it after its
-  summaries when `config.cloud` is set, so it needs no schedule.
+  summaries when `config.cloud` is set, so it has no schedule of its own; `SummaryJob` must be
+  scheduled hourly or nothing is synced.
 - `RailsPulse::CloudHealthJob` — sends the health update for the minute just ended, queues
   deployments recorded since the last run, and retries buffered batches. Scheduled every minute
   by hosts that use Cloud. Both Cloud jobs do nothing while `config.cloud.api_key` or

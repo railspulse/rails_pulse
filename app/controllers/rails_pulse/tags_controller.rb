@@ -7,7 +7,7 @@ module RailsPulse
     MAX_TAG_LENGTH = 50
 
     def create
-      tag = params[:tag]
+      tag = tag_param
 
       # Validate tag name
       error_message = validate_tag(tag)
@@ -23,8 +23,8 @@ module RailsPulse
     end
 
     def destroy
-      tag = params[:tag]
-      if @taggable.remove_tag(tag)
+      tag = tag_param
+      if tag && @taggable.remove_tag(tag)
         flash[:notice] = "Tag removed"
       else
         flash[:alert] = "Failed to remove tag"
@@ -34,6 +34,13 @@ module RailsPulse
     end
 
     private
+
+    # params[:tag], or nil when a hand-edited request sends an array or hash
+    # (`tag[]=x`), so it fails validation like a blank tag.
+    def tag_param
+      tag = params[:tag]
+      tag if tag.is_a?(String)
+    end
 
     def validate_tag(tag)
       return "Tag cannot be blank" if tag.blank?

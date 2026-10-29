@@ -53,6 +53,26 @@ module RailsPulse
         end
       end
 
+      # Length of the current window, for turning its count into a rate. The
+      # previous window is only there for the trend, so it is not counted.
+      def current_window_minutes
+        [ (now - current_window_start) / 1.minute, 1 ].max
+      end
+
+      # "12.5 / min", falling back to per hour then per day so low volumes
+      # do not read as zero.
+      def format_rate(count, minutes)
+        per_minute = count.to_f / minutes
+
+        if per_minute >= 1
+          "#{per_minute.round(2)} / min"
+        elsif per_minute * 60 >= 1
+          "#{(per_minute * 60).round(2)} / hour"
+        else
+          "#{(per_minute * 60 * 24).round(2)} / day"
+        end
+      end
+
       def show_trend?
         window_days <= 14
       end

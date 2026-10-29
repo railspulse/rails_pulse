@@ -12,30 +12,45 @@ class RailsPulse::TimeRangeSelectorTest < ActionView::TestCase
     attr_accessor :session
   end
 
-  def render_selector(preference)
+  def render_selector(preference, default_key: :last_24_hours)
     preference_controller = PreferenceController.new
     preference_controller.session = { time_range_preference: preference }
     view.define_singleton_method(:session_time_range_preference) do
       preference_controller.send(:session_time_range_preference)
     end
     view.define_singleton_method(:rails_pulse) { RailsPulse::Engine.routes.url_helpers }
+    view.define_singleton_method(:default_time_range_key) { default_key }
 
     render partial: "layouts/rails_pulse/time_range_selector"
   end
 
   # Structure Tests
 
-  test "renders the default label with no preference" do
+  test "renders the page's default label with no preference" do
     render_selector(nil)
 
-    assert_select "[data-rails-pulse--time-range-target=label]", text: "Last 14 days"
+    assert_select "[data-rails-pulse--time-range-target=label]", text: "Last 24 hours"
+    assert_select "button.menu__item--active[data-preset=last_24_hours]"
+  end
+
+  test "renders a page default other than the base default" do
+    render_selector(nil, default_key: :last_7_days)
+
+    assert_select "[data-rails-pulse--time-range-target=label]", text: "Last 7 days"
+    assert_select "button.menu__item--active[data-preset=last_7_days]"
+  end
+
+  test "a stored preset preference wins over the page default" do
+    render_selector("last_30_days", default_key: :last_7_days)
+
+    assert_select "[data-rails-pulse--time-range-target=label]", text: "Last 30 days"
   end
 
   test "does not show the aggregation zone on the trigger button itself (#303)" do
     Time.use_zone("UTC") do
       render_selector(nil)
 
-      assert_select ".time-range-trigger", text: "Last 14 days"
+      assert_select ".time-range-trigger", text: "Last 24 hours"
     end
   end
 
@@ -55,28 +70,40 @@ class RailsPulse::TimeRangeSelectorTest < ActionView::TestCase
   end
 
   test "renders a string-keyed custom preference" do
-    render_selector("type" => "custom", "start_time" => "2024-01-01 00:00", "end_time" => "2024-01-31 23:59")
+    render_selector({ "type" => "custom", "start_time" => "2024-01-01 00:00", "end_time" => "2024-01-31 23:59" })
 
     assert_select "[data-rails-pulse--time-range-target=label]", text: "2024-01-01 00:00 to 2024-01-31 23:59"
   end
 
   test "renders a symbol-keyed custom preference from a Marshal-backed session" do
-    render_selector(type: "custom", start_time: "2024-01-01 00:00", end_time: "2024-01-31 23:59")
+    render_selector({ type: "custom", start_time: "2024-01-01 00:00", end_time: "2024-01-31 23:59" })
 
     assert_select "[data-rails-pulse--time-range-target=label]", text: "2024-01-01 00:00 to 2024-01-31 23:59"
   end
 
   # Edge Cases
 
-  test "falls back to the default label for an unrecognized hash" do
-    render_selector("foo" => "bar")
+  test "falls back to the page default label for an unrecognized hash" do
+    render_selector({ "foo" => "bar" }, default_key: :last_14_days)
 
     assert_select "[data-rails-pulse--time-range-target=label]", text: "Last 14 days"
   end
 
-  test "falls back to the default label for an unrecognized value" do
-    render_selector(42)
+  test "falls back to the page default label for an unrecognized value" do
+    render_selector(42, default_key: :last_7_days)
 
-    assert_select "[data-rails-pulse--time-range-target=label]", text: "Last 14 days"
+    assert_select "[data-rails-pulse--time-range-target=label]", text: "Last 7 days"
+  end
+
+  test "falls back to the page default label for an unknown preset string" do
+    render_selector("last_90_days", default_key: :last_7_days)
+
+    assert_select "[data-rails-pulse--time-range-target=label]", text: "Last 7 days"
+  end
+
+  test "falls back to Last 24 hours when the page default is not a preset" do
+    render_selector(nil, default_key: :last_year)
+
+    assert_select "[data-rails-pulse--time-range-target=label]", text: "Last 24 hours"
   end
 end

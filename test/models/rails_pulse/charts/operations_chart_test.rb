@@ -6,10 +6,19 @@ module RailsPulse
       fixtures :rails_pulse_operations, :rails_pulse_requests, :rails_pulse_routes, :rails_pulse_queries
 
       # Helper: build a plain Ruby object with the fields OperationsChart reads
-      Op = Struct.new(:operation_type, :start_time, :duration)
+      Op = Struct.new(:operation_type, :start_time, :duration, :label)
 
-      def make_op(type:, start_time:, duration:)
-        Op.new(type, start_time.to_f, duration.to_f)
+      def make_op(type:, start_time:, duration:, label: nil)
+        Op.new(type, start_time.to_f, duration.to_f, label)
+      end
+
+      def n_plus_one_ops(count)
+        ops = [ make_op(type: "controller", start_time: 0, duration: count * 2 + 10, label: "UsersController#index") ]
+        count.times do |i|
+          ops << make_op(type: "sql", start_time: 5 + i * 2, duration: 1, label: "SELECT * FROM posts WHERE user_id = ?")
+          ops << make_op(type: "partial", start_time: 6 + i * 2, duration: 1, label: "users/_user.html.erb")
+        end
+        ops
       end
 
       # Structure Tests
@@ -366,10 +375,143 @@ module RailsPulse
 
         chart = OperationsChart.new(ops)
 
-        # Should handle any number of operations
-        assert_equal ops.length, chart.bars.length
+        # Every operation is represented by exactly one bar
+        assert_equal ops.length, chart.bars.sum(&:count)
         assert_operator chart.max_depth, :>=, 0
         refute_empty chart.lane_labels if ops.any?
+      end
+
+      # Collapsing Tests
+
+      test "consecutive identical operations in a lane collapse into one bar" do
+        chart = OperationsChart.new(n_plus_one_ops(5_000))
+
+        assert_equal 3, chart.bars.length
+        sql_bar = chart.bars.find { |b| b.operation.operation_type == "sql" }
+
+        assert_equal 5_000, sql_bar.count
+        assert_predicate sql_bar, :repeated?
+        assert_in_delta 5_000.0, sql_bar.total_duration
+        assert_equal 5_000, sql_bar.duration
+        refute_predicate chart, :truncated?
+        assert_equal 10_001, chart.operations_count
+        assert_equal 0, chart.hidden_operations_count
+      end
+
+      test "collapsed bar spans from the first operation's start to the last operation's end" do
+        ops = [
+          make_op(type: "controller", start_time: 0,  duration: 100, label: "A#b"),
+          make_op(type: "sql",        start_time: 10, duration: 1,   label: "SELECT 1"),
+          make_op(type: "sql",        start_time: 11, duration: 1,   label: "SELECT 1"),
+          make_op(type: "sql",        start_time: 12, duration: 1,   label: "SELECT 1")
+        ]
+        chart = OperationsChart.new(ops)
+
+        controller_bar = chart.bars.find { |b| b.operation.operation_type == "controller" }
+        sql_bar = chart.bars.find { |b| b.operation.operation_type == "sql" }
+
+        assert_in_delta controller_bar.width_pct * 0.03, sql_bar.width_pct, 0.01
+      end
+
+      test "collapsed bar links to the slowest operation it contains" do
+        slow = make_op(type: "sql", start_time: 1, duration: 5, label: "SELECT 1")
+        ops = [
+          make_op(type: "sql", start_time: 0, duration: 1, label: "SELECT 1"),
+          slow,
+          make_op(type: "sql", start_time: 6, duration: 1, label: "SELECT 1")
+        ]
+        chart = OperationsChart.new(ops)
+
+        assert_equal 1, chart.bars.length
+        assert_same slow, chart.bars.first.operation
+      end
+
+      test "operations with different labels do not collapse" do
+        ops = [
+          make_op(type: "sql", start_time: 0, duration: 1, label: "SELECT 1"),
+          make_op(type: "sql", start_time: 1, duration: 1, label: "SELECT 2")
+        ]
+        chart = OperationsChart.new(ops)
+
+        assert_equal 2, chart.bars.length
+        refute chart.bars.any?(&:repeated?)
+      end
+
+      test "identical operations separated by a visible gap do not collapse" do
+        ops = [
+          make_op(type: "controller", start_time: 0,  duration: 100, label: "A#b"),
+          make_op(type: "sql",        start_time: 0,  duration: 1,   label: "SELECT 1"),
+          make_op(type: "sql",        start_time: 50, duration: 1,   label: "SELECT 1")
+        ]
+        chart = OperationsChart.new(ops)
+
+        assert_equal 2, chart.bars.count { |b| b.operation.operation_type == "sql" }
+      end
+
+      test "operations passed out of order collapse by start time" do
+        ops = [
+          make_op(type: "sql", start_time: 2, duration: 1, label: "SELECT 1"),
+          make_op(type: "sql", start_time: 0, duration: 1, label: "SELECT 1"),
+          make_op(type: "sql", start_time: 1, duration: 1, label: "SELECT 1")
+        ]
+        chart = OperationsChart.new(ops)
+
+        assert_equal 1, chart.bars.length
+        assert_equal 3, chart.bars.first.count
+      end
+
+      # Cap Tests
+
+      test "keeps only the slowest MAX_BARS bars when operations cannot collapse" do
+        count = OperationsChart::MAX_BARS + 50
+        ops = Array.new(count) do |i|
+          make_op(type: "sql", start_time: i * 10, duration: i + 1, label: "SELECT #{i}")
+        end
+        chart = OperationsChart.new(ops)
+
+        assert_equal OperationsChart::MAX_BARS, chart.bars.length
+        assert_predicate chart, :truncated?
+        assert_equal 50, chart.hidden_bars_count
+        assert_equal 50, chart.hidden_operations_count
+        assert_equal count, chart.operations_count
+        assert_operator chart.bars.map(&:total_duration).min, :>, 50
+      end
+
+      test "kept bars are ordered by position on the timeline" do
+        ops = Array.new(OperationsChart::MAX_BARS + 10) do |i|
+          make_op(type: "sql", start_time: i * 10, duration: (i * 7) % 13 + 1, label: "SELECT #{i}")
+        end
+        chart = OperationsChart.new(ops)
+        lefts = chart.bars.map(&:left_pct)
+
+        assert_equal lefts.sort, lefts
+      end
+
+      test "is not truncated at exactly MAX_BARS bars" do
+        ops = Array.new(OperationsChart::MAX_BARS) do |i|
+          make_op(type: "sql", start_time: i * 10, duration: 1, label: "SELECT #{i}")
+        end
+        chart = OperationsChart.new(ops)
+
+        assert_equal OperationsChart::MAX_BARS, chart.bars.length
+        refute_predicate chart, :truncated?
+      end
+
+      # Precision Tests
+
+      test "bar offsets are rounded floats even for BigDecimal timings" do
+        ops = [
+          make_op(type: "controller", start_time: 0, duration: 3, label: "A#b"),
+          Op.new("sql", BigDecimal("1.123456789"), BigDecimal("0.987654321"), "SELECT 1")
+        ]
+        chart = OperationsChart.new(ops)
+
+        chart.bars.each do |bar|
+          assert_kind_of Float, bar.left_pct
+          assert_kind_of Float, bar.width_pct
+          assert_in_delta bar.left_pct.round(OperationsChart::PCT_PRECISION), bar.left_pct, 0
+          assert_in_delta bar.width_pct.round(OperationsChart::PCT_PRECISION), bar.width_pct, 0
+        end
       end
     end
   end

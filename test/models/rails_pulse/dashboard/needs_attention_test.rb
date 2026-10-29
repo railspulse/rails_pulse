@@ -205,7 +205,7 @@ module RailsPulse
       # Tier Assignment - Jobs
 
       test "job with failure rate >= 10% is classified as critical" do
-        RailsPulse::Job.create!(name: "CriticalJob", runs_count: 10, failures_count: 1)
+        create_job_summary(job: create_job("CriticalJob"), count: 10, errors: 1, p95: 100.0)
 
         result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
         critical_jobs = result[:critical].select { |i| i[:type] == "JOB" }
@@ -215,7 +215,7 @@ module RailsPulse
       end
 
       test "job with failure rate >= 5% and < 10% is classified as warning" do
-        RailsPulse::Job.create!(name: "WarningRateJob", runs_count: 100, failures_count: 7)
+        create_job_summary(job: create_job("WarningRateJob"), count: 100, errors: 7, p95: 100.0)
 
         result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
         warning_jobs = result[:warning].select { |i| i[:type] == "JOB" }
@@ -227,7 +227,7 @@ module RailsPulse
       test "job items are excluded when track_jobs is disabled" do
         saved_track_jobs = RailsPulse.configuration.track_jobs
         RailsPulse.configuration.track_jobs = false
-        RailsPulse::Job.create!(name: "HighFailureJob", runs_count: 10, failures_count: 9)
+        create_job_summary(job: create_job("HighFailureJob"), count: 10, errors: 9, p95: 100.0)
 
         result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
 
@@ -236,6 +236,44 @@ module RailsPulse
         assert_equal 0, job_items.size
       ensure
         RailsPulse.configuration.track_jobs = saved_track_jobs
+      end
+
+      test "job item reports runs and failures from the period, not lifetime counters" do
+        job = create_job("ReportJob")
+        job.update_columns(runs_count: 200, failures_count: 2)
+        create_job_summary(job: job, count: 11, errors: 2, p95: 100.0)
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+        item = result[:critical].find { |i| i[:type] == "JOB" }
+
+        assert_equal "ReportJob", item[:name]
+        assert_equal "2 / 11 failed", item[:metric]
+      end
+
+      test "job with lifetime failures but none in the period is not listed" do
+        job = create_job("RecoveredJob")
+        job.update_columns(runs_count: 11, failures_count: 2, p95_duration: 60_000.0)
+        create_job_summary(job: job, count: 50, errors: 0, p95: 100.0)
+
+        result = RailsPulse::Dashboard::NeedsAttention.new.to_attention_data
+
+        assert_empty job_items(result)
+      end
+
+      test "job with failures only before the period is not listed" do
+        create_job_summary(job: create_job("OldFailureJob"), count: 11, errors: 2, p95: 100.0, days_ago: 30)
+
+        result = RailsPulse::Dashboard::NeedsAttention.new(period: 7).to_attention_data
+
+        assert_empty job_items(result)
+      end
+
+      test "job with a disabled tag is not listed" do
+        create_job_summary(job: create_job("TaggedJob", tags: [ "reports" ]), count: 10, errors: 5, p95: 100.0)
+
+        result = RailsPulse::Dashboard::NeedsAttention.new(disabled_tags: [ "reports" ]).to_attention_data
+
+        assert_empty job_items(result)
       end
 
       # Ranking Tests
@@ -582,6 +620,29 @@ module RailsPulse
 
       def route_item(result)
         (result[:critical] + result[:warning]).find { |i| i[:type] == "ROUTE" }
+      end
+
+      def job_items(result)
+        (result[:critical] + result[:warning]).select { |i| i[:type] == "JOB" }
+      end
+
+      def create_job(name, tags: [])
+        RailsPulse::Job.create!(name: name, tag_list: tags)
+      end
+
+      def create_job_summary(job:, count:, errors:, p95:, days_ago: 2)
+        period_start = days_ago.days.ago.beginning_of_day
+        RailsPulse::Summary.create!(
+          summarizable_type: "RailsPulse::Job",
+          summarizable_id:   job.id,
+          period_start:      period_start,
+          period_end:        RailsPulse::Summary.calculate_period_end("day", period_start),
+          period_type:       "day",
+          count:             count,
+          error_count:       errors,
+          avg_duration:      p95 * 0.7,
+          p95_duration:      p95
+        )
       end
 
       def create_route_summary(route:, count:, errors:, p95:, days_ago: 2, period_type: "day", period_start: nil)

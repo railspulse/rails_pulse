@@ -12,7 +12,7 @@ module RailsPulse
       has_global_date_range = global_filters["start_time"].present? && global_filters["end_time"].present?
       global_date_range = has_global_date_range ? "#{global_filters["start_time"]} to #{global_filters["end_time"]}" : ""
       show_custom_picker = selected_time_range.to_sym == :custom
-      custom_date_value = params.dig(:q, :custom_date_range) || (show_custom_picker && has_global_date_range ? global_date_range : "")
+      custom_date_value = custom_date_range_param || (show_custom_picker && has_global_date_range ? global_date_range : "")
 
       content_tag(:div, class: "time-range-selector", data: { mode: mode }) do
         concat time_range_select_wrapper(form, time_range_options, selected_time_range, mode)
@@ -21,6 +21,14 @@ module RailsPulse
     end
 
     private
+
+    # q[custom_date_range] when it is a string; a hand-edited URL can make q
+    # or the value itself an array or hash.
+    def custom_date_range_param
+      q = params[:q]
+      value = q[:custom_date_range] if q.respond_to?(:key?)
+      value if value.is_a?(String)
+    end
 
     def time_range_select_wrapper(form, time_range_options, selected_time_range, mode)
       content_tag(:div, data: { rails_pulse__custom_range_target: "selectWrapper" }, style: "min-width: 150px;") do

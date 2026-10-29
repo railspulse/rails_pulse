@@ -54,12 +54,14 @@ class InstallCloudGeneratorTest < Rails::Generators::TestCase
     assert_match(/Run: rails db:migrate\n/, output)
   end
 
-  test "the next steps name the settings, the health job and the preview" do
+  test "the next steps name the settings, both scheduled jobs and the preview" do
     output = run_generator
 
     assert_match(/config\.cloud\.api_key/, output)
     assert_match(/config\.cloud\.application/, output)
-    assert_match(/RailsPulse::CloudHealthJob/, output)
+    assert_match(/class: RailsPulse::SummaryJob/, output)
+    assert_match(/class: RailsPulse::CloudHealthJob/, output)
+    assert_no_match(/needs no schedule/, output)
     assert_match(/rails rails_pulse:cloud:preview/, output)
   end
 

@@ -54,14 +54,8 @@ module RailsPulse
 
       # Database load card only shows on index page and doesn't accept query param
       if current_resource.nil?
-        window = @time_range&.window
-        period_days = window ? ((window.end_time - window.start_time) / 1.day).round : 7
-
         @database_load_metric_card = Queries::Cards::DatabaseLoad.new(
-          disabled_tags: session_disabled_tags,
-          show_non_tagged: session[:show_non_tagged] != false,
-          period: period_days,
-          period_type: period_type.to_s
+          **metric_card_params.except(resource_key)
         ).to_metric_card
       end
     end

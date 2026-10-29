@@ -197,6 +197,27 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_instance_of RailsPulse::Charts::OperationsChart, operation_timeline
   end
 
+  test "show collapses an N+1 into a single operation row" do
+    request = RailsPulse::Request.create!(
+      route: @request_record.route, duration: 1_100, status: 200, is_error: false,
+      request_uuid: SecureRandom.uuid, occurred_at: 1.hour.ago
+    )
+    now = Time.current
+    rows = Array.new(500) do |i|
+      { request_id: request.id, operation_type: "sql", label: "SELECT * FROM posts WHERE user_id = ?",
+        duration: 1.0, start_time: 10 + i * 2, occurred_at: now, created_at: now, updated_at: now }
+    end
+    RailsPulse::Operation.insert_all!(rows)
+
+    get rails_pulse.request_path(request)
+
+    assert_response :success
+    assert_equal 1, assigns(:operation_timeline).bars.length
+    assert_select "tr[data-operation-id]:not(.operation-details-row)", count: 1
+    assert_select ".flame-graph-container .flame-bar", count: 1
+    assert_includes response.body, "×500"
+  end
+
   # Custom Chart Ransack Params Tests
 
   test "requests page loads without charts" do

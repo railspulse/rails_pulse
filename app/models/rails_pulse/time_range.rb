@@ -31,6 +31,17 @@ module RailsPulse
       "last_30_days"  => -> { 29.days.ago }
     }.freeze
 
+    # Longest window any source may resolve to. Charts and card sparklines
+    # build one bucket per day of the window, so an unbounded custom range
+    # (a hand-edited URL, a saved session preference, a chart-zoom link)
+    # costs time and memory in proportion to its length. Daily summaries are
+    # never cleaned up, so a year back is still a useful view.
+    MAX_SPAN = 366.days
+
+    # Years every supported database can compare against: MySQL's DATETIME
+    # stops at 1000-9999 and raises on a bound outside it.
+    STORABLE_YEARS = 1000..9999
+
     # Human-readable label for the zone daily/weekly/monthly summaries are
     # bucketed in and custom ranges are rounded in (see class comment above)
     # — the host app's config.time_zone, not the browser's zone. "UTC" or,
@@ -81,6 +92,7 @@ module RailsPulse
 
     def resolve
       start_time, end_time, selected_time_range = resolve_window
+      start_time = clamp_start(start_time, end_time)
       start_time, end_time, time_diff_hours = normalize(start_time, end_time)
       period_type = time_diff_hours <= 25 ? "hour" : "day"
 
@@ -121,7 +133,7 @@ module RailsPulse
 
     # Priority 1: page-specific preset from the dropdown.
     def from_page_preset
-      range = ransack_params[:period_start_range]
+      range = scalar(ransack_params[:period_start_range])
       return nil unless range.present? && range.to_sym != :custom
 
       [ preset_start(range), Time.zone.now, range ]
@@ -130,14 +142,15 @@ module RailsPulse
     # Priority 2: page-specific custom datetime range from the picker (only
     # when period_start_range is explicitly "custom").
     def from_page_custom_range
-      return nil unless ransack_params[:period_start_range].present? &&
-        ransack_params[:period_start_range].to_sym == :custom &&
-        ransack_params[:custom_date_range].present? &&
-        ransack_params[:custom_date_range].include?(" to ")
+      range = scalar(ransack_params[:period_start_range])
+      return nil unless range.present? && range.to_sym == :custom
 
-      dates = ransack_params[:custom_date_range].split(" to ")
-      custom_start = parse_time_param(dates[0].strip)
-      custom_end = parse_time_param(dates[1].strip)
+      custom_range = ransack_params[:custom_date_range]
+      return nil unless custom_range.is_a?(String) && custom_range.include?(" to ")
+
+      start_param, end_param = custom_range.split(" to ", 2)
+      custom_start = parse_time_param(start_param.strip)
+      custom_end = parse_time_param(end_param.strip)
       return nil unless custom_start && custom_end
 
       [ custom_start, custom_end, :custom ]
@@ -187,6 +200,13 @@ module RailsPulse
       q.respond_to?(:permit) ? q : ActionController::Parameters.new({})
     end
 
+    # A hand-edited URL can turn any value into an array or hash
+    # (`q[period_start_range][]=x`, `zoom_start_time[a]=1`). Those are
+    # treated as absent so the default applies.
+    def scalar(value)
+      value unless value.is_a?(Array) || value.is_a?(Hash) || value.is_a?(ActionController::Parameters)
+    end
+
     def session_time_range_preference
       RailsPulse::TimeRangePreference.normalize(session[:time_range_preference])
     end
@@ -196,9 +216,15 @@ module RailsPulse
       filters.is_a?(Hash) ? filters : {}
     end
 
-    # Returns nil for anything that does not parse, so a hand-edited or stale
-    # value falls back to the default range instead of raising.
+    # Returns nil for anything that does not parse, or that parses to a year
+    # outside STORABLE_YEARS, so a hand-edited or stale value falls back to
+    # the default range instead of raising.
     def parse_time_param(param)
+      time = parse_time(param)
+      time if time && STORABLE_YEARS.cover?(time.year)
+    end
+
+    def parse_time(param)
       case param
       when Time, DateTime
         param.in_time_zone
@@ -213,6 +239,13 @@ module RailsPulse
       end
     rescue ArgumentError, TypeError, RangeError
       nil
+    end
+
+    # Keeps the end of an over-long range and pulls the start forward to
+    # MAX_SPAN before it: the most recent part is the part with data.
+    def clamp_start(start_time, end_time)
+      earliest = end_time - MAX_SPAN
+      start_time < earliest ? earliest : start_time
     end
 
     # Rounds to hour or day boundaries in Time.zone (summaries are always
@@ -232,9 +265,9 @@ module RailsPulse
     # -- Zoom / table window --------------------------------------------------
 
     def resolve_zoom(main_start, main_end)
-      selected_column_time = params[:selected_column_time]
-      zoom_start = params.delete(:zoom_start_time)
-      zoom_end = params.delete(:zoom_end_time)
+      selected_column_time = scalar(params[:selected_column_time])
+      zoom_start = scalar(params.delete(:zoom_start_time))
+      zoom_end = scalar(params.delete(:zoom_end_time))
 
       if selected_column_time
         table_start, table_end = normalize_column_time(selected_column_time.to_i, main_start, main_end)
@@ -286,7 +319,7 @@ module RailsPulse
 
     def resolve_duration
       thresholds = RailsPulse.configuration.public_send("#{duration_range_type}_thresholds")
-      duration_param = ransack_params[:avg_duration] || ransack_params[:duration] || ransack_params[:duration_gteq]
+      duration_param = %i[avg_duration duration duration_gteq].filter_map { |key| scalar(ransack_params[key]) }.first
 
       if duration_param.present?
         [ threshold_for(thresholds, duration_param), duration_param ]

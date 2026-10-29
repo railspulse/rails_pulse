@@ -65,7 +65,7 @@ module RailsPulse
             trend_text: (show_trend? ? comparison_period_text : nil),
             period_stat: total_runs > 0 ? "#{format_number(total_errors)} failures · #{format_number(total_runs)} runs" : period_date_range,
             help_heading: "Failure Rate",
-            help_text: "Percentage of job executions that raised an error over the last 14 days. A rising failure rate may indicate bugs, external dependency issues, or jobs receiving invalid data."
+            help_text: "Percentage of job executions that raised an error over the selected range. A rising failure rate may indicate bugs, external dependency issues, or jobs receiving invalid data."
           }
         end
 
