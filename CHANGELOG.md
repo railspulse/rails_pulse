@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1.pre.3] - 2026-10-29
+
 ### Added
 
 - Metric card sparklines now draw the still-in-progress day (or hour) as a dashed outline "ghost" bar with a tooltip saying the period is in progress, instead of an invisible zero bar, so "Last 14 days" visibly shows all 14 days.
