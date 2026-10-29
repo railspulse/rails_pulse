@@ -13,6 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `rails generate rails_pulse:install_cloud` and the initializer template now say to schedule both `RailsPulse::SummaryJob` and `RailsPulse::CloudHealthJob`; the hourly Cloud sync only runs after `SummaryJob`, so nothing reached Cloud without it.
 - Dashboard time ranges are now capped at one year, so a very wide custom range, chart zoom or saved time-range preference shows the most recent year instead of tying up the server building a chart point for every day.
 - Request and job run pages stay small and fast when an N+1 records thousands of operations: runs of the same operation collapse into one trace bar and one table row with a count, and at most the 250 slowest groups are shown.
+- With no time range chosen, the header's time range selector now names the range each page actually shows (24 hours on the dashboard and requests, 7 days on queries, jobs and exceptions, 14 days on routes) instead of always reading "Last 14 days".
 
 ## [0.5.1.pre.2] - 2026-10-24
 

@@ -101,6 +101,12 @@ module RailsPulse
 
     private
 
+    # The range a page shows when the session holds no time range preference.
+    # Pages that resolve a time range override it, and the header's time range
+    # selector reads it so its label names the range the page actually shows.
+    def default_time_range_key = :last_24_hours
+    helper_method :default_time_range_key
+
     # The original string if it is short enough to live in the session and
     # Time.parse accepts it (RailsPulse::TimeRange parses it back the same way);
     # nil otherwise.
