@@ -17,6 +17,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The summary cards on the routes, queries, jobs and exceptions pages now follow the selected time range, so a past range shows that range's figures and the cards agree with the main dashboard for the same range.
 - Request rate and query execution rate are now averaged over the selected range rather than over twice its length.
 - The dashboard's job health counts and Needs Attention job entries now follow the selected time range and tag filters instead of each job's all-time failure rate and P95, so they agree with the Jobs page.
+### Changed
+
+- Updated the pg development dependency to 1.7.0 for running the gem's own PostgreSQL test suite; host applications are unaffected.
 
 ## [0.5.1.pre.2] - 2026-10-24
 
