@@ -15,7 +15,7 @@ module RailsPulse
       class ExceptionRate < RailsPulse::Cards::Base
         PER = 1_000
 
-        def initialize(disabled_tags: [], show_non_tagged: true, period: 14, period_type: "day")
+        def initialize(disabled_tags: [], show_non_tagged: true, period: 14, period_type: "day", window: nil)
           super
         end
 

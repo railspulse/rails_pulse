@@ -197,12 +197,21 @@ class MetricCardConcernTest < ActionController::TestCase
     assert_equal 14, params[:period]
   end
 
+  test "metric_card_params passes the selected window to the cards" do
+    set_window(30.days.ago, 23.days.ago)
+
+    params = @controller.send(:metric_card_params)
+
+    assert_equal @controller.instance_variable_get(:@time_range).window, params[:window]
+  end
+
   test "metric_card_params defaults to 7 days when @time_range has no window" do
     set_window(nil, nil)
 
     params = @controller.send(:metric_card_params)
 
     assert_equal 7, params[:period]
+    assert_nil params[:window]
   end
 
   test "metric_card_params defaults to 7 days when @time_range is nil" do
