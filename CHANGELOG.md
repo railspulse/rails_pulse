@@ -24,6 +24,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 
 - Updated the development-only test dependency `timecop` from 0.9.10 to 0.9.11 (gem dev/CI only); no effect on host apps.
+- Updated the `rubocop-minitest` development dependency from 0.38.2 to 0.41.0 (gem development/CI only; no effect on host apps).
 
 ## [0.5.1.pre.2] - 2026-10-24
 
