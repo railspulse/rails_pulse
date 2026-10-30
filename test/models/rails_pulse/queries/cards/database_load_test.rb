@@ -344,6 +344,11 @@ module RailsPulse
 
           card[:chart_data].each_value do |entry|
             assert_includes entry, :value
+            # Today's bucket is ghosted (no itemStyle) when no summary has
+            # landed in it yet, which the fixtures leave possible just after
+            # midnight.
+            next if entry[:incomplete]
+
             assert_includes entry, :itemStyle
             assert_includes entry[:itemStyle], :color
           end
