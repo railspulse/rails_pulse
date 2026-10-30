@@ -117,13 +117,16 @@ module RailsPulse
         sync_initializer
 
         gem_migrations = get_gem_migrations
-        existing_migrations = get_user_migrations(migration_dir)
-        new_migrations = gem_migrations - existing_migrations
+        # Compare by name, ignoring timestamps: copies made by this generator
+        # carry a fresh timestamp, while copies made by older versions kept the
+        # gem's original one.
+        existing_names = get_user_migrations(migration_dir).map { |file| name_without_timestamp(file) }
+        new_migrations = gem_migrations.reject { |file| existing_names.include?(name_without_timestamp(file)) }
 
         if new_migrations.any?
           say "Found #{new_migrations.size} new migration(s) to copy:", :blue
           new_migrations.each do |migration|
-            say "  - #{migration}", :blue
+            say "  - #{name_without_timestamp(migration)}", :blue
             copy_gem_migration_to(migration, migration_dir)
           end
 
@@ -380,7 +383,8 @@ module RailsPulse
         path = gem_migrations_path
         return [] unless File.directory?(path)
 
-        Dir.glob("#{path}/*.rb").map { |f| File.basename(f) }
+        # Sorted by the gem's timestamps so copies keep their relative order.
+        Dir.glob("#{path}/*.rb").map { |f| File.basename(f) }.sort
       end
 
       def get_user_migrations(directory)
@@ -391,11 +395,20 @@ module RailsPulse
         Dir.glob("#{full_directory}/*.rb").map { |f| File.basename(f) }
       end
 
+      # The copy gets a fresh timestamp instead of the gem file's own: the gem
+      # timestamps only order the migrations relative to each other and predate
+      # the host's install migration, so keeping them puts these before an
+      # install migration that has not run on every database yet (a fresh
+      # production or review-app database) and db:migrate fails on the missing
+      # tables.
       def copy_gem_migration_to(migration_name, destination)
         source_file = File.join(gem_migrations_path, migration_name)
-        destination_file = File.join(destination, migration_name)
 
-        copy_file source_file, destination_file
+        migration_template source_file, File.join(destination, name_without_timestamp(migration_name))
+      end
+
+      def name_without_timestamp(migration_filename)
+        migration_filename.sub(/\A\d+_/, "")
       end
     end
   end

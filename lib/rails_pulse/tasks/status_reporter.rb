@@ -407,14 +407,18 @@ module RailsPulse
 
       # -- helpers ------------------------------------------------------------
 
+      # Matched by name with timestamps stripped: the upgrade generator stamps
+      # each copy with a fresh timestamp, so the host's filename never matches
+      # the gem's exactly.
       def gem_migrations_not_in_host
         gem_dir = RailsPulse::Engine.root.join("db", "rails_pulse_migrate")
         return [] unless gem_dir.directory?
 
         host = %w[db/migrate db/rails_pulse_migrate].flat_map do |dir|
-          Dir.glob(Rails.root.join(dir, "*.rb").to_s).map { |f| File.basename(f) }
+          Dir.glob(Rails.root.join(dir, "*.rb").to_s).map { |f| File.basename(f).sub(/\A\d+_/, "") }
         end
-        Dir.glob(gem_dir.join("*.rb").to_s).map { |f| File.basename(f) }.sort - host
+        Dir.glob(gem_dir.join("*.rb").to_s).map { |f| File.basename(f) }.sort
+           .reject { |name| host.include?(name.sub(/\A\d+_/, "")) }
       end
 
       # Migration files on disk whose version is not recorded on the Pulse
