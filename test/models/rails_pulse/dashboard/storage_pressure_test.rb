@@ -222,13 +222,105 @@ module RailsPulse
         # them. Time-based cleanup deletes it by age alone.
         RailsPulse.configuration.full_retention_period = 30.days
         create_overall_hourly_summary(period_end: 30.minutes.ago)
+        record_cleanup_run(ran_at: 12.hours.ago)
         create_request(occurred_at: 31.days.ago)
 
         assert_empty StoragePressure.new.pressure_items
         assert_equal 1, StoragePressure.new.storage_counts[:healthy]
       end
 
-      # Signal B — Sub-hour Retention
+      # Signal B — Cleanup Runs
+
+      test "cleanup that has never run is not a pressure item on a fresh install" do
+        create_fresh_summary
+
+        assert_empty StoragePressure.new.pressure_items
+      end
+
+      test "cleanup that has never run warns once requests are a day past retention" do
+        RailsPulse.configuration.full_retention_period = 30.days
+        create_fresh_summary
+        create_request(occurred_at: 32.days.ago)
+
+        items = StoragePressure.new.pressure_items.select { |i| i[:name] == "Cleanup job" }
+
+        assert_equal 1, items.size
+        assert_equal :warning, items.first[:severity]
+        assert_equal "never run", items.first[:metric]
+        assert_includes items.first[:popover_body], "RailsPulse::CleanupJob"
+      end
+
+      test "cleanup that has never run says nothing while requests are less than a day past retention" do
+        RailsPulse.configuration.full_retention_period = 30.days
+        create_fresh_summary
+        create_request(occurred_at: 30.days.ago - 5.minutes)
+
+        assert_empty StoragePressure.new.pressure_items.select { |i| i[:name] == "Cleanup job" }
+      end
+
+      test "overdue requests are not a pressure item when archiving is disabled" do
+        RailsPulse.configuration.archiving_enabled = false
+        RailsPulse.configuration.full_retention_period = 30.days
+        create_fresh_summary
+        create_request(occurred_at: 40.days.ago)
+
+        assert_empty StoragePressure.new.pressure_items.select { |i| i[:name] == "Cleanup job" }
+      end
+
+      test "a recent completed cleanup run is not a pressure item" do
+        create_fresh_summary
+        record_cleanup_run(ran_at: 12.hours.ago, deleted: 120)
+
+        assert_empty StoragePressure.new.pressure_items
+      end
+
+      test "a failed cleanup run is a critical item naming the failed stages" do
+        create_fresh_summary
+        record_cleanup_run(ran_at: 2.hours.ago, failed_stages: [ "requests (time_based)" ])
+
+        items = StoragePressure.new.pressure_items.select { |i| i[:name] == "Cleanup job" }
+
+        assert_equal 1, items.size
+        assert_equal :critical, items.first[:severity]
+        assert_equal "failed", items.first[:metric]
+        assert_includes items.first[:reason], "requests (time_based)"
+        assert_includes items.first[:popover_body], "rails rails_pulse:cleanup"
+        assert_equal 1, StoragePressure.new.storage_counts[:critical]
+      end
+
+      test "a cleanup run three days ago is a warning that the job has stopped" do
+        create_fresh_summary
+        record_cleanup_run(ran_at: 3.days.ago, deleted: 50)
+
+        items = StoragePressure.new.pressure_items.select { |i| i[:name] == "Cleanup job" }
+
+        assert_equal 1, items.size
+        assert_equal :warning, items.first[:severity]
+        assert_equal "3d stale", items.first[:metric]
+        assert_includes items.first[:reason], "3 days ago"
+        assert_includes items.first[:popover_body], "RailsPulse::CleanupJob"
+      end
+
+      test "a cleanup run just inside the stale threshold is not a pressure item" do
+        create_fresh_summary
+        record_cleanup_run(ran_at: 2.days.ago + 1.hour)
+
+        assert_empty StoragePressure.new.pressure_items
+      end
+
+      test "the latest cleanup run is computed once per instance and shared with StorageStatus" do
+        create_fresh_summary
+        record_cleanup_run(ran_at: 12.hours.ago)
+
+        pressure = StoragePressure.new
+        pressure.pressure_items
+        run = pressure.latest_cleanup_run
+
+        assert run
+        assert_equal run.occurred_at, StorageStatus.new(storage_pressure: pressure).cleanup[:last_run_at]
+      end
+
+      # Signal C — Sub-hour Retention
 
       test "returns warning when full_retention_period is 30 minutes" do
         RailsPulse.configuration.instance_variable_set(:@full_retention_period, 30.minutes)
@@ -332,6 +424,14 @@ module RailsPulse
 
       def create_fresh_summary
         create_overall_hourly_summary(period_end: 30.minutes.ago)
+      end
+
+      def record_cleanup_run(ran_at:, deleted: 0, failed_stages: [])
+        RailsPulse::CleanupRun.record!(
+          stats: { total_deleted: deleted },
+          failed_stages: failed_stages,
+          ran_at: ran_at
+        )
       end
 
       def create_request(occurred_at:)

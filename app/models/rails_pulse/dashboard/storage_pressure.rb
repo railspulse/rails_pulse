@@ -4,6 +4,11 @@ module RailsPulse
       STALE_WARNING_THRESHOLD  = 2.hours
       STALE_CRITICAL_THRESHOLD = 24.hours
 
+      # Cleanup is expected daily; two missed days means it has stopped, not
+      # that it is merely due.
+      CLEANUP_STALE_THRESHOLD = 2.days
+      CLEANUP_OVERDUE_GRACE   = 1.day
+
       def initialize
         @config = RailsPulse.configuration
       end
@@ -11,7 +16,18 @@ module RailsPulse
       # Memoized: computing the items costs several aggregate queries (one a
       # raw-request count), and one dashboard render asks for them repeatedly.
       def pressure_items
-        @pressure_items ||= summary_staleness_items + sub_hour_retention_items + writer_drop_items + detail_capture_items
+        @pressure_items ||= summary_staleness_items + cleanup_run_items + sub_hour_retention_items + writer_drop_items + detail_capture_items
+      end
+
+      # Memoized (nil is a valid value: cleanup has never run, or the events
+      # table is missing on an unmigrated upgrade) and shared with
+      # StorageStatus's Cleanup panel.
+      def latest_cleanup_run
+        return @latest_cleanup_run if defined?(@latest_cleanup_run)
+
+        @latest_cleanup_run = RailsPulse::Event.table_available? ? RailsPulse::CleanupRun.latest : nil
+      rescue ActiveRecord::ActiveRecordError
+        @latest_cleanup_run = nil
       end
 
       # Memoized (nil is a valid value: detail capture off or no rate yet) and
@@ -58,7 +74,93 @@ module RailsPulse
         end
       end
 
-      # Signal B — Retention period shorter than 1-hour cleanup minimum
+      # Signal B — CleanupJob is not running, or its last run failed. Based on
+      # the last cleanup_run event, never on missing summaries: time-based
+      # cleanup deletes by age alone, and count-based cleanup only waits for
+      # summaries once a table is over max_table_records.
+      def cleanup_run_items
+        return [] unless @config.archiving_enabled
+        return [] unless RailsPulse::Event.table_available?
+
+        run = latest_cleanup_run
+
+        if run.nil?
+          cleanup_never_run_items
+        elsif run.outcome == "failed"
+          [ cleanup_failed_item(run) ]
+        elsif run.occurred_at < CLEANUP_STALE_THRESHOLD.ago
+          [ cleanup_stale_item(run) ]
+        else
+          []
+        end
+      rescue ActiveRecord::ActiveRecordError
+        []
+      end
+
+      # No run recorded is only a problem once records are a full day past
+      # retention — a fresh install has nothing to prune yet.
+      def cleanup_never_run_items
+        return [] unless @config.full_retention_period
+        return [] unless RailsPulse::Request.where(occurred_at: ...(@config.full_retention_period + CLEANUP_OVERDUE_GRACE).ago).exists?
+
+        [ {
+          type:          "STORAGE",
+          name:          "Cleanup job",
+          reason:        "Cleanup has never run and requests past the retention window are still stored",
+          metric:        "never run",
+          metric_sub:    "retention not enforced",
+          link:          "#",
+          severity:      :warning,
+          sort_score:    1.0,
+          popover_title: "Cleanup has never run",
+          popover_body:  "Requests older than <code>full_retention_period</code> are still stored and no cleanup run has been recorded, " \
+                         "so tables will keep growing.<br><br>" \
+                         "<strong>How to fix:</strong> Schedule <code>RailsPulse::CleanupJob</code> to run daily in your job scheduler " \
+                         "(Sidekiq-Cron, GoodJob, Solid Queue, etc.), or run <code>rails rails_pulse:cleanup</code> once to catch up now."
+        } ]
+      end
+
+      def cleanup_failed_item(run)
+        stages = run.metadata_hash["failed_stages"].to_a.join(", ")
+
+        {
+          type:          "STORAGE",
+          name:          "Cleanup job",
+          reason:        "The last cleanup run failed (#{stages}) — retention is not being enforced there",
+          metric:        "failed",
+          metric_sub:    "Last run: #{run.occurred_at.strftime("%Y-%m-%d %H:%M")} (#{RailsPulse::TimeRange.aggregation_zone_label})",
+          link:          "#",
+          severity:      :critical,
+          sort_score:    Float::INFINITY,
+          popover_title: "The last cleanup run failed",
+          popover_body:  "Cleanup failed in #{ERB::Util.html_escape(stages)}, so those tables are not being pruned and will grow past " \
+                         "the retention window.<br><br>" \
+                         "<strong>How to fix:</strong> The application log around that time has the error. Once the cause is fixed, " \
+                         "run <code>rails rails_pulse:cleanup</code> to retry, or wait for the next scheduled <code>RailsPulse::CleanupJob</code>."
+        }
+      end
+
+      def cleanup_stale_item(run)
+        days = ((Time.current - run.occurred_at) / 1.day).round
+
+        {
+          type:          "STORAGE",
+          name:          "Cleanup job",
+          reason:        "Cleanup last ran #{days} #{"day".pluralize(days)} ago — is RailsPulse::CleanupJob still scheduled?",
+          metric:        "#{days}d stale",
+          metric_sub:    "Last run: #{run.occurred_at.strftime("%Y-%m-%d %H:%M")} (#{RailsPulse::TimeRange.aggregation_zone_label})",
+          link:          "#",
+          severity:      :warning,
+          sort_score:    days.to_f,
+          popover_title: "Cleanup has stopped running",
+          popover_body:  "Cleanup last ran #{days} #{"day".pluralize(days)} ago. While it is not running nothing enforces " \
+                         "<code>full_retention_period</code> or <code>max_table_records</code>, so tables keep growing.<br><br>" \
+                         "<strong>How to fix:</strong> Schedule <code>RailsPulse::CleanupJob</code> to run daily in your job scheduler " \
+                         "(Sidekiq-Cron, GoodJob, Solid Queue, etc.), or run <code>rails rails_pulse:cleanup</code> once to catch up now."
+        }
+      end
+
+      # Signal C — Retention period shorter than 1-hour cleanup minimum
       def sub_hour_retention_items
         return [] unless @config.full_retention_period
         return [] unless @config.full_retention_period < 1.hour
@@ -83,7 +185,7 @@ module RailsPulse
         } ]
       end
 
-      # Signal C — the background writer is discarding requests
+      # Signal D — the background writer is discarding requests
       def writer_drop_items
         return [] unless RailsPulse::Event.table_available?
 
@@ -112,7 +214,7 @@ module RailsPulse
         []
       end
 
-      # Signal D — store_full_details keeping over a quarter of traffic, so the
+      # Signal E — store_full_details keeping over a quarter of traffic, so the
       # requests and operations tables grow almost as if it were :all
       def detail_capture_items
         settings = @config.detail_capture_settings
