@@ -250,16 +250,30 @@ module RailsPulse
 
     # Rounds to hour or day boundaries in Time.zone (summaries are always
     # bucketed there) and returns the span in hours (float) alongside.
+    #
+    # The start rounds down and the end rounds up, so a bound inside a bucket
+    # keeps that bucket's data. An end falling exactly on a boundary is
+    # exclusive: "15:00 to 15:00 the next day" covers the 24 hourly buckets a
+    # reader expects, not 25 (the ending bucket would be the one *starting*
+    # at the selected end). Unlike these human-entered bounds, chart-zoom
+    # bounds (normalize_zoom_times below) are bucket-start timestamps, where
+    # the end bucket is always meant inclusively.
     def normalize(start_time, end_time)
       start_time = start_time.in_time_zone
       end_time = end_time.in_time_zone
       time_diff_hours = (end_time.to_i - start_time.to_i) / 3600.0
 
       if time_diff_hours <= 25
-        [ start_time.beginning_of_hour, end_time.end_of_hour, time_diff_hours ]
+        [ start_time.beginning_of_hour, round_end_up(end_time, start_time, :hour), time_diff_hours ]
       else
-        [ start_time.beginning_of_day, end_time.end_of_day, time_diff_hours ]
+        [ start_time.beginning_of_day, round_end_up(end_time, start_time, :day), time_diff_hours ]
       end
+    end
+
+    def round_end_up(end_time, start_time, unit)
+      boundary = unit == :hour ? end_time.beginning_of_hour : end_time.beginning_of_day
+      end_time -= 1.public_send(unit) if end_time == boundary && end_time > start_time
+      unit == :hour ? end_time.end_of_hour : end_time.end_of_day
     end
 
     # -- Zoom / table window --------------------------------------------------

@@ -267,6 +267,51 @@ class RailsPulse::TimeRangeTest < ActiveSupport::TestCase
     assert_equal 23, result.window.end_time.hour
   end
 
+  test "an end exactly on the hour is exclusive so a 24-hour selection covers 24 buckets" do
+    result = resolve(q: {
+      period_start_range: "custom",
+      custom_date_range: "2025-09-01 15:00 to 2025-09-02 15:00"
+    })
+
+    assert_equal "hour", result.period_type
+    assert_equal Time.zone.parse("2025-09-01 15:00:00"), result.window.start_time
+    assert_equal Time.zone.parse("2025-09-02 14:00").end_of_hour, result.window.end_time
+    assert_equal 24, result.window.bucket_timestamps("hour").length
+  end
+
+  test "an end inside an hour includes that hour's bucket" do
+    result = resolve(q: {
+      period_start_range: "custom",
+      custom_date_range: "2025-09-01 15:00 to 2025-09-02 15:30"
+    })
+
+    assert_equal Time.zone.parse("2025-09-02 15:30").end_of_hour, result.window.end_time
+    assert_equal 25, result.window.bucket_timestamps("hour").length
+  end
+
+  test "an end exactly at midnight is exclusive so a 7-day selection covers 7 buckets" do
+    result = resolve(q: {
+      period_start_range: "custom",
+      custom_date_range: "2025-09-01 00:00 to 2025-09-08 00:00"
+    })
+
+    assert_equal "day", result.period_type
+    assert_equal Time.zone.parse("2025-09-01").beginning_of_day, result.window.start_time
+    assert_equal Time.zone.parse("2025-09-07").end_of_day, result.window.end_time
+    assert_equal 7, result.window.bucket_timestamps("day").length
+  end
+
+  test "a start and end on the same hour boundary still covers that one bucket" do
+    result = resolve(q: {
+      period_start_range: "custom",
+      custom_date_range: "2025-09-01 15:00 to 2025-09-01 15:00"
+    })
+
+    assert_equal Time.zone.parse("2025-09-01 15:00"), result.window.start_time
+    assert_equal Time.zone.parse("2025-09-01 15:00").end_of_hour, result.window.end_time
+    assert_equal 1, result.window.bucket_timestamps("hour").length
+  end
+
   test "normalizes exactly 25 hours to hour boundaries" do
     start_at = 25.hours.ago
     end_at = Time.current
@@ -306,7 +351,9 @@ class RailsPulse::TimeRangeTest < ActiveSupport::TestCase
 
   test "a custom picker range longer than MAX_SPAN keeps its end and is cut to MAX_SPAN" do
     result = resolve(q: { period_start_range: "custom", custom_date_range: "1900-01-01 to 2100-01-01" })
-    expected_end = Time.zone.parse("2100-01-01").end_of_day
+    # The end bound parses to midnight exactly, so it is exclusive: the last
+    # covered day is 2099-12-31.
+    expected_end = Time.zone.parse("2099-12-31").end_of_day
 
     assert_equal "custom", result.selected_time_range
     assert_equal expected_end.to_i, result.window.end_time.to_i

@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - The dashboard now says when cleanup itself has stopped, based on the last recorded cleanup run: a warning when `RailsPulse::CleanupJob` has never run with requests past retention or when its last run is over two days old, and a critical item when the last run failed. The Storage page's Cleanup panel also shows when cleanup last ran and what it deleted. (#358)
+### Fixed
+
+- A custom range ending exactly on an hour (or midnight) now treats that bound as exclusive, so a 15:00-to-15:00 selection charts 24 hourly buckets instead of 25 and the chart matches the displayed range (#337).
 
 ## [0.5.1.pre.3] - 2026-10-29
 
