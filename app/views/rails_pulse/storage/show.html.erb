@@ -90,6 +90,22 @@
           Never — count-based cleanup will not trim unsummarised requests
         <% end %>
       </dd>
+      <dt>Last cleanup run</dt>
+      <dd>
+        <% if @status.cleanup[:last_run_at] %>
+          <%= human_readable_occurred_at(@status.cleanup[:last_run_at]) %>
+          <span class="text-subtle">(<%= time_ago_in_words(@status.cleanup[:last_run_at]) %>)</span>
+          <% if @status.cleanup[:last_run_failed] %>
+            <span class="text-negative font-semibold">— failed</span>
+          <% else %>
+            <span class="text-subtle">— <%= number_with_delimiter(@status.cleanup[:last_run_deleted]) %> <%= "row".pluralize(@status.cleanup[:last_run_deleted]) %> deleted</span>
+          <% end %>
+        <% elsif @status.cleanup[:enabled] %>
+          Never — schedule <code>RailsPulse::CleanupJob</code> daily
+        <% else %>
+          Never
+        <% end %>
+      </dd>
       <dt>Count caps</dt>
       <dd>Configured in <code>max_table_records</code>. Tables without a key have no count limit.</dd>
       <dt>Full details</dt>

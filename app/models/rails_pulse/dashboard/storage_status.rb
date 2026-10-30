@@ -122,14 +122,20 @@ module RailsPulse
       end
 
       def cleanup
-        @cleanup ||= {
-          enabled: @config.archiving_enabled,
-          retention_period: @config.full_retention_period,
-          retention_label: humanize_duration(@config.full_retention_period),
-          last_summary_at: last_hourly_summary_end,
-          health: cleanup_health,
-          health_label: cleanup_health_label
-        }
+        @cleanup ||= begin
+          last_run = @pressure.latest_cleanup_run
+          {
+            enabled: @config.archiving_enabled,
+            retention_period: @config.full_retention_period,
+            retention_label: humanize_duration(@config.full_retention_period),
+            last_summary_at: last_hourly_summary_end,
+            last_run_at: last_run&.occurred_at,
+            last_run_failed: last_run&.outcome == "failed",
+            last_run_deleted: last_run&.value.to_i,
+            health: cleanup_health,
+            health_label: cleanup_health_label
+          }
+        end
       end
 
       # rate is nil while detail capture is off or its rate is not known yet

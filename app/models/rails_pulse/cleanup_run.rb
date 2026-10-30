@@ -1,9 +1,10 @@
 module RailsPulse
   # One CleanupService run, stored as an Event of kind cleanup_run: `value`
   # is the rows it deleted, `outcome` completed or failed, and `metadata` the
-  # per-table counts and any stages that failed. rails_pulse:status reads the
-  # latest to say whether cleanup is running at all; nothing else depends on
-  # these rows, so event retention prunes them like any other kind.
+  # per-table counts and any stages that failed. rails_pulse:status and the
+  # dashboard's storage-pressure signals read the latest to say whether
+  # cleanup is running at all; nothing else depends on these rows, so event
+  # retention prunes them like any other kind.
   class CleanupRun
     KIND = "cleanup_run".freeze
     SUBJECT = "cleanup".freeze
