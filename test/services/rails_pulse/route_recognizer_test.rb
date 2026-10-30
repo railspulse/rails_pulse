@@ -33,6 +33,10 @@ module RailsPulse
       assert_nil RailsPulse::RouteRecognizer.call(nil, method: "GET")
     end
 
+    test "returns nil for paths that are not valid URIs" do
+      assert_nil RailsPulse::RouteRecognizer.call("/user[email]", method: "GET")
+    end
+
     test "returns nil for invalid http method" do
       assert_nil RailsPulse::RouteRecognizer.call("/posts/99", method: "NOT_A_VERB")
     end

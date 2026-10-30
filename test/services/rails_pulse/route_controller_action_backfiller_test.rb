@@ -182,6 +182,18 @@ module RailsPulse
       assert_equal @baseline[:skipped] + 1, results[:skipped]
     end
 
+    test "skips scanner path that is not a valid URI and keeps processing" do
+      invalid = create_route("GET", "/user[email]")
+      backfillable = create_route("GET", "/posts/#{SecureRandom.hex(4)}")
+
+      results = call_backfiller
+
+      assert_nil invalid.reload.controller_action
+      assert_equal "home#index", backfillable.reload.controller_action
+      assert_equal @baseline[:skipped] + 1, results[:skipped]
+      assert_equal @baseline[:updated] + 1, results[:updated]
+    end
+
     test "backfills unrecognized path from request controller_action" do
       route = create_route("GET", "/error_prone")
       create_request(route, controller_action: "ErrorProneController#index")

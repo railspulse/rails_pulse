@@ -39,6 +39,9 @@ module RailsPulse
       Rails.application.routes.recognize_path_with_request(request, @path, {})
     rescue ActionController::RoutingError, ActionController::UnknownHttpMethod
       nil
+    rescue URI::InvalidURIError
+      # Scanner/bot paths like "/user[email]" aren't parseable as URIs.
+      nil
     rescue NoMethodError, ArgumentError
       # Other request-env constraints that still can't run outside a real request.
       nil
