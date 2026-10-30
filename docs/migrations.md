@@ -8,7 +8,7 @@ Read before any schema change. The short checklist is in `CLAUDE.md`; this file 
 |---|---|---|
 | `db/rails_pulse_schema.rb` | fresh installs | source of truth; `table_exists?` guard on every table; never alters an existing table |
 | `lib/generators/rails_pulse/templates/db/rails_pulse_schema.rb` | `rails generate rails_pulse:install` | byte-identical copy of the above; the install generator copies it into the host and writes one migration that executes it |
-| `db/rails_pulse_migrate/TIMESTAMP_name.rb` | `rails generate rails_pulse:upgrade` | one guarded migration per change; copied into the host's `db/migrate` (single DB) or `db/rails_pulse_migrate` (separate DB) |
+| `db/rails_pulse_migrate/TIMESTAMP_name.rb` | `rails generate rails_pulse:upgrade` | one guarded migration per change; copied into the host's `db/migrate` (single DB) or `db/rails_pulse_migrate` (separate DB) under a fresh timestamp — the gem's timestamps only order the files relative to each other |
 
 ## Adding a column or table
 
@@ -44,7 +44,7 @@ The upgrade generator refreshes the host's copy when it has one and never adds i
 `lib/generators/rails_pulse/upgrade_generator.rb`, run by users after `bundle update`:
 
 1. Detects single vs separate database (`--database=` overrides).
-2. Copies migrations from `db/rails_pulse_migrate/` that the host does not have.
+2. Copies migrations from `db/rails_pulse_migrate/` that the host does not have, matched by name with timestamps ignored. Each copy gets a fresh timestamp so it sorts after everything already in the host's migrate folder — in particular after an install migration that a fresh database (production replay, review app) has not run yet; the gem's own timestamps predate any host's install migration.
 3. If none are missing, compares the host's tables to its schema file (`detect_missing_columns`) and writes a migration for any gap. This is the safety net for hosts whose migration history is inconsistent.
 4. Reports migration files present but not run, and an outstanding route backfill.
 5. Syncs new settings into `config/initializers/rails_pulse.rb` (`ConfigUpdater` parses the generator template, so a new option must appear in the template, commented or not, to reach upgraders).

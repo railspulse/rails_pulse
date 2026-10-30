@@ -118,9 +118,31 @@ test "detects separate database setup from database.yml" do
     end
 
     assert_match(/Found 1 new migration/, output)
-    assert_file "db/migrate/20251019000000_add_new_feature.rb"
+    assert_migration "db/migrate/add_new_feature.rb"
     assert_no_match(/rails rails_pulse:migrate_routes/, output)
     assert_no_match(/IMPORTANT: This upgrade changes how routes are identified/, output)
+  end
+
+  test "copied migrations get a fresh timestamp that sorts after an unrun install migration" do
+    # The gem's migration timestamps predate any host's install migration. A
+    # copy keeping its original timestamp would run before the install
+    # migration on a database that has not run it yet (issue #420).
+    File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
+    create_gem_migration("add_new_feature", "20251019000000")
+    FileUtils.mkdir_p(File.join(destination_root, "db/migrate"))
+    File.write(
+      File.join(destination_root, "db/migrate/20261001000000_install_rails_pulse_tables.rb"),
+      "# install migration"
+    )
+
+    mock_tables_exist do
+      run_generator([], {})
+    end
+
+    copied = Dir.glob(File.join(destination_root, "db/migrate/*_add_new_feature.rb"))
+
+    assert_equal 1, copied.size
+    assert_operator File.basename(copied.first).to_i, :>, 20261001000000
   end
 
   test "upgrade refreshes the Cloud schema file of an app that installed Cloud" do
@@ -150,8 +172,14 @@ test "detects separate database setup from database.yml" do
     end
 
     assert_match(/Found 2 new migration/, output)
-    assert_file "db/migrate/20251019000000_add_feature_one.rb"
-    assert_file "db/migrate/20251019000001_add_feature_two.rb"
+    assert_migration "db/migrate/add_feature_one.rb"
+    assert_migration "db/migrate/add_feature_two.rb"
+
+    # The copies keep the gem migrations' relative order under their new timestamps.
+    one = File.basename(Dir.glob(File.join(destination_root, "db/migrate/*_add_feature_one.rb")).first).to_i
+    two = File.basename(Dir.glob(File.join(destination_root, "db/migrate/*_add_feature_two.rb")).first).to_i
+
+    assert_operator one, :<, two
   end
 
   test "single database upgrade warns when copying route identity migrations" do
@@ -189,6 +217,27 @@ test "detects separate database setup from database.yml" do
     end
   end
 
+  test "single database upgrade doesn't re-copy migrations the app has under a different timestamp" do
+    # Copies carry a fresh timestamp, so the same gem migration in the app
+    # never shares the gem file's name exactly; the comparison must ignore
+    # timestamps or every upgrade would copy everything again.
+    File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
+    create_gem_migration("add_tags_to_rails_pulse_tables", "20251018000000")
+
+    FileUtils.mkdir_p(File.join(destination_root, "db/migrate"))
+    File.write(
+      File.join(destination_root, "db/migrate/20261020123456_add_tags_to_rails_pulse_tables.rb"),
+      "# Already migrated"
+    )
+
+    output = mock_tables_exist do
+      run_generator([], {})
+    end
+
+    assert_no_match(/Found 1 new migration/, output)
+    assert_equal 1, Dir.glob(File.join(destination_root, "db/migrate/*_add_tags_to_rails_pulse_tables.rb")).size
+  end
+
   test "prints exception tracking notice when exceptions migration is newly copied" do
     File.write(File.join(destination_root, "config/database.yml"), single_database_yml)
     create_gem_migration("create_rails_pulse_exceptions", "20260506000001")
@@ -202,7 +251,7 @@ test "detects separate database setup from database.yml" do
     assert_match(/rails_pulse_exception_occurrences/, output)
     assert_match(/config\.track_exceptions = true/, output)
     assert_match(/delete the copied/, output)
-    assert_file "db/migrate/20260506000001_create_rails_pulse_exceptions.rb"
+    assert_migration "db/migrate/create_rails_pulse_exceptions.rb"
   end
 
   test "appends missing initializer settings and preserves existing values" do
@@ -269,7 +318,7 @@ test "separate database upgrade copies migrations to rails_pulse_migrate" do
     end
 
     assert_match(/Found 1 new migration/, output)
-    assert_file "db/rails_pulse_migrate/20251019000000_add_new_feature.rb"
+    assert_migration "db/rails_pulse_migrate/add_new_feature.rb"
     assert_match(/rails db:migrate:rails_pulse/, output)
     assert_no_match(/rails rails_pulse:migrate_routes/, output)
   end
