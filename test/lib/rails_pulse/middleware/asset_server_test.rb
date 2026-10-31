@@ -99,6 +99,124 @@ module RailsPulse
         Rails.unstub(:env)
       end
 
+      test "current version is cached as immutable" do
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/#{RailsPulse::VERSION}/rails-pulse.css")
+
+        _status, headers, _body = @middleware.call(env)
+
+        assert_includes headers["cache-control"], "immutable"
+      end
+
+      test "a version other than the running gem's is served but must revalidate" do
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/9.9.9/rails-pulse.css")
+
+        status, headers, _body = @middleware.call(env)
+
+        assert_equal 200, status
+        assert_equal "public, no-cache", headers["cache-control"]
+        assert_nil headers["expires"]
+      end
+
+      test "unversioned asset path is not cached as immutable" do
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/rails-pulse.css")
+
+        _status, headers, _body = @middleware.call(env)
+
+        refute_includes headers["cache-control"], "immutable"
+      end
+
+      # Compression Tests
+
+      test "javascript bundle is gzipped when the client accepts gzip" do
+        file = File.join(@assets_root, "rails-pulse-assets", "rails-pulse.js")
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/#{RailsPulse::VERSION}/rails-pulse.js",
+          "HTTP_ACCEPT_ENCODING" => "gzip, deflate, br")
+
+        status, headers, body = @middleware.call(env)
+        compressed = body.to_enum(:each).to_a.join
+
+        assert_equal 200, status
+        assert_equal "gzip", headers["content-encoding"]
+        assert_equal "Accept-Encoding", headers["vary"]
+        assert_equal compressed.bytesize.to_s, headers["content-length"]
+        assert_operator compressed.bytesize, :<, File.size(file) / 2
+        assert_equal File.binread(file), Zlib.gunzip(compressed)
+      end
+
+      test "asset is sent uncompressed without Accept-Encoding" do
+        file = File.join(@assets_root, "rails-pulse-assets", "rails-pulse.css")
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/rails-pulse.css")
+
+        _status, headers, body = @middleware.call(env)
+
+        assert_nil headers["content-encoding"]
+        assert_equal "Accept-Encoding", headers["vary"]
+        assert_equal File.binread(file), body.to_enum(:each).to_a.join
+      end
+
+      test "asset is sent uncompressed when gzip is refused with q=0" do
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/rails-pulse.css",
+          "HTTP_ACCEPT_ENCODING" => "gzip;q=0, identity")
+
+        _status, headers, _body = @middleware.call(env)
+
+        assert_nil headers["content-encoding"]
+      end
+
+      test "images are not gzipped and do not vary on encoding" do
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/rails-pulse-logo.png",
+          "HTTP_ACCEPT_ENCODING" => "gzip")
+
+        status, headers, _body = @middleware.call(env)
+
+        assert_equal 200, status
+        assert_nil headers["content-encoding"]
+        assert_nil headers["vary"]
+      end
+
+      test "HEAD request with gzip sends headers and no body" do
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/rails-pulse.js",
+          method: "HEAD", "HTTP_ACCEPT_ENCODING" => "gzip")
+
+        status, headers, body = @middleware.call(env)
+
+        assert_equal 200, status
+        assert_equal "gzip", headers["content-encoding"]
+        assert_empty body.to_enum(:each).to_a.join
+      end
+
+      # ETag Tests
+
+      test "asset response carries an etag" do
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/rails-pulse.css")
+
+        _status, headers, _body = @middleware.call(env)
+
+        assert_match %r{\AW/"\h+"\z}, headers["etag"]
+      end
+
+      test "matching If-None-Match returns 304 with no body" do
+        path = "/rails-pulse-assets/#{RailsPulse::VERSION}/rails-pulse.js"
+        _status, headers, _body = @middleware.call(Rack::MockRequest.env_for(path))
+
+        status, revalidated, body = @middleware.call(
+          Rack::MockRequest.env_for(path, "HTTP_IF_NONE_MATCH" => headers["etag"], "HTTP_ACCEPT_ENCODING" => "gzip")
+        )
+
+        assert_equal 304, status
+        assert_equal headers["etag"], revalidated["etag"]
+        assert_nil revalidated["content-length"]
+        assert_empty body
+      end
+
+      test "stale If-None-Match serves the full asset" do
+        env = Rack::MockRequest.env_for("/rails-pulse-assets/rails-pulse.css", "HTTP_IF_NONE_MATCH" => %(W/"stale"))
+
+        status, _headers, _body = @middleware.call(env)
+
+        assert_equal 200, status
+      end
+
       # MIME Type Tests
 
       test "MIME_TYPES includes css" do
