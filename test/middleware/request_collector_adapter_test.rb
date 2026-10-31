@@ -187,6 +187,14 @@ module RailsPulse
           "all /posts/:id requests should share one route record"
         assert RailsPulse::Route.exists?(controller_action: "home#index", path: "/posts/:id")
       end
+
+      test "percent-encoded ids share the same normalized route" do
+        get "/posts/a%00b"
+        get "/posts/%E2%80%AEabc"
+        get "/posts/caf%C3%A9"
+
+        assert_equal [ "/posts/:id" ], RailsPulse::Route.where("path LIKE '/posts/%'").pluck(:path)
+      end
     end
   end
 end
