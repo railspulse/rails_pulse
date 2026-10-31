@@ -205,7 +205,25 @@ class RailsPulse::TaggableTest < ActiveSupport::TestCase
     end
   end
 
+  test "add_tag keeps a tag added through another copy of the record" do
+    other = RailsPulse::Route.find(@untagged.id)
+    other.add_tag("first")
+
+    @untagged.add_tag("second")
+
+    assert_equal [ "first", "second" ], @untagged.reload.tag_list
+  end
+
   # remove_tag
+
+  test "remove_tag keeps a tag added through another copy of the record" do
+    other = RailsPulse::Route.find(@exact.id)
+    other.add_tag("added")
+
+    @exact.remove_tag("api")
+
+    assert_equal [ "added" ], @exact.reload.tag_list
+  end
 
   test "remove_tag removes existing tag" do
     result = @exact.remove_tag("api")

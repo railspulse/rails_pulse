@@ -38,22 +38,29 @@ module RailsPulse
       # Validate tag format and length
       return false unless valid_tag_name?(tag)
 
-      current_tags = tag_list
-      unless current_tags.include?(tag.to_s)
-        current_tags << tag.to_s
-        self.tag_list = current_tags
-        save
-      else
-        true  # Tag already exists, return success
+      # Tags live in one JSON column, so an edit is a read-modify-write. The
+      # row lock reloads the column first, so a concurrent edit from another
+      # process is kept rather than overwritten.
+      with_lock do
+        current_tags = tag_list
+        unless current_tags.include?(tag.to_s)
+          current_tags << tag.to_s
+          self.tag_list = current_tags
+          save
+        else
+          true  # Tag already exists, return success
+        end
       end
     end
 
     def remove_tag(tag)
-      current_tags = tag_list
-      if current_tags.include?(tag.to_s)
-        current_tags.delete(tag.to_s)
-        self.tag_list = current_tags
-        save
+      with_lock do
+        current_tags = tag_list
+        if current_tags.include?(tag.to_s)
+          current_tags.delete(tag.to_s)
+          self.tag_list = current_tags
+          save
+        end
       end
     end
 
