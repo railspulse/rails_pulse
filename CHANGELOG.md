@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `rails_pulse:migrate_routes` no longer aborts when a recorded path isn't a valid URI (for example a scanner request like `/user[email]`); such routes count as skipped and the migration continues (#414).
 - Updating an exception's preserve flag with a blank or non-boolean value now returns 422 instead of a 500 or silently preserving it, and resolving an already-resolved exception keeps its original resolved time.
 - Filtering the Queries page by SQL text (`q[normalized_sql_cont]`) no longer returns a 500; the filter narrows the table and the charts keep showing all queries.
+- Requests whose path segments are percent-encoded (such as `/posts/caf%C3%A9`) are now grouped under their route template (`/posts/:id`) instead of each distinct encoded id getting its own route row and chart.
 
 ## [0.5.1.pre.3] - 2026-10-29
 
