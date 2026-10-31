@@ -92,6 +92,7 @@
 
     <main id="main">
       <div class="container flex flex-col gap">
+        <%= render 'layouts/rails_pulse/flash' %>
         <% if !@has_summaries %>
           <%= render 'layouts/rails_pulse/setup_screen' %>
         <% else %>

@@ -301,6 +301,13 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
     assert_equal "Exception marked as resolved.", flash[:notice]
   end
 
+  test "update shows the flash notice on the exception page" do
+    patch rails_pulse.exception_path(@group), params: { status: "resolved" }
+    follow_redirect!
+
+    assert_select ".alert--positive[role=status]", text: "Exception marked as resolved."
+  end
+
   test "update returns 422 for an invalid status" do
     patch rails_pulse.exception_path(@group), params: { status: "deleted" }
 
