@@ -42,6 +42,38 @@ module RailsPulse
       refute_includes result, ":format", "format should not appear as a param segment"
     end
 
+    # Percent-Encoding Tests
+
+    test "normalizes a percent-encoded segment against its decoded param" do
+      assert_equal "/posts/:id", normalize("/posts/a%00b", { id: "a\u0000b" })
+    end
+
+    test "normalizes a percent-encoded multibyte segment" do
+      assert_equal "/posts/:id", normalize("/posts/%E2%80%AEabc", { id: "‮abc" })
+    end
+
+    test "normalizes a percent-encoded segment with format extension" do
+      assert_equal "/posts/:id.json", normalize("/posts/a%20b.json", { id: "a b", format: "json" })
+    end
+
+    test "normalizes encoded ids recognized by the router into one route" do
+      paths = [ "/posts/a%00b", "/posts/%E2%80%AEabc", "/posts/caf%C3%A9", "/posts/42" ]
+
+      normalized = paths.map do |path|
+        normalize(path, RailsPulse::RouteRecognizer.call(path, method: "GET"))
+      end
+
+      assert_equal [ "/posts/:id" ], normalized.uniq
+    end
+
+    test "keeps an unmatched encoded segment encoded" do
+      assert_equal "/files%20here/:id", normalize("/files%20here/7", { id: "7" })
+    end
+
+    test "leaves a segment with invalid percent-encoding unmatched" do
+      assert_equal "/posts/%E2%80/:id", normalize("/posts/%E2%80/7", { id: "7" })
+    end
+
     # Static Path Tests
 
     test "returns path unchanged when no route params" do

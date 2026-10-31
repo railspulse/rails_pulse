@@ -34,7 +34,7 @@ module RailsPulse
 
     def build_value_map
       route_params.each_with_object({}) do |(key, value), map|
-        str = value.to_s
+        str = value.to_s.b
         map[str] ||= []
         map[str] << key
       end
@@ -42,19 +42,30 @@ module RailsPulse
 
     def substitute_segment(segment, value_to_keys)
       # Exact match — only substitute if unambiguous (one key for this value)
-      if (keys = value_to_keys[segment]) && keys.length == 1
+      if (keys = value_to_keys[decode(segment)]) && keys.length == 1
         return ":#{keys.first}"
       end
 
       # Format extension match: e.g. "42.json" when id="42"
       if segment.include?(".")
         base, ext = segment.split(".", 2)
-        if (keys = value_to_keys[base]) && keys.length == 1
+        if (keys = value_to_keys[decode(base)]) && keys.length == 1
           return ":#{keys.first}.#{ext}"
         end
       end
 
       segment
+    end
+
+    # The path is still percent-encoded but the router hands over decoded
+    # parameters, so "/posts/a%20b" has to match id "a b". Decoded only for
+    # the lookup: an unmatched segment stays encoded in the stored path.
+    # Both sides are compared as bytes because route recognition outside a
+    # request returns binary-encoded parameters, a live request UTF-8 ones.
+    def decode(segment)
+      return segment.b unless segment.include?("%")
+
+      Rack::Utils.unescape_path(segment).b
     end
 
     # Replace dynamic-looking segments so scanner paths, bot probes, and
