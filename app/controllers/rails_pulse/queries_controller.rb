@@ -111,6 +111,17 @@ module RailsPulse
 
     def duration_range_type = :query
 
+    # Query-text filters (normalized_sql_cont, _eq, ...) read rails_pulse_queries,
+    # which only the index table joins. The charts and the show page's table
+    # query bare summaries, so they drop them.
+    def chart_filter_exclusions
+      ransack_params.keys.select { |key| key.to_s.start_with?("normalized_sql_") }
+    end
+
+    def build_show_table_ransack_params(ransack_params)
+      super(ransack_params.except(*chart_filter_exclusions))
+    end
+
     # Queries::Tables::Index handles index-page sorting; only apply ransack sort on show.
     def apply_ransack_sort? = show_action?
 

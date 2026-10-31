@@ -91,6 +91,35 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:table_data)
   end
 
+  test "index filters the table by query text without breaking the charts" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.queries_path, params: { q: { normalized_sql_cont: "SELECT" } }
+
+    assert_response :success
+    assert_not_nil assigns(:query_performance_chart_data)
+    assert_not_empty assigns(:table_data)
+
+    get rails_pulse_engine.queries_path, params: { q: { normalized_sql_cont: "no_such_sql_text" } }
+
+    assert_response :success
+    assert_empty assigns(:table_data)
+  end
+
+  test "index tolerates other query-text predicates" do
+    setup_basic_test_data
+
+    get rails_pulse_engine.queries_path, params: { q: { normalized_sql_start: "SELECT", normalized_sql_eq: "x" } }
+
+    assert_response :success
+  end
+
+  test "show tolerates a query-text filter" do
+    get rails_pulse_engine.query_path(rails_pulse_queries(:simple_query)), params: { q: { normalized_sql_cont: "x" } }
+
+    assert_response :success
+  end
+
   # Instance Variable Assignment Tests
 
   test "index assigns percentile_query_times_metric_card" do
