@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Filtering the Queries page by SQL text (`q[normalized_sql_cont]`) no longer returns a 500; the filter narrows the table and the charts keep showing all queries.
 - Requests whose path segments are percent-encoded (such as `/posts/caf%C3%A9`) are now grouped under their route template (`/posts/:id`) instead of each distinct encoded id getting its own route row and chart.
 - Dashboard assets served by the gem (hosts without an asset pipeline and `rails_pulse_server`) are now gzipped and revalidate by ETag, and only the running gem version is cached as immutable.
+- The dashboard now shows the confirmation or error after adding or removing a tag or updating an exception, so a rejected tag no longer looks the same as a saved one.
+- Adding or removing tags on the same record from two processes at once no longer loses one of the edits.
 
 ## [0.5.1.pre.3] - 2026-10-29
 
