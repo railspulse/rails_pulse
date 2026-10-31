@@ -248,6 +248,17 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "update keeps resolved_at when resolving an already-resolved group" do
+    resolved = rails_pulse_exception_groups(:resolved_group)
+    original_resolved_at = resolved.resolved_at
+
+    patch rails_pulse.exception_path(resolved), params: { status: "resolved" }
+
+    assert_equal "resolved", resolved.reload.status
+    assert_in_delta original_resolved_at, resolved.resolved_at, 1
+    assert_redirected_to rails_pulse.exception_path(resolved)
+  end
+
   test "update ignores an open group" do
     patch rails_pulse.exception_path(@group), params: { status: "ignored" }
 
@@ -319,5 +330,31 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
 
     refute_predicate @group.reload, :preserve?
     assert_equal "Exception no longer preserved.", flash[:notice]
+  end
+
+  # Edge Cases
+
+  test "update returns 422 for a blank preserve value" do
+    patch rails_pulse.exception_path(@group), params: { preserve: "" }
+
+    assert_response :unprocessable_entity
+    refute_predicate @group.reload, :preserve?
+  end
+
+  test "update returns 422 for a non-boolean preserve value" do
+    patch rails_pulse.exception_path(@group), params: { preserve: "banana" }
+
+    assert_response :unprocessable_entity
+    refute_predicate @group.reload, :preserve?
+  end
+
+  test "update accepts 1 and 0 as preserve values" do
+    patch rails_pulse.exception_path(@group), params: { preserve: "1" }
+
+    assert_predicate @group.reload, :preserve?
+
+    patch rails_pulse.exception_path(@group), params: { preserve: "0" }
+
+    refute_predicate @group.reload, :preserve?
   end
 end

@@ -15,6 +15,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - A custom range ending exactly on an hour (or midnight) now treats that bound as exclusive, so a 15:00-to-15:00 selection charts 24 hourly buckets instead of 25 and the chart matches the displayed range (#337).
 - `rails generate rails_pulse:upgrade` now stamps copied migrations with a fresh timestamp instead of the gem's original one, so they run after the app's Rails Pulse install migration and `db:migrate` no longer fails on databases that have not run it yet (#420).
 - `rails_pulse:migrate_routes` no longer aborts when a recorded path isn't a valid URI (for example a scanner request like `/user[email]`); such routes count as skipped and the migration continues (#414).
+- Updating an exception's preserve flag with a blank or non-boolean value now returns 422 instead of a 500 or silently preserving it, and resolving an already-resolved exception keeps its original resolved time.
 
 ## [0.5.1.pre.3] - 2026-10-29
 

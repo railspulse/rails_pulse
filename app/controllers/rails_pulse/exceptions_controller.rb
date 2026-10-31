@@ -4,6 +4,10 @@ module RailsPulse
     include TagFilterConcern
     include DeploymentMarkersConcern
 
+    # Only explicit boolean values are accepted. A cast would turn "" into nil
+    # (a NOT NULL violation) and any unknown string into true.
+    PRESERVE_VALUES = { "true" => true, "1" => true, "false" => false, "0" => false }.freeze
+
     before_action :set_exception_group, only: %i[show update]
 
     def index
@@ -93,7 +97,13 @@ module RailsPulse
     end
 
     def update_preserve
-      @exception_group.update!(preserve: ActiveModel::Type::Boolean.new.cast(params[:preserve]))
+      preserve = PRESERVE_VALUES[params[:preserve].to_s]
+      if preserve.nil?
+        head :unprocessable_entity
+        return
+      end
+
+      @exception_group.update!(preserve: preserve)
       flash[:notice] = @exception_group.preserve? ? "Exception preserved from cleanup." : "Exception no longer preserved."
       redirect_to exception_path(@exception_group)
     end
@@ -105,10 +115,15 @@ module RailsPulse
         return
       end
 
-      @exception_group.update!(
-        status: new_status,
-        resolved_at: new_status == "resolved" ? Time.current : nil
-      )
+      # Resolving an already-resolved group (a double-click or a stale tab)
+      # keeps the original resolved_at.
+      resolved_at =
+        if new_status != "resolved" then nil
+        elsif @exception_group.status == "resolved" then @exception_group.resolved_at || Time.current
+        else Time.current
+        end
+
+      @exception_group.update!(status: new_status, resolved_at: resolved_at)
 
       flash[:notice] = "Exception marked as #{new_status}."
       redirect_to exception_path(@exception_group)
