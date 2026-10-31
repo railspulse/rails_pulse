@@ -184,6 +184,28 @@ class RailsPulse::TagsControllerTest < ActionDispatch::IntegrationTest
     assert_response :redirect
   end
 
+  test "create action shows the success notice on the next page" do
+    post rails_pulse_engine.add_tag_path("route", @test_route.id, tag: "staging")
+    follow_redirect!
+
+    assert_select ".alert--positive[role=status]", text: "Tag added"
+  end
+
+  test "create action shows the validation error on the next page" do
+    post rails_pulse_engine.add_tag_path("route", @test_route.id, tag: "bad tag!")
+    follow_redirect!
+
+    assert_select ".alert--negative[role=alert]", text: "Tag can only contain letters, numbers, hyphens, and underscores"
+    assert_select ".alert--positive", count: 0
+  end
+
+  test "destroy action shows the failure on the next page" do
+    delete rails_pulse_engine.remove_tag_path("route", @test_route.id, tag: "nonexistent")
+    follow_redirect!
+
+    assert_select ".alert--negative[role=alert]", text: "Failed to remove tag"
+  end
+
   test "set_taggable handles invalid taggable type" do
     post rails_pulse_engine.add_tag_path("invalid_type", 1, tag: "test")
 
