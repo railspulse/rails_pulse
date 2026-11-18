@@ -13,6 +13,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `rails rails_pulse:status` now closes with threshold suggestions, each with an initializer line to paste, when the last summarized day shows route, query or job thresholds that are too noisy or never fire. They are advice only and never change the exit status (#385).
 - Threshold recommendations (the status task, the insights API, `rails-pulse insights` and the MCP tool) now cover `job_thresholds` as well as routes and queries.
 - `config.default_disabled_tags` (for example `["ignored"]`) hides the listed tags in every dashboard session until a user switches them back on in Global Filters, so tagged noise stays hidden across logins and for the whole team (#331).
+- A "TUI" button under the theme toggle switches the dashboard to a terminal-style look (monospace type, square corners, brand-yellow accents) in light or dark; the choice is remembered per browser.
+
+### Changed
+
+- Navigation moves from the top bar into a left sidebar that can be collapsed to icons; the collapsed state is remembered per browser and restored without a flash on load.
+- The dashboard now opens with a status panel that says whether anything needs attention and which areas are affected, with the Needs Attention list directly beneath it and Deployments and Storage in a side column.
+- The dark theme is a warm charcoal instead of neutral grey, the theme toggle is labelled "Dark mode" or "Light mode" for the mode it switches to, and metric comparisons read "vs previous 7 days".
 
 ### Fixed
 
@@ -27,7 +34,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adding or removing tags on the same record from two processes at once no longer loses one of the edits.
 - Requests and Deployments are now in the navigation, which collapses into the menu button below 1280px wide instead of making the whole page scroll sideways.
 - The Tags column header on the Routes, Requests and Queries tables is no longer a sort link that silently fell back to the default order.
-- The dashboard's Exceptions badge explains "quiet", "firing" and "critical" on hover, and why a firing group below the warning threshold has no Needs Attention entry.
+- The dashboard's Exceptions status explains "quiet", "firing" and "critical" on hover, and why a firing group below the warning threshold has no Needs Attention entry.
+- Charts on tablet and phone widths are capped in height instead of growing taller than the screen.
 - On a phone, the request page's Operations table keeps Duration and Impact on screen.
 
 ## [0.5.1.pre.3] - 2026-10-29
