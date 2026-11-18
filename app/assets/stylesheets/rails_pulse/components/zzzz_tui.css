@@ -171,6 +171,9 @@ html[data-ui="tui"] .verdict-cell__label {
 html[data-ui="tui"] .sidebar-menu__button[aria-current="page"],
 html[data-ui="tui"] .console-sidebar__tui[aria-pressed="true"] {
   --btn-background: var(--tui-fill);
+  /* Hover stays a yellow fill: the default hover is a faint tint, which
+     would leave this dark text on a dark background. */
+  --btn-hover-color: #ffdc6b;
   --btn-color: #1d1a12;
   color: #1d1a12;
 }
