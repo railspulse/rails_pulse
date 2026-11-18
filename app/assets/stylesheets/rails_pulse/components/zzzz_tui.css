@@ -12,62 +12,66 @@
 }
 
 html[data-ui="tui"] {
-  /* Paper printout */
-  --color-bg: #efe9d8;
-  --color-surface: #f8f3e5;
-  --color-sidebar: #e9e2ce;
-  --color-text: #1d1b16;
-  --color-text-reversed: #f8f3e5;
-  --color-text-subtle: #655e4f;
-  --color-link: #0a6b2d;
-  --color-accent: #0a6b2d;
-  --color-accent-strong: #07501f;
-  --color-accent-soft: #d9e8c8;
-  --color-border-light: #ded6c0;
-  --color-border: #c4baa0;
-  --color-border-dark: #8f866f;
-  --color-selected: #d9e8c8;
-  --color-primary: #1d1b16;
-  --color-secondary: #e6dfcb;
+  /* Paper printout. Brand yellow is too pale to read as text on paper, so
+     text accents use a dark ochre and the yellow itself is kept for fills. */
+  --color-bg: #f1ead6;
+  --color-surface: #faf5e6;
+  --color-sidebar: #eae2cb;
+  --color-text: #1d1a12;
+  --color-text-reversed: #faf5e6;
+  --color-text-subtle: #675f4c;
+  --color-link: #7a5600;
+  --color-accent: #7a5600;
+  --color-accent-strong: #5c4100;
+  --color-accent-soft: #ffe58a;
+  --tui-fill: #ffc91f;
+  --color-border-light: #e0d7bd;
+  --color-border: #c8bd9c;
+  --color-border-dark: #948967;
+  --color-selected: #ffe58a;
+  --color-primary: #1d1a12;
+  --color-secondary: #e8dfc6;
   --color-negative: #b3261e;
-  --color-positive: #0a6b2d;
-  --color-warning-text: #8f5200;
-  --status-ok: #0a6b2d;
-  --status-warning: #b86e00;
+  --color-positive: #1f6b2d;
+  --color-warning-text: #a8480a;
+  --status-ok: #1f6b2d;
+  --status-warning: #c85a0c;
   --status-critical: #b3261e;
-  --header-bg: #efe9d8;
-  --header-link: #1d1b16;
-  --header-link-hover-bg: #e6dfcb;
+  --header-bg: #f1ead6;
+  --header-link: #1d1a12;
+  --header-link-hover-bg: #e8dfc6;
   --card-shadow: none;
 }
 
 html[data-ui="tui"][data-color-scheme="dark"] {
-  /* Phosphor on near-black */
-  --color-bg: #060806;
-  --color-surface: #0a0e0a;
-  --color-sidebar: #040604;
-  --color-text: #cfe8cf;
-  --color-text-reversed: #060806;
-  --color-text-subtle: #7fa387;
-  --color-link: #4dff88;
-  --color-accent: #33ff66;
-  --color-accent-strong: #7dffa0;
-  --color-accent-soft: #0f3a1c;
-  --color-border-light: #14261a;
-  --color-border: #1e4429;
-  --color-border-dark: #2c6e3c;
-  --color-selected: #0f3a1c;
-  --color-primary: #33ff66;
-  --color-secondary: #102015;
+  /* Amber phosphor on near-black. Warnings move to orange so they stay
+     distinct from the yellow used for links and headings. */
+  --color-bg: #080705;
+  --color-surface: #0e0c08;
+  --color-sidebar: #050403;
+  --color-text: #ecdfbd;
+  --color-text-reversed: #080705;
+  --color-text-subtle: #9a8d6a;
+  --color-link: #ffc91f;
+  --color-accent: #ffc91f;
+  --color-accent-strong: #ffdc6b;
+  --color-accent-soft: #3a2e06;
+  --tui-fill: #ffc91f;
+  --color-border-light: #1f1a0c;
+  --color-border: #3a3012;
+  --color-border-dark: #6b5a1f;
+  --color-selected: #3a2e06;
+  --color-primary: #ffc91f;
+  --color-secondary: #1a160a;
   --color-negative: #ff5c5c;
-  --color-positive: #33ff66;
-  --color-warning-text: #ffb000;
-  --status-ok: #33ff66;
-  --status-warning: #ffb000;
+  --color-positive: #5fd97a;
+  --color-warning-text: #ff8a3d;
+  --status-ok: #5fd97a;
+  --status-warning: #ff8a3d;
   --status-critical: #ff5c5c;
-  --header-bg: #060806;
-  --header-link: #cfe8cf;
-  --header-link-hover-bg: #102015;
+  --header-bg: #080705;
+  --header-link: #ecdfbd;
+  --header-link-hover-bg: #1a160a;
 }
 
 html[data-ui="tui"] .card,
@@ -160,4 +164,23 @@ html[data-ui="tui"] .verdict-cell__figure {
 html[data-ui="tui"] .verdict-cell__label {
   font-size: var(--text-xs);
   white-space: nowrap;
+}
+
+/* The current section is a solid yellow bar with dark text, like a selected
+   row in a terminal menu. */
+html[data-ui="tui"] .sidebar-menu__button[aria-current="page"],
+html[data-ui="tui"] .console-sidebar__tui[aria-pressed="true"] {
+  --btn-background: var(--tui-fill);
+  --btn-color: #1d1a12;
+  color: #1d1a12;
+}
+
+html[data-ui="tui"] .sidebar-menu__button[aria-current="page"] rails-pulse-icon,
+html[data-ui="tui"] .console-sidebar__tui[aria-pressed="true"] rails-pulse-icon {
+  color: #1d1a12;
+}
+
+html[data-ui="tui"] .console-brand__mark,
+html[data-ui="tui"] .console-brand__mark::after {
+  background: var(--tui-fill);
 }
