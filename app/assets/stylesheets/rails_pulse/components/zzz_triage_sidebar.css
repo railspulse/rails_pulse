@@ -1,0 +1,45 @@
+/* Tokens the sidebar layout reads, in the triage slate palette. */
+:root {
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-accent-soft: #e4ecfd;
+  --color-sidebar: #ffffff;
+  --header-bg: color-mix(in srgb, var(--color-bg) 88%, transparent);
+}
+
+html[data-color-scheme="dark"] {
+  --color-accent: #7fb2ff;
+  --color-accent-strong: #a5c8ff;
+  --color-accent-soft: #16264a;
+  --color-sidebar: #0d1524;
+  --header-bg: color-mix(in srgb, var(--color-bg) 88%, transparent);
+}
+
+/* Brand mark: the pulsing dot rather than a filled tile. */
+.console-brand__mark {
+  position: relative;
+  inline-size: 0.6rem;
+  block-size: 0.6rem;
+  margin-inline: 0.35rem;
+  border-radius: 50%;
+  background: #f5b400;
+  flex-shrink: 0;
+}
+
+.console-brand__mark::before {
+  content: none;
+}
+
+.console-brand__mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #f5b400;
+  clip-path: none;
+  animation: brand-pulse 2.4s ease-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console-brand__mark::after { animation: none; opacity: 0; }
+}

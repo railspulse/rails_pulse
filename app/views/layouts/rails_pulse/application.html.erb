@@ -39,54 +39,75 @@
     <%= tag.script "", src: rails_pulse.asset_path("rails-pulse.js"), defer: true, nonce: rails_pulse_csp_nonce %>
   </head>
 
-  <body class="header-layout">
+  <body class="console-layout<%= ' console-layout--bare' unless @has_summaries %>">
     <% if @has_summaries %>
+    <%# Persistent navigation on wide screens; narrower screens use the sheet
+        opened from the top bar. %>
+    <aside id="sidebar" class="show@xl">
+      <%= link_to rails_pulse.root_path, class: "console-brand", title: "Rails Pulse v#{RailsPulse::VERSION}" do %>
+        <span class="console-brand__mark" aria-hidden="true"></span>
+        <span class="console-brand__name">Rails Pulse</span>
+        <span class="console-brand__version">v<%= RailsPulse::VERSION %></span>
+      <% end %>
+
+      <nav class="sidebar-menu__items console-nav" aria-label="Main">
+        <span class="console-nav__label">Monitor</span>
+        <%= render 'layouts/rails_pulse/menu_items', skip_return_link: true %>
+      </nav>
+
+      <div class="console-sidebar__footer sidebar-menu__items">
+        <%= render 'layouts/rails_pulse/return_link' %>
+        <div data-controller="rails-pulse--color-scheme">
+          <%= link_to '#', class: "btn sidebar-menu__button", "aria-label": "Toggle color scheme", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
+            <%= rails_pulse_icon 'sun', width: '16' %>
+            <span class="overflow-ellipsis">Toggle theme</span>
+          <% end %>
+        </div>
+      </div>
+    </aside>
+
     <header id="header">
-      <div class="flex justify-between container">
+      <div class="console-topbar__start">
         <div class="hide@xl" data-controller="rails-pulse--dialog">
-          <button type="button" class="btn btn--icon" data-action="rails-pulse--dialog#showModal">
-            <%= rails_pulse_icon 'menu', width: '20' %>
+          <button type="button" class="btn btn--icon btn--borderless" aria-label="Open menu" data-action="rails-pulse--dialog#showModal">
+            <%= rails_pulse_icon 'menu', width: '18' %>
           </button>
 
-        <dialog class="sheet sheet--left" style="--sheet-size: 288px;" data-rails-pulse--dialog-target="menu" data-action="click->rails-pulse--dialog#closeOnClickOutside">
-          <div class="sheet__content p-2">
-            <div class="sidebar-menu">
-              <%= link_to rails_pulse.root_path, class: "btn sidebar-menu__button" do %>
-                <div class="flex flex-col text-start leading-tight overflow-hidden">
-                  <span class="overflow-ellipsis font-semibold">Rails Pulse</span>
-                </div>
-              <% end %>
-              <div class="sidebar-menu__content">
-                <div class="sidebar-menu__group">
-                  <nav class="sidebar-menu__items">
-                    <%= render 'layouts/rails_pulse/menu_items' %>
-                  </nav>
+          <dialog class="sheet sheet--left" style="--sheet-size: 288px;" data-rails-pulse--dialog-target="menu" data-action="click->rails-pulse--dialog#closeOnClickOutside">
+            <div class="sheet__content p-2">
+              <div class="sidebar-menu">
+                <%= link_to rails_pulse.root_path, class: "console-brand" do %>
+                  <span class="console-brand__mark" aria-hidden="true"></span>
+                  <span class="console-brand__name">Rails Pulse</span>
+                <% end %>
+                <div class="sidebar-menu__content">
+                  <div class="sidebar-menu__group">
+                    <nav class="sidebar-menu__items">
+                      <%= render 'layouts/rails_pulse/menu_items' %>
+                    </nav>
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
-        </dialog>
-      </div>
+          </dialog>
+        </div>
 
-      <div class="flex items-center gap">
-        <%= link_to rails_pulse.root_path, class: "brand flex items-center mie-2", title: "Rails Pulse v#{RailsPulse::VERSION}" do %>
-          <span class="brand-mark" aria-hidden="true"></span>
-          <span class="font-bold">Rails Pulse</span>
+        <% topbar_title = breadcrumbs.last&.dig(:title)
+           topbar_title = "Dashboard" if topbar_title.blank? || topbar_title == "Home" %>
+        <span class="console-topbar__title"><%= topbar_title %></span>
+
+        <% if content_for?(:topbar_status) %>
+          <div class="console-topbar__status"><%= yield :topbar_status %></div>
         <% end %>
-        <%# Inline only where every link fits; narrower screens use the sheet
-            above, or the header would push the whole page sideways. %>
-        <nav class="flex items-center gap text-sm text-subtle show@xl" style="--column-gap: 1rem">
-          <%= render 'layouts/rails_pulse/menu_items' %>
-        </nav>
       </div>
 
-      <div class="flex items-center gap" style="--column-gap: 0.5rem">
+      <div class="console-topbar__end">
         <%= render 'layouts/rails_pulse/time_range_selector' %>
         <%= render 'layouts/rails_pulse/global_filters' %>
 
-        <div data-controller="rails-pulse--color-scheme">
+        <div class="hide@xl" data-controller="rails-pulse--color-scheme">
           <%= link_to '#', "aria-label": "Toggle color scheme", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
-            <%= rails_pulse_icon 'sun', width: '48' %>
+            <%= rails_pulse_icon 'sun', width: '20' %>
           <% end %>
         </div>
       </div>

@@ -84,8 +84,6 @@
     <% end %>
   </div>
 
-  <div class="triage-body">
-    <div class="triage-main">
 <% metric_strip_cards = [
     @percentile_response_times_metric_card&.merge(
       link_url: routes_path(chart_type: "response_time"),
@@ -103,6 +101,9 @@
     )
   end %>
   <%= render "rails_pulse/components/metric_strip", metrics_data: metric_strip_cards %>
+
+  <div class="triage-body">
+    <div class="triage-main">
 
     <%# Response Time Percentiles (P50 + P95 + P99) — 60% width %>
     <% response_time_toggles = capture do %>

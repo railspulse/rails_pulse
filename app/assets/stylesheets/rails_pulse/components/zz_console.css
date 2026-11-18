@@ -1,0 +1,381 @@
+/* Console shell: persistent sidebar, slim top bar, scrolling main area. */
+
+.console-layout {
+  display: grid;
+  grid-template-areas: "header" "main";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  block-size: 100dvh;
+}
+
+@media (min-width: 80rem) {
+  .console-layout:not(.console-layout--bare) {
+    grid-template-areas: "sidebar header" "sidebar main";
+    grid-template-columns: 15rem minmax(0, 1fr);
+  }
+}
+
+/* ---------- Sidebar ---------- */
+
+#sidebar {
+  background-color: var(--color-sidebar);
+  border-inline-end: 1px solid var(--color-border);
+  padding: var(--size-3);
+  row-gap: var(--size-4);
+  overflow-y: auto;
+}
+
+.console-brand {
+  align-items: center;
+  color: var(--color-text);
+  column-gap: var(--size-2);
+  display: flex;
+  padding: var(--size-2);
+  text-decoration: none;
+}
+
+.console-brand__mark {
+  background: var(--color-accent);
+  border-radius: 6px;
+  block-size: 20px;
+  inline-size: 20px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+/* A pulse trace drawn with a clipped pseudo-element */
+.console-brand__mark::after {
+  background: white;
+  clip-path: polygon(0 45%, 28% 45%, 40% 10%, 58% 90%, 70% 45%, 100% 45%, 100% 58%, 76% 58%, 58% 100%, 40% 38%, 34% 58%, 0 58%);
+  content: "";
+  inset: 5px 3px;
+  position: absolute;
+}
+
+.console-brand__name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.01em;
+}
+
+.console-brand__version {
+  color: var(--color-text-subtle);
+  font-size: 11px;
+  margin-inline-start: auto;
+}
+
+.console-nav {
+  row-gap: 2px;
+}
+
+.console-nav__label {
+  color: var(--color-text-subtle);
+  font-size: 11px;
+  font-weight: var(--font-medium);
+  letter-spacing: 0.04em;
+  padding: 0 var(--size-2) var(--size-1);
+  text-transform: uppercase;
+}
+
+.console-sidebar__footer {
+  border-block-start: 1px solid var(--color-border);
+  margin-block-start: auto;
+  padding-block-start: var(--size-3);
+  row-gap: 2px;
+}
+
+.sidebar-menu__button {
+  --btn-color: var(--color-text-subtle);
+  --btn-hover-color: color-mix(in srgb, var(--color-text) 6%, transparent);
+  --btn-padding: 0.4rem var(--size-2);
+  --btn-radius: 6px;
+  --btn-font-size: 13px;
+  --btn-font-weight: var(--font-medium);
+  block-size: 2rem;
+  column-gap: 0.625rem;
+  text-decoration: none;
+}
+
+.sidebar-menu__button:hover {
+  color: var(--color-text);
+}
+
+.sidebar-menu__button[aria-current="page"] {
+  --btn-background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  --btn-color: var(--color-text);
+}
+
+.sidebar-menu__button[aria-current="page"] rails-pulse-icon {
+  color: var(--color-accent);
+}
+
+/* ---------- Top bar ---------- */
+
+#header {
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  background-color: var(--header-bg);
+  block-size: 3.25rem;
+  border-block-end: 1px solid var(--color-border);
+  column-gap: var(--size-4);
+  justify-content: space-between;
+  padding-inline: var(--size-6);
+}
+
+.console-topbar__start,
+.console-topbar__end {
+  align-items: center;
+  display: flex;
+  min-inline-size: 0;
+}
+
+.console-topbar__start {
+  column-gap: var(--size-3);
+  flex: 1;
+}
+
+.console-topbar__end {
+  column-gap: var(--size-2);
+  flex-shrink: 0;
+}
+
+#header .console-topbar__end > div > a {
+  align-items: center;
+  border-radius: 6px;
+  color: var(--color-text-subtle);
+  display: flex;
+  padding: 0.375rem;
+}
+
+#header .console-topbar__end > div > a:hover {
+  background-color: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.console-topbar__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.console-topbar__status {
+  border-inline-start: 1px solid var(--color-border);
+  min-inline-size: 0;
+  overflow: hidden;
+  padding-inline-start: var(--size-3);
+}
+
+.console-topbar__status .dashboard-health-bar {
+  min-height: 0;
+}
+
+.console-topbar__status .dashboard-health-bar__badges {
+  flex-wrap: nowrap;
+  gap: var(--size-1);
+}
+
+.health-badge {
+  border-color: transparent !important;
+  border-radius: 999px;
+  column-gap: 0.375rem;
+  font-weight: var(--font-medium);
+  padding: 0.25rem 0.625rem;
+  white-space: nowrap;
+  background: transparent;
+}
+
+#header a.health-badge-link {
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+#header a.health-badge-link:hover .health-badge {
+  background: var(--color-secondary);
+}
+
+/* The status strip does not fit beside the controls on a phone, so the
+   dashboard shows it as a scrolling row instead of dropping it. */
+@media (max-width: 48rem) {
+  #header {
+    padding-inline: var(--size-3);
+  }
+
+  .console-topbar__status {
+    border-inline-start: 0;
+    overflow-x: auto;
+    padding-inline-start: 0;
+    scrollbar-width: none;
+  }
+
+  .console-topbar__title {
+    display: none;
+  }
+}
+
+/* ---------- Main ---------- */
+
+#main {
+  padding: var(--size-6);
+}
+
+.container {
+  --container-width: 84rem;
+}
+
+.container.gap {
+  row-gap: var(--size-4);
+}
+
+/* ---------- Surfaces ---------- */
+
+.card {
+  border-radius: 10px;
+  box-shadow: none;
+  padding: var(--size-5);
+}
+
+.popover.card,
+.dialog {
+  box-shadow: 0 8px 30px rgb(0 0 0 / 0.12);
+}
+
+.card.metric-strip {
+  padding: 0;
+}
+
+.panel-icon-bar {
+  top: var(--size-5);
+  right: var(--size-5);
+}
+
+/* Panel titles: quiet sentence-weight labels instead of shouting caps */
+.card h2.uppercase,
+.metric-strip__title {
+  color: var(--color-text-subtle);
+  font-size: 12px;
+  font-weight: var(--font-medium);
+  letter-spacing: 0.02em;
+}
+
+/* Help and open-in-detail icons stay available but recede until wanted */
+.panel-icon-bar a,
+.metric-strip__section a {
+  color: var(--color-text-subtle);
+  opacity: 0.7;
+  transition: opacity var(--time-150) ease, color var(--time-150) ease;
+}
+
+.panel-icon-bar a:hover,
+.metric-strip__section a:hover,
+.card:hover .panel-icon-bar a:focus-visible {
+  color: var(--color-accent);
+  opacity: 1;
+}
+
+.metric-strip__section {
+  padding: var(--size-4) var(--size-5);
+}
+
+.metric-strip__section h4 {
+  font-size: 1.5rem;
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.02em;
+}
+
+.btn {
+  --btn-box-shadow: none;
+}
+
+.btn--primary {
+  --btn-hover-color: var(--color-accent-strong);
+}
+
+.badge--positive,
+.badge--negative {
+  --badge-box-shadow: none;
+  border-radius: 999px;
+}
+
+.badge--positive {
+  --badge-background: color-mix(in srgb, var(--color-positive) 14%, transparent);
+  --badge-color: var(--color-positive);
+}
+
+.badge--negative {
+  --badge-background: color-mix(in srgb, var(--color-negative) 14%, transparent);
+  --badge-color: var(--color-negative);
+}
+
+.series-toggle {
+  border-radius: 999px;
+}
+
+/* ---------- Time range trigger ---------- */
+
+html .time-range-trigger,
+html[data-color-scheme="dark"] .time-range-trigger {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  border-radius: 6px;
+  color: var(--color-text);
+  font-size: 13px;
+  padding-block: 0.3rem;
+}
+
+html .time-range-trigger:hover,
+html[data-color-scheme="dark"] .time-range-trigger:hover,
+html .time-range-trigger:has(+ [popover]:popover-open),
+html[data-color-scheme="dark"] .time-range-trigger:has(+ [popover]:popover-open) {
+  background: var(--color-secondary);
+  border-color: var(--color-border-dark);
+}
+
+/* ---------- Attention list ---------- */
+
+.attention-item {
+  border-bottom-color: var(--color-border-light);
+  border-radius: 6px;
+  padding: var(--size-2);
+  margin-inline: calc(-1 * var(--size-2));
+}
+
+.attention-item:hover {
+  background: color-mix(in srgb, var(--color-text) 3%, transparent);
+}
+
+.attention-item__badge {
+  border-radius: 999px;
+}
+
+.global-filters-active::after {
+  background-color: var(--color-accent);
+}
+
+/* ---------- Tables ---------- */
+
+.table th,
+.table th a {
+  color: var(--color-text-subtle);
+  font-size: 12px;
+  font-weight: var(--font-medium);
+  text-decoration: none;
+}
+
+.table th a:hover {
+  color: var(--color-text);
+}
+
+.table td a {
+  text-decoration: none;
+}
+
+.table td a:hover {
+  text-decoration: underline;
+}
+
+.table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-text) 3%, transparent);
+}
