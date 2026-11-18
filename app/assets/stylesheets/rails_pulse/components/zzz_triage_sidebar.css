@@ -146,3 +146,9 @@ html[data-color-scheme="dark"] {
   backdrop-filter: none;
   background-color: var(--color-bg);
 }
+
+/* Scheme-specific content: only the variant for the current scheme shows. */
+html[data-color-scheme="dark"] .scheme-light-only,
+html:not([data-color-scheme="dark"]) .scheme-dark-only {
+  display: none !important;
+}

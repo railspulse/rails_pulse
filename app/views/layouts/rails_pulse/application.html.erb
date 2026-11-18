@@ -69,9 +69,14 @@
       <div class="console-sidebar__footer sidebar-menu__items">
         <%= render 'layouts/rails_pulse/return_link' %>
         <div data-controller="rails-pulse--color-scheme">
-          <%= link_to '#', class: "btn sidebar-menu__button", "aria-label": "Toggle color scheme", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
-            <%= rails_pulse_icon 'sun', width: '16' %>
-            <span class="overflow-ellipsis">Toggle theme</span>
+          <%# Both states are rendered and the stylesheet shows the one for the
+              current scheme, so the label is right on first paint. It names
+              the mode a click switches to. %>
+          <%= link_to '#', class: "btn sidebar-menu__button", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
+            <%= rails_pulse_icon 'moon', width: '16', class: "scheme-light-only" %>
+            <span class="overflow-ellipsis scheme-light-only">Dark mode</span>
+            <%= rails_pulse_icon 'sun', width: '16', class: "scheme-dark-only" %>
+            <span class="overflow-ellipsis scheme-dark-only">Light mode</span>
           <% end %>
         </div>
         <div data-controller="rails-pulse--ui-mode">
@@ -134,8 +139,9 @@
           <% end %>
         </div>
         <div class="hide@xl" data-controller="rails-pulse--color-scheme">
-          <%= link_to '#', "aria-label": "Toggle color scheme", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
-            <%= rails_pulse_icon 'sun', width: '20' %>
+          <%= link_to '#', "aria-label": "Switch between light and dark mode", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
+            <%= rails_pulse_icon 'moon', width: '20', class: "scheme-light-only" %>
+            <%= rails_pulse_icon 'sun', width: '20', class: "scheme-dark-only" %>
           <% end %>
         </div>
       </div>
