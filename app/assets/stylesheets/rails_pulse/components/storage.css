@@ -1,18 +1,5 @@
 /* Storage status page */
 
-.health-badge-link {
-  text-decoration: none;
-  color: inherit;
-}
-
-.health-badge-link:hover {
-  text-decoration: none;
-}
-
-.health-badge-link:hover .badge {
-  background-color: var(--color-secondary);
-}
-
 .storage-overview-card {
   min-height: 6.5rem;
 }

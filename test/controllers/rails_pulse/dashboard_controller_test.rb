@@ -78,14 +78,15 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_nil cell["title"]
   end
 
-  test "health bar omits the exceptions badge when tracking is disabled" do
+  test "verdict panel omits the exceptions cell when tracking is disabled" do
     original = RailsPulse.configuration.track_exceptions
     RailsPulse.configuration.track_exceptions = false
 
     get rails_pulse.root_path
 
     assert_response :success
-    assert_select ".dashboard-health-bar", { text: /Exceptions/, count: 0 }
+    assert_select ".verdict-cell"
+    assert_nil verdict_cell("Exceptions")
   ensure
     RailsPulse.configuration.track_exceptions = original
   end

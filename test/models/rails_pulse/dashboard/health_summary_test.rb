@@ -486,7 +486,7 @@ module RailsPulse
         assert_equal({ healthy: 1, slow: 0, critical: 0 }, health[:queries])
       end
 
-      # Storage Health Badge Tests
+      # Storage Health Tests
 
       test "storage value has healthy, slow, and critical keys" do
         create_overall_hourly_summary(period_end: 30.minutes.ago)
