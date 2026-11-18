@@ -51,17 +51,26 @@
   end
   healthy_names = areas.select { |area| area[:state] == "ok" }.map { |area| area[:name].downcase }
 
+  critical_total = @needs_attention[:critical].size
+  warning_total = @needs_attention[:warning].size
   title =
-    if troubled.any?
-      troubled.to_sentence.upcase_first
-    elsif state == "ok"
+    if state == "ok"
       "All systems operational"
+    elsif troubled.any? && troubled.size <= 2
+      troubled.to_sentence.upcase_first
+    elsif @needs_attention[:total] > 0
+      # Too many separate problems to name: count them by severity instead.
+      [ ("#{critical_total} critical" if critical_total > 0),
+        ("#{pluralize(warning_total, "warning")}" if warning_total > 0) ].compact.to_sentence
     else
-      "#{pluralize(@needs_attention[:total], "issue")} to review"
+      "#{pluralize(troubled_areas.size, "area")} need attention"
     end
+  troubled_names = troubled_areas.map { |area| area[:name].downcase }
   summary =
     if state == "ok"
       "Nothing is slow, failing or firing."
+    elsif troubled.size > 2
+      "Across #{troubled_names.to_sentence}." + (healthy_names.any? ? " #{healthy_names.to_sentence.upcase_first} #{healthy_names.size == 1 ? "is" : "are"} healthy." : "")
     elsif healthy_names.any?
       "#{healthy_names.to_sentence.upcase_first} #{healthy_names.size == 1 ? "is" : "are"} healthy."
     else
@@ -109,7 +118,8 @@
         <% parts = [] %>
         <% parts << "#{health[:critical]} #{area.fetch(:critical_label, "critical")}" if health[:critical] > 0 && health[:slow] > 0 %>
         <% parts << "#{health[:slow]} #{area.fetch(:slow_label, "slow")}" if health[:critical] > 0 && health[:slow] > 0 %>
-        <% parts << "#{number_with_delimiter(health[:healthy])} #{area.fetch(:healthy_label, "healthy")}" if health[:healthy] > 0 %>
+        <%# With two problem states the breakdown fills the line; healthy is the remainder. %>
+        <% parts << "#{number_with_delimiter(health[:healthy])} #{area.fetch(:healthy_label, "healthy")}" if health[:healthy] > 0 && parts.empty? %>
         <% detail = parts.join(" · ") %>
       <% end %>
       <% cell = capture do %>
