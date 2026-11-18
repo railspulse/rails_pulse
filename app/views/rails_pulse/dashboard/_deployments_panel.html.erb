@@ -40,19 +40,22 @@
 
   <div class="deployments-panel-rows grow">
     <% if @recent_deployments.any? %>
-      <% @recent_deployments.each do |deployment| %>
-        <div class="deployments-panel-row">
-          <span class="deployments-panel-row__revision truncate">
-            <%= link_to deployment_path(deployment) do %>
-              <code><%= deployment.short_revision %></code>
-            <% end %>
-          </span>
-          <%= render "rails_pulse/deployments/status_badge", deployment: deployment %>
-          <span class="deployments-panel-row__time text-xs text-subtle">
-            <%= human_readable_occurred_at(deployment.started_at) %>
-          </span>
-        </div>
-      <% end %>
+      <ol class="deploy-timeline">
+        <% @recent_deployments.each do |deployment| %>
+          <li class="deploy-timeline__item<%= " deploy-timeline__item--active" if deployment.in_progress? %>">
+            <div class="deploy-timeline__head">
+              <%= link_to deployment_path(deployment), class: "deploy-timeline__revision truncate" do %>
+                <code><%= deployment.short_revision %></code>
+              <% end %>
+              <%= render "rails_pulse/deployments/status_badge", deployment: deployment %>
+            </div>
+            <p class="deploy-timeline__time text-xs text-subtle">
+              <%= human_readable_occurred_at(deployment.started_at) %>
+              · <%= time_ago_in_words(deployment.started_at) %> ago
+            </p>
+          </li>
+        <% end %>
+      </ol>
     <% else %>
       <p class="text-sm text-subtle">
         No deployments recorded in the <%= humanize_time_range(@time_range.selected_time_range) %>.

@@ -69,7 +69,8 @@
       </div>
 
       <div class="flex items-center gap">
-        <%= link_to rails_pulse.root_path, class: "flex items-center gap mie-2", title: "Rails Pulse v#{RailsPulse::VERSION}" do %>
+        <%= link_to rails_pulse.root_path, class: "brand flex items-center mie-2", title: "Rails Pulse v#{RailsPulse::VERSION}" do %>
+          <span class="brand-mark" aria-hidden="true"></span>
           <span class="font-bold">Rails Pulse</span>
         <% end %>
         <%# Inline only where every link fits; narrower screens use the sheet

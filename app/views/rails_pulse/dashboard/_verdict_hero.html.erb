@@ -1,0 +1,122 @@
+<%# Overall verdict, derived from the per-area health and the Needs Attention
+    list the page already loaded. The worst state anywhere sets the colour. %>
+<%
+  exception_thresholds = RailsPulse.configuration.exception_thresholds
+  areas = [
+    { name: "Routes", health: @health_summary[:routes], url: routes_path },
+    { name: "Queries", health: @health_summary[:queries], url: queries_path },
+    { name: "Jobs", health: @health_summary[:jobs], url: jobs_path, critical_label: "failing" },
+    # Exceptions do not have a "slow" state: a group that fired at all is firing.
+    { name: "Exceptions", health: @health_summary[:exceptions],
+      url: (exceptions_path if @health_summary[:exceptions]),
+      healthy_label: "quiet", slow_label: "firing",
+      description: (@health_summary[:exceptions] &&
+        "Open exception groups in the #{humanize_time_range(@time_range.selected_time_range)}. " \
+        "Quiet: no occurrences. Firing: raised at least once. " \
+        "Critical: #{exception_thresholds[:critical]}+ occurrences. " \
+        "Groups with #{exception_thresholds[:warning]}+ occurrences are listed under Needs Attention.") },
+    # Tracking and Storage only appear when they are under pressure.
+    { name: "Tracking", health: @health_summary[:tracking], url: storage_path,
+      healthy_label: "writing", slow_label: "backlogged", critical_label: "dropping", hide_when_healthy: true },
+    { name: "Storage", health: @health_summary[:storage], url: storage_path, hide_when_healthy: true }
+  ].select { |area| area[:health] }
+
+  areas.each do |area|
+    health = area[:health]
+    area[:state] = health[:critical] > 0 ? "critical" : (health[:slow] > 0 ? "warning" : "ok")
+  end
+  areas.reject! { |area| area[:hide_when_healthy] && area[:state] == "ok" }
+
+  state =
+    if @needs_attention[:critical].any? || areas.any? { |area| area[:state] == "critical" }
+      "critical"
+    elsif @needs_attention[:warning].any? || areas.any? { |area| area[:state] == "warning" }
+      "warning"
+    else
+      "ok"
+    end
+
+  title = { "ok" => "All systems operational", "warning" => "Degraded", "critical" => "Action needed" }[state]
+
+  troubled = areas.reject { |area| area[:state] == "ok" }.map do |area|
+    health = area[:health]
+    parts = []
+    parts << "#{health[:critical]} #{area.fetch(:critical_label, "critical")}" if health[:critical] > 0
+    parts << "#{health[:slow]} #{area.fetch(:slow_label, "slow")}" if health[:slow] > 0
+    "#{area[:name].downcase}: #{parts.join(", ")}"
+  end
+  range_label = humanize_time_range(@time_range.selected_time_range)
+  summary =
+    if troubled.any?
+      "#{troubled.to_sentence.upcase_first} in the #{range_label}."
+    elsif state == "ok"
+      "Nothing is slow, failing or firing in the #{range_label}."
+    else
+      "See Needs Attention below for the #{range_label}."
+    end
+%>
+<section class="verdict verdict--<%= state %>" aria-label="Overall status">
+  <div class="verdict__head">
+    <span class="verdict__icon" aria-hidden="true">
+      <% if state == "ok" %>
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+      <% elsif state == "warning" %>
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="7" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <% else %>
+        <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      <% end %>
+    </span>
+    <div class="verdict__text">
+      <h1 class="verdict__title"><%= title %></h1>
+      <p class="verdict__summary"><%= summary %></p>
+    </div>
+    <% if @needs_attention[:total] > 0 %>
+      <a href="#needs-attention" class="verdict__jump">
+        <%= @needs_attention[:total] %> <%= @needs_attention[:total] == 1 ? "issue" : "issues" %> to review
+        <span aria-hidden="true">↓</span>
+      </a>
+    <% end %>
+  </div>
+
+  <div class="verdict__cells">
+    <% areas.each do |area| %>
+      <% health = area[:health] %>
+      <% total = health[:healthy] + health[:slow] + health[:critical] %>
+      <% detail = [] %>
+      <% detail << "#{health[:critical]} #{area.fetch(:critical_label, "critical")}" if health[:critical] > 0 %>
+      <% detail << "#{health[:slow]} #{area.fetch(:slow_label, "slow")}" if health[:slow] > 0 %>
+      <% detail << "#{health[:healthy]} #{area.fetch(:healthy_label, "healthy")}" if health[:healthy] > 0 && detail.any? %>
+      <%# One state covers everything: say so instead of repeating the count. %>
+      <% if total.zero? %>
+        <% detail = [ "nothing tracked" ] %>
+      <% elsif detail.empty? %>
+        <% detail = [ "all #{area.fetch(:healthy_label, "healthy")}" ] %>
+      <% elsif health[:slow] == total %>
+        <% detail = [ "all #{area.fetch(:slow_label, "slow")}" ] %>
+      <% elsif health[:critical] == total %>
+        <% detail = [ "all #{area.fetch(:critical_label, "critical")}" ] %>
+      <% end %>
+      <% cell = capture do %>
+        <span class="verdict-cell__top">
+          <span class="verdict-cell__dot"></span>
+          <span class="verdict-cell__name"><%= area[:name] %></span>
+          <span class="verdict-cell__state"><%= { "ok" => "OK", "warning" => "Warning", "critical" => "Critical" }[area[:state]] %></span>
+        </span>
+        <span class="verdict-cell__count"><%= number_with_delimiter(total) %></span>
+        <span class="verdict-cell__detail"><%= detail.join(" · ") %></span>
+        <% if total > 0 %>
+          <span class="verdict-cell__meter" aria-hidden="true">
+            <% { "critical" => health[:critical], "warning" => health[:slow], "ok" => health[:healthy] }.each do |kind, count| %>
+              <% if count > 0 %><span class="verdict-cell__meter-part verdict-cell__meter-part--<%= kind %>" style="flex-grow: <%= count %>"></span><% end %>
+            <% end %>
+          </span>
+        <% end %>
+      <% end %>
+      <% if area[:url] %>
+        <%= link_to area[:url], class: "verdict-cell verdict-cell--#{area[:state]}", title: area[:description] do %><%= cell %><% end %>
+      <% else %>
+        <div class="verdict-cell verdict-cell--<%= area[:state] %>"><%= cell %></div>
+      <% end %>
+    <% end %>
+  </div>
+</section>

@@ -1,147 +1,7 @@
-<div class="dashboard-health-bar">
-  <div class="dashboard-health-bar__content">
-    <div class="dashboard-health-bar__badges">
-      <%= render "rails_pulse/dashboard/health_badge",
-      name: "Routes",
-      health: @health_summary[:routes],
-      critical_label: "critical",
-      link_url: routes_path %>
-      <%= render "rails_pulse/dashboard/health_badge",
-      name: "Queries",
-      health: @health_summary[:queries],
-      critical_label: "critical",
-      link_url: queries_path %>
-      <% if @health_summary[:jobs] %>
-        <%= render "rails_pulse/dashboard/health_badge",
-        name: "Jobs",
-        health: @health_summary[:jobs],
-        critical_label: "failing",
-        link_url: jobs_path %>
-      <% end %>
-      <%# Nil when exception tracking is off, or when the tables have not been
-          migrated yet — which is also when exceptions_path does not exist. %>
-      <%# A firing group below the warning threshold has no Needs Attention
-          entry, so the tooltip says where that line is. %>
-      <% if @health_summary[:exceptions] %>
-        <% exception_thresholds = RailsPulse.configuration.exception_thresholds %>
-        <%= render "rails_pulse/dashboard/health_badge",
-        name: "Exceptions",
-        health: @health_summary[:exceptions],
-        healthy_label: "quiet",
-        slow_label: "firing",
-        critical_label: "critical",
-        description: "Open exception groups in the #{humanize_time_range(@time_range.selected_time_range)}. " \
-          "Quiet: no occurrences. Firing: raised at least once. " \
-          "Critical: #{exception_thresholds[:critical]}+ occurrences. " \
-          "Groups with #{exception_thresholds[:warning]}+ occurrences are listed under Needs Attention.",
-        link_url: exceptions_path %>
-      <% end %>
-      <%# Nil until a background writer has reported a heartbeat. Shown only
-          when a writer is backlogged or dropping requests. %>
-      <% if @health_summary[:tracking] %>
-        <%= render "rails_pulse/dashboard/health_badge",
-        name: "Tracking",
-        health: @health_summary[:tracking],
-        healthy_label: "writing",
-        slow_label: "backlogged",
-        critical_label: "dropping",
-        hide_when_healthy: true,
-        link_url: storage_path %>
-      <% end %>
-      <%# Shown only when storage is under warning or critical pressure. %>
-      <%= render "rails_pulse/dashboard/health_badge",
-      name: "Storage",
-      health: @health_summary[:storage],
-      critical_label: "critical",
-      hide_when_healthy: true,
-      link_url: storage_path %>
-    </div>
-  </div>
-</div>
+<%= render "rails_pulse/dashboard/verdict_hero" %>
 
-<% metric_strip_cards = [
-    @percentile_response_times_metric_card&.merge(
-      link_url: routes_path(chart_type: "response_time"),
-    ),
-    @request_count_totals_metric_card&.merge(
-      link_url: routes_path(chart_type: "request_rate"),
-    ),
-    @error_rates_metric_card&.merge(
-      link_url: routes_path(chart_type: "error_rate"),
-    ),
-  ].compact
-  if @job_failure_rate_metric_card
-    metric_strip_cards << @job_failure_rate_metric_card&.merge(
-      link_url: jobs_path,
-    )
-  end %>
-  <%= render "rails_pulse/components/metric_strip", metrics_data: metric_strip_cards %>
-
-  <div class="row">
-    <%# Response Time Percentiles (P50 + P95 + P99) — 60% width %>
-    <% response_time_toggles = capture do %>
-      <%= render "rails_pulse/dashboard/series_toggle",
-      label: "P50",
-      series_name: "P50",
-      chart_id: "response_time_percentiles_chart",
-      color: RailsPulse::ChartColors::DEFAULT,
-      active: false %>
-      <%= render "rails_pulse/dashboard/series_toggle",
-      label: "P95",
-      series_name: "P95",
-      chart_id: "response_time_percentiles_chart",
-      color: RailsPulse::ChartColors::P95 %>
-      <%= render "rails_pulse/dashboard/series_toggle",
-      label: "P99",
-      series_name: "P99",
-      chart_id: "response_time_percentiles_chart",
-      color: RailsPulse::ChartColors::P99 %>
-    <% end %>
-
-    <%= render "rails_pulse/dashboard/chart_panel",
-    flex_style: "flex: 1.5;",
-    title: "Response Time Percentiles",
-    help_title: "Response Time Percentiles",
-    help_text:
-      "P50 (median), P95, and P99 response times show the distribution of request latency. P95 means 95% of requests are faster than this value. Higher percentiles reveal tail latency affecting a subset of users.",
-    link_url: routes_path(chart_type: "response_time"),
-    chart_data: @response_time_percentiles_chart_data,
-    chart_type: "line",
-    chart_id: "response_time_percentiles_chart",
-    chart_options: line_chart_options(units: "ms"),
-    empty_message: "No response time data available for this period.",
-    series_toggles: response_time_toggles %>
-
-    <%# Throughput & Errors combo %>
-    <% throughput_toggles = capture do %>
-      <%= render "rails_pulse/dashboard/series_toggle",
-      label: "Requests",
-      series_name: "Requests",
-      chart_id: "throughput_and_errors_chart",
-      color: RailsPulse::ChartColors::DEFAULT %>
-      <%= render "rails_pulse/dashboard/series_toggle",
-      label: "Errors",
-      series_name: "Errors",
-      chart_id: "throughput_and_errors_chart",
-      color: "#dc2626" %>
-    <% end %>
-
-    <%= render "rails_pulse/dashboard/chart_panel",
-    title: "Throughput & Errors",
-    help_title: "Throughput & Errors",
-    help_text:
-      "Daily request volume with errors overlaid. The red bar shows error count on top of total requests. Monitor both metrics together to identify traffic spikes, error rate patterns, and capacity planning needs.",
-    link_url: routes_path(chart_type: "request_rate"),
-    chart_data: @throughput_and_errors_chart_data,
-    chart_type: "bar",
-    chart_id: "throughput_and_errors_chart",
-    chart_options: bar_chart_options,
-    empty_message: "No request data available for this period.",
-    series_toggles: throughput_toggles %>
-  </div>
-
-  <div class="card">
-    <div class="panel-header flex items-center justify-between mbe-3">
+  <div class="card triage-attention<%= " triage-attention--clear" if @needs_attention[:total] == 0 %>" id="needs-attention">
+    <div class="panel-header flex items-center justify-between">
       <div class="flex items-center">
         <h2 class="font-semibold leading-none uppercase text-xs">Needs Attention</h2>
         <% if @needs_attention[:total] > 0 %>
@@ -184,23 +44,23 @@
     </div>
 
     <% if @needs_attention[:total] == 0 %>
-      <div class="flex flex-col items-center justify-center pb-8 pi-4 gap">
+      <div class="triage-all-clear">
         <span class="all-clear-icon">
           <svg
             xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
+            width="12"
+            height="12"
             viewBox="0 0 24 24"
             fill="none"
             stroke="currentColor"
-            stroke-width="2.5"
+            stroke-width="3"
             stroke-linecap="round"
             stroke-linejoin="round"
             class="text-positive"
           ><polyline points="20 6 9 17 4 12"/></svg>
         </span>
         <p class="font-semibold text-sm text-positive">All clear</p>
-        <p class="text-xs text-subtle">No routes, queries, or jobs need attention in the
+        <p class="text-sm text-subtle">No routes, queries, or jobs need attention in the
           <%= humanize_time_range(@time_range.selected_time_range) %>.</p>
       </div>
     <% else %>
@@ -224,11 +84,89 @@
     <% end %>
   </div>
 
-  <div class="row">
-    <div class="grid-item" style="flex: 1.5;">
-      <%= render "rails_pulse/dashboard/storage_panel" %>
+  <div class="triage-body">
+    <div class="triage-main">
+<% metric_strip_cards = [
+    @percentile_response_times_metric_card&.merge(
+      link_url: routes_path(chart_type: "response_time"),
+    ),
+    @request_count_totals_metric_card&.merge(
+      link_url: routes_path(chart_type: "request_rate"),
+    ),
+    @error_rates_metric_card&.merge(
+      link_url: routes_path(chart_type: "error_rate"),
+    ),
+  ].compact
+  if @job_failure_rate_metric_card
+    metric_strip_cards << @job_failure_rate_metric_card&.merge(
+      link_url: jobs_path,
+    )
+  end %>
+  <%= render "rails_pulse/components/metric_strip", metrics_data: metric_strip_cards %>
+
+    <%# Response Time Percentiles (P50 + P95 + P99) — 60% width %>
+    <% response_time_toggles = capture do %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "P50",
+      series_name: "P50",
+      chart_id: "response_time_percentiles_chart",
+      color: RailsPulse::ChartColors::DEFAULT,
+      active: false %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "P95",
+      series_name: "P95",
+      chart_id: "response_time_percentiles_chart",
+      color: RailsPulse::ChartColors::P95 %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "P99",
+      series_name: "P99",
+      chart_id: "response_time_percentiles_chart",
+      color: RailsPulse::ChartColors::P99 %>
+    <% end %>
+
+    <%= render "rails_pulse/dashboard/chart_panel",
+    title: "Response Time Percentiles",
+    help_title: "Response Time Percentiles",
+    help_text:
+      "P50 (median), P95, and P99 response times show the distribution of request latency. P95 means 95% of requests are faster than this value. Higher percentiles reveal tail latency affecting a subset of users.",
+    link_url: routes_path(chart_type: "response_time"),
+    chart_data: @response_time_percentiles_chart_data,
+    chart_type: "line",
+    chart_id: "response_time_percentiles_chart",
+    chart_options: line_chart_options(units: "ms"),
+    empty_message: "No response time data available for this period.",
+    series_toggles: response_time_toggles %>
+
+    <%# Throughput & Errors combo %>
+    <% throughput_toggles = capture do %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "Requests",
+      series_name: "Requests",
+      chart_id: "throughput_and_errors_chart",
+      color: RailsPulse::ChartColors::DEFAULT %>
+      <%= render "rails_pulse/dashboard/series_toggle",
+      label: "Errors",
+      series_name: "Errors",
+      chart_id: "throughput_and_errors_chart",
+      color: "#dc2626" %>
+    <% end %>
+
+    <%= render "rails_pulse/dashboard/chart_panel",
+    title: "Throughput & Errors",
+    help_title: "Throughput & Errors",
+    help_text:
+      "Daily request volume with errors overlaid. The red bar shows error count on top of total requests. Monitor both metrics together to identify traffic spikes, error rate patterns, and capacity planning needs.",
+    link_url: routes_path(chart_type: "request_rate"),
+    chart_data: @throughput_and_errors_chart_data,
+    chart_type: "bar",
+    chart_id: "throughput_and_errors_chart",
+    chart_options: bar_chart_options,
+    empty_message: "No request data available for this period.",
+    series_toggles: throughput_toggles %>
     </div>
-    <div class="grid-item">
+
+    <aside class="triage-rail">
       <%= render "rails_pulse/dashboard/deployments_panel" %>
-    </div>
+      <%= render "rails_pulse/dashboard/storage_panel" %>
+    </aside>
   </div>
