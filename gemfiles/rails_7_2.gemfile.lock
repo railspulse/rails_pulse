@@ -173,7 +173,7 @@ GEM
       net-smtp
     marcel (1.0.4)
     matrix (0.4.3)
-    mcp (1.6.0)
+    mcp (1.10.0)
       json_schemer (>= 2.4)
     mini_mime (1.1.5)
     minitest (5.27.0)
@@ -240,7 +240,7 @@ GEM
       nio4r (~> 2.0)
     raabro (1.4.0)
     racc (1.8.1)
-    rack (3.2.7)
+    rack (3.2.8)
     rack-protection (4.2.1)
       base64 (>= 0.1.0)
       logger (>= 1.6.0)
@@ -289,9 +289,9 @@ GEM
       zeitwerk (~> 2.6)
     rainbow (3.1.1)
     rake (13.3.0)
-    ransack (4.3.0)
-      activerecord (>= 6.1.5)
-      activesupport (>= 6.1.5)
+    ransack (4.4.4)
+      activerecord (>= 7.2)
+      activesupport (>= 7.2)
       i18n
     rdoc (7.2.0)
       erb
@@ -306,7 +306,7 @@ GEM
     regexp_parser (2.10.0)
     reline (0.6.2)
       io-console (~> 0.5)
-    resque (3.0.0)
+    resque (3.2.0)
       base64 (~> 0.1)
       logger
       mono_logger (~> 1)
