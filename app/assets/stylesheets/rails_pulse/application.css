@@ -62,8 +62,8 @@ html[data-color-scheme="dark"] .badge--delete {
 }
 
 html[data-color-scheme="dark"] .input {
-  --input-background: #1b2640;
-  --input-border-color: #33415f;
+  --input-background: #1a1a1a;
+  --input-border-color: #333333;
 }
 
 .hidden {

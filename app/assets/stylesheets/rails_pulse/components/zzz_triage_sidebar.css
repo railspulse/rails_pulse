@@ -8,10 +8,10 @@
 }
 
 html[data-color-scheme="dark"] {
-  --color-accent: #7fb2ff;
-  --color-accent-strong: #a5c8ff;
-  --color-accent-soft: #16264a;
-  --color-sidebar: #0d1524;
+  --color-accent: #ededed;
+  --color-accent-strong: #ffffff;
+  --color-accent-soft: #262626;
+  --color-sidebar: #050505;
   --header-bg: color-mix(in srgb, var(--color-bg) 88%, transparent);
 }
 
