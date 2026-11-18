@@ -406,6 +406,10 @@ a.verdict-cell:hover .verdict-cell__arrow {
     grid-template-columns: minmax(0, 1fr);
   }
 
+  .verdict__title {
+    font-size: 1.375rem;
+  }
+
   .verdict__cells {
     border-inline-start: 0;
     border-block-start: 1px solid var(--color-border);
@@ -417,8 +421,27 @@ a.verdict-cell:hover .verdict-cell__arrow {
     padding: var(--size-4) var(--size-4) var(--size-4) calc(var(--size-4) + 4px);
   }
 
+  .verdict__head {
+    gap: var(--size-1_5);
+  }
+
   .verdict__title {
-    font-size: 1.375rem;
+    font-size: 1.125rem;
+    letter-spacing: -0.015em;
+  }
+
+  .verdict__status {
+    font-size: 0.625rem;
+    padding: 0.15rem 0.5rem 0.15rem 0.4rem;
+  }
+
+  .verdict__summary {
+    font-size: var(--text-xs);
+  }
+
+  a.verdict__action {
+    font-size: var(--text-xs);
+    padding: 0.35rem 0.7rem;
   }
 
   /* Two per row on a phone */
