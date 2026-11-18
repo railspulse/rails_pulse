@@ -36,6 +36,10 @@ async function buildCSS() {
       'vendor/flatpickr.css',
       // Rails Pulse Components
       ...glob.sync(path.join(ASSETS_DIR, 'rails_pulse/components/*.css')).sort(),
+      // Theme: tokens and shell first, then the pages built on them, then skins
+      path.join(ASSETS_DIR, 'rails_pulse/theme/layout.css'),
+      path.join(ASSETS_DIR, 'rails_pulse/theme/dashboard.css'),
+      path.join(ASSETS_DIR, 'rails_pulse/theme/tui.css'),
       // Rails Pulse Application CSS
       path.join(ASSETS_DIR, 'rails_pulse/application.css'),
       // CSS Zero Utilities

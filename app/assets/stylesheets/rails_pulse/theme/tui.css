@@ -40,7 +40,6 @@ html[data-ui="tui"] {
   --header-bg: #f1ead6;
   --header-link: #1d1a12;
   --header-link-hover-bg: #e8dfc6;
-  --card-shadow: none;
 }
 
 html[data-ui="tui"][data-color-scheme="dark"] {
@@ -82,13 +81,44 @@ html[data-ui="tui"] .input {
   --input-border-color: var(--color-border);
 }
 
-/* Monospace everywhere, square corners, no shadows. */
+/* Square corners and no shadows come from zeroing the scale tokens the
+   components read; monospace is set on every element because the base
+   stylesheet sets its font the same way. */
+html[data-ui="tui"] {
+  --rounded-xs: 0;
+  --rounded-sm: 0;
+  --rounded-md: 0;
+  --rounded-lg: 0;
+  --rounded-xl: 0;
+  --rounded-2xl: 0;
+  --rounded-3xl: 0;
+  --rounded-full: 0;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+}
+
 html[data-ui="tui"] *,
 html[data-ui="tui"] *::before,
 html[data-ui="tui"] *::after {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* Shapes drawn as circles with a literal 50% become square status blocks. */
+html[data-ui="tui"] .console-brand__mark,
+html[data-ui="tui"] .console-brand__mark::after,
+html[data-ui="tui"] .verdict__status-dot,
+html[data-ui="tui"] .verdict__status-dot::after,
+html[data-ui="tui"] .verdict-cell__dot,
+html[data-ui="tui"] .deploy-timeline__item::before,
+html[data-ui="tui"] .all-clear-icon {
+  border-radius: 0;
+}
+
+html[data-ui="tui"] .deploy-timeline__item--active::before {
+  box-shadow: none;
 }
 
 html[data-ui="tui"] body {
@@ -106,7 +136,7 @@ html[data-ui="tui"] .console-topbar__title {
 }
 
 html[data-ui="tui"] .verdict__title {
-  font-size: 1.375rem;
+  font-size: var(--text-xl);
 }
 
 html[data-ui="tui"] .verdict__head {
