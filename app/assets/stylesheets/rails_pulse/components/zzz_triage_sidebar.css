@@ -152,3 +152,14 @@ html[data-color-scheme="dark"] .scheme-light-only,
 html:not([data-color-scheme="dark"]) .scheme-dark-only {
   display: none !important;
 }
+
+/* Below the desktop breakpoint charts use a 4:3 box, which on a tablet-width
+   screen makes them taller than the viewport. Size them by height instead:
+   it grows a little with the screen but never dominates the page. */
+@media (max-width: 63.999rem) {
+  .chart-container,
+  .chart-container--slim {
+    aspect-ratio: auto;
+    block-size: clamp(12rem, 38vw, 18rem);
+  }
+}
