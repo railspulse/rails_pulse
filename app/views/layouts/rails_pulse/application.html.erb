@@ -68,23 +68,7 @@
 
       <div class="console-sidebar__footer sidebar-menu__items">
         <%= render 'layouts/rails_pulse/return_link' %>
-        <div data-controller="rails-pulse--color-scheme">
-          <%# Both states are rendered and the stylesheet shows the one for the
-              current scheme, so the label is right on first paint. It names
-              the mode a click switches to. %>
-          <%= link_to '#', class: "btn sidebar-menu__button", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
-            <span class="scheme-light-only flex"><%= rails_pulse_icon 'moon', width: '16' %></span>
-            <span class="overflow-ellipsis scheme-light-only">Dark mode</span>
-            <span class="scheme-dark-only flex"><%= rails_pulse_icon 'sun', width: '16' %></span>
-            <span class="overflow-ellipsis scheme-dark-only">Light mode</span>
-          <% end %>
-        </div>
-        <div data-controller="rails-pulse--ui-mode">
-          <button type="button" class="btn sidebar-menu__button console-sidebar__tui" aria-pressed="false" aria-label="Toggle terminal style" data-rails-pulse--ui-mode-target="toggle" data-action="rails-pulse--ui-mode#toggle">
-            <%= rails_pulse_icon 'terminal', width: '16' %>
-            <span class="overflow-ellipsis">TUI</span>
-          </button>
-        </div>
+        <%= render 'layouts/rails_pulse/preference_toggles' %>
         <button type="button" class="btn sidebar-menu__button console-sidebar__collapse" aria-controls="sidebar" aria-expanded="true" aria-label="Collapse sidebar" data-rails-pulse--sidebar-target="toggle" data-action="rails-pulse--sidebar#toggle">
           <%= rails_pulse_icon 'chevrons-left', width: '16' %>
           <span class="overflow-ellipsis">Collapse</span>
@@ -112,6 +96,11 @@
                       <%= render 'layouts/rails_pulse/menu_items' %>
                     </nav>
                   </div>
+                  <%# The sidebar is hidden at this width, so its preferences
+                      live here rather than crowding the top bar. %>
+                  <div class="console-sidebar__footer sidebar-menu__items">
+                    <%= render 'layouts/rails_pulse/preference_toggles' %>
+                  </div>
                 </div>
               </div>
             </div>
@@ -126,20 +115,6 @@
       <div class="console-topbar__end">
         <%= render 'layouts/rails_pulse/time_range_selector' %>
         <%= render 'layouts/rails_pulse/global_filters' %>
-
-        <%# The sidebar holds this toggle on wide screens; without one here a
-            phone could not leave TUI mode once it was switched on. %>
-        <div class="hide@xl" data-controller="rails-pulse--ui-mode">
-          <%= link_to '#', "aria-label": "Toggle terminal style", "aria-pressed": "false", role: "button", data: { action: "rails-pulse--ui-mode#toggle", "rails-pulse--ui-mode-target": "toggle" } do %>
-            <%= rails_pulse_icon 'terminal', width: '20' %>
-          <% end %>
-        </div>
-        <div class="hide@xl" data-controller="rails-pulse--color-scheme">
-          <%= link_to '#', "aria-label": "Switch between light and dark mode", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
-            <span class="scheme-light-only flex"><%= rails_pulse_icon 'moon', width: '20' %></span>
-            <span class="scheme-dark-only flex"><%= rails_pulse_icon 'sun', width: '20' %></span>
-          <% end %>
-        </div>
       </div>
     </header>
     <% end %>

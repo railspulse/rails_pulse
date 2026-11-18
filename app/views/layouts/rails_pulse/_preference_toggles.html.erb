@@ -1,0 +1,17 @@
+<div data-controller="rails-pulse--color-scheme">
+  <%# Both states are rendered and the stylesheet shows the one for the
+      current scheme, so the label is right on first paint. It names
+      the mode a click switches to. %>
+  <%= link_to '#', class: "btn sidebar-menu__button", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
+    <span class="scheme-light-only flex"><%= rails_pulse_icon 'moon', width: '16' %></span>
+    <span class="overflow-ellipsis scheme-light-only">Dark mode</span>
+    <span class="scheme-dark-only flex"><%= rails_pulse_icon 'sun', width: '16' %></span>
+    <span class="overflow-ellipsis scheme-dark-only">Light mode</span>
+  <% end %>
+</div>
+<div data-controller="rails-pulse--ui-mode">
+  <button type="button" class="btn sidebar-menu__button console-sidebar__tui" aria-pressed="false" aria-label="Toggle terminal style" data-rails-pulse--ui-mode-target="toggle" data-action="rails-pulse--ui-mode#toggle">
+    <%= rails_pulse_icon 'terminal', width: '16' %>
+    <span class="overflow-ellipsis">TUI</span>
+  </button>
+</div>
