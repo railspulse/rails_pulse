@@ -4,7 +4,7 @@
   --color-accent-strong: #1d4ed8;
   --color-accent-soft: #e4ecfd;
   --color-sidebar: #ffffff;
-  --header-bg: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  --header-bg: var(--color-bg);
 }
 
 html[data-color-scheme="dark"] {
@@ -12,7 +12,7 @@ html[data-color-scheme="dark"] {
   --color-accent-strong: #ffffff;
   --color-accent-soft: #33312e;
   --color-sidebar: #151412;
-  --header-bg: color-mix(in srgb, var(--color-bg) 88%, transparent);
+  --header-bg: var(--color-bg);
 }
 
 /* Brand mark: the pulsing dot rather than a filled tile. */
@@ -136,4 +136,13 @@ html[data-color-scheme="dark"] {
   #main {
     padding: var(--size-3);
   }
+}
+
+/* No backdrop-filter on the header: it would make the header the containing
+   block for position: fixed descendants, trapping the global filters overlay
+   inside the top bar instead of covering the viewport. */
+#header {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: var(--color-bg);
 }
