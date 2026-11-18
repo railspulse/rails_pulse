@@ -1,0 +1,163 @@
+/* TUI mode: a terminal-style skin switched on with html[data-ui="tui"].
+   It only swaps tokens, fonts and corners; layout and markup are untouched. */
+
+.console-sidebar__tui {
+  inline-size: 100%;
+  justify-content: flex-start;
+}
+
+.console-sidebar__tui[aria-pressed="true"] {
+  --btn-background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  --btn-color: var(--color-text);
+}
+
+html[data-ui="tui"] {
+  /* Paper printout */
+  --color-bg: #efe9d8;
+  --color-surface: #f8f3e5;
+  --color-sidebar: #e9e2ce;
+  --color-text: #1d1b16;
+  --color-text-reversed: #f8f3e5;
+  --color-text-subtle: #655e4f;
+  --color-link: #0a6b2d;
+  --color-accent: #0a6b2d;
+  --color-accent-strong: #07501f;
+  --color-accent-soft: #d9e8c8;
+  --color-border-light: #ded6c0;
+  --color-border: #c4baa0;
+  --color-border-dark: #8f866f;
+  --color-selected: #d9e8c8;
+  --color-primary: #1d1b16;
+  --color-secondary: #e6dfcb;
+  --color-negative: #b3261e;
+  --color-positive: #0a6b2d;
+  --color-warning-text: #8f5200;
+  --status-ok: #0a6b2d;
+  --status-warning: #b86e00;
+  --status-critical: #b3261e;
+  --header-bg: #efe9d8;
+  --header-link: #1d1b16;
+  --header-link-hover-bg: #e6dfcb;
+  --card-shadow: none;
+}
+
+html[data-ui="tui"][data-color-scheme="dark"] {
+  /* Phosphor on near-black */
+  --color-bg: #060806;
+  --color-surface: #0a0e0a;
+  --color-sidebar: #040604;
+  --color-text: #cfe8cf;
+  --color-text-reversed: #060806;
+  --color-text-subtle: #7fa387;
+  --color-link: #4dff88;
+  --color-accent: #33ff66;
+  --color-accent-strong: #7dffa0;
+  --color-accent-soft: #0f3a1c;
+  --color-border-light: #14261a;
+  --color-border: #1e4429;
+  --color-border-dark: #2c6e3c;
+  --color-selected: #0f3a1c;
+  --color-primary: #33ff66;
+  --color-secondary: #102015;
+  --color-negative: #ff5c5c;
+  --color-positive: #33ff66;
+  --color-warning-text: #ffb000;
+  --status-ok: #33ff66;
+  --status-warning: #ffb000;
+  --status-critical: #ff5c5c;
+  --header-bg: #060806;
+  --header-link: #cfe8cf;
+  --header-link-hover-bg: #102015;
+}
+
+html[data-ui="tui"] .card,
+html[data-ui="tui"] .input {
+  --color-bg: var(--color-surface);
+  --color-border: inherit;
+  --input-background: var(--color-surface);
+  --input-border-color: var(--color-border);
+}
+
+/* Monospace everywhere, square corners, no shadows. */
+html[data-ui="tui"] *,
+html[data-ui="tui"] *::before,
+html[data-ui="tui"] *::after {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+
+html[data-ui="tui"] body {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "zero" 1;
+  letter-spacing: 0;
+}
+
+/* Tight tracking is tuned for the sans face and crowds monospace glyphs. */
+html[data-ui="tui"] .verdict__title,
+html[data-ui="tui"] .verdict-cell__count,
+html[data-ui="tui"] .console-brand__name,
+html[data-ui="tui"] .console-topbar__title {
+  letter-spacing: 0;
+}
+
+html[data-ui="tui"] .verdict__title {
+  font-size: 1.375rem;
+}
+
+html[data-ui="tui"] .verdict__head {
+  background: none;
+}
+
+/* Panel titles read as framed terminal headings. */
+html[data-ui="tui"] .panel-header h2::before,
+html[data-ui="tui"] .metric-strip__title::before {
+  content: "[ ";
+  color: var(--color-text-subtle);
+}
+
+html[data-ui="tui"] .panel-header h2::after,
+html[data-ui="tui"] .metric-strip__title::after {
+  content: " ]";
+  color: var(--color-text-subtle);
+}
+
+html[data-ui="tui"] .panel-header h2,
+html[data-ui="tui"] .metric-strip__title,
+html[data-ui="tui"] .sidebar-menu__button[aria-current="page"] {
+  color: var(--color-accent);
+}
+
+html[data-ui="tui"] .console-brand__name::after {
+  content: " ▸";
+  color: var(--color-accent);
+}
+
+html[data-ui="tui"] a {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+html[data-ui="tui"] ::selection {
+  background-color: var(--color-accent);
+  color: var(--color-text-reversed);
+}
+
+/* Monospace glyphs are wider: keep the brand and the cell labels on one line. */
+html[data-ui="tui"] .console-brand__name {
+  white-space: nowrap;
+}
+
+html[data-ui="tui"] .console-brand__version {
+  display: none;
+}
+
+html[data-ui="tui"] .verdict-cell__figure {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+
+html[data-ui="tui"] .verdict-cell__label {
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}

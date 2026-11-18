@@ -31,11 +31,14 @@
 
         root.setAttribute('data-color-scheme', scheme);
 
-        // Restore the collapsed sidebar before first paint so it never
-        // renders expanded and then snaps shut.
+        // Restore the collapsed sidebar and the TUI look before first paint so
+        // the page never renders one way and then snaps to the other.
         try {
           if (localStorage.getItem('rails-pulse-sidebar') === 'collapsed') {
             root.setAttribute('data-sidebar', 'collapsed');
+          }
+          if (localStorage.getItem('rails-pulse-ui') === 'tui') {
+            root.setAttribute('data-ui', 'tui');
           }
         } catch (error) {}
       })();
@@ -70,6 +73,12 @@
             <%= rails_pulse_icon 'sun', width: '16' %>
             <span class="overflow-ellipsis">Toggle theme</span>
           <% end %>
+        </div>
+        <div data-controller="rails-pulse--ui-mode">
+          <button type="button" class="btn sidebar-menu__button console-sidebar__tui" aria-pressed="false" aria-label="Toggle terminal style" data-rails-pulse--ui-mode-target="toggle" data-action="rails-pulse--ui-mode#toggle">
+            <%= rails_pulse_icon 'terminal', width: '16' %>
+            <span class="overflow-ellipsis">TUI</span>
+          </button>
         </div>
         <button type="button" class="btn sidebar-menu__button console-sidebar__collapse" aria-controls="sidebar" aria-expanded="true" aria-label="Collapse sidebar" data-rails-pulse--sidebar-target="toggle" data-action="rails-pulse--sidebar#toggle">
           <%= rails_pulse_icon 'chevrons-left', width: '16' %>
@@ -117,6 +126,13 @@
         <%= render 'layouts/rails_pulse/time_range_selector' %>
         <%= render 'layouts/rails_pulse/global_filters' %>
 
+        <%# The sidebar holds this toggle on wide screens; without one here a
+            phone could not leave TUI mode once it was switched on. %>
+        <div class="hide@xl" data-controller="rails-pulse--ui-mode">
+          <%= link_to '#', "aria-label": "Toggle terminal style", "aria-pressed": "false", role: "button", data: { action: "rails-pulse--ui-mode#toggle", "rails-pulse--ui-mode-target": "toggle" } do %>
+            <%= rails_pulse_icon 'terminal', width: '20' %>
+          <% end %>
+        </div>
         <div class="hide@xl" data-controller="rails-pulse--color-scheme">
           <%= link_to '#', "aria-label": "Toggle color scheme", role: "button", data: { action: "rails-pulse--color-scheme#toggle" } do %>
             <%= rails_pulse_icon 'sun', width: '20' %>
