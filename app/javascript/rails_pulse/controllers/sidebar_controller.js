@@ -21,7 +21,7 @@ export default class extends Controller {
     }
     try {
       localStorage.setItem(this.storageKey, collapsed ? "collapsed" : "expanded")
-    } catch (_error) {
+    } catch {
       // Storage can be unavailable (private mode); the toggle still works for this page.
     }
     this.sync()
