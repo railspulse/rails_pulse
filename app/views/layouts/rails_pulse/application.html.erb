@@ -30,6 +30,14 @@
         }
 
         root.setAttribute('data-color-scheme', scheme);
+
+        // Restore the collapsed sidebar before first paint so it never
+        // renders expanded and then snaps shut.
+        try {
+          if (localStorage.getItem('rails-pulse-sidebar') === 'collapsed') {
+            root.setAttribute('data-sidebar', 'collapsed');
+          }
+        } catch (error) {}
       })();
     </script>
 
@@ -43,7 +51,7 @@
     <% if @has_summaries %>
     <%# Persistent navigation on wide screens; narrower screens use the sheet
         opened from the top bar. %>
-    <aside id="sidebar" class="show@xl">
+    <aside id="sidebar" class="show@xl" data-controller="rails-pulse--sidebar">
       <%= link_to rails_pulse.root_path, class: "console-brand", title: "Rails Pulse v#{RailsPulse::VERSION}" do %>
         <span class="console-brand__mark" aria-hidden="true"></span>
         <span class="console-brand__name">Rails Pulse</span>
@@ -63,6 +71,10 @@
             <span class="overflow-ellipsis">Toggle theme</span>
           <% end %>
         </div>
+        <button type="button" class="btn sidebar-menu__button console-sidebar__collapse" aria-controls="sidebar" aria-expanded="true" aria-label="Collapse sidebar" data-rails-pulse--sidebar-target="toggle" data-action="rails-pulse--sidebar#toggle">
+          <%= rails_pulse_icon 'chevrons-left', width: '16' %>
+          <span class="overflow-ellipsis">Collapse</span>
+        </button>
       </div>
     </aside>
 

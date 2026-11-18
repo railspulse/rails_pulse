@@ -43,3 +43,76 @@ html[data-color-scheme="dark"] {
 @media (prefers-reduced-motion: reduce) {
   .console-brand__mark::after { animation: none; opacity: 0; }
 }
+
+/* ---------- Collapsed sidebar: an icon rail ---------- */
+
+.console-sidebar__collapse {
+  inline-size: 100%;
+  justify-content: flex-start;
+}
+
+@media (min-width: 80rem) {
+  html[data-sidebar="collapsed"] .console-layout:not(.console-layout--bare) {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+  }
+
+  html[data-sidebar="collapsed"] #sidebar {
+    padding-inline: var(--size-2);
+    /* Labels fly out to the right on hover, so they must not be clipped. */
+    overflow: visible;
+    position: relative;
+    z-index: 20;
+  }
+
+  html[data-sidebar="collapsed"] .console-brand {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  html[data-sidebar="collapsed"] .console-brand__name,
+  html[data-sidebar="collapsed"] .console-brand__version {
+    display: none;
+  }
+
+  /* Keep the row height so the icons do not shift between states. */
+  html[data-sidebar="collapsed"] .console-nav__label {
+    visibility: hidden;
+  }
+
+  html[data-sidebar="collapsed"] #sidebar .sidebar-menu__button {
+    justify-content: center;
+    padding-inline: 0;
+    position: relative;
+  }
+
+  /* The label becomes a tooltip beside the icon. */
+  html[data-sidebar="collapsed"] #sidebar .sidebar-menu__button > span {
+    position: absolute;
+    inset-inline-start: calc(100% + 0.6rem);
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+    padding: 0.3rem 0.6rem;
+    border-radius: 6px;
+    background: var(--color-text);
+    color: var(--color-bg);
+    font-size: 12px;
+    font-weight: var(--font-medium);
+    white-space: nowrap;
+    overflow: visible;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.12s;
+  }
+
+  html[data-sidebar="collapsed"] #sidebar .sidebar-menu__button:hover > span,
+  html[data-sidebar="collapsed"] #sidebar .sidebar-menu__button:focus-visible > span {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  html[data-sidebar="collapsed"] .console-sidebar__collapse rails-pulse-icon {
+    transform: rotate(180deg);
+  }
+}
