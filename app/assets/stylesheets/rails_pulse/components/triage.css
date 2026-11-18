@@ -274,26 +274,28 @@ a.verdict__action:hover {
   background: color-mix(in srgb, var(--tone) 8%, var(--color-surface));
 }
 
+/* A wrapping row whose 1px gaps show the container colour as dividers, so
+   the lines stay right however many cells wrap onto the next row. */
 .verdict__cells {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(8.5rem, 1fr));
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background: var(--color-border);
   border-inline-start: 1px solid var(--color-border);
 }
 
 .verdict-cell {
   --cell-tone: var(--status-ok);
+  flex: 1 1 9.5rem;
   display: flex;
   flex-direction: column;
   gap: 0.3rem;
   padding: var(--size-5) var(--size-5);
+  background: var(--color-surface);
   color: var(--color-text);
   text-decoration: none;
   transition: background-color 0.15s;
   min-width: 0;
-}
-
-.verdict-cell + .verdict-cell {
-  border-inline-start: 1px solid var(--color-border);
 }
 
 .verdict-cell--warning { --cell-tone: var(--status-warning); }
@@ -302,7 +304,7 @@ a.verdict__action:hover {
 /* Only the areas with a problem carry colour; healthy ones stay quiet */
 .verdict-cell--warning,
 .verdict-cell--critical {
-  background: color-mix(in srgb, var(--cell-tone) 9%, transparent);
+  background: color-mix(in srgb, var(--cell-tone) 9%, var(--color-surface));
 }
 
 a.verdict-cell:hover {
@@ -311,7 +313,7 @@ a.verdict-cell:hover {
 
 a.verdict-cell--warning:hover,
 a.verdict-cell--critical:hover {
-  background: color-mix(in srgb, var(--cell-tone) 16%, transparent);
+  background: color-mix(in srgb, var(--cell-tone) 16%, var(--color-surface));
 }
 
 .verdict-cell__top {
@@ -407,6 +409,80 @@ a.verdict-cell:hover .verdict-cell__arrow {
   .verdict__cells {
     border-inline-start: 0;
     border-block-start: 1px solid var(--color-border);
+  }
+}
+
+@media (max-width: 40rem) {
+  .verdict__head {
+    padding: var(--size-4) var(--size-4) var(--size-4) calc(var(--size-4) + 4px);
+  }
+
+  .verdict__title {
+    font-size: 1.375rem;
+  }
+
+  /* Two per row on a phone */
+  .verdict-cell {
+    flex-basis: calc(50% - 1px);
+    padding: var(--size-3) var(--size-4);
+  }
+
+  .verdict-cell__count {
+    font-size: 1.5rem;
+  }
+}
+
+/* Phones: the type badge and the metric share the first line and the name
+   gets the full width beneath, instead of three columns squeezing it. */
+@media (max-width: 40rem) {
+  .attention-item {
+    display: grid;
+    grid-template-columns: 3px minmax(0, 1fr) auto;
+    grid-template-areas:
+      "bar badge metric"
+      "bar content content";
+    column-gap: var(--size-3);
+    row-gap: var(--size-1_5);
+    align-items: center;
+    padding: var(--size-3) 0;
+  }
+
+  .attention-item__indicator {
+    grid-area: bar;
+    height: 100%;
+  }
+
+  .attention-item__badge {
+    grid-area: badge;
+    justify-self: start;
+  }
+
+  .attention-item__content {
+    grid-area: content;
+  }
+
+  .attention-item__metric {
+    grid-area: metric;
+    display: flex;
+    align-items: baseline;
+    gap: var(--size-2);
+  }
+
+  .attention-item__metric p {
+    order: -1;
+  }
+
+  .triage-attention .panel-header__meta {
+    display: none;
+  }
+
+  .card {
+    padding: var(--size-4);
+  }
+
+  .panel-icon-bar {
+    top: var(--size-4);
+    right: var(--size-4);
   }
 }
 
