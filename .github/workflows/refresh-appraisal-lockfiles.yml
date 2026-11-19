@@ -1,0 +1,118 @@
+name: Refresh Appraisal Lockfiles
+
+# Dependabot's Bundler support only reads files named Gemfile or gems.rb, so it
+# never updates gemfiles/rails_*.gemfile.lock, which are what CI installs from.
+# This workflow refreshes them weekly and opens (or updates) a pull request.
+#
+# Opening the pull request with the built-in token needs the repository setting
+# "Allow GitHub Actions to create and approve pull requests". Events caused by
+# that token do not start other workflows, except workflow_dispatch, so the
+# test suite is dispatched on the branch explicitly.
+
+on:
+  schedule:
+    - cron: '0 7 * * 1'  # Mondays at 7am UTC, after Dependabot's weekly run
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+  actions: write
+
+concurrency:
+  group: refresh-appraisal-lockfiles
+  cancel-in-progress: false
+
+env:
+  BRANCH: automation/refresh-appraisal-lockfiles
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v7
+
+    # Resolve on the oldest Ruby in the test matrix so no gem that needs a
+    # newer Ruby is locked.
+    - name: Set up Ruby
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: "3.2"
+        bundler-cache: false
+
+    # --minor --strict never moves a gem to a new major version, so ransack
+    # stays on the 4.x end of the gemspec's range and exact pins in the Gemfile
+    # (puma) are untouched.
+    - name: Update lockfiles
+      run: |
+        for gemfile in gemfiles/rails_*.gemfile; do
+          echo "::group::$gemfile"
+          BUNDLE_GEMFILE="$gemfile" bundle lock --update --minor --strict
+          echo "::endgroup::"
+        done
+
+    - name: Check for changes
+      id: changes
+      run: |
+        if git diff --quiet -- gemfiles/; then
+          echo "changed=false" >> "$GITHUB_OUTPUT"
+        else
+          echo "changed=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    - name: Summarise changes
+      if: steps.changes.outputs.changed == 'true'
+      run: |
+        {
+          echo "## Summary"
+          echo
+          echo "Weekly refresh of the lockfiles the test suite installs from, one per supported Rails version. Dependabot does not update these files. Every gem moves to its latest minor or patch release; none moves to a new major version. Nothing changes for applications using Rails Pulse."
+          echo
+          echo "## Changes Made"
+          for lock in gemfiles/rails_*.gemfile.lock; do
+            echo
+            echo "**\`$lock\`**"
+            echo
+            # Version lines in the GEM section, one per gem (platform variants
+            # collapsed), as "name old -> new".
+            git diff -U0 -- "$lock" \
+              | grep -E '^[-+]    [A-Za-z0-9_.-]+ \(' \
+              | sed -E 's/^([-+]) +([A-Za-z0-9_.-]+) \(([^-)]+)[^)]*\).*/\1 \2 \3/' \
+              | awk '$1=="-"{old[$2]=$3} $1=="+"{new[$2]=$3} END{for (g in new) if (old[g] != new[g]) printf "- %s %s → %s\n", g, (g in old ? old[g] : "(new)"), new[g]; for (g in old) if (!(g in new)) printf "- %s %s → (removed)\n", g, old[g]}' \
+              | sort -u
+          done
+          echo
+          echo "## Tests"
+          echo
+          echo "The test suite is dispatched on this branch by the workflow that opened this pull request; its checks appear below."
+        } > "$RUNNER_TEMP/body.md"
+        cat "$RUNNER_TEMP/body.md" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Push branch
+      if: steps.changes.outputs.changed == 'true'
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git switch -C "$BRANCH"
+        git add gemfiles/
+        git commit -m "Refresh Appraisal lockfiles"
+        git push --force origin "$BRANCH"
+
+    - name: Open or update pull request
+      if: steps.changes.outputs.changed == 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: |
+        title="Refresh Appraisal lockfiles"
+        existing=$(gh pr list --head "$BRANCH" --state open --json number --jq '.[0].number')
+        if [ -n "$existing" ]; then
+          gh pr edit "$existing" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+        else
+          gh pr create --base main --head "$BRANCH" --title "$title" --body-file "$RUNNER_TEMP/body.md"
+        fi
+
+    - name: Run the test suite on the branch
+      if: steps.changes.outputs.changed == 'true'
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh workflow run test.yml --ref "$BRANCH"
