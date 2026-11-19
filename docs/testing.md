@@ -20,6 +20,8 @@ Never run a bare `rails test` over the repo: it includes `test/migrations/`, who
 
 CI (`.github/workflows/test.yml`) runs the Ruby × Rails matrix on SQLite and PostgreSQL, a MySQL job, system tests, the separate-database upgrade smoke test on SQLite and PostgreSQL, RuboCop, Brakeman, ESLint, JS tests, generator tests, a gem build, and a changelog check. One matrix cell sets `COVERAGE=true` so the SimpleCov thresholds are enforced.
 
+The matrix installs from `gemfiles/rails_*.gemfile.lock`, not the root `Gemfile.lock`. Dependabot only reads files named `Gemfile`, so it never updates them; `.github/workflows/refresh-appraisal-lockfiles.yml` refreshes them every Monday (minor and patch releases, never a new major version) and opens a pull request.
+
 ## Rules
 
 1. Execute real code. Mock only external services (HTTP, third-party APIs, the clock). Never stub your own models, services, helpers or Rails.
