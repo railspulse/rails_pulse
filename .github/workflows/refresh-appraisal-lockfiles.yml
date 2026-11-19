@@ -32,12 +32,14 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
-    # Resolve on the oldest Ruby in the test matrix so no gem that needs a
-    # newer Ruby is locked.
+    # Resolve on the newest Ruby in the test matrix. Some locked gems need a
+    # newer Ruby than the oldest cell (simplecov 1.3 needs 3.3), and resolving
+    # on that oldest Ruby fails under --strict; the Ruby 3.2 cells re-resolve
+    # those gems to older versions during bundle install.
     - name: Set up Ruby
       uses: ruby/setup-ruby@v1
       with:
-        ruby-version: "3.2"
+        ruby-version: "3.4"
         bundler-cache: false
 
     # --minor --strict never moves a gem to a new major version, so ransack
