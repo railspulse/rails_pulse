@@ -43,15 +43,16 @@
     <% end %>
   </div>
 
-  <% if @has_data %>
-    <div data-controller="rails-pulse--table-sort">
-      <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">
+  <%# The empty state stays inside #index_table so a sort fetch always finds it. %>
+  <div data-controller="rails-pulse--table-sort">
+    <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">
+      <% if @has_data %>
         <%= render 'rails_pulse/requests/table' %>
-      </div>
+      <% else %>
+        <%= render 'rails_pulse/components/empty_state',
+            title: 'No request data found for the selected filters.',
+            description: 'Try adjusting your filters to see results.' %>
+      <% end %>
     </div>
-  <% else %>
-    <%= render 'rails_pulse/components/empty_state',
-        title: 'No request data found for the selected filters.',
-        description: 'Try adjusting your filters to see results.' %>
-  <% end %>
+  </div>
 <% end %>

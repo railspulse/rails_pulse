@@ -893,4 +893,13 @@ class RailsPulse::QueriesControllerTest < ActionDispatch::IntegrationTest
   def rails_pulse_engine
     RailsPulse::Engine.routes.url_helpers
   end
+
+  # The dashboard's in-page sort and zoom fetches replace #index_table's content,
+  # so the empty state must render inside it or the fetch reports an error.
+  test "index renders the empty state inside index_table for a zoom into a range with no data" do
+    get rails_pulse.queries_path, params: { zoom_start_time: 1, zoom_end_time: 2 }, headers: { "X-Partial-Request" => "true" }
+
+    assert_response :success
+    assert_select "#index_table", text: /No query data found/
+  end
 end

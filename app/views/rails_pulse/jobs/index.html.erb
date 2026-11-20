@@ -42,20 +42,22 @@
       <% end %>
     </div>
 
-    <% if @has_data %>
-      <% if @has_chart_data %>
-        <%= render "rails_pulse/jobs/chart_tabs" %>
-      <% end %>
-
-      <div data-controller="rails-pulse--table-sort">
-        <div id="index_table" data-rails-pulse--index-target="indexTable" data-rails-pulse--table-sort-target="tableFrame">
-          <%= render "rails_pulse/jobs/table" %>
-        </div>
-      </div>
-    <% else %>
-      <%= render "rails_pulse/components/empty_state",
-        title: "No job data found for the selected filters.",
-        description: "Try adjusting your time range or filters to see results." %>
+    <% if @has_data && @has_chart_data %>
+      <%= render "rails_pulse/jobs/chart_tabs" %>
     <% end %>
+
+    <%# The empty state stays inside #index_table: zooming the chart into a range
+        with no data fetches this page and swaps in that element's content. %>
+    <div data-controller="rails-pulse--table-sort">
+      <div id="index_table" data-rails-pulse--index-target="indexTable" data-rails-pulse--table-sort-target="tableFrame">
+        <% if @has_data %>
+          <%= render "rails_pulse/jobs/table" %>
+        <% else %>
+          <%= render "rails_pulse/components/empty_state",
+            title: "No job data found for the selected filters.",
+            description: "Try adjusting your time range or filters to see results." %>
+        <% end %>
+      </div>
+    </div>
   <% end %>
 </div>

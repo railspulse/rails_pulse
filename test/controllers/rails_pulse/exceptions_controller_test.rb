@@ -364,4 +364,13 @@ class RailsPulse::ExceptionsControllerTest < ActionDispatch::IntegrationTest
 
     refute_predicate @group.reload, :preserve?
   end
+
+  # The dashboard's in-page sort and zoom fetches replace #index_table's content,
+  # so the empty state must render inside it or the fetch reports an error.
+  test "index renders the empty state inside index_table for a filter that matches nothing" do
+    get rails_pulse.exceptions_path, params: { q: { exception_class_cont: "NoSuchException" } }, headers: { "X-Partial-Request" => "true" }
+
+    assert_response :success
+    assert_select "#index_table", text: /No exceptions recorded/
+  end
 end
