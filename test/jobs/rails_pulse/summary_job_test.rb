@@ -193,6 +193,42 @@ module RailsPulse
       travel_back
     end
 
+    test "the midnight run rebuilds baselines from the day it just summarized" do
+      midnight = Time.zone.parse("2024-03-04 00:00:00")
+      route = rails_pulse_routes(:api_users)
+
+      travel_to midnight - 1.day do
+        create_request_with_operation(duration: 100)
+      end
+
+      travel_to midnight + 65.minutes
+      SummaryJob.new.perform(midnight)
+      route.reload
+
+      assert_equal 1, route.baseline_sample_count
+      assert_equal 1, route.baseline_periods
+      assert_in_delta 100.0, route.baseline_p90_duration, 0.001
+    end
+
+    test "a run that is not at midnight leaves baselines alone" do
+      non_midnight = Time.zone.parse("2024-03-04 14:00:00")
+
+      travel_to non_midnight + 65.minutes
+      SummaryJob.new.perform(non_midnight)
+
+      assert_nil rails_pulse_routes(:api_users).reload.baseline_computed_at
+    end
+
+    test "a baseline rebuild that fails does not fail the summaries already written" do
+      midnight = Time.zone.parse("2024-03-04 00:00:00")
+      travel_to midnight + 65.minutes
+
+      RailsPulse::BaselineBuilder.any_instance.stubs(:perform).raises(ActiveRecord::StatementInvalid, "boom")
+
+      assert_nothing_raised { SummaryJob.new.perform(midnight) }
+      assert RailsPulse::Summary.exists?(period_type: "day")
+    end
+
     test "daily summary processes previous day data" do
       midnight = Time.zone.parse("2024-03-04 00:00:00")
       travel_to midnight

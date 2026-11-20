@@ -50,6 +50,10 @@ _Avoid_: granularity, interval, resolution
 The historical comparison compares the traffic-weighted metric across `baseline_window` (default 28 days) of day summaries against `comparison_window` (default one day). A change is a **regression** only when it clears both the ratio and the absolute floor in `regression_thresholds`.
 _Avoid_: trend (that word is reserved for the metric-card arrow against the previous period)
 
+**Stored baseline**:
+What normal looks like for one route, query or job: its traffic-weighted P50, P90 and P95 across `baseline_window` of complete day summaries, kept in `baseline_*` columns on the subject's own row and rebuilt after each day summary. `baseline_sample_count` and `baseline_periods` say how much history it rests on. The historical comparison does not read it; it computes its own baseline, which stops where the comparison window begins.
+_Avoid_: threshold (a threshold is a line derived from a baseline or set in config), average
+
 **Performance status**:
 The bucket a route, request, query or job falls into against its thresholds hash: `healthy`, `slow`, `very_slow` or `critical`. The dashboard health bar folds `very_slow` into `slow` and reports three counts.
 _Avoid_: severity, level, grade

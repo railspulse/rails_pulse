@@ -34,6 +34,12 @@ RailsPulse::Schema = lambda do |connection|
       t.string :path, null: false, comment: "Normalized request path (e.g., /posts/:id)"
       t.text :tags, comment: "JSON array of tags for filtering and categorization"
       t.string :controller_action, comment: "Rails controller and action handling this route (e.g., articles#show)"
+      t.decimal :baseline_p50_duration, precision: 15, scale: 6, comment: "Baseline median duration in milliseconds: traffic-weighted over config.baseline_window of day summaries"
+      t.decimal :baseline_p90_duration, precision: 15, scale: 6, comment: "Baseline 90th percentile duration in milliseconds"
+      t.decimal :baseline_p95_duration, precision: 15, scale: 6, comment: "Baseline 95th percentile duration in milliseconds"
+      t.bigint :baseline_sample_count, null: false, default: 0, comment: "Requests the baseline was built from"
+      t.integer :baseline_periods, null: false, default: 0, comment: "Day summaries the baseline was built from"
+      t.datetime :baseline_computed_at, comment: "When the baseline was last rebuilt; nil until the first rebuild"
       t.timestamps
     end
 
@@ -57,6 +63,12 @@ RailsPulse::Schema = lambda do |connection|
       t.text :n_plus_one_analysis, comment: "JSON object with enhanced N+1 query detection results"
       t.text :suggestions, comment: "JSON array of optimization recommendations"
       t.text :tags, comment: "JSON array of tags for filtering and categorization"
+      t.decimal :baseline_p50_duration, precision: 15, scale: 6, comment: "Baseline median duration in milliseconds: traffic-weighted over config.baseline_window of day summaries"
+      t.decimal :baseline_p90_duration, precision: 15, scale: 6, comment: "Baseline 90th percentile duration in milliseconds"
+      t.decimal :baseline_p95_duration, precision: 15, scale: 6, comment: "Baseline 95th percentile duration in milliseconds"
+      t.bigint :baseline_sample_count, null: false, default: 0, comment: "Operations the baseline was built from"
+      t.integer :baseline_periods, null: false, default: 0, comment: "Day summaries the baseline was built from"
+      t.datetime :baseline_computed_at, comment: "When the baseline was last rebuilt; nil until the first rebuild"
       t.timestamps
     end
 
@@ -95,6 +107,12 @@ RailsPulse::Schema = lambda do |connection|
       t.decimal :p95_duration, precision: 15, scale: 6, comment: "95th percentile duration in milliseconds"
       t.decimal :p99_duration, precision: 15, scale: 6, comment: "99th percentile duration in milliseconds"
       t.text :tags, comment: "JSON array of tags"
+      t.decimal :baseline_p50_duration, precision: 15, scale: 6, comment: "Baseline median duration in milliseconds: traffic-weighted over config.baseline_window of day summaries"
+      t.decimal :baseline_p90_duration, precision: 15, scale: 6, comment: "Baseline 90th percentile duration in milliseconds"
+      t.decimal :baseline_p95_duration, precision: 15, scale: 6, comment: "Baseline 95th percentile duration in milliseconds"
+      t.bigint :baseline_sample_count, null: false, default: 0, comment: "Job runs the baseline was built from"
+      t.integer :baseline_periods, null: false, default: 0, comment: "Day summaries the baseline was built from"
+      t.datetime :baseline_computed_at, comment: "When the baseline was last rebuilt; nil until the first rebuild"
       t.timestamps
     end
 
