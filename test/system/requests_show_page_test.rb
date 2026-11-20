@@ -71,11 +71,16 @@ class RequestsShowPageTest < ApplicationSystemTestCase
   end
 
   def test_operations_duration_and_impact_fit_a_phone_screen
-    page.driver.browser.manage.window.resize_to(390, 844)
+    # Emulate the viewport rather than resizing the window: a tiling window
+    # manager owns the window size in headed runs (BROWSER=true) and refuses or
+    # ignores the resize.
+    page.driver.browser.execute_cdp("Emulation.setDeviceMetricsOverride", width: 390, height: 844, deviceScaleFactor: 1, mobile: false)
     visit_rails_pulse_path "/requests/#{@users_request_1.id}"
 
     assert_selector "table.operations-table"
     viewport = page.evaluate_script("document.documentElement.clientWidth")
+
+    assert_operator viewport, :<=, 390, "viewport is #{viewport}px; the phone-width emulation did not apply"
 
     [ "Duration", "Impact" ].each do |header|
       right = page.evaluate_script(<<~JS)
@@ -87,6 +92,6 @@ class RequestsShowPageTest < ApplicationSystemTestCase
       assert_operator right, :<=, viewport, "#{header} column ends at #{right}px, past the #{viewport}px viewport"
     end
   ensure
-    page.driver.browser.manage.window.resize_to(1400, 1400)
+    page.driver.browser.execute_cdp("Emulation.clearDeviceMetricsOverride")
   end
 end

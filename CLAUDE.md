@@ -23,11 +23,11 @@ Never use model classes for data changes inside `up`; use `execute(<<~SQL)`. On 
 ```bash
 DB=sqlite3 rake test           # Default (SQLite3); use rake, NOT `rails test`
 DB=postgresql rake test        # PostgreSQL
-rake test_matrix               # All DBs × Rails versions (pre-release validation)
-BROWSER=true rake test_matrix  # Include system tests
+rake test_matrix               # All DBs × Rails versions, system tests included (pre-release validation)
+DB=sqlite3 rails test test/system/  # System tests alone, headless
 ```
 
-Tests are parallelized by default. System tests (`BROWSER=true`) disable parallelization automatically.
+Tests are parallelized by default. `rake test` does not run `test/system`; `rake test_matrix` does. `BROWSER=true` shows Chrome instead of running headless and disables parallelization; on Linux it needs `WAYLAND_DISPLAY` or `DISPLAY` set.
 
 `rake test_setup` records which adapter it prepared the dummy database for (`tmp/test_setup_adapter`), and `rake test` refuses to run for a different `DB` until `test_setup` is run again: the dummy `schema.rb` is dumped from whichever adapter migrated last, and Rails loads that file, not the migrations, into the parallel-worker databases.
 
