@@ -39,7 +39,7 @@ _Avoid_: execution, attempt (an attempt is a counter on the run)
 ### Aggregation
 
 **Summary**:
-A pre-aggregated row for one subject (a Route, Query, Job, or the overall request rollup, marked by `summarizable_type` Request with `summarizable_id` 0) over one period: count, average, P50, P95, P99, error count. `SummaryJob` writes them each hour, and writes the overall row even for an empty period so its timestamp doubles as the job's heartbeat.
+A pre-aggregated row for one subject (a Route, Query, Job, or the overall request rollup, marked by `summarizable_type` Request with `summarizable_id` 0) over one period: count, average, P50, P90, P95, P99, error count. `SummaryJob` writes them each hour, and writes the overall row even for an empty period so its timestamp doubles as the job's heartbeat.
 _Avoid_: rollup, metric, stat
 
 **Period type**:

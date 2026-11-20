@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The dashboard now says when cleanup itself has stopped, based on the last recorded cleanup run: a warning when `RailsPulse::CleanupJob` has never run with requests past retention or when its last run is over two days old, and a critical item when the last run failed. The Storage page's Cleanup panel also shows when cleanup last ran and what it deleted. (#358)
 - `config.default_disabled_tags` (for example `["ignored"]`) hides the listed tags in every dashboard session until a user switches them back on in Global Filters, so tagged noise stays hidden across logins and for the whole team (#331).
+- Summaries now record the P90 duration of each route, query and job alongside P50, P95 and P99, ready for automatic thresholds (#385). Upgrading adds a column, so run `rails generate rails_pulse:upgrade && rails db:migrate`; tracking pauses until it exists.
 
 ### Fixed
 
