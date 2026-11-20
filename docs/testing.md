@@ -7,7 +7,8 @@ DB=sqlite3 rake test                 # default; also runs test/migrations in a s
                                      # refuses to run if the last test_setup was for another adapter
 DB=postgresql rake test              # needs POSTGRES_USERNAME/PASSWORD/HOST/PORT (port 5434 locally)
 DB=mysql2 rake test                  # needs MYSQL_USERNAME/PASSWORD/HOST/PORT
-BROWSER=true DB=sqlite3 rake test    # include system tests; disables parallelisation
+DB=sqlite3 rails test test/system/   # system tests, headless (rake test skips test/system)
+BROWSER=true DB=sqlite3 rails test test/system/  # visible Chrome, serial; Linux needs WAYLAND_DISPLAY or DISPLAY
 COVERAGE=true rake test              # SimpleCov, serial; thresholds 90% total, 80% per file (.simplecov)
 rake test_matrix                     # 3 Rails versions (Appraisals) × 3 databases = 9 runs
 rake test_migrations                 # upgrade regression tests only
@@ -50,7 +51,7 @@ The matrix installs from `gemfiles/rails_*.gemfile.lock`, not the root `Gemfile.
 | Directory | Holds |
 |---|---|
 | `test/models`, `test/controllers`, `test/services`, `test/helpers`, `test/lib` | unit and functional tests mirroring `app/` and `lib/` |
-| `test/system` | Capybara; run with `BROWSER=true`; includes `csp_compliance_test.rb` |
+| `test/system` | Capybara, headless Chrome; run with `rails test test/system/` (`rake test` skips it, `rake test_matrix` includes it); `BROWSER=true` shows the browser; includes `csp_compliance_test.rb` |
 | `test/migrations` | upgrade regression from `test/support/schemas/` baselines |
 | `test/generators` | install, upgrade, convert-to-migrations |
 | `test/javascript/controllers/*.test.js` | Vitest; shared `mountController` in `test/javascript/setup.js` |
