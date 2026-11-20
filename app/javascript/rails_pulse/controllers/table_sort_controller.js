@@ -11,8 +11,16 @@ export default class extends Controller {
 
     if (href) {
       window.history.replaceState({}, '', href)
+      this.markLoading(link)
       this.fetchAndUpdateTable(href)
     }
+  }
+
+  // The sort arrows come from the server, so until the response replaces the
+  // header the clicked column shows a spinner instead.
+  markLoading(link) {
+    this.tableFrameTarget.querySelectorAll('[data-sort-loading]').forEach(el => el.removeAttribute('data-sort-loading'))
+    if (this.tableFrameTarget.contains(link)) link.setAttribute('data-sort-loading', '')
   }
 
   fetchAndUpdateTable(url) {

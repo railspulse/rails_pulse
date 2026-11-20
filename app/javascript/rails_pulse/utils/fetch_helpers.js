@@ -42,7 +42,9 @@ export async function fetchPartial(url, options = {}) {
   })
 
   if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`)
+    const error = new Error(`HTTP error! status: ${response.status}`)
+    error.status = response.status
+    throw error
   }
 
   const html = await response.text()
@@ -116,39 +118,88 @@ async function replaceFrom(url, targetElement, options, controller) {
 
 /**
  * Fetch and replace, showing an error notice with a Retry button in the target
- * when the fetch fails. A fetch superseded by a newer one is ignored silently.
+ * when the fetch fails or the response lacks the expected content. A fetch
+ * superseded by a newer one is ignored silently.
  * @param {string} url - The URL to fetch
  * @param {HTMLElement} targetElement - Element to update
  * @param {Object} options - Options for fetchAndReplace, plus:
- * @param {string} options.errorMessage - Text for the error notice
- * @returns {Promise<boolean>} - True if content was replaced; false on failure, abort or missing selector
+ * @param {string} options.errorMessage - Headline for the error notice
+ * @returns {Promise<boolean>} - True if content was replaced; false on failure or abort
  */
 export async function loadInto(url, targetElement, options = {}) {
   const { errorMessage = 'Could not load this content.', ...fetchOptions } = options
+  const retry = () => retryInto(url, targetElement, options)
+
   try {
-    return await fetchAndReplace(url, targetElement, fetchOptions)
+    if (await fetchAndReplace(url, targetElement, fetchOptions)) return true
+    // Every page renders the target, empty state included, so a 200 without it is
+    // a page the dashboard did not render: a host sign-in redirect or a proxy page.
+    showFetchError(targetElement, errorMessage, MISSING_CONTENT_DETAIL, retry)
+    return false
   } catch (error) {
     if (error?.name === 'AbortError') return false
     console.error('[RailsPulse] Fetch error:', error)
-    showFetchError(targetElement, errorMessage, () => loadInto(url, targetElement, options))
+    showFetchError(targetElement, errorMessage, errorDetail(error), retry)
     return false
   }
 }
 
-function showFetchError(targetElement, message, retry) {
+const MISSING_CONTENT_DETAIL = 'The server returned an unexpected page. Reloading the page usually fixes this.'
+
+function errorDetail(error) {
+  if (error?.status >= 500) return `The server ran into a problem (HTTP ${error.status}). Try again in a moment.`
+  if (error?.status) return `The server refused the request (HTTP ${error.status}). Reload the page and try again.`
+  return 'Could not reach the server. Check your connection and try again.'
+}
+
+// Keyboard focus sits on the Retry button, which the response replaces: move it
+// to the new content, or to the next notice's button if the retry fails too.
+async function retryInto(url, targetElement, options) {
+  const button = targetElement.querySelector('.fetch-error button')
+  if (button?.getAttribute('aria-disabled') === 'true') return
+  if (button) {
+    button.setAttribute('aria-disabled', 'true')
+    button.lastChild.textContent = 'Retrying…'
+  }
+
+  const loaded = await loadInto(url, targetElement, options)
+  if (loaded) {
+    targetElement.setAttribute('tabindex', '-1')
+    targetElement.focus({ preventScroll: true })
+  } else {
+    targetElement.querySelector('.fetch-error button')?.focus()
+  }
+}
+
+function showFetchError(targetElement, message, detail, retry) {
   const notice = document.createElement('div')
-  notice.className = 'alert alert--negative flex items-center justify-between gap'
+  notice.className = 'alert alert--negative fetch-error'
   notice.setAttribute('role', 'alert')
 
-  const text = document.createElement('span')
-  text.textContent = message
+  const icon = document.createElement('span')
+  icon.className = 'fetch-error__icon'
+  icon.setAttribute('aria-hidden', 'true')
+  window.RailsPulseIcons?.render('alert-circle', icon, { width: '20', height: '20' })
+
+  const body = document.createElement('div')
+  body.className = 'fetch-error__body'
+  const title = document.createElement('p')
+  title.className = 'fetch-error__title'
+  title.textContent = message
+  const text = document.createElement('p')
+  text.className = 'fetch-error__detail'
+  text.textContent = detail
+  body.append(title, text)
 
   const button = document.createElement('button')
   button.type = 'button'
-  button.className = 'btn btn--borderless'
-  button.textContent = 'Retry'
+  button.className = 'btn'
+  const buttonIcon = document.createElement('span')
+  buttonIcon.setAttribute('aria-hidden', 'true')
+  window.RailsPulseIcons?.render('refresh-cw', buttonIcon, { width: '16', height: '16' })
+  button.append(buttonIcon, document.createTextNode('Retry'))
   button.addEventListener('click', retry)
 
-  notice.append(text, button)
+  notice.append(icon, body, button)
   targetElement.replaceChildren(notice)
 }
