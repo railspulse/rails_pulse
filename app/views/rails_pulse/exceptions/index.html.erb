@@ -33,34 +33,35 @@
     <% end %>
   </div>
 
-  <% if @table_data.any? %>
-    <% if @occurrence_volume_chart %>
-      <%# No chart tabs on this page — the toggles list holds the deploy toggle alone. %>
-      <div class="panel-tabs">
-        <div class="panel-tabs__list">
-          <%= render "rails_pulse/shared/deployment_markers_toggle" %>
-        </div>
-      </div>
-
-      <div class="chart-container chart-container--slim">
-        <%= render_stimulus_chart(
-          @occurrence_volume_chart,
-          type: "bar",
-          id: "exception_occurrence_volume_chart",
-          height: "100%",
-          options: bar_chart_options.deep_merge(series: { barMaxWidth: 48 })
-        ) %>
-      </div>
-    <% end %>
-
-    <div data-controller="rails-pulse--table-sort">
-      <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">
-        <%= render 'rails_pulse/exceptions/table' %>
+  <% if @table_data.any? && @occurrence_volume_chart %>
+    <%# No chart tabs on this page — the toggles list holds the deploy toggle alone. %>
+    <div class="panel-tabs">
+      <div class="panel-tabs__list">
+        <%= render "rails_pulse/shared/deployment_markers_toggle" %>
       </div>
     </div>
-  <% else %>
-    <%= render 'rails_pulse/components/empty_state',
-        title: 'No exceptions recorded.',
-        description: 'Exceptions raised by your application will appear here.' %>
+
+    <div class="chart-container chart-container--slim">
+      <%= render_stimulus_chart(
+        @occurrence_volume_chart,
+        type: "bar",
+        id: "exception_occurrence_volume_chart",
+        height: "100%",
+        options: bar_chart_options.deep_merge(series: { barMaxWidth: 48 })
+      ) %>
+    </div>
   <% end %>
+
+  <%# The empty state stays inside #index_table so a sort fetch always finds it. %>
+  <div data-controller="rails-pulse--table-sort">
+    <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">
+      <% if @table_data.any? %>
+        <%= render 'rails_pulse/exceptions/table' %>
+      <% else %>
+        <%= render 'rails_pulse/components/empty_state',
+            title: 'No exceptions recorded.',
+            description: 'Exceptions raised by your application will appear here.' %>
+      <% end %>
+    </div>
+  </div>
 <% end %>

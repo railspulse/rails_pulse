@@ -22,3 +22,49 @@
   --alert-color: var(--color-negative);
   --alert-icon-color: var(--color-filter-negative);
 }
+
+/* Error notice that replaces content an in-page fetch could not load */
+.fetch-error {
+  align-items: start;
+  background-color: color-mix(in oklch, var(--color-negative) 6%, transparent);
+  column-gap: var(--size-3);
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  margin-block: var(--size-4);
+  row-gap: var(--size-3);
+
+  .fetch-error__icon {
+    color: var(--color-negative);
+    display: inline-flex;
+    flex-shrink: 0;
+  }
+
+  .fetch-error__body {
+    display: flex;
+    flex-direction: column;
+    gap: var(--size-1);
+    min-inline-size: 0;
+  }
+
+  .fetch-error__title {
+    font-weight: var(--font-semibold);
+  }
+
+  .fetch-error__detail {
+    color: var(--color-text-subtle);
+  }
+
+  .btn {
+    align-self: center;
+  }
+
+  /* On narrow screens the button drops under the text, aligned with it */
+  @media (max-width: 39.99rem) {
+    grid-template-columns: auto 1fr;
+
+    .btn {
+      grid-column: 2;
+      justify-self: start;
+    }
+  }
+}

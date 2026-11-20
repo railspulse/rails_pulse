@@ -3,3 +3,61 @@
   border-radius: var(--rounded-md);
   background-color: var(--color-border-light);
 }
+
+/* Content an in-page fetch is replacing: dim it so stale rows don't read as current.
+   Not a bare [aria-busy] rule, which Turbo also sets on <html> and forms during visits.
+   A table's header stays undimmed so the sort spinner reads clearly. */
+#index_table[aria-busy="true"] :is(tbody, tfoot, .fetch-error),
+[data-operation-url][aria-busy="true"] {
+  opacity: 0.45;
+  transition: opacity 150ms ease-in;
+}
+
+/* Thin moving bar across the top of a table being reloaded */
+#index_table[aria-busy="true"] {
+  position: relative;
+
+  &::before {
+    animation: fetch-progress 1.1s ease-in-out infinite;
+    background: linear-gradient(90deg, transparent, var(--color-primary), transparent);
+    background-size: 40% 100%;
+    background-repeat: no-repeat;
+    block-size: 2px;
+    content: "";
+    inset-block-start: 0;
+    inset-inline: 0;
+    position: absolute;
+  }
+}
+
+/* Spinner on the column header the user just sorted by */
+#index_table [data-sort-loading]::after {
+  animation: fetch-spin 0.7s linear infinite;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: var(--rounded-full);
+  block-size: 0.75rem;
+  content: "";
+  inline-size: 0.75rem;
+  margin-inline-start: var(--size-1);
+}
+
+[tabindex="-1"]:is(#index_table, [data-operation-url]):focus {
+  outline: none;
+}
+
+@keyframes fetch-progress {
+  from { background-position: -40% 0; }
+  to { background-position: 140% 0; }
+}
+
+@keyframes fetch-spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #index_table[aria-busy="true"]::before,
+  #index_table [data-sort-loading]::after {
+    animation-duration: 3s;
+  }
+}

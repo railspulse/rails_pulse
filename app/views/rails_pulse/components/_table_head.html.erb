@@ -8,8 +8,15 @@
           <%= column[:label] %>
         <% else %>
           <% sort_params = {} %>
-          <% sort_params[:zoom_start_time] = @time_range&.zoom_start if @time_range&.zoom_start.present? %>
-          <% sort_params[:zoom_end_time] = @time_range&.zoom_end if @time_range&.zoom_end.present? %>
+          <%# The zoom bar sends JS milliseconds, which TimeRange converts to seconds and
+              removes from params; carry the request's own values so the next request
+              converts them once, not twice. %>
+          <% zoom_start_time = request.query_parameters["zoom_start_time"] %>
+          <% zoom_end_time = request.query_parameters["zoom_end_time"] %>
+          <% if zoom_start_time.is_a?(String) && zoom_end_time.is_a?(String) %>
+            <% sort_params[:zoom_start_time] = zoom_start_time %>
+            <% sort_params[:zoom_end_time] = zoom_end_time %>
+          <% end %>
           <% sort_params[:selected_column_time] = params[:selected_column_time] if params[:selected_column_time].present? %>
           <%= sort_link @ransack_query, column[:field], column[:label],
             sort_params.merge(

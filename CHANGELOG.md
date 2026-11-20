@@ -29,6 +29,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Tags column header on the Routes, Requests and Queries tables is no longer a sort link that silently fell back to the default order.
 - The dashboard's Exceptions badge explains "quiet", "firing" and "critical" on hover, and why a firing group below the warning threshold has no Needs Attention entry.
 - On a phone, the request page's Operations table keeps Duration and Impact on screen.
+- Sorting a table or zooming its chart on a slow connection now always shows the results of the most recent click, with a loading indicator while it waits.
+- Sorting a table while its chart is zoomed now keeps the zoomed range, instead of showing an empty table.
+- A table or operation detail that fails to load, including after a session expires, now shows an error explaining what went wrong with a Retry button, instead of stale or blank content.
 
 ## [0.5.1.pre.3] - 2026-10-29
 
