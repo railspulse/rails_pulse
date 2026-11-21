@@ -11,6 +11,15 @@ export default class extends Controller {
     this.html = document.documentElement
     this.restore()
     this.sync()
+    // The toggle is rendered twice (sidebar and phone menu), each with its own
+    // controller. Watching the attribute keeps both pressed states right
+    // whichever one was clicked.
+    this.observer = new MutationObserver(() => this.sync())
+    this.observer.observe(this.html, { attributes: true, attributeFilter: ["data-ui"] })
+  }
+
+  disconnect() {
+    this.observer?.disconnect()
   }
 
   // The layout's inline script normally does this before first paint. A host

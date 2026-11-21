@@ -20,6 +20,7 @@ end %>
 <div
   data-controller="rails-pulse--time-range"
   data-rails-pulse--time-range-url-value="<%= rails_pulse.settings_time_range_path %>"
+  data-action="keydown.esc@window->rails-pulse--time-range#closeOnEscape"
 >
   <div
     class="flex items-center gap mie-2"
@@ -147,6 +148,7 @@ end %>
               type="text"
               id="time_range_custom_dates"
               data-rails-pulse--time-range-target="dateInput"
+              data-action="change->rails-pulse--time-range#clearError"
               placeholder="Pick date range"
               class="input"
               data-controller="rails-pulse--datepicker"

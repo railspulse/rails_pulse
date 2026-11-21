@@ -130,6 +130,29 @@ describe('TimeRangeController', () => {
     expect(HTMLFormElement.prototype.submit).not.toHaveBeenCalled()
   })
 
+  it('hides the message once a range is chosen', () => {
+    dateInput().value = ''
+    ctrl().applyCustom({ preventDefault: vi.fn() })
+    ctrl().clearError()
+    expect(errorMessage().hidden).toBe(true)
+  })
+
+  it('closes the open modal on Escape', () => {
+    ctrl().showCustom({ preventDefault: vi.fn() })
+    ctrl().closeOnEscape({ preventDefault: vi.fn() })
+    expect(modalWrapper().style.display).toBe('none')
+  })
+
+  it('leaves the modal open on Escape while the calendar is open', () => {
+    ctrl().showCustom({ preventDefault: vi.fn() })
+    const calendar = document.createElement('div')
+    calendar.className = 'flatpickr-calendar open'
+    document.body.appendChild(calendar)
+    ctrl().closeOnEscape({ preventDefault: vi.fn() })
+    expect(modalWrapper().style.display).toBe('flex')
+    calendar.remove()
+  })
+
   it('hides the message again when the modal closes', () => {
     dateInput().value = ''
     ctrl().applyCustom({ preventDefault: vi.fn() })

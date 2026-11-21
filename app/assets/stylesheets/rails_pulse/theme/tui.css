@@ -220,8 +220,8 @@ html[data-ui="tui"] .console-brand__mark::after {
   background: var(--tui-fill);
 }
 
-/* Corners and fonts that components set literally rather than through the
-   scale tokens zeroed above. */
+/* Corners that components set literally rather than through the scale
+   tokens zeroed above. */
 html[data-ui="tui"] .series-toggle,
 html[data-ui="tui"] .panel-tab,
 html[data-ui="tui"] .flame-legend-swatch,
@@ -232,10 +232,6 @@ html[data-ui="tui"] .exception-params,
 html[data-ui="tui"] .tag-list .badge,
 html[data-ui="tui"] .tag-add-button {
   border-radius: 0;
-}
-
-html[data-ui="tui"] .operations-label-cell span {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
 }
 
 /* --color-primary is the yellow fill in the dark terminal palette, which

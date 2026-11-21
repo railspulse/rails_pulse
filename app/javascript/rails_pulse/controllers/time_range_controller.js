@@ -52,6 +52,19 @@ export default class extends Controller {
     }
   }
 
+  // Escape closes the open calendar first (the date picker handles that
+  // itself); a second press, or a press with no calendar open, closes the
+  // dialog.
+  closeOnEscape(event) {
+    if (!this.hasModalWrapperTarget || this.modalWrapperTarget.style.display === 'none') return
+    if (document.querySelector('.flatpickr-calendar.open')) return
+    this.cancelCustom(event)
+  }
+
+  clearError() {
+    if (this.hasErrorTarget) this.errorTarget.hidden = true
+  }
+
   closeOnClickOutside(event) {
     if (this.hasModalTarget && event.target === this.modalWrapperTarget) {
       this.cancelCustom(event)

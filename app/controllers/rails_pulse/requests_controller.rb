@@ -67,6 +67,8 @@ module RailsPulse
 
       # Handle time mode - check if recent mode is selected
       time_mode = params[:period_start_range] || "recent"
+      # The view says so, because the top bar's time range is still on screen.
+      @recent_mode = time_mode == "recent"
 
       if time_mode != "recent" && @time_range&.table_window
         # Custom mode - apply time filters

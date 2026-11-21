@@ -49,6 +49,13 @@ describe('UiModeController', () => {
     expect(toggleButton().getAttribute('aria-pressed')).toBe('true')
   })
 
+  it('follows a change made by another toggle on the page', async () => {
+    await mount()
+    document.documentElement.setAttribute('data-ui', 'tui')
+    await new Promise((resolve) => setTimeout(resolve, 0))
+    expect(toggleButton().getAttribute('aria-pressed')).toBe('true')
+  })
+
   // # Toggle
 
   it('switches to TUI and saves the mode', async () => {

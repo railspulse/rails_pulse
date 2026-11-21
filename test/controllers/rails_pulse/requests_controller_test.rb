@@ -278,6 +278,7 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     # Should handle no time filtering (recent mode)
     assert_not_nil assigns(:table_data)
+    assert_select "p", text: /not limited to the time range/
   end
 
   test "index recent mode uses default sort by occurred_at desc" do
@@ -483,6 +484,7 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_not_nil assigns(:table_data)
     # Time filters should be applied for non-recent mode
+    assert_select "p", text: /not limited to the time range/, count: 0
   end
 
   test "index handles time mode parameter correctly" do

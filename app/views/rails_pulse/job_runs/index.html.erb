@@ -1,3 +1,7 @@
-<div id="index_table">
-  <%= render 'rails_pulse/jobs/job_runs_table' %>
-</div>
+<%= render 'rails_pulse/components/page_header' %>
+
+<%= render 'rails_pulse/components/panel', title: "Runs of #{@job.name}" do %>
+  <div id="index_table">
+    <%= render 'rails_pulse/jobs/job_runs_table' %>
+  </div>
+<% end %>

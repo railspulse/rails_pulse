@@ -43,6 +43,10 @@
     <% end %>
   </div>
 
+  <% if @recent_mode %>
+    <p class="text-xs text-subtle mbs-2">Newest requests first. This list is not limited to the time range selected above.</p>
+  <% end %>
+
   <%# The empty state stays inside #index_table so a sort fetch always finds it. %>
   <div data-controller="rails-pulse--table-sort">
     <div id="index_table" data-rails-pulse--table-sort-target="tableFrame">

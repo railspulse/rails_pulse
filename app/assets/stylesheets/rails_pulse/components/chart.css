@@ -58,6 +58,12 @@
     margin-top: var(--size-2);
   }
 
+  /* Four buttons do not fit one row; from the right the leftover wraps alone
+     to the far edge, so start them from the left instead. */
+  .panel-icon-bar:has(.btn) {
+    justify-content: flex-start;
+  }
+
   .panel-icon-bar .series-toggle {
     padding: 7px 14px 6px;
   }

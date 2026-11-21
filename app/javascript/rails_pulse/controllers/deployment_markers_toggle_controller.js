@@ -22,6 +22,7 @@ export default class extends Controller {
 
     if (this.hasButtonTarget) {
       this.buttonTarget.dataset.active = isActive ? 'true' : 'false'
+      this.buttonTarget.setAttribute('aria-pressed', String(isActive))
     }
 
     if (this.hasMessageTarget) {

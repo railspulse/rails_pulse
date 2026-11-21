@@ -313,7 +313,7 @@ a.verdict-cell:hover .verdict-cell__arrow {
 @media (max-width: 40rem) {
   .attention-item {
     display: grid;
-    grid-template-columns: 3px minmax(0, 1fr) auto;
+    grid-template-columns: 3px auto minmax(0, 1fr);
     grid-template-areas:
       "bar badge metric"
       "bar content content";
@@ -337,11 +337,17 @@ a.verdict-cell:hover .verdict-cell__arrow {
     grid-area: content;
   }
 
+  /* The metric takes the space the badge leaves; a long note ("Last run:
+     2026-11-18 02:59 (UTC)") wraps onto its own line rather than pushing
+     into the badge. */
   .attention-item__metric {
     grid-area: metric;
     display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     align-items: baseline;
-    gap: var(--size-2);
+    column-gap: var(--size-2);
+    min-inline-size: 0;
   }
 
   .attention-item__metric p {

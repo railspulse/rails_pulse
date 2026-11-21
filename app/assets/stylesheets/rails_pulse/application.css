@@ -89,9 +89,6 @@ html[data-color-scheme="dark"] .input {
   white-space: nowrap;
   vertical-align: middle;
 }
-.operations-label-cell span {
-  font-family: 'Times New Roman', Times, serif;
-}
 
 /* On a phone the 380px label alone is wider than the screen, so the numbers
    a reader scans for land off to the right. Truncate it harder and keep

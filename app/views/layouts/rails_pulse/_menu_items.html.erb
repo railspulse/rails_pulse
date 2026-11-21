@@ -1,10 +1,14 @@
 <%# aria-current marks the section being viewed so the nav can highlight it. %>
-<% nav_current = ->(path, exact: false) {
+<%# also: paths with no nav item of their own that belong to this section
+    (Storage is opened from the dashboard, an operation from a request). %>
+<% nav_current = ->(path, exact: false, also: []) {
      here = request.path.chomp("/")
      target = path.to_s.chomp("/")
-     (exact ? here == target : (here == target || here.start_with?("#{target}/"))) ? "page" : nil
+     within = ->(prefix) { here == prefix || here.start_with?("#{prefix}/") }
+     current = exact ? here == target : within.(target)
+     (current || also.any? { |extra| within.(extra.to_s.chomp("/")) }) ? "page" : nil
    } %>
-<%= link_to root_path, class: 'btn sidebar-menu__button', aria: { current: nav_current.(root_path, exact: true) } do %>
+<%= link_to root_path, class: 'btn sidebar-menu__button', aria: { current: nav_current.(root_path, exact: true, also: [ storage_path ]) } do %>
   <%= rails_pulse_icon "layout-dashboard", width: "16" %>
   <span class="overflow-ellipsis">Dashboard</span>
 <% end %>
@@ -14,7 +18,7 @@
   <span class="overflow-ellipsis">Routes</span>
 <% end %>
 
-<%= link_to requests_path, class: 'btn sidebar-menu__button', aria: { current: nav_current.(requests_path) } do %>
+<%= link_to requests_path, class: 'btn sidebar-menu__button', aria: { current: nav_current.(requests_path, also: [ "#{root_path.chomp('/')}/operations" ]) } do %>
   <%= rails_pulse_icon "activity", width: "16" %>
   <span class="overflow-ellipsis">Requests</span>
 <% end %>
