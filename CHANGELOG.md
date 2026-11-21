@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `rails rails_pulse:status` now closes with threshold suggestions, each with an initializer line to paste, when the last summarized day shows route, query or job thresholds that are too noisy or never fire. They are advice only and never change the exit status (#385).
 - Threshold recommendations (the status task, the insights API, `rails-pulse insights` and the MCP tool) now cover `job_thresholds` as well as routes and queries.
 - `config.default_disabled_tags` (for example `["ignored"]`) hides the listed tags in every dashboard session until a user switches them back on in Global Filters, so tagged noise stays hidden across logins and for the whole team (#331).
+- Summaries now record the P90 duration of each route, query and job alongside P50, P95 and P99, ready for automatic thresholds (#385). Upgrading adds a column, so run `rails generate rails_pulse:upgrade && rails db:migrate`; tracking pauses until it exists.
+- Each route, query and job now stores a baseline of its normal P50, P90 and P95 over `config.baseline_window`, rebuilt daily by `RailsPulse::SummaryJob`, ready for automatic thresholds (#385). Upgrading adds columns, so run `rails generate rails_pulse:upgrade && rails db:migrate`; tracking pauses until they exist.
 - A "TUI" button under the theme toggle switches the dashboard to a terminal-style look (monospace type, square corners, brand-yellow accents) in light or dark; the choice is remembered per browser.
 
 ### Changed
@@ -37,6 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The dashboard's Exceptions status explains "quiet", "firing" and "critical" on hover, and why a firing group below the warning threshold has no Needs Attention entry.
 - Charts on tablet and phone widths are capped in height instead of growing taller than the screen.
 - On a phone, the request page's Operations table keeps Duration and Impact on screen.
+- Sorting a table or zooming its chart on a slow connection now always shows the results of the most recent click, with a loading indicator while it waits.
+- Sorting a table while its chart is zoomed now keeps the zoomed range, instead of showing an empty table.
+- A table or operation detail that fails to load, including after a session expires, now shows an error explaining what went wrong with a Retry button, instead of stale or blank content.
 
 ## [0.5.1.pre.3] - 2026-10-29
 

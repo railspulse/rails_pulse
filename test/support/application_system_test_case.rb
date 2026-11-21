@@ -78,6 +78,15 @@ end
 class ApplicationSystemTestCase < ActionDispatch::SystemTestCase
   Capybara.server = :puma, { Silent: true }
 
+  # A visible Chrome on Linux needs a display. Without one Chrome exits at
+  # launch and Selenium reports only "session not created: Chrome instance
+  # exited", which hides the cause. Terminal multiplexers whose server started
+  # outside the desktop session commonly lack these variables.
+  if ENV["BROWSER"] == "true" && RUBY_PLATFORM.include?("linux") && ENV["WAYLAND_DISPLAY"].to_s.empty? && ENV["DISPLAY"].to_s.empty?
+    abort "BROWSER=true opens a visible Chrome window, but neither WAYLAND_DISPLAY nor DISPLAY is set in this shell. " \
+          "Set the one your desktop uses (for example WAYLAND_DISPLAY=wayland-1), or drop BROWSER=true to run headless."
+  end
+
   driven_by :selenium, using: :chrome, screen_size: [ 1400, 1400 ] do |options|
     options.add_argument("--headless") unless ENV["BROWSER"] == "true"
     options.add_argument("--disable-dev-shm-usage")

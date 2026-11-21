@@ -25,6 +25,8 @@ module RailsPulse
 
         # Check if we should run monthly summary (first day of month)
         process_monthly_summary((target_hour.to_date - 1.month).beginning_of_month) if first_of_month?(target_hour)
+
+        rebuild_baselines
       end
 
       enqueue_cloud_sync
@@ -71,6 +73,18 @@ module RailsPulse
       end
     rescue StandardError => e
       RailsPulse.logger.error "Could not re-summarize hours with late rollups: #{e.class} - #{e.message}"
+    end
+
+    # Baselines are built from day summaries, so they change only when a day
+    # is written. Best-effort: a failure here must not fail the summaries
+    # already written, and the next midnight rebuilds every baseline anyway.
+    def rebuild_baselines
+      return unless BaselineBuilder.columns_available?
+
+      rebuilt = BaselineBuilder.new.perform
+      RailsPulse.logger.info "Rebuilt baselines for #{rebuilt} routes, queries and jobs"
+    rescue StandardError => e
+      RailsPulse.logger.error "Could not rebuild baselines: #{e.class} - #{e.message}"
     end
 
     # Cloud receives an hour only once it is summarized, so the sync follows

@@ -2,7 +2,7 @@
 
 _Recorded 2026-09, reconstructing a decision made in the initial design (2025)._
 
-`rails_pulse_summaries` holds every pre-aggregated period for every subject. The row is keyed by `summarizable_type` / `summarizable_id`, `period_type` (`hour`, `day`, `week`, `month`) and `period_start`, and carries count, average, min, max, P50, P95, P99, total, standard deviation and status buckets. The overall request rollup uses type `RailsPulse::Request` with id 0, and is written even for an empty period so its timestamp serves as `SummaryJob`'s heartbeat.
+`rails_pulse_summaries` holds every pre-aggregated period for every subject. The row is keyed by `summarizable_type` / `summarizable_id`, `period_type` (`hour`, `day`, `week`, `month`) and `period_start`, and carries count, average, min, max, P50, P90, P95, P99, total, standard deviation and status buckets. The overall request rollup uses type `RailsPulse::Request` with id 0, and is written even for an empty period so its timestamp serves as `SummaryJob`'s heartbeat.
 
 The alternative was a summary table per subject (`route_summaries`, `query_summaries`, `job_summaries`), each with only the columns that subject needs. That avoids nullable columns and polymorphic joins, and lets each table have its own indexes.
 

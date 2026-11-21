@@ -34,6 +34,8 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     CreateRailsPulseEvents
     CreateRailsPulseRollups
     AddHourlyRollupIndexToOperations
+    AddP90DurationToRailsPulseSummaries
+    AddBaselineColumnsToRoutesQueriesAndJobs
   ].freeze
 
   def setup
@@ -65,6 +67,31 @@ class UpgradeMigrationTest < ActiveSupport::TestCase
     assert @conn.index_exists?(:rails_pulse_operations, [ :occurred_at, :query_id, :duration ],
       name: "index_rails_pulse_operations_hourly_rollup"),
       "hourly rollup covering index missing on operations"
+  end
+
+  test "upgrade from v0.2.7 adds p90_duration to summaries" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    assert @conn.column_exists?(:rails_pulse_summaries, :p90_duration), "p90_duration missing on summaries"
+  end
+
+  test "upgrade from v0.2.7 adds the baseline columns to routes, queries and jobs" do
+    load_baseline(RailsPulse::TestSchemas::V027)
+    run_all_migrations
+
+    %i[rails_pulse_routes rails_pulse_queries rails_pulse_jobs].each do |table|
+      %i[
+        baseline_p50_duration baseline_p90_duration baseline_p95_duration
+        baseline_sample_count baseline_periods baseline_computed_at
+      ].each do |column|
+        assert @conn.column_exists?(table, column), "#{column} missing on #{table}"
+      end
+
+      sample_count = @conn.columns(table).find { |c| c.name == "baseline_sample_count" }
+
+      assert_not sample_count.null, "baseline_sample_count should be NOT NULL on #{table}"
+    end
   end
 
     test "upgrade from v0.3.3 converts routes to multi-verb model" do

@@ -1220,4 +1220,43 @@ class RailsPulse::RoutesControllerTest < ActionDispatch::IntegrationTest
   def rails_pulse
     RailsPulse::Engine.routes.url_helpers
   end
+
+  # The dashboard's in-page sort and zoom fetches replace #index_table's content,
+  # so the empty state must render inside it or the fetch reports an error.
+  test "index renders the empty state inside index_table for a zoom into a range with no data" do
+    get rails_pulse.routes_path, params: { zoom_start_time: 1, zoom_end_time: 2 }, headers: { "X-Partial-Request" => "true" }
+
+    assert_response :success
+    assert_select "#index_table", text: /No route data found/
+  end
+
+  # The zoom bar sends JS milliseconds. Sort links built from the server's
+  # converted seconds were divided by 1000 again and sorted a 1970 window.
+  test "index sort links keep the zoom range as the zoom bar sent it" do
+    setup_basic_test_data
+    zoom_start = 3.days.ago.to_i * 1000
+    zoom_end = Time.current.to_i * 1000
+
+    get rails_pulse.routes_path, params: { zoom_start_time: zoom_start, zoom_end_time: zoom_end }
+
+    assert_response :success
+    sort_hrefs = css_select("#index_table thead a").map { |link| link["href"] }
+
+    assert_not_empty sort_hrefs
+    sort_hrefs.each do |href|
+      query = Rack::Utils.parse_nested_query(URI.parse(href).query)
+
+      assert_equal zoom_start.to_s, query["zoom_start_time"], href
+      assert_equal zoom_end.to_s, query["zoom_end_time"], href
+    end
+  end
+
+  test "index sort links omit the zoom range when there is none" do
+    setup_basic_test_data
+
+    get rails_pulse.routes_path
+
+    assert_response :success
+    assert_select "#index_table thead a[href*='zoom_start_time']", count: 0
+  end
 end
