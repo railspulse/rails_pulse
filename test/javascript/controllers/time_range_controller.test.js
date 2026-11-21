@@ -13,6 +13,7 @@ const HTML = `
     <div data-time-range-target="modalWrapper" style="display: none">
       <div data-time-range-target="modal">
         <input data-time-range-target="dateInput" type="text" value="" />
+        <p data-time-range-target="error" hidden>Pick a start date and an end date.</p>
       </div>
     </div>
   </div>
@@ -45,6 +46,7 @@ describe('TimeRangeController', () => {
   function modalWrapper() { return element.querySelector('[data-time-range-target="modalWrapper"]') }
   function dateInput() { return element.querySelector('[data-time-range-target="dateInput"]') }
   function popoverEl() { return element.querySelector('[popover]') }
+  function errorMessage() { return element.querySelector('[data-time-range-target="error"]') }
 
   // # showCustom
 
@@ -121,13 +123,18 @@ describe('TimeRangeController', () => {
     expect(form.querySelector('[name="end_time"]').value).toBe('2024-01-31')
   })
 
-  it('alerts and does not submit when date range is missing', () => {
-    vi.stubGlobal('alert', vi.fn())
+  it('shows a message and does not submit when date range is missing', () => {
     dateInput().value = ''
     ctrl().applyCustom({ preventDefault: vi.fn() })
-    expect(window.alert).toHaveBeenCalledOnce()
+    expect(errorMessage().hidden).toBe(false)
     expect(HTMLFormElement.prototype.submit).not.toHaveBeenCalled()
-    vi.unstubAllGlobals()
+  })
+
+  it('hides the message again when the modal closes', () => {
+    dateInput().value = ''
+    ctrl().applyCustom({ preventDefault: vi.fn() })
+    ctrl().closeModal()
+    expect(errorMessage().hidden).toBe(true)
   })
 
   // # selectPreset / submitTimeRange

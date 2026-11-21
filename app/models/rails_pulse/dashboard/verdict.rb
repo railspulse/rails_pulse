@@ -192,11 +192,21 @@ module RailsPulse
         "#{ActiveSupport::NumberHelper.number_to_delimited(count)} #{noun} #{label}"
       end
 
+      # Names the areas with something tracked and nothing wrong. An area with
+      # nothing recorded in the range is left out: its cell says "0 tracked",
+      # and calling that healthy would claim more than is known.
       def healthy_sentence
-        names = areas.select { |area| area.state == :ok }.map { |area| area.name.downcase }
+        names = areas.select { |area| area.state == :ok && tracked?(area) }.map { |area| area.name.downcase }
         return if names.empty?
 
-        "#{names.to_sentence.upcase_first} #{names.size == 1 ? "is" : "are"} healthy."
+        # "Storage is healthy", but "Jobs are healthy": a lone plural name
+        # still takes a plural verb.
+        singular = names.size == 1 && names.first == names.first.singularize
+        "#{names.to_sentence.upcase_first} #{singular ? "is" : "are"} healthy."
+      end
+
+      def tracked?(area)
+        @health[area.key].values_at(:healthy, :slow, :critical).sum > 0
       end
 
       def worst_linked_area

@@ -354,6 +354,27 @@ class RailsPulse::FormattingHelperTest < ActionView::TestCase
   end
 
   # ============================================================================
+  # custom_time_range_label Tests
+  # ============================================================================
+
+  test "custom_time_range_label shortens a range in the current year" do
+    travel_to Time.zone.local(2026, 11, 21, 9, 0) do
+      assert_equal "Nov 3, 12:00 – Nov 6, 08:30", custom_time_range_label("2026-11-03 12:00", "2026-11-06 08:30")
+    end
+  end
+
+  test "custom_time_range_label includes the year outside the current year" do
+    travel_to Time.zone.local(2026, 1, 5, 9, 0) do
+      assert_equal "Dec 30 2025, 00:00 – Jan 2 2026, 00:00", custom_time_range_label("2025-12-30 00:00", "2026-01-02 00:00")
+    end
+  end
+
+  test "custom_time_range_label falls back to the stored values when they do not parse" do
+    assert_equal "soon to later", custom_time_range_label("soon", "later")
+    assert_equal " to ", custom_time_range_label(nil, nil)
+  end
+
+  # ============================================================================
   # Edge Cases & Integration
   # ============================================================================
 

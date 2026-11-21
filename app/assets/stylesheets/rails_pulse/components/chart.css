@@ -90,8 +90,11 @@
   background: color-mix(in srgb, currentColor 12%, transparent);
 }
 
+/* Off is a dashed outline at reduced strength rather than a deep fade, which
+   on a dark card left the chip all but invisible. */
 .series-toggle[data-active="false"] {
-  opacity: 0.3;
+  border-style: dashed;
+  opacity: 0.6;
 }
 
 /* Panel tabs — view selector zone */
@@ -123,6 +126,38 @@
   padding-left: 0;
   margin-left: 0;
   border-left: none;
+}
+
+/* On a phone the tabs and toggle groups wrap onto several rows, where a
+   divider would lead a row with nothing before it and the copy-SHA hint
+   (a pointer affordance) costs a row of its own. */
+@media (max-width: 40rem) {
+  .panel-tabs {
+    align-items: flex-start;
+    column-gap: var(--size-2);
+  }
+
+  .panel-tabs__list {
+    row-gap: var(--size-2);
+  }
+
+  .panel-tabs__toggles {
+    border-left: none;
+    margin-left: 0;
+    padding-left: 0;
+  }
+
+  .panel-tabs__toggles > span {
+    display: none !important;
+  }
+
+  .panel-tab {
+    padding-inline: 8px;
+  }
+
+  .panel-tabs > .zone-badge {
+    padding-block-start: 6px;
+  }
 }
 
 /* Aggregation-zone badge beside a chart title or tab strip. Its title

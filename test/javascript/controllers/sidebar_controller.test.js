@@ -48,6 +48,13 @@ describe('SidebarController', () => {
     expect(toggleButton().textContent.trim()).toBe('Expand')
   })
 
+  it('restores a collapsed sidebar from storage when the inline script could not run', async () => {
+    localStorage.setItem('rails-pulse-sidebar', 'collapsed')
+    await mount()
+    expect(document.documentElement.getAttribute('data-sidebar')).toBe('collapsed')
+    expect(toggleButton().getAttribute('aria-expanded')).toBe('false')
+  })
+
   // # Toggle
 
   it('collapses an expanded sidebar and saves the state', async () => {

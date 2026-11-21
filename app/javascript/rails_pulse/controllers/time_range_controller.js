@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["modalWrapper", "modal", "dateInput", "label", "trigger"]
+  static targets = ["modalWrapper", "modal", "dateInput", "label", "trigger", "error"]
   static values = { url: String }
 
   selectPreset(event) {
@@ -45,6 +45,7 @@ export default class extends Controller {
   }
 
   closeModal() {
+    if (this.hasErrorTarget) this.errorTarget.hidden = true
     if (this.hasModalWrapperTarget) {
       this.modalWrapperTarget.style.display = 'none'
       document.body.style.overflow = ''
@@ -63,7 +64,7 @@ export default class extends Controller {
     const dateRange = this.dateInputTarget.value
 
     if (!dateRange || !dateRange.includes(' to ')) {
-      alert('Please select a valid date range')
+      if (this.hasErrorTarget) this.errorTarget.hidden = false
       return
     }
 

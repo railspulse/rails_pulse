@@ -39,6 +39,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The dashboard's Exceptions status explains "quiet", "firing" and "critical" on hover, and why a firing group below the warning threshold has no Needs Attention entry.
 - Charts on tablet and phone widths are capped in height instead of growing taller than the screen.
 - On a phone, the request page's Operations table keeps Duration and Impact on screen.
+- On a phone, the custom range date picker shows one month so it fits the screen, a missing range is reported in the dialog instead of a browser alert, and the selected range reads "Nov 3, 12:00 – Nov 6, 12:00" so the top bar keeps its title and filter button.
+- The Routes table keeps its Path column on tablets, and a table that pans sideways shows a shadow on the edge that has more to see.
+- The dashboard no longer calls an area with nothing tracked healthy, and says "1 error" rather than "1 errors".
 - Sorting a table or zooming its chart on a slow connection now always shows the results of the most recent click, with a loading indicator while it waits.
 - Sorting a table while its chart is zoomed now keeps the zoomed range, instead of showing an empty table.
 - A table or operation detail that fails to load, including after a session expires, now shows an error explaining what went wrong with a Retry button, instead of stale or blank content.

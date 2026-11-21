@@ -42,6 +42,13 @@ describe('UiModeController', () => {
     expect(toggleButton().getAttribute('aria-pressed')).toBe('true')
   })
 
+  it('restores TUI from storage when the inline script could not run', async () => {
+    localStorage.setItem('rails-pulse-ui', 'tui')
+    await mount()
+    expect(document.documentElement.getAttribute('data-ui')).toBe('tui')
+    expect(toggleButton().getAttribute('aria-pressed')).toBe('true')
+  })
+
   // # Toggle
 
   it('switches to TUI and saves the mode', async () => {

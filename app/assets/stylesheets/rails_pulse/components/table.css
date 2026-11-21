@@ -65,12 +65,28 @@
    the whole page — scroll sideways. */
 .table-scroll {
   overflow-x: auto;
+
+  /* Edge shadows that show only while there is more table to pan to. The
+     first two layers are covers in the surface colour that travel with the
+     content and hide a shadow once that edge is reached; the last two are
+     the shadows, fixed to the wrapper. */
+  --table-scroll-cover: var(--color-bg);
+  --table-scroll-shadow: color-mix(in srgb, var(--color-text) 16%, transparent);
+  background:
+    linear-gradient(to right, var(--table-scroll-cover) 40%, transparent) left center / 2.5rem 100% no-repeat local,
+    linear-gradient(to left, var(--table-scroll-cover) 40%, transparent) right center / 2.5rem 100% no-repeat local,
+    linear-gradient(to right, var(--table-scroll-shadow), transparent) left center / 0.75rem 100% no-repeat scroll,
+    linear-gradient(to left, var(--table-scroll-shadow), transparent) right center / 0.75rem 100% no-repeat scroll;
 }
 
-@media (max-width: 640px) {
+.card .table-scroll {
+  --table-scroll-cover: var(--color-surface, var(--color-bg));
+}
+
+@media (max-width: 1024px) {
   /* In a fixed-layout table a column with no width utility gets whatever the
-     fixed columns leave over, which on a phone is nothing — give it a real
-     width and let the wrapper scroll instead. */
+     fixed columns leave over, which on a phone or a portrait tablet is
+     nothing — give it a real width and let the wrapper scroll instead. */
   .table-fixed th.w-auto,
   .table-fixed th[class=""] {
     width: 16rem;

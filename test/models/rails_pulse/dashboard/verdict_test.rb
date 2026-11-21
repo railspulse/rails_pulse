@@ -71,6 +71,25 @@ module RailsPulse
         assert_equal "Degraded", verdict.status_label
       end
 
+      test "a lone healthy area with a plural name takes a plural verb" do
+        verdict = build_verdict(
+          routes: { healthy: 3, slow: 1, critical: 0 },
+          queries: { healthy: 3, slow: 1, critical: 0 },
+          exceptions: { healthy: 0, slow: 2, critical: 0 }
+        )
+
+        assert_includes verdict.summary, "Jobs are healthy."
+      end
+
+      test "an area with nothing tracked is not called healthy" do
+        verdict = build_verdict(
+          routes: { healthy: 4, slow: 1, critical: 0 },
+          jobs: { healthy: 0, slow: 0, critical: 0 }
+        )
+
+        assert_equal "Queries and exceptions are healthy.", verdict.summary
+      end
+
       test "a single item is named in the singular" do
         verdict = build_verdict(routes: { healthy: 4, slow: 0, critical: 1 })
 

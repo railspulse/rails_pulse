@@ -19,7 +19,7 @@
             <%= link_to row.name, job_path(row.job_id) %>
           </td>
           <td>
-            <span class="badge badge--primary"><%= row.queue_name || 'default' %></span>
+            <span class="badge badge--secondary"><%= row.queue_name || 'default' %></span>
           </td>
           <td>
             <%= number_with_delimiter(row.count) %>
