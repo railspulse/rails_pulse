@@ -9,7 +9,19 @@ export default class extends Controller {
   connect() {
     this.storageKey = "rails-pulse-ui"
     this.html = document.documentElement
+    this.restore()
     this.sync()
+  }
+
+  // The layout's inline script normally does this before first paint. A host
+  // Content Security Policy can block that script, so apply the stored mode
+  // here as well.
+  restore() {
+    try {
+      if (localStorage.getItem(this.storageKey) === "tui") this.html.setAttribute("data-ui", "tui")
+    } catch {
+      // Storage can be unavailable (private mode); the default look applies.
+    }
   }
 
   toggle(event) {

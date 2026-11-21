@@ -199,7 +199,9 @@ html[data-ui="tui"] .verdict-cell__label {
 /* The current section is a solid yellow bar with dark text, like a selected
    row in a terminal menu. */
 html[data-ui="tui"] .sidebar-menu__button[aria-current="page"],
-html[data-ui="tui"] .console-sidebar__tui[aria-pressed="true"] {
+html[data-ui="tui"] .console-sidebar__tui[aria-pressed="true"],
+/* The sheet menu sits inside #header, whose link colour is an id rule. */
+html[data-ui="tui"] #header .sidebar-menu__button[aria-current="page"] {
   --btn-background: var(--tui-fill);
   /* Hover stays a yellow fill: the default hover is a faint tint, which
      would leave this dark text on a dark background. */
@@ -216,4 +218,30 @@ html[data-ui="tui"] .console-sidebar__tui[aria-pressed="true"] rails-pulse-icon 
 html[data-ui="tui"] .console-brand__mark,
 html[data-ui="tui"] .console-brand__mark::after {
   background: var(--tui-fill);
+}
+
+/* Corners and fonts that components set literally rather than through the
+   scale tokens zeroed above. */
+html[data-ui="tui"] .series-toggle,
+html[data-ui="tui"] .panel-tab,
+html[data-ui="tui"] .flame-legend-swatch,
+html[data-ui="tui"] .flame-tooltip,
+html[data-ui="tui"] .backtrace,
+html[data-ui="tui"] .backtrace__toggle,
+html[data-ui="tui"] .exception-params,
+html[data-ui="tui"] .tag-list .badge,
+html[data-ui="tui"] .tag-add-button {
+  border-radius: 0;
+}
+
+html[data-ui="tui"] .operations-label-cell span {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* --color-primary is the yellow fill in the dark terminal palette, which
+   leaves the dimmed comment unreadable; use a bordered surface instead. */
+html[data-ui="tui"] .setup-banner__command {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
 }

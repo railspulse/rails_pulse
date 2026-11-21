@@ -237,6 +237,35 @@ code, code *, pre, pre *, kbd {
   white-space: nowrap;
 }
 
+/* A custom range label ("2026-11-03 12:00 to 2026-11-06 12:00") is wider than
+   a phone. The title takes whatever the selector leaves, down to a few
+   characters; past that the selector truncates, so the filter button stays
+   on screen. */
+@media (max-width: 40rem) {
+  .console-topbar__start {
+    flex: 1 1 0;
+    min-inline-size: 5.5rem;
+  }
+
+  .console-topbar__end {
+    flex: 0 1 auto;
+  }
+
+  .console-topbar__end > div:first-child,
+  .console-topbar__end > div:first-child > div {
+    min-inline-size: 0;
+  }
+
+  .time-range-trigger {
+    min-inline-size: 0;
+  }
+
+  .time-range-trigger > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
 /* ---------- Main ---------- */
 
 #main {

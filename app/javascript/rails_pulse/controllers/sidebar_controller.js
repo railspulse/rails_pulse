@@ -8,7 +8,19 @@ export default class extends Controller {
   connect() {
     this.storageKey = "rails-pulse-sidebar"
     this.html = document.documentElement
+    this.restore()
     this.sync()
+  }
+
+  // The layout's inline script normally does this before first paint. A host
+  // Content Security Policy can block that script, so apply the stored state
+  // here as well.
+  restore() {
+    try {
+      if (localStorage.getItem(this.storageKey) === "collapsed") this.html.setAttribute("data-sidebar", "collapsed")
+    } catch {
+      // Storage can be unavailable (private mode); the sidebar stays expanded.
+    }
   }
 
   toggle(event) {
