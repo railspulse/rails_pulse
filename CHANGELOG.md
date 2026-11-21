@@ -44,6 +44,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The Routes table keeps its Path column on tablets, and a table that pans sideways shows a shadow on the edge that has more to see.
 - The dashboard no longer calls an area with nothing tracked healthy, and says "1 error" rather than "1 errors".
 - The Global Filters and custom range dialogs close on Escape.
+- The date picker keeps each day under its weekday; days in a month's first and last weeks were shifted across the row.
 - The job runs list has the same breadcrumb and panel as the other lists and operation names in a request's Operations table use the page font.
 - Sorting a table or zooming its chart on a slow connection now always shows the results of the most recent click, with a loading indicator while it waits.
 - Sorting a table while its chart is zoomed now keeps the zoomed range, instead of showing an empty table.

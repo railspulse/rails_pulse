@@ -54,7 +54,8 @@ export default class extends Controller {
 
   // Escape closes the open calendar first (the date picker handles that
   // itself); a second press, or a press with no calendar open, closes the
-  // dialog.
+  // dialog. The action listens in the capture phase so this runs before the
+  // date picker's own handler has closed the calendar.
   closeOnEscape(event) {
     if (!this.hasModalWrapperTarget || this.modalWrapperTarget.style.display === 'none') return
     if (document.querySelector('.flatpickr-calendar.open')) return

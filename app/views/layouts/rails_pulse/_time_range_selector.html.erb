@@ -20,7 +20,7 @@ end %>
 <div
   data-controller="rails-pulse--time-range"
   data-rails-pulse--time-range-url-value="<%= rails_pulse.settings_time_range_path %>"
-  data-action="keydown.esc@window->rails-pulse--time-range#closeOnEscape"
+  data-action="keydown.esc@window->rails-pulse--time-range#closeOnEscape:capture"
 >
   <div
     class="flex items-center gap mie-2"

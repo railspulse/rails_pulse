@@ -29,6 +29,13 @@
     box-shadow: -1px 0 0 var(--color-border);
   }
 
+  /* Days outside the month keep their cell so the last week stays in its
+     columns; the page's .hidden utility would remove them from the row. */
+  .flatpickr-day.hidden {
+    display: block;
+    visibility: hidden;
+  }
+
   .flatpickr-months {
     .flatpickr-month {
       color: var(--color-text);
