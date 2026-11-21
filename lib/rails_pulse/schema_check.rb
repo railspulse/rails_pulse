@@ -37,10 +37,11 @@ module RailsPulse
     # places); test/lib/rails_pulse/schema_check_test.rb checks every entry
     # against db/rails_pulse_schema.rb so the list cannot drift from it.
     SENTINEL_COLUMNS = {
-      "rails_pulse_routes" => %w[controller_action http_methods],
+      "rails_pulse_routes" => %w[controller_action http_methods baseline_computed_at],
+      "rails_pulse_queries" => %w[baseline_computed_at],
       "rails_pulse_requests" => %w[method response_size_bytes],
       "rails_pulse_operations" => %w[actual_sql row_count repeated_query_group],
-      "rails_pulse_jobs" => %w[p95_duration p99_duration],
+      "rails_pulse_jobs" => %w[p95_duration p99_duration baseline_computed_at],
       "rails_pulse_summaries" => %w[p90_duration],
       "rails_pulse_exception_groups" => %w[location]
     }.freeze

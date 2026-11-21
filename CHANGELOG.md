@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Threshold recommendations (the status task, the insights API, `rails-pulse insights` and the MCP tool) now cover `job_thresholds` as well as routes and queries.
 - `config.default_disabled_tags` (for example `["ignored"]`) hides the listed tags in every dashboard session until a user switches them back on in Global Filters, so tagged noise stays hidden across logins and for the whole team (#331).
 - Summaries now record the P90 duration of each route, query and job alongside P50, P95 and P99, ready for automatic thresholds (#385). Upgrading adds a column, so run `rails generate rails_pulse:upgrade && rails db:migrate`; tracking pauses until it exists.
+- Each route, query and job now stores a baseline of its normal P50, P90 and P95 over `config.baseline_window`, rebuilt daily by `RailsPulse::SummaryJob`, ready for automatic thresholds (#385). Upgrading adds columns, so run `rails generate rails_pulse:upgrade && rails db:migrate`; tracking pauses until they exist.
 
 ### Fixed
 
