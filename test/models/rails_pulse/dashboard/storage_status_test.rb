@@ -3,6 +3,8 @@ require "test_helper"
 module RailsPulse
   module Dashboard
     class StorageStatusTest < ActiveSupport::TestCase
+      include HeartbeatFixtureHelpers
+
       fixtures :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_requests,
                :rails_pulse_operations, :rails_pulse_summaries, :rails_pulse_jobs,
                :rails_pulse_job_runs, :rails_pulse_exception_groups,
@@ -26,6 +28,7 @@ module RailsPulse
       # Tracking Tests
 
       test "tracking lists live writers with their queue depth and hourly drops" do
+        travel_to_heartbeat_fixtures
         rails_pulse_events(:web_two_latest).update!(value: 7)
         tracking = StorageStatus.new.tracking
 

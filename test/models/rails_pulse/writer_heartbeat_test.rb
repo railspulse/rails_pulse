@@ -2,7 +2,17 @@ require "test_helper"
 
 module RailsPulse
   class WriterHeartbeatTest < ActiveSupport::TestCase
+    include HeartbeatFixtureHelpers
+
     fixtures :rails_pulse_events
+
+    def setup
+      travel_to_heartbeat_fixtures
+    end
+
+    def teardown
+      travel_back
+    end
 
     # Structure Tests
 
