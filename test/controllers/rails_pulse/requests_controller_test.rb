@@ -259,39 +259,39 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
     assert_not_nil assigns(:table_data)
   end
 
-  # Recent Mode Tests
+  # Time Range Tests
 
-  test "index with recent mode omits time filters" do
-    get rails_pulse.requests_path, params: { q: { period_start_range: "recent" } }
-
-    assert_response :success
-    # Recent mode should work without time constraints
-    assert_not_nil assigns(:table_data)
-    requests = assigns(:table_data)
-
-    assert_operator requests.size, :>, 0
-  end
-
-  test "index with no time params defaults to recent mode" do
+  test "index with no time params shows only the default range" do
     get rails_pulse.requests_path
 
     assert_response :success
-    # Should handle no time filtering (recent mode)
-    assert_not_nil assigns(:table_data)
-    assert_select "p", text: /not limited to the time range/
+    ids = assigns(:table_data).map(&:id)
+
+    assert_includes ids, @request_record.id
+    assert_not_includes ids, rails_pulse_requests(:custom_range_mid).id
+    assert_not_includes ids, rails_pulse_requests(:custom_range_old).id
   end
 
-  test "index recent mode uses default sort by occurred_at desc" do
-    get rails_pulse.requests_path, params: { q: { period_start_range: "recent" } }
+  test "index follows the selected time range" do
+    # Oldest first, so the six-day-old request is on the first page.
+    get rails_pulse.requests_path, params: { q: { period_start_range: "last_7_days", s: "occurred_at asc" } }
+
+    assert_response :success
+    ids = assigns(:table_data).map(&:id)
+
+    assert_includes ids, rails_pulse_requests(:custom_range_mid).id
+    assert_not_includes ids, rails_pulse_requests(:custom_range_old).id
+  end
+
+  test "index sorts newest first by default" do
+    get rails_pulse.requests_path
 
     assert_response :success
     requests = assigns(:table_data)
 
-    # Verify recent mode sorts by occurred_at descending
-    if requests.size > 1
-      requests.each_cons(2) do |current, next_req|
-        assert_operator current.occurred_at, :>=, next_req.occurred_at
-      end
+    assert_operator requests.size, :>, 1
+    requests.each_cons(2) do |current, next_req|
+      assert_operator current.occurred_at, :>=, next_req.occurred_at
     end
   end
 
@@ -483,8 +483,6 @@ class RailsPulse::RequestsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_not_nil assigns(:table_data)
-    # Time filters should be applied for non-recent mode
-    assert_select "p", text: /not limited to the time range/, count: 0
   end
 
   test "index handles time mode parameter correctly" do

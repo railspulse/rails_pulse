@@ -61,23 +61,16 @@ module RailsPulse
       base_params
     end
 
-    # Override: Requests support "recent" mode (no time filtering)
+    # Individual requests are filtered on occurred_at, not on a summary period.
     def build_table_ransack_params(ransack_params)
       params = ransack_params.dup
 
-      # Handle time mode - check if recent mode is selected
-      time_mode = params[:period_start_range] || "recent"
-      # The view says so, because the top bar's time range is still on screen.
-      @recent_mode = time_mode == "recent"
-
-      if time_mode != "recent" && @time_range&.table_window
-        # Custom mode - apply time filters
+      if @time_range&.table_window
         params.merge!(
           occurred_at_gteq: @time_range.table_window.start_time,
           occurred_at_lt: @time_range.table_window.end_time
         )
       end
-      # else: Recent mode - no time filters, just rely on sort + pagination
 
       start_duration = @time_range&.start_duration
       # Duration filter - convert symbol to numeric threshold or use start_duration
