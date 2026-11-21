@@ -29,6 +29,10 @@ export default class extends Controller {
     document.body.style.overflow = ''
   }
 
+  closeOnEscape(event) {
+    if (this.wrapperTarget.style.display !== 'none') this.close(event)
+  }
+
   // Close dialog when clicking outside
   closeOnClickOutside(event) {
     if (event.target === this.wrapperTarget) {

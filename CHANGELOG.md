@@ -15,6 +15,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `config.default_disabled_tags` (for example `["ignored"]`) hides the listed tags in every dashboard session until a user switches them back on in Global Filters, so tagged noise stays hidden across logins and for the whole team (#331).
 - Summaries now record the P90 duration of each route, query and job alongside P50, P95 and P99, ready for automatic thresholds (#385). Upgrading adds a column, so run `rails generate rails_pulse:upgrade && rails db:migrate`; tracking pauses until it exists.
 - Each route, query and job now stores a baseline of its normal P50, P90 and P95 over `config.baseline_window`, rebuilt daily by `RailsPulse::SummaryJob`, ready for automatic thresholds (#385). Upgrading adds columns, so run `rails generate rails_pulse:upgrade && rails db:migrate`; tracking pauses until they exist.
+- A "TUI" button under the theme toggle switches the dashboard to a terminal-style look (monospace type, square corners, brand-yellow accents) in light or dark; the choice is remembered per browser.
+
+### Changed
+
+- The Requests list now follows the time range selected in the header, like every other list, instead of always showing the most recent requests.
+- Navigation moves from the top bar into a left sidebar that can be collapsed to icons; the collapsed state is remembered per browser and restored without a flash on load.
+- The dashboard now opens with a status panel that says whether anything needs attention and which areas are affected, with the Needs Attention list directly beneath it and Deployments and Storage in a side column.
+- The dark theme is a warm charcoal instead of neutral grey, the theme toggle is labelled "Dark mode" or "Light mode" for the mode it switches to, and metric comparisons read "vs previous 7 days".
 
 ### Fixed
 
@@ -29,8 +37,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Adding or removing tags on the same record from two processes at once no longer loses one of the edits.
 - Requests and Deployments are now in the navigation, which collapses into the menu button below 1280px wide instead of making the whole page scroll sideways.
 - The Tags column header on the Routes, Requests and Queries tables is no longer a sort link that silently fell back to the default order.
-- The dashboard's Exceptions badge explains "quiet", "firing" and "critical" on hover, and why a firing group below the warning threshold has no Needs Attention entry.
+- The dashboard's Exceptions status explains "quiet", "firing" and "critical" on hover, and why a firing group below the warning threshold has no Needs Attention entry.
+- Charts on tablet and phone widths are capped in height instead of growing taller than the screen.
 - On a phone, the request page's Operations table keeps Duration and Impact on screen.
+- On a phone, the custom range date picker shows one month so it fits the screen, a missing range is reported in the dialog instead of a browser alert, and the selected range reads "Nov 3, 12:00 – Nov 6, 12:00" so the top bar keeps its title and filter button.
+- The Routes table keeps its Path column on tablets, and a table that pans sideways shows a shadow on the edge that has more to see.
+- The dashboard no longer calls an area with nothing tracked healthy, and says "1 error" rather than "1 errors".
+- The Global Filters and custom range dialogs close on Escape.
+- The date picker keeps each day under its weekday; days in a month's first and last weeks were shifted across the row.
+- The job runs list has the same breadcrumb and panel as the other lists and operation names in a request's Operations table use the page font.
 - Sorting a table or zooming its chart on a slow connection now always shows the results of the most recent click, with a loading indicator while it waits.
 - Sorting a table while its chart is zoomed now keeps the zoomed range, instead of showing an empty table.
 - A table or operation detail that fails to load, including after a session expires, now shows an error explaining what went wrong with a Retry button, instead of stale or blank content.

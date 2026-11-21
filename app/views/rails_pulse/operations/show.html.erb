@@ -1,9 +1,10 @@
 <%= render 'rails_pulse/components/page_header' %>
 
-<h1>Operation <%= @operation.id %></h1>
-
 <div class="card">
-  <div id="operation_<%= @operation.id %>_details">
+  <div class="panel-header flex">
+    <h2 class="grow font-semibold leading-none mbe-1 uppercase text-xs">Operation <%= @operation.id %></h2>
+  </div>
+  <div id="operation_<%= @operation.id %>_details" class="mbs-4">
     <% if @operation.operation_type == "sql" %>
       <div class="mbe-4">
         <%= render 'rails_pulse/components/code_panel', { value: @operation.actual_sql.presence || @operation.query&.normalized_sql } %>
@@ -16,7 +17,7 @@
           <% if ["template", "partial", "layout", "collection"].include?(@operation.operation_type) %>
             View Render
           <% else %>
-            <%= html_escape(@operation.label) %>
+            Name
           <% end %>
         </dt>
         <dd>

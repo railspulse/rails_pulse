@@ -69,7 +69,7 @@
             <%= rails_pulse_icon trend_icon, height: "15px", width: "15px", class: "mie-2" %>
             <span class="badge__trend-amount"><%= data[:trend_amount] %></span>
           </span>
-          <p class="metric-strip__trend-label mis-2 text-subtle text-xs"><%= data[:trend_text] %></p>
+          <p class="metric-strip__trend-label mis-2 text-subtle text-xs"><%= data[:trend_text].to_s.sub(/\ACompared to /, "vs ") %></p>
         </div>
       <% elsif data[:period_stat] %>
         <p class="metric-strip__trend-label text-subtle text-xs"><%= data[:period_stat] %></p>

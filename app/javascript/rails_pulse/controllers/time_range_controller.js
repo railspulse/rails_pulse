@@ -1,7 +1,7 @@
 import { Controller } from "@hotwired/stimulus"
 
 export default class extends Controller {
-  static targets = ["modalWrapper", "modal", "dateInput", "label", "trigger"]
+  static targets = ["modalWrapper", "modal", "dateInput", "label", "trigger", "error"]
   static values = { url: String }
 
   selectPreset(event) {
@@ -45,10 +45,25 @@ export default class extends Controller {
   }
 
   closeModal() {
+    if (this.hasErrorTarget) this.errorTarget.hidden = true
     if (this.hasModalWrapperTarget) {
       this.modalWrapperTarget.style.display = 'none'
       document.body.style.overflow = ''
     }
+  }
+
+  // Escape closes the open calendar first (the date picker handles that
+  // itself); a second press, or a press with no calendar open, closes the
+  // dialog. The action listens in the capture phase so this runs before the
+  // date picker's own handler has closed the calendar.
+  closeOnEscape(event) {
+    if (!this.hasModalWrapperTarget || this.modalWrapperTarget.style.display === 'none') return
+    if (document.querySelector('.flatpickr-calendar.open')) return
+    this.cancelCustom(event)
+  }
+
+  clearError() {
+    if (this.hasErrorTarget) this.errorTarget.hidden = true
   }
 
   closeOnClickOutside(event) {
@@ -63,7 +78,7 @@ export default class extends Controller {
     const dateRange = this.dateInputTarget.value
 
     if (!dateRange || !dateRange.includes(' to ')) {
-      alert('Please select a valid date range')
+      if (this.hasErrorTarget) this.errorTarget.hidden = false
       return
     }
 

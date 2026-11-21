@@ -4,7 +4,7 @@
 <% has_any_filters = has_performance_filter %>
 <% current_threshold = global_filters['performance_threshold'] %>
 
-<div data-controller="rails-pulse--global-filters" data-rails-pulse--global-filters-active-value="<%= has_any_filters %>">
+<div data-controller="rails-pulse--global-filters" data-rails-pulse--global-filters-active-value="<%= has_any_filters %>" data-action="keydown.esc@window->rails-pulse--global-filters#closeOnEscape">
   <%= link_to '#', "aria-label": "Global filters", role: "button", data: { action: "rails-pulse--global-filters#open", "rails-pulse--global-filters-target": "indicator" } do %>
     <%= rails_pulse_icon has_any_filters ? 'list-filter-plus' : 'list-filter', width: '20' %>
   <% end %>

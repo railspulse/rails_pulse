@@ -19,6 +19,12 @@ class RailsPulse::StorageControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "show highlights Dashboard in the sidebar" do
+    get rails_pulse.storage_path
+
+    assert_select "#sidebar a[aria-current=page]", text: /Dashboard/
+  end
+
   test "show assigns status" do
     get rails_pulse.storage_path
 

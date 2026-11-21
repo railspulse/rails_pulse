@@ -3,6 +3,8 @@ require "test_helper"
 module RailsPulse
   module Dashboard
     class StoragePressureTest < ActiveSupport::TestCase
+      include HeartbeatFixtureHelpers
+
       fixtures :rails_pulse_events
 
       fixtures :rails_pulse_routes
@@ -29,6 +31,7 @@ module RailsPulse
       # Writer Drop Tests
 
       test "pressure items flag requests dropped by the writer in the last hour" do
+        travel_to_heartbeat_fixtures
         rails_pulse_events(:web_two_latest).update!(value: 7)
         item = StoragePressure.new.pressure_items.find { |i| i[:type] == "TRACKING" }
 

@@ -20,7 +20,7 @@ module RailsPulse
             if error_rate >= CRITICAL_ERROR_RATE
               [ :critical,
                 "#{error_rate}% error rate · #{total} requests #{span}",
-                "#{errors} errors",
+                "#{errors} #{"error".pluralize(errors)}",
                 "P95 #{p95.round(0).to_i}ms",
                 errors * total.to_f ]
             else
@@ -34,7 +34,7 @@ module RailsPulse
             if error_rate >= WARNING_ERROR_RATE && p95 < @route_thresholds[:slow]
               [ :warning,
                 "#{error_rate}% error rate · #{total} requests #{span}",
-                "#{errors} errors",
+                "#{errors} #{"error".pluralize(errors)}",
                 "P95 #{p95.round(0).to_i}ms",
                 errors * total.to_f ]
             else

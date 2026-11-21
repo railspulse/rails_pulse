@@ -6,12 +6,10 @@ class DashboardIndexPageTest < ApplicationSystemTestCase
   test "dashboard renders all major ui sections" do
     visit_rails_pulse_path "/"
 
-    # System Health Bar
-    assert_selector ".dashboard-health-bar"
-
-    # Health badges
-    assert_text "Routes"
-    assert_text "Queries"
+    # Verdict panel with a cell per area
+    assert_selector ".verdict"
+    assert_selector ".verdict-cell", text: "ROUTES"
+    assert_selector ".verdict-cell", text: "QUERIES"
 
     # Metric Strip - verify 3 metric titles present
     assert_selector ".metric-strip"

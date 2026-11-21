@@ -1,18 +1,5 @@
 /* Storage status page */
 
-.health-badge-link {
-  text-decoration: none;
-  color: inherit;
-}
-
-.health-badge-link:hover {
-  text-decoration: none;
-}
-
-.health-badge-link:hover .badge {
-  background-color: var(--color-secondary);
-}
-
 .storage-overview-card {
   min-height: 6.5rem;
 }
@@ -142,7 +129,9 @@
   height: 0.5rem;
   margin-block: var(--size-2);
   border-radius: var(--rounded-full, 999px);
-  background: var(--color-secondary);
+  /* Mixed from the text colour so the empty track stays visible on a dark
+     card, where --color-secondary is within a shade of the surface. */
+  background: color-mix(in srgb, var(--color-text) 12%, transparent);
   overflow: hidden;
 }
 

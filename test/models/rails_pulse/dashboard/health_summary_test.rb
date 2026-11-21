@@ -3,6 +3,8 @@ require "test_helper"
 module RailsPulse
   module Dashboard
     class HealthSummaryTest < ActiveSupport::TestCase
+      include HeartbeatFixtureHelpers
+
       fixtures :rails_pulse_routes, :rails_pulse_queries, :rails_pulse_jobs, :rails_pulse_events
 
       def setup
@@ -21,6 +23,7 @@ module RailsPulse
       # Tracking Tests
 
       test "tracking counts writers as writing, backlogged or dropping" do
+        travel_to_heartbeat_fixtures
         # web-1 is live with 12 of 1000 queued and no drops; web-2 dropped 7 in the hour.
         rails_pulse_events(:web_two_latest).update!(value: 7)
 
@@ -28,6 +31,7 @@ module RailsPulse
       end
 
       test "tracking counts a writer whose queue is at least half full as backlogged" do
+        travel_to_heartbeat_fixtures
         heartbeat = rails_pulse_events(:web_one_latest)
         heartbeat.update!(metadata: heartbeat.metadata_hash.merge("queue_depth" => 500).to_json)
 
@@ -35,6 +39,7 @@ module RailsPulse
       end
 
       test "tracking still counts a writer that dropped and then went away" do
+        travel_to_heartbeat_fixtures
         RailsPulse::Event.where(subject: "web-2:202").update_all(value: 7, occurred_at: 10.minutes.ago)
 
         assert_equal({ healthy: 1, slow: 0, critical: 1 }, RailsPulse::Dashboard::HealthSummary.new.to_health_data[:tracking])
@@ -486,7 +491,7 @@ module RailsPulse
         assert_equal({ healthy: 1, slow: 0, critical: 0 }, health[:queries])
       end
 
-      # Storage Health Badge Tests
+      # Storage Health Tests
 
       test "storage value has healthy, slow, and critical keys" do
         create_overall_hourly_summary(period_end: 30.minutes.ago)

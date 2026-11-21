@@ -13,7 +13,7 @@
     <tbody>
       <% @table_data.each do |run| %>
         <tr>
-          <td>
+          <td class="whitespace-nowrap">
             <%= link_to run.occurred_at.strftime("%b %d, %Y %l:%M %p"), job_run_path(@job, run) %>
           </td>
           <td>
