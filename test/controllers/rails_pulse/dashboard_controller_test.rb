@@ -14,48 +14,53 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     RailsPulse::Job.update_all(runs_count: 0)
   end
 
-  # Health Bar Tests
+  # Verdict Panel Tests
 
-  test "health bar shows a tracking badge once a writer has reported" do
+  test "verdict panel shows a tracking cell once a writer is dropping requests" do
     RailsPulse::Event.where(subject: "web-2:202").update_all(value: 7)
 
     get rails_pulse.root_path
 
     assert_response :success
-    assert_select ".dashboard-health-bar", /Tracking/
-    assert_select ".dashboard-health-bar", /1 writing ·/
-    assert_select ".dashboard-health-bar", /1 dropping/
-    assert_select ".dashboard-health-bar", { text: /backlogged/, count: 0 }
+    cell = verdict_cell("Tracking")
+
+    assert_not_nil cell
+    assert_includes cell["class"], "verdict-cell--critical"
+    assert_includes cell.text.squish, "1 dropping"
+    assert_includes cell.text.squish, "1 writing"
+    assert_not_includes cell.text, "backlogged"
   end
 
-  test "health bar omits the tracking badge before any writer has reported" do
+  test "verdict panel omits the tracking cell before any writer has reported" do
     RailsPulse::Event.delete_all
 
     get rails_pulse.root_path
 
     assert_response :success
-    assert_select ".dashboard-health-bar", { text: /Tracking/, count: 0 }
+    assert_select ".verdict-cell"
+    assert_nil verdict_cell("Tracking")
   end
 
-  test "health bar shows an exceptions badge counting only open groups" do
+  test "verdict panel shows an exceptions cell counting only open groups" do
     get rails_pulse.root_path
 
     assert_response :success
+    cell = verdict_cell("Exceptions")
+
+    assert_not_nil cell
     # Two of the four fixture groups are open; resolved and ignored are excluded.
-    # Zero-count segments (firing, critical) are omitted.
-    assert_match(/Exceptions/, response.body)
-    assert_match(/2 quiet/, response.body)
-    assert_no_match(/firing/, response.body)
+    assert_includes cell.text.squish, "2 quiet"
+    assert_not_includes cell.text, "firing"
   end
 
-  test "exceptions badge explains its labels and where Needs Attention starts" do
+  test "exceptions cell explains its labels and where Needs Attention starts" do
     get rails_pulse.root_path
 
     assert_response :success
-    badge = css_select(".dashboard-health-bar .badge").find { |node| node.text.include?("Exceptions") }
+    cell = verdict_cell("Exceptions")
 
-    assert_not_nil badge
-    title = badge["title"]
+    assert_not_nil cell
+    title = cell["title"]
 
     assert_includes title, "Quiet: no occurrences"
     assert_includes title, "Firing: raised at least once"
@@ -63,24 +68,25 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_includes title, "Groups with 10+ occurrences are listed under Needs Attention"
   end
 
-  test "health badges without a description carry no title" do
+  test "verdict cells without a description carry no title" do
     get rails_pulse.root_path
 
     assert_response :success
-    routes_badge = css_select(".dashboard-health-bar .badge").find { |node| node.text.include?("Routes") }
+    cell = verdict_cell("Routes")
 
-    assert_not_nil routes_badge
-    assert_nil routes_badge["title"]
+    assert_not_nil cell
+    assert_nil cell["title"]
   end
 
-  test "health bar omits the exceptions badge when tracking is disabled" do
+  test "verdict panel omits the exceptions cell when tracking is disabled" do
     original = RailsPulse.configuration.track_exceptions
     RailsPulse.configuration.track_exceptions = false
 
     get rails_pulse.root_path
 
     assert_response :success
-    assert_select ".dashboard-health-bar", { text: /Exceptions/, count: 0 }
+    assert_select ".verdict-cell"
+    assert_nil verdict_cell("Exceptions")
   ensure
     RailsPulse.configuration.track_exceptions = original
   end
@@ -331,7 +337,7 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_match(/Sep 16/, response.body)
     assert_no_match(/Sep 15/, response.body)
-    assert_match(/Compared to previous 4 days/, response.body)
+    assert_match(/vs previous 4 days/, response.body)
   ensure
     ENV["TZ"] = original_tz
     travel_back
@@ -368,5 +374,9 @@ class RailsPulse::DashboardControllerTest < ActionDispatch::IntegrationTest
 
   def rails_pulse
     RailsPulse::Engine.routes.url_helpers
+  end
+
+  def verdict_cell(name)
+    css_select(".verdict-cell").find { |node| node.at_css(".verdict-cell__name")&.text&.strip == name }
   end
 end

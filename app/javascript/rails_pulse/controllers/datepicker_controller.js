@@ -42,7 +42,12 @@ export default class extends Controller {
       altInput: true,
       disable: this.disableValue,
       mode: this.modeValue,
-      showMonths: this.showMonthsValue
+      showMonths: this.#monthsThatFit
     }
+  }
+
+  // Each month is about 220px wide, so two side by side do not fit a phone.
+  get #monthsThatFit() {
+    return window.matchMedia("(max-width: 40rem)").matches ? 1 : this.showMonthsValue
   }
 }

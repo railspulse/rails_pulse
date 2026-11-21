@@ -38,6 +38,14 @@ class RailsPulse::JobRunsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @job, assigns(:job)
   end
 
+  test "index frames the table like other list pages" do
+    get rails_pulse.job_runs_path(@job)
+
+    assert_select "nav.breadcrumb"
+    assert_select ".card .panel-header h2", text: "Runs of #{@job.name}"
+    assert_select ".card #index_table table"
+  end
+
   test "index action orders runs by occurred_at desc" do
     get rails_pulse.job_runs_path(@job)
 

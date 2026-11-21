@@ -1,28 +1,5 @@
 /* Dashboard-specific styles */
 
-/* System Health Bar */
-.dashboard-health-bar {
-  min-height: 2.5rem;
-  display: flex;
-  align-items: center;
-}
-
-.dashboard-health-bar__content {
-  display: flex;
-  align-items: center;
-  gap: var(--size-6);
-  flex-wrap: wrap;
-}
-
-.dashboard-health-bar__badges {
-  display: flex;
-  align-items: center;
-  gap: var(--size-3);
-  flex-wrap: wrap;
-  flex: 1;
-  min-width: 0;
-}
-
 /* Attention Section */
 .attention-section__divider {
   flex: 1;
@@ -112,30 +89,4 @@
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-/* Responsive Adjustments */
-@media (max-width: 1200px) {
-  .dashboard-health-bar__content {
-    gap: var(--size-4);
-  }
-  .dashboard-health-bar__badges {
-    gap: var(--size-2);
-  }
-}
-
-@media (max-width: 900px) {
-  .dashboard-health-bar__content {
-    gap: var(--size-3);
-  }
-  .dashboard-health-bar__badges {
-    flex: 1;
-    min-width: 0;
-  }
-}
-
-@media (max-width: 640px) {
-  .dashboard-health-bar {
-    padding: var(--size-2) var(--size-3);
-  }
 }

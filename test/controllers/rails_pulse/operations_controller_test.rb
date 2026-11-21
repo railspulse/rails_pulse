@@ -60,6 +60,22 @@ class RailsPulse::OperationsControllerTest < ActionDispatch::IntegrationTest
     assert_equal @request_operation.request, assigns(:request)
   end
 
+  test "show labels a non-SQL operation's name instead of repeating it" do
+    operation = rails_pulse_operations(:controller_operation_1)
+    get rails_pulse.operation_path(operation)
+
+    assert_select ".card .panel-header h2", text: "Operation #{operation.id}"
+    assert_select "dl.descriptive-list dt", text: "Name"
+    assert_select "dl.descriptive-list dt", text: operation.label, count: 0
+    assert_select "dl.descriptive-list dd", text: operation.label
+  end
+
+  test "show highlights Requests in the sidebar" do
+    get rails_pulse.operation_path(@request_operation)
+
+    assert_select "#sidebar a[aria-current=page]", text: /Requests/
+  end
+
   test "show action sets parent to request for request operation" do
     get rails_pulse.operation_path(@request_operation)
 

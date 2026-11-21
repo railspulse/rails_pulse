@@ -30,6 +30,12 @@
         }
 
         root.setAttribute('data-color-scheme', scheme);
+
+        try {
+          if (localStorage.getItem('rails-pulse-ui') === 'tui') {
+            root.setAttribute('data-ui', 'tui');
+          }
+        } catch (error) {}
       })();
     </script>
 

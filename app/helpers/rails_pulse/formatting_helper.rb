@@ -9,6 +9,20 @@ module RailsPulse
       time.strftime("%b %d, %Y %l:%M %p")
     end
 
+    # "Nov 3, 12:00 – Nov 6, 12:00" for the time-range selector. The year is
+    # shown only when the range is not in the current year, to keep the label
+    # short enough for a phone's top bar. Values that do not parse are shown
+    # as they were stored.
+    def custom_time_range_label(start_time, end_time)
+      times = [ start_time, end_time ].map { |value| Time.zone.parse(value.to_s) }
+      return "#{start_time} to #{end_time}" if times.any?(&:nil?)
+
+      format = times.all? { |time| time.year == Time.current.year } ? "%b %-d, %H:%M" : "%b %-d %Y, %H:%M"
+      times.map { |time| time.strftime(format) }.join(" – ")
+    rescue ArgumentError
+      "#{start_time} to #{end_time}"
+    end
+
     def time_ago_in_words(time)
       return "Unknown" if time.blank?
 

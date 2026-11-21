@@ -78,6 +78,20 @@ describe('GlobalFiltersController', () => {
     expect(document.body.style.overflow).toBe('')
   })
 
+  it('closes on Escape while open', async () => {
+    const ctrl = await mount()
+    ctrl.open({ preventDefault: vi.fn() })
+    ctrl.closeOnEscape({ preventDefault: vi.fn() })
+    expect(wrapper().style.display).toBe('none')
+  })
+
+  it('ignores Escape while closed', async () => {
+    const ctrl = await mount()
+    const preventDefault = vi.fn()
+    ctrl.closeOnEscape({ preventDefault })
+    expect(preventDefault).not.toHaveBeenCalled()
+  })
+
   it('close works without an event argument', async () => {
     const ctrl = await mount()
     ctrl.open({ preventDefault: vi.fn() })

@@ -33,3 +33,12 @@
     margin: 0 !important;
   }
 }
+
+/* Help popovers size to their text up to a max-width set per popover (a
+   utility class or an inline style), which on a phone is wider than the
+   screen. !important because those per-popover widths would otherwise win. */
+@media (max-width: 40rem) {
+  .popover {
+    max-inline-size: calc(100vw - 1rem) !important;
+  }
+}

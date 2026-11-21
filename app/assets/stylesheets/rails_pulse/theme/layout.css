@@ -1,0 +1,543 @@
+/* Theme tokens: cool slate in light, warm charcoal in dark, so status colour
+   carries the meaning. */
+
+:root {
+  --color-bg: #f3f5f9;
+  --color-surface: #ffffff;
+  --color-text: #0f172a;
+  --color-text-subtle: #64748b;
+  --color-link: #2563eb;
+  --color-border-light: #eef1f6;
+  --color-border: #e2e7ef;
+  --color-border-dark: #c3cbd9;
+  --color-primary: #0f172a;
+  --color-secondary: #eef1f6;
+  --color-negative: #dc2626;
+  --color-positive: #16a34a;
+  --color-warning-text: #b45309;
+
+  --color-accent: #2563eb;
+  --color-accent-strong: #1d4ed8;
+  --color-accent-soft: #e4ecfd;
+  --color-sidebar: #ffffff;
+
+  --status-ok: #16a34a;
+  --status-warning: #f59e0b;
+  --status-critical: #dc2626;
+
+  --header-bg: var(--color-bg);
+  --header-link: #334155;
+  --header-link-hover-bg: #eef1f6;
+}
+
+html[data-color-scheme="dark"] {
+  --color-bg: #1a1917;
+  --color-surface: #232220;
+  --color-text: #ebe8e2;
+  --color-text-subtle: #a09b92;
+  --color-link: #8ab8f5;
+  --color-border-light: #292826;
+  --color-border: #33312e;
+  --color-border-dark: #4d4a45;
+  --color-primary: #ebe8e2;
+  --color-secondary: #2c2a27;
+  --color-negative: #f87171;
+  --color-positive: #34d399;
+  --color-warning-text: #fbbf24;
+
+  --color-accent: #ebe8e2;
+  --color-accent-strong: #ffffff;
+  --color-accent-soft: #33312e;
+  --color-sidebar: #151412;
+
+  --status-ok: #34d399;
+  --status-warning: #fbbf24;
+  --status-critical: #f87171;
+
+  --header-bg: var(--color-bg);
+  --header-link: #cfcbc3;
+  --header-link-hover-bg: #2c2a27;
+}
+
+code, code *, pre, pre *, kbd {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* ---------- Shell: persistent sidebar, slim top bar, scrolling main ---------- */
+
+.console-layout {
+  display: grid;
+  grid-template-areas: "header" "main";
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto 1fr;
+  block-size: 100dvh;
+}
+
+@media (min-width: 80rem) {
+  .console-layout:not(.console-layout--bare) {
+    grid-template-areas: "sidebar header" "sidebar main";
+    grid-template-columns: 15rem minmax(0, 1fr);
+  }
+}
+
+/* ---------- Sidebar ---------- */
+
+#sidebar {
+  background-color: var(--color-sidebar);
+  border-inline-end: 1px solid var(--color-border);
+  padding: var(--size-3);
+  row-gap: var(--size-4);
+  overflow-y: auto;
+}
+
+.console-brand {
+  align-items: center;
+  color: var(--color-text);
+  column-gap: var(--size-2);
+  display: flex;
+  padding: var(--size-2);
+  text-decoration: none;
+}
+
+/* Brand mark: the pulsing dot rather than a filled tile. */
+.console-brand__mark {
+  position: relative;
+  inline-size: 0.6rem;
+  block-size: 0.6rem;
+  margin-inline: var(--size-1_5);
+  border-radius: 50%;
+  background: #f5b400;
+  flex-shrink: 0;
+}
+
+.console-brand__mark::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #f5b400;
+  animation: brand-pulse 2.4s ease-out infinite;
+}
+
+@keyframes brand-pulse {
+  0% { transform: scale(1); opacity: 0.55; }
+  70%, 100% { transform: scale(2.6); opacity: 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .console-brand__mark::after { animation: none; opacity: 0; }
+}
+
+.console-brand__name {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.01em;
+}
+
+.console-brand__version {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+  margin-inline-start: auto;
+}
+
+.console-nav {
+  row-gap: 2px;
+}
+
+.console-nav__label {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  letter-spacing: 0.04em;
+  padding: 0 var(--size-2) var(--size-1);
+  text-transform: uppercase;
+}
+
+.console-sidebar__footer {
+  border-block-start: 1px solid var(--color-border);
+  margin-block-start: auto;
+  padding-block-start: var(--size-3);
+  row-gap: 2px;
+}
+
+.sidebar-menu__button {
+  --btn-color: var(--color-text-subtle);
+  --btn-hover-color: color-mix(in srgb, var(--color-text) 6%, transparent);
+  --btn-padding: var(--size-1_5) var(--size-2);
+  --btn-radius: var(--rounded-md);
+  --btn-font-size: var(--text-sm);
+  --btn-font-weight: var(--font-medium);
+  block-size: 2rem;
+  column-gap: var(--size-2_5);
+  text-decoration: none;
+}
+
+.sidebar-menu__button:hover {
+  color: var(--color-text);
+}
+
+.sidebar-menu__button[aria-current="page"] {
+  --btn-background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  --btn-color: var(--color-text);
+}
+
+.sidebar-menu__button[aria-current="page"] rails-pulse-icon {
+  color: var(--color-accent);
+}
+
+/* ---------- Top bar ---------- */
+
+/* No backdrop-filter here: it would make the header the containing block for
+   position: fixed descendants and trap the global filters overlay inside it. */
+#header {
+  background-color: var(--header-bg);
+  block-size: 3.25rem;
+  border-block-end: 1px solid var(--color-border);
+  column-gap: var(--size-4);
+  justify-content: space-between;
+  padding-inline: var(--size-6);
+}
+
+.console-topbar__start,
+.console-topbar__end {
+  align-items: center;
+  display: flex;
+  min-inline-size: 0;
+}
+
+.console-topbar__start {
+  column-gap: var(--size-3);
+  flex: 1;
+}
+
+.console-topbar__end {
+  column-gap: var(--size-2);
+  flex-shrink: 0;
+}
+
+#header .console-topbar__end > div > a {
+  align-items: center;
+  border-radius: var(--rounded-md);
+  color: var(--color-text-subtle);
+  display: flex;
+  padding: var(--size-1_5);
+}
+
+#header .console-topbar__end > div > a:hover {
+  background-color: var(--color-secondary);
+  color: var(--color-text);
+}
+
+.console-topbar__title {
+  font-size: var(--text-sm);
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* A custom range label ("2026-11-03 12:00 to 2026-11-06 12:00") is wider than
+   a phone. The title takes whatever the selector leaves, down to a few
+   characters; past that the selector truncates, so the filter button stays
+   on screen. */
+@media (max-width: 40rem) {
+  .console-topbar__start {
+    flex: 1 1 0;
+    min-inline-size: 5.5rem;
+  }
+
+  .console-topbar__end {
+    flex: 0 1 auto;
+  }
+
+  .console-topbar__end > div:first-child,
+  .console-topbar__end > div:first-child > div {
+    min-inline-size: 0;
+  }
+
+  .time-range-trigger {
+    min-inline-size: 0;
+  }
+
+  .time-range-trigger > span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
+
+/* ---------- Main ---------- */
+
+#main {
+  padding: var(--size-6);
+}
+
+@media (max-width: 48rem) {
+  #header {
+    padding-inline: var(--size-3);
+  }
+
+  #main {
+    padding: var(--size-3);
+  }
+}
+
+.container {
+  --container-width: 84rem;
+}
+
+.container.gap {
+  row-gap: var(--size-4);
+}
+
+/* ---------- Surfaces ---------- */
+
+.card {
+  border-radius: var(--rounded-xl);
+  box-shadow: none;
+  padding: var(--size-5);
+}
+
+.popover.card,
+.dialog {
+  box-shadow: var(--shadow-lg);
+}
+
+.card.metric-strip {
+  padding: 0;
+}
+
+.panel-icon-bar {
+  top: var(--size-5);
+  right: var(--size-5);
+}
+
+/* Panel titles: quiet sentence-weight labels instead of shouting caps */
+.card h2.uppercase,
+.panel-header h2,
+.metric-strip__title {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  letter-spacing: 0.02em;
+}
+
+/* Help and open-in-detail icons stay available but recede until wanted */
+.panel-icon-bar a,
+.metric-strip__section a {
+  color: var(--color-text-subtle);
+  opacity: 0.7;
+  transition: opacity var(--time-150) ease, color var(--time-150) ease;
+}
+
+.panel-icon-bar a:hover,
+.metric-strip__section a:hover,
+.card:hover .panel-icon-bar a:focus-visible {
+  color: var(--color-accent);
+  opacity: 1;
+}
+
+.metric-strip__section {
+  padding: var(--size-4) var(--size-5);
+}
+
+.metric-strip__section h4 {
+  font-size: var(--text-2xl);
+  font-weight: var(--font-semibold);
+  letter-spacing: -0.02em;
+}
+
+.btn {
+  --btn-box-shadow: none;
+}
+
+.btn--primary {
+  --btn-hover-color: var(--color-accent-strong);
+}
+
+.badge--positive,
+.badge--negative {
+  --badge-box-shadow: none;
+  border-radius: var(--rounded-full);
+}
+
+.badge--positive {
+  --badge-background: color-mix(in srgb, var(--color-positive) 14%, transparent);
+  --badge-color: var(--color-positive);
+}
+
+.badge--negative {
+  --badge-background: color-mix(in srgb, var(--color-negative) 14%, transparent);
+  --badge-color: var(--color-negative);
+}
+
+.series-toggle {
+  border-radius: var(--rounded-full);
+}
+
+/* ---------- Time range trigger ---------- */
+
+html .time-range-trigger,
+html[data-color-scheme="dark"] .time-range-trigger {
+  background: var(--color-surface);
+  border-color: var(--color-border);
+  border-radius: var(--rounded-md);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  padding-block: var(--size-1);
+}
+
+html .time-range-trigger:hover,
+html[data-color-scheme="dark"] .time-range-trigger:hover,
+html .time-range-trigger:has(+ [popover]:popover-open),
+html[data-color-scheme="dark"] .time-range-trigger:has(+ [popover]:popover-open) {
+  background: var(--color-secondary);
+  border-color: var(--color-border-dark);
+}
+
+/* ---------- Attention list ---------- */
+
+.attention-item {
+  border-bottom-color: var(--color-border-light);
+  border-radius: var(--rounded-md);
+  padding: var(--size-2);
+  margin-inline: calc(-1 * var(--size-2));
+}
+
+.attention-item:hover {
+  background: color-mix(in srgb, var(--color-text) 3%, transparent);
+}
+
+.attention-item__badge {
+  border-radius: var(--rounded-full);
+}
+
+.global-filters-active::after {
+  background-color: var(--color-accent);
+}
+
+/* ---------- Tables ---------- */
+
+.table th,
+.table th a {
+  color: var(--color-text-subtle);
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  text-decoration: none;
+}
+
+.table th a:hover {
+  color: var(--color-text);
+}
+
+.table td a {
+  text-decoration: none;
+}
+
+.table td a:hover {
+  text-decoration: underline;
+}
+
+.table tbody tr:hover {
+  background: color-mix(in srgb, var(--color-text) 3%, transparent);
+}
+
+/* ---------- Collapsed sidebar: an icon rail ---------- */
+
+.console-sidebar__collapse {
+  inline-size: 100%;
+  justify-content: flex-start;
+}
+
+@media (min-width: 80rem) {
+  html[data-sidebar="collapsed"] .console-layout:not(.console-layout--bare) {
+    grid-template-columns: 3.5rem minmax(0, 1fr);
+  }
+
+  html[data-sidebar="collapsed"] #sidebar {
+    padding-inline: var(--size-2);
+    /* Labels fly out to the right on hover, so they must not be clipped. */
+    overflow: visible;
+    position: relative;
+    z-index: 20;
+  }
+
+  html[data-sidebar="collapsed"] .console-brand {
+    justify-content: center;
+    padding-inline: 0;
+  }
+
+  html[data-sidebar="collapsed"] .console-brand__name,
+  html[data-sidebar="collapsed"] .console-brand__version {
+    display: none;
+  }
+
+  /* Keep the row height so the icons do not shift between states. */
+  html[data-sidebar="collapsed"] .console-nav__label {
+    visibility: hidden;
+  }
+
+  html[data-sidebar="collapsed"] #sidebar .sidebar-menu__button {
+    justify-content: center;
+    padding-inline: 0;
+    position: relative;
+  }
+
+  /* The label becomes a tooltip beside the icon. */
+  html[data-sidebar="collapsed"] #sidebar .sidebar-menu__button > .overflow-ellipsis {
+    position: absolute;
+    inset-inline-start: calc(100% + 0.6rem);
+    inset-block-start: 50%;
+    transform: translateY(-50%);
+    padding: var(--size-1) var(--size-2_5);
+    border-radius: var(--rounded-md);
+    background: var(--color-text);
+    color: var(--color-bg);
+    font-size: var(--text-xs);
+    font-weight: var(--font-medium);
+    white-space: nowrap;
+    overflow: visible;
+    box-shadow: var(--shadow-md);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.12s;
+  }
+
+  html[data-sidebar="collapsed"] #sidebar .sidebar-menu__button:hover > .overflow-ellipsis,
+  html[data-sidebar="collapsed"] #sidebar .sidebar-menu__button:focus-visible > .overflow-ellipsis {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  html[data-sidebar="collapsed"] .console-sidebar__collapse rails-pulse-icon {
+    transform: rotate(180deg);
+  }
+}
+
+/* ---------- Narrow screens ---------- */
+
+/* Below the breakpoint the sheet menu replaces the sidebar. The id selector
+   that lays the sidebar out outranks the show@xl utility, so hide it here. */
+@media (max-width: 79.999rem) {
+  #sidebar {
+    display: none;
+  }
+}
+
+/* Scheme-specific content: only the variant for the current scheme shows. */
+html[data-color-scheme="dark"] .scheme-light-only,
+html:not([data-color-scheme="dark"]) .scheme-dark-only {
+  display: none;
+}
+
+/* Below the desktop breakpoint charts use a 4:3 box, which on a tablet-width
+   screen makes them taller than the viewport. Size them by height instead:
+   it grows a little with the screen but never dominates the page. */
+@media (max-width: 63.999rem) {
+  .chart-container,
+  .chart-container--slim {
+    aspect-ratio: auto;
+    block-size: clamp(12rem, 38vw, 18rem);
+  }
+}

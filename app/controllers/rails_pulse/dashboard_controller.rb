@@ -38,8 +38,13 @@ module RailsPulse
       # Needs Attention panel
       @needs_attention = RailsPulse::Dashboard::NeedsAttention.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, period_type: period_type, window: window, storage_pressure: storage_pressure).to_attention_data
 
-      # System Health bar
+      # Per-area health, summed into the verdict panel at the top of the page
       @health_summary = RailsPulse::Dashboard::HealthSummary.new(disabled_tags: disabled_tags, show_non_tagged: show_non_tagged, period: period, period_type: period_type, window: window, storage_pressure: storage_pressure).to_health_data
+      @verdict = RailsPulse::Dashboard::Verdict.new(
+        health_summary: @health_summary,
+        needs_attention: @needs_attention,
+        range_label: helpers.humanize_time_range(@time_range.selected_time_range)
+      )
 
       @storage_status = RailsPulse::Dashboard::StorageStatus.new(estimated: true, storage_pressure: storage_pressure)
 

@@ -1,0 +1,243 @@
+/* TUI mode: a terminal-style skin switched on with html[data-ui="tui"].
+   It only swaps tokens, fonts and corners; layout and markup are untouched. */
+
+.console-sidebar__tui {
+  inline-size: 100%;
+  justify-content: flex-start;
+}
+
+.console-sidebar__tui[aria-pressed="true"] {
+  --btn-background: color-mix(in srgb, var(--color-text) 7%, transparent);
+  --btn-color: var(--color-text);
+}
+
+html[data-ui="tui"] {
+  /* Paper printout. Brand yellow is too pale to read as text on paper, so
+     text accents use a dark ochre and the yellow itself is kept for fills. */
+  --color-bg: #f1ead6;
+  --color-surface: #faf5e6;
+  --color-sidebar: #eae2cb;
+  --color-text: #1d1a12;
+  --color-text-reversed: #faf5e6;
+  --color-text-subtle: #675f4c;
+  --color-link: #7a5600;
+  --color-accent: #7a5600;
+  --color-accent-strong: #5c4100;
+  --color-accent-soft: #ffe58a;
+  --tui-fill: #ffc91f;
+  --color-border-light: #e0d7bd;
+  --color-border: #c8bd9c;
+  --color-border-dark: #948967;
+  --color-selected: #ffe58a;
+  --color-primary: #1d1a12;
+  --color-secondary: #e8dfc6;
+  --color-negative: #b3261e;
+  --color-positive: #1f6b2d;
+  --color-warning-text: #a8480a;
+  --status-ok: #1f6b2d;
+  --status-warning: #c85a0c;
+  --status-critical: #b3261e;
+  --header-bg: #f1ead6;
+  --header-link: #1d1a12;
+  --header-link-hover-bg: #e8dfc6;
+}
+
+html[data-ui="tui"][data-color-scheme="dark"] {
+  /* Amber phosphor on near-black. Warnings move to orange so they stay
+     distinct from the yellow used for links and headings. */
+  --color-bg: #080705;
+  --color-surface: #0e0c08;
+  --color-sidebar: #050403;
+  --color-text: #ecdfbd;
+  --color-text-reversed: #080705;
+  --color-text-subtle: #9a8d6a;
+  --color-link: #ffc91f;
+  --color-accent: #ffc91f;
+  --color-accent-strong: #ffdc6b;
+  --color-accent-soft: #3a2e06;
+  --tui-fill: #ffc91f;
+  --color-border-light: #1f1a0c;
+  --color-border: #3a3012;
+  --color-border-dark: #6b5a1f;
+  --color-selected: #3a2e06;
+  --color-primary: #ffc91f;
+  --color-secondary: #1a160a;
+  --color-negative: #ff5c5c;
+  --color-positive: #5fd97a;
+  --color-warning-text: #ff8a3d;
+  --status-ok: #5fd97a;
+  --status-warning: #ff8a3d;
+  --status-critical: #ff5c5c;
+  --header-bg: #080705;
+  --header-link: #ecdfbd;
+  --header-link-hover-bg: #1a160a;
+}
+
+html[data-ui="tui"] .card,
+html[data-ui="tui"] .input {
+  --color-bg: var(--color-surface);
+  --color-border: inherit;
+  --input-background: var(--color-surface);
+  --input-border-color: var(--color-border);
+}
+
+/* Square corners and no shadows come from zeroing the scale tokens the
+   components read; monospace is set on every element because the base
+   stylesheet sets its font the same way. */
+html[data-ui="tui"] {
+  --rounded-xs: 0;
+  --rounded-sm: 0;
+  --rounded-md: 0;
+  --rounded-lg: 0;
+  --rounded-xl: 0;
+  --rounded-2xl: 0;
+  --rounded-3xl: 0;
+  --rounded-full: 0;
+  --shadow-xs: none;
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+  --shadow-xl: none;
+}
+
+html[data-ui="tui"] *,
+html[data-ui="tui"] *::before,
+html[data-ui="tui"] *::after {
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+}
+
+/* Shapes drawn as circles with a literal 50% become square status blocks. */
+html[data-ui="tui"] .console-brand__mark,
+html[data-ui="tui"] .console-brand__mark::after,
+html[data-ui="tui"] .verdict__status-dot,
+html[data-ui="tui"] .verdict__status-dot::after,
+html[data-ui="tui"] .verdict-cell__dot,
+html[data-ui="tui"] .deploy-timeline__item::before,
+html[data-ui="tui"] .all-clear-icon {
+  border-radius: 0;
+}
+
+html[data-ui="tui"] .deploy-timeline__item--active::before {
+  box-shadow: none;
+}
+
+html[data-ui="tui"] body {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "zero" 1;
+  letter-spacing: 0;
+}
+
+/* Tight tracking is tuned for the sans face and crowds monospace glyphs. */
+html[data-ui="tui"] .verdict__title,
+html[data-ui="tui"] .verdict-cell__count,
+html[data-ui="tui"] .console-brand__name,
+html[data-ui="tui"] .console-topbar__title {
+  letter-spacing: 0;
+}
+
+html[data-ui="tui"] .verdict__title {
+  font-size: var(--text-xl);
+}
+
+html[data-ui="tui"] .verdict__head {
+  background: none;
+}
+
+/* Panel titles read as framed terminal headings. */
+html[data-ui="tui"] .panel-header h2::before,
+html[data-ui="tui"] .metric-strip__title::before {
+  content: "[ ";
+  color: var(--color-text-subtle);
+}
+
+html[data-ui="tui"] .panel-header h2::after,
+html[data-ui="tui"] .metric-strip__title::after {
+  content: " ]";
+  color: var(--color-text-subtle);
+}
+
+html[data-ui="tui"] .panel-header h2,
+html[data-ui="tui"] .metric-strip__title,
+html[data-ui="tui"] .sidebar-menu__button[aria-current="page"] {
+  color: var(--color-accent);
+}
+
+html[data-ui="tui"] .console-brand__name::after {
+  content: " ▸";
+  color: var(--color-accent);
+}
+
+html[data-ui="tui"] a {
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
+html[data-ui="tui"] ::selection {
+  background-color: var(--color-accent);
+  color: var(--color-text-reversed);
+}
+
+/* Monospace glyphs are wider: keep the brand and the cell labels on one line. */
+html[data-ui="tui"] .console-brand__name {
+  white-space: nowrap;
+}
+
+html[data-ui="tui"] .console-brand__version {
+  display: none;
+}
+
+html[data-ui="tui"] .verdict-cell__figure {
+  flex-wrap: wrap;
+  row-gap: 0;
+}
+
+html[data-ui="tui"] .verdict-cell__label {
+  font-size: var(--text-xs);
+  white-space: nowrap;
+}
+
+/* The current section is a solid yellow bar with dark text, like a selected
+   row in a terminal menu. */
+html[data-ui="tui"] .sidebar-menu__button[aria-current="page"],
+html[data-ui="tui"] .console-sidebar__tui[aria-pressed="true"],
+/* The sheet menu sits inside #header, whose link colour is an id rule. */
+html[data-ui="tui"] #header .sidebar-menu__button[aria-current="page"] {
+  --btn-background: var(--tui-fill);
+  /* Hover stays a yellow fill: the default hover is a faint tint, which
+     would leave this dark text on a dark background. */
+  --btn-hover-color: #ffdc6b;
+  --btn-color: #1d1a12;
+  color: #1d1a12;
+}
+
+html[data-ui="tui"] .sidebar-menu__button[aria-current="page"] rails-pulse-icon,
+html[data-ui="tui"] .console-sidebar__tui[aria-pressed="true"] rails-pulse-icon {
+  color: #1d1a12;
+}
+
+html[data-ui="tui"] .console-brand__mark,
+html[data-ui="tui"] .console-brand__mark::after {
+  background: var(--tui-fill);
+}
+
+/* Corners that components set literally rather than through the scale
+   tokens zeroed above. */
+html[data-ui="tui"] .series-toggle,
+html[data-ui="tui"] .panel-tab,
+html[data-ui="tui"] .flame-legend-swatch,
+html[data-ui="tui"] .flame-tooltip,
+html[data-ui="tui"] .backtrace,
+html[data-ui="tui"] .backtrace__toggle,
+html[data-ui="tui"] .exception-params,
+html[data-ui="tui"] .tag-list .badge,
+html[data-ui="tui"] .tag-add-button {
+  border-radius: 0;
+}
+
+/* --color-primary is the yellow fill in the dark terminal palette, which
+   leaves the dimmed comment unreadable; use a bordered surface instead. */
+html[data-ui="tui"] .setup-banner__command {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  color: var(--color-text);
+}

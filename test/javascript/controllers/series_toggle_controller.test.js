@@ -25,6 +25,17 @@ describe('SeriesToggleController', () => {
     return app.getControllerForElementAndIdentifier(element, 'series-toggle')
   }
 
+  // # Pressed state
+
+  it('exposes the initial state as aria-pressed', () => {
+    expect(element.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('updates aria-pressed when toggled', () => {
+    ctrl().toggle()
+    expect(element.getAttribute('aria-pressed')).toBe('false')
+  })
+
   // # Toggle
 
   it('sets data-active to "false" when currently active', () => {

@@ -54,7 +54,9 @@ module RailsPulse
           axisLine: { show: false },
           axisTick: { show: false },
           axisLabel: {
-            formatter: x_formatter
+            formatter: x_formatter,
+            # A 14-day range on a phone has more labels than fit side by side.
+            hideOverlap: true
           }
         },
         yAxis: {

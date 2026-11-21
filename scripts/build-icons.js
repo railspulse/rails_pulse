@@ -50,7 +50,8 @@ const REQUIRED_ICONS = [
   'shield-check',
   'bell',
   'triangle-alert',
-  'help-circle'
+  'help-circle',
+  'terminal'
 ];
 
 // Icon name mappings for different naming conventions

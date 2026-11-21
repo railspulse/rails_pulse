@@ -1,7 +1,7 @@
 module RailsPulse
   module ChartColors
-    P95     = "#eab308"
+    P95     = "#f59e0b"
     P99     = "#3b82f6"
-    DEFAULT = "#6b7280"
+    DEFAULT = "#8a847b"
   end
 end

@@ -79,8 +79,10 @@
   flex-shrink: 0;
 }
 
-/* 2-column grid on tablet */
-@media (max-width: 768px) {
+/* 2-column grid on tablet. 900px rather than 768px so an 820px-wide portrait
+   tablet is included: four tiles across there truncate their titles and clip
+   the comparison line. */
+@media (max-width: 900px) {
   .metric-strip {
     flex-wrap: wrap;
   }

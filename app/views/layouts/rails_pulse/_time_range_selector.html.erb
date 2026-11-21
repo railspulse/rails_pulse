@@ -8,7 +8,7 @@ preset_labels = {
 
 if RailsPulse::TimeRangePreference.custom?(preference)
   current_selection = :custom
-  current_label = "#{preference["start_time"]} to #{preference["end_time"]}"
+  current_label = custom_time_range_label(preference["start_time"], preference["end_time"])
 elsif preference.is_a?(String) && preset_labels.key?(preference.to_sym)
   current_selection = preference.to_sym
   current_label = preset_labels[current_selection]
@@ -20,6 +20,7 @@ end %>
 <div
   data-controller="rails-pulse--time-range"
   data-rails-pulse--time-range-url-value="<%= rails_pulse.settings_time_range_path %>"
+  data-action="keydown.esc@window->rails-pulse--time-range#closeOnEscape:capture"
 >
   <div
     class="flex items-center gap mie-2"
@@ -147,13 +148,23 @@ end %>
               type="text"
               id="time_range_custom_dates"
               data-rails-pulse--time-range-target="dateInput"
+              data-action="change->rails-pulse--time-range#clearError"
               placeholder="Pick date range"
               class="input"
               data-controller="rails-pulse--datepicker"
               data-rails-pulse--datepicker-mode-value="range"
               data-rails-pulse--datepicker-show-months-value="2"
               data-rails-pulse--datepicker-type-value="datetime"
+              aria-describedby="time_range_custom_dates_error"
             />
+            <p
+              id="time_range_custom_dates_error"
+              class="text-sm"
+              style="color: var(--color-negative)"
+              role="alert"
+              hidden
+              data-rails-pulse--time-range-target="error"
+            >Pick a start date and an end date.</p>
           </div>
         </div>
 

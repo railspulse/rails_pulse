@@ -1,0 +1,48 @@
+<%# Rendering only: RailsPulse::Dashboard::Verdict decides the state, the
+    wording and which area cells appear. %>
+<% verdict = @verdict %>
+<% action = verdict.action %>
+<section class="verdict verdict--<%= verdict.state %>" aria-label="Overall status">
+  <div class="verdict__head">
+    <div class="verdict__eyebrow">
+      <span class="verdict__status"><span class="verdict__status-dot" aria-hidden="true"></span><%= verdict.status_label %></span>
+      <span class="verdict__range"><%= humanize_time_range(@time_range.selected_time_range).upcase_first %></span>
+    </div>
+    <h1 class="verdict__title"><%= verdict.title %></h1>
+    <p class="verdict__summary"><%= verdict.summary %></p>
+    <% if action %>
+      <%= link_to action.url, class: "verdict__action" do %>
+        <%= action.label %> <span aria-hidden="true"><%= action.icon %></span>
+      <% end %>
+    <% end %>
+  </div>
+
+  <div class="verdict__cells">
+    <% verdict.areas.each do |area| %>
+      <% cell = capture do %>
+        <span class="verdict-cell__top">
+          <span class="verdict-cell__dot"></span>
+          <span class="verdict-cell__name"><%= area.name %></span>
+          <% if area.url %><span class="verdict-cell__arrow" aria-hidden="true">→</span><% end %>
+        </span>
+        <span class="verdict-cell__figure">
+          <span class="verdict-cell__count"><%= number_with_delimiter(area.count) %></span>
+          <span class="verdict-cell__label"><%= area.label %></span>
+        </span>
+        <span class="verdict-cell__detail"><%= area.detail %></span>
+        <% if area.meter.any? %>
+          <span class="verdict-cell__meter" aria-hidden="true">
+            <% area.meter.each do |kind, count| %>
+              <span class="verdict-cell__meter-part verdict-cell__meter-part--<%= kind %>" style="flex-grow: <%= count %>"></span>
+            <% end %>
+          </span>
+        <% end %>
+      <% end %>
+      <% if area.url %>
+        <%= link_to area.url, class: "verdict-cell verdict-cell--#{area.state}", title: area.description do %><%= cell %><% end %>
+      <% else %>
+        <div class="verdict-cell verdict-cell--<%= area.state %>"><%= cell %></div>
+      <% end %>
+    <% end %>
+  </div>
+</section>

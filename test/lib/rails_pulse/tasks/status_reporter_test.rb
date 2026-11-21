@@ -1,6 +1,8 @@
 require "test_helper"
 
 class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
+  include HeartbeatFixtureHelpers
+
   fixtures :rails_pulse_summaries, :rails_pulse_events, :rails_pulse_routes
 
   def setup
@@ -36,6 +38,7 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
   end
 
   test "writer heartbeats are summed across processes" do
+    travel_to_heartbeat_fixtures
     assume_clean_install
 
     assert report
@@ -53,6 +56,7 @@ class RailsPulse::Tasks::StatusReporterTest < ActiveSupport::TestCase
   # Action Tests
 
   test "requests dropped in the last hour fail the report" do
+    travel_to_heartbeat_fixtures
     assume_clean_install
     rails_pulse_events(:web_two_latest).update!(value: 7)
 
