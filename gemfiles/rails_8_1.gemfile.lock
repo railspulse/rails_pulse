@@ -83,9 +83,10 @@ GEM
       securerandom (>= 0.3)
       tzinfo (~> 2.0, >= 2.0.5)
       uri (>= 0.13.1)
-    addressable (2.9.2)
+    addressable (2.10.0)
       public_suffix (>= 2.0.2, < 8.0)
-    ansi (1.6.0)
+    ansi (1.6.1)
+      logger
     appraisal (2.5.0)
       bundler
       rake
@@ -175,7 +176,7 @@ GEM
       net-smtp
     marcel (1.2.1)
     matrix (0.4.3)
-    mcp (1.10.0)
+    mcp (1.11.0)
       json_schemer (>= 2.4)
     mini_mime (1.1.5)
     minitest (6.1.0)
@@ -221,7 +222,7 @@ GEM
       racc (~> 1.4)
     ostruct (0.6.3)
     parallel (1.28.0)
-    parser (3.3.13.0)
+    parser (3.3.14.0)
       ast (~> 2.4.1)
       racc
     pg (1.7.0)
@@ -243,7 +244,7 @@ GEM
       nio4r (~> 2.0)
     raabro (1.5.0)
     racc (1.8.1)
-    rack (3.2.8)
+    rack (3.2.9)
     rack-protection (4.2.2)
       base64 (>= 0.1.0)
       logger (>= 1.6.0)
@@ -327,7 +328,7 @@ GEM
       rubocop-ast (>= 1.49.0, < 2.0)
       ruby-progressbar (~> 1.7)
       unicode-display_width (>= 2.4.0, < 4.0)
-    rubocop-ast (1.52.0)
+    rubocop-ast (1.53.0)
       ast (~> 2.4)
       parser (>= 3.3.7.2)
       prism (>= 1.7)
@@ -354,7 +355,7 @@ GEM
     ruby2_keywords (0.0.5)
     rubyzip (3.7.0)
     securerandom (0.4.1)
-    selenium-webdriver (4.53.0)
+    selenium-webdriver (4.54.0)
       base64 (~> 0.2)
       logger (~> 1.4)
       rubyzip (>= 1.2.2, < 4.0)
